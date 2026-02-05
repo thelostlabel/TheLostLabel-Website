@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String                 @id @default(uuid())
+  email            String                 @unique
+  password         String
+  fullName         String?
+  stageName        String?
+  role             String                 @default("artist")
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  monthlyListeners Int?
+  spotifyUrl       String?
+  permissions      String?
+  legalName        String? // For contracts
+  phoneNumber      String? // For contact
+  address          String? // For invoicing
+  assignedRequests ChangeRequest[]        @relation("AssignedRequests")
+  requests         ChangeRequest[]        @relation("UserRequests")
+  comments         ChangeRequestComment[]
+  contracts        Contract[]
+  demos            Demo[]
+  payments         Payment[]
+}
+
+model Demo {
+  id              String     @id @default(uuid())
+  title           String
+  genre           String?
+  trackLink       String?
+  message         String?
+  status          String     @default("pending")
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  artistId        String
+  reviewedAt           DateTime?
+  reviewedBy           String?
+  rejectionReason      String?
+  scheduledReleaseDate String? // Added for scheduling
+  artist               User       @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  files           DemoFile[]
+}
+
+model DemoFile {
+  id        String   @id @default(uuid())
+  filename  String
+  filepath  String
+  filesize  Int
+  createdAt DateTime @default(now())
+  demoId    String
+  demo      Demo     @relation(fields: [demoId], references: [id], onDelete: Cascade)
+}
+
+model SiteContent {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  title     String
+  content   String
+  updatedAt DateTime @updatedAt
+}
+
+model Webhook {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  events    String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  config    String?
+}
+
+model Artist {
+  id               String    @id
+  name             String
+  image            String?
+  spotifyUrl       String?
+  followers        Int?
+  monthlyListeners Int?
+  genres           String?
+  lastSyncedAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Release {
+  id          String          @id
+  name        String
+  artistName  String?
+  image       String?
+  spotifyUrl  String?
+  releaseDate String?
+  artistsJson String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  requests    ChangeRequest[]
+  contracts   Contract[]
+}
+
+model ChangeRequest {
+  id           String                 @id @default(uuid())
+  type         String
+  status       String                 @default("pending")
+  details      String?
+  adminNote    String?
+  filesJson    String?
+  releaseId    String?
+  userId       String
+  assignedToId String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  assignedTo   User?                  @relation("AssignedRequests", fields: [assignedToId], references: [id])
+  user         User                   @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
+  release      Release?               @relation(fields: [releaseId], references: [id])
+  comments     ChangeRequestComment[]
+}
+
+model ChangeRequestComment {
+  id        String        @id @default(uuid())
+  requestId String
+  userId    String
+  content   String
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id])
+  request   ChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model SystemSettings {
+  id        String   @id @default("default")
+  config    String
+  updatedAt DateTime @updatedAt
+}
+
+model Contract {
+  id           String    @id @default(uuid())
+  releaseId    String
+  userId       String
+  artistShare  Float     @default(0.70)
+  labelShare   Float     @default(0.30)
+  status       String    @default("active")
+  signedAt     DateTime?
+  terminatedAt DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  pdfUrl       String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  release      Release   @relation(fields: [releaseId], references: [id])
+  earnings     Earning[]
+}
+
+model Earning {
+  id           String    @id @default(uuid())
+  contractId   String
+  period       String
+  grossAmount  Float
+  artistAmount Float
+  labelAmount  Float
+  currency     String    @default("USD")
+  streams      Int?
+  source       String?
+  paidToArtist Boolean   @default(false)
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  contract     Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          String    @id @default(uuid())
+  userId      String
+  amount      Float
+  currency    String    @default("USD")
+  method      String?
+  reference   String?
+  status      String    @default("pending")
+  processedAt DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+}

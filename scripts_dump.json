@@ -1,0 +1,22 @@
+[
+  {
+    "idx": 0,
+    "length": 791,
+    "snippet": "{\"appName\":\"web_player_prototype\",\"market\":\"TR\",\"locale\":{\"locale\":\"en\",\"rtl\":false,\"textDirection\":\"ltr\"},\"isPremium\":false,\"correlationId\":\"344bde24-5187-43de-8e99-80ee8589f482\",\"isAnonymous\":true,\"gtmId\":\"GTM-PZHN3VD\",\"optimizeId\":\"GTM-W53X654\",\"pipResources\":{\"scripts\":[\"https://open-exp.spotifycdn.com/cdn/build/web-player/vendor~web-player.bc9f8027.js\",\"https://open-exp.spotifycdn.com/cdn/build/web-player/pip-mini-player.8a890fb9.js\"],\"styles\":[\"https://open-exp.spotifycdn.com/cdn/build/web"
+  },
+  {
+    "idx": 1,
+    "length": 20,
+    "snippet": "{\"enableShows\":true}"
+  },
+  {
+    "idx": 2,
+    "length": 13,
+    "snippet": "{\"artist\":{}}"
+  },
+  {
+    "idx": 3,
+    "length": 363,
+    "snippet": "{\"#v\":\"1\",\"enableViewMode\":true,\"enableTOTPVersionValidation\":true,\"enableBrotliCompressionViaCDN\":\"enabled\",\"#configurationAssignmentId\":\"7523457c-e35c-ffd0-30e3-fcafff9e2ad6:0\",\"#groupIds\":{\"enableViewMode\":1189709,\"enableTOTPVersionValidation\":1247580,\"enableBrotliCompressionViaCDN\":1262717},\"#fetchTimeMillis\":1770227131804,\"#contextHash\":\"9f764f8e73491164\"}"
+  }
+]
