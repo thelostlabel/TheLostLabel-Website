@@ -14,38 +14,43 @@ model User {
   fullName         String?
   stageName        String?
   role             String                 @default("artist")
+  status           String                 @default("pending")
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   monthlyListeners Int?
   spotifyUrl       String?
   permissions      String?
-  legalName        String? // For contracts
-  phoneNumber      String? // For contact
-  address          String? // For invoicing
+  legalName        String?
+  phoneNumber      String?
+  address          String?
+  artist           Artist?
   assignedRequests ChangeRequest[]        @relation("AssignedRequests")
   requests         ChangeRequest[]        @relation("UserRequests")
   comments         ChangeRequestComment[]
   contracts        Contract[]
   demos            Demo[]
   payments         Payment[]
+  royaltySplits    RoyaltySplit[]
 }
 
 model Demo {
-  id              String     @id @default(uuid())
-  title           String
-  genre           String?
-  trackLink       String?
-  message         String?
-  status          String     @default("pending")
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  artistId        String
+  id                   String     @id @default(uuid())
+  title                String
+  genre                String?
+  trackLink            String?
+  message              String?
+  status               String     @default("pending")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  artistId             String
   reviewedAt           DateTime?
   reviewedBy           String?
   rejectionReason      String?
-  scheduledReleaseDate String? // Added for scheduling
+  scheduledReleaseDate String?
+  featuredArtists      String?
+  contract             Contract?
   artist               User       @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  files           DemoFile[]
+  files                DemoFile[]
 }
 
 model DemoFile {
@@ -78,30 +83,41 @@ model Webhook {
 }
 
 model Artist {
-  id               String    @id
+  id               String         @id @default(uuid())
   name             String
   image            String?
   spotifyUrl       String?
-  followers        Int?
-  monthlyListeners Int?
+  email            String?
+  status           String         @default("active")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  userId           String?        @unique
+  followers        Int?           @default(0)
   genres           String?
   lastSyncedAt     DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  monthlyListeners Int?           @default(0)
+  verified         Boolean?       @default(false)
+  user             User?          @relation(fields: [userId], references: [id])
+  contracts        Contract[]
+  royaltySplits    RoyaltySplit[]
 }
 
 model Release {
-  id          String          @id
-  name        String
-  artistName  String?
-  image       String?
-  spotifyUrl  String?
-  releaseDate String?
-  artistsJson String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  requests    ChangeRequest[]
-  contracts   Contract[]
+  id              String          @id
+  name            String
+  artistName      String?
+  image           String?
+  spotifyUrl      String?
+  releaseDate     String?
+  artistsJson     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  popularity      Int?
+  streamCountText String?
+  type            String          @default("album") // album, single, ep
+  totalTracks     Int             @default(1)
+  requests        ChangeRequest[]
+  contracts       Contract[]
 }
 
 model ChangeRequest {
@@ -139,38 +155,61 @@ model SystemSettings {
 }
 
 model Contract {
-  id           String    @id @default(uuid())
-  releaseId    String
-  userId       String
-  artistShare  Float     @default(0.70)
-  labelShare   Float     @default(0.30)
-  status       String    @default("active")
-  signedAt     DateTime?
-  terminatedAt DateTime?
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  pdfUrl       String?
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  release      Release   @relation(fields: [releaseId], references: [id])
-  earnings     Earning[]
+  id                 String         @id @default(uuid())
+  releaseId          String?
+  userId             String?
+  artistId           String?
+  primaryArtistName  String?
+  primaryArtistEmail String?
+  title              String?
+  demoId             String?        @unique
+  artistShare        Float          @default(0.70)
+  labelShare         Float          @default(0.30)
+  status             String         @default("active")
+  signedAt           DateTime?
+  terminatedAt       DateTime?
+  notes              String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  pdfUrl             String?
+  featuredArtists    String?
+  demo               Demo?          @relation(fields: [demoId], references: [id])
+  release            Release?       @relation(fields: [releaseId], references: [id])
+  artist             Artist?        @relation(fields: [artistId], references: [id])
+  user               User?          @relation(fields: [userId], references: [id])
+  earnings           Earning[]
+  splits             RoyaltySplit[]
+}
+
+model RoyaltySplit {
+  id         String   @id @default(uuid())
+  contractId String
+  userId     String?
+  name       String
+  percentage Float
+  artistId   String?
+  email      String?
+  artist     Artist?  @relation(fields: [artistId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 }
 
 model Earning {
-  id           String    @id @default(uuid())
-  contractId   String
-  period       String
-  grossAmount  Float
-  artistAmount Float
-  labelAmount  Float
-  currency     String    @default("USD")
-  streams      Int?
-  source       String?
-  paidToArtist Boolean   @default(false)
-  paidAt       DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  contract     Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id            String    @id @default(uuid())
+  contractId    String
+  period        String
+  grossAmount   Float
+  artistAmount  Float
+  labelAmount   Float
+  currency      String    @default("USD")
+  streams       Int?
+  source        String?
+  expenseAmount Float     @default(0)
+  paidToArtist  Boolean   @default(false)
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  contract      Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
 }
 
 model Payment {

@@ -31,23 +31,30 @@ export default function Register() {
             .catch(err => console.error(err));
     }, []);
 
+    const [success, setSuccess] = useState(false);
+
     const handleRegister = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        const result = await signIn('credentials', {
-            redirect: false,
-            ...formData,
-            type: 'register'
-        });
+        try {
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json();
 
-        if (result.error) {
-            setError(result.error);
+            if (res.ok) {
+                setSuccess(true);
+            } else {
+                setError(data.error || "Registration failed");
+            }
+        } catch (e) {
+            setError("Something went wrong");
+        } finally {
             setLoading(false);
-        } else {
-            router.push('/dashboard');
-            router.refresh();
         }
     };
 
@@ -71,112 +78,113 @@ export default function Register() {
     }
 
     return (
-        <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
-            {/* Noise Texture Filter */}
-            <svg style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}>
-                <filter id="noiseFilter">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-                </filter>
-            </svg>
+        <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', display: 'flex' }}>
+            {/* Left Side - Visuals (Hidden on Mobile) */}
             <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                zIndex: 1,
-                pointerEvents: 'none',
-                opacity: 0.04,
-                filter: 'url(#noiseFilter)'
-            }} />
+                flex: '1',
+                position: 'relative',
+                overflow: 'hidden'
+            }} className="desktop-visual">
+                {/* Background Image / Abstract */}
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'radial-gradient(circle at 30% 50%, #2a2a2a, #000)',
+                    zIndex: 0
+                }} />
 
-            {/* Enhanced Ambient Glows */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
+                {/* Noise */}
                 <div style={{
                     position: 'absolute',
-                    top: '-20%',
-                    left: '-10%',
-                    width: '60%',
-                    height: '60%',
-                    background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
-                    filter: 'blur(100px)'
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0.05,
+                    filter: 'url(#noiseFilter)',
+                    zIndex: 1
                 }} />
+
                 <div style={{
                     position: 'absolute',
-                    bottom: '-10%',
-                    right: '-5%',
-                    width: '50%',
-                    height: '50%',
-                    background: 'radial-gradient(circle, rgba(0,255,136,0.05) 0%, transparent 70%)',
-                    filter: 'blur(120px)'
-                }} />
+                    bottom: '80px',
+                    left: '80px',
+                    zIndex: 2
+                }}>
+                    <h1 style={{ fontSize: '60px', fontWeight: '900', lineHeight: '0.9', letterSpacing: '-0.03em', marginBottom: '20px' }}>
+                        DEFINE<br />YOUR<br /><span style={{ color: 'var(--accent)' }}>SOUND.</span>
+                    </h1>
+                    <p style={{ maxWidth: '400px', fontSize: '13px', color: '#888', lineHeight: '1.6', letterSpacing: '0.5px' }}>
+                        Join the fastest growing independent distribution network. Keep 100% of your rights.
+                    </p>
+                </div>
             </div>
 
-            {/* Grid Background Overlay */}
+            {/* Right Side - Form */}
             <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
-                backgroundSize: '100px 100px',
-                pointerEvents: 'none',
-                zIndex: 1,
-                opacity: 0.6
-            }} />
-
-            <div style={{
-                minHeight: '100vh',
+                width: '100%',
+                maxWidth: '600px',
+                background: '#0a0a0a',
+                borderLeft: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 justifyContent: 'center',
-                padding: '80px 20px',
+                padding: '40px 8vw', // Responsive padding
                 position: 'relative',
-                zIndex: 2
+                zIndex: 10
             }}>
-                <div className="glass" style={{
-                    width: '100%',
-                    maxWidth: '450px',
-                    padding: '50px 40px',
-                    borderRadius: '0',
-                    textAlign: 'center',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    background: 'rgba(10,10,10,0.6)',
-                    backdropFilter: 'blur(20px)'
-                }}>
-                    <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '4px' }}>REGISTER</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', fontSize: '11px', fontWeight: '800', letterSpacing: '2px' }}>
-                        JOIN LOST MUSIC GROUP
+                <div style={{ marginBottom: '60px' }}>
+                    <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>KAYIT OL</h2>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600' }}>
+                        LOST. HESABI OLUŞTURUN
                     </p>
+                </div>
 
-                    <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                {success ? (
+                    <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s' }}>
+                        <h2 style={{ fontSize: '24px', letterSpacing: '2px', marginBottom: '20px', color: '#00ff88' }}>BAŞVURU ALINDI</h2>
+                        <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.6', marginBottom: '40px' }}>
+                            Hesabınız oluşturuldu ve onay bekliyor.<br />
+                            Erişiminiz onaylandığında e-posta ile bilgilendirileceksiniz.
+                        </p>
+                        <Link href="/auth/login" className="glow-button" style={{ display: 'inline-block', padding: '15px 30px', textDecoration: 'none', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                            GİRİŞ EKRANINA DÖN
+                        </Link>
+                    </div>
+                ) : (
+                    <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {error && <p style={{ color: '#ff4444', fontSize: '12px', fontWeight: '800' }}>{error.toUpperCase()}</p>}
 
-                        <div style={{ textAlign: 'left' }}>
-                            <label style={labelStyle}>FULL NAME</label>
-                            <input
-                                type="text"
-                                placeholder="Your Name"
-                                style={inputStyle}
-                                value={formData.fullName}
-                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                required
-                            />
+                        <div style={{ display: 'flex', gap: '20px' }}>
+                            <div style={{ flex: 1 }}>
+                                <label style={labelStyle}>AD SOYAD</label>
+                                <input
+                                    type="text"
+                                    placeholder="Your Name"
+                                    style={inputStyle}
+                                    value={formData.fullName}
+                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={labelStyle}>SANATÇI İSMİ (Stage Name)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Phantom"
+                                    style={inputStyle}
+                                    value={formData.stageName}
+                                    onChange={(e) => setFormData({ ...formData, stageName: e.target.value })}
+                                    required
+                                />
+                            </div>
                         </div>
-                        <div style={{ textAlign: 'left' }}>
-                            <label style={labelStyle}>STAGE NAME</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Lost Phantom"
-                                style={inputStyle}
-                                value={formData.stageName}
-                                onChange={(e) => setFormData({ ...formData, stageName: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div style={{ textAlign: 'left' }}>
-                            <label style={labelStyle}>EMAIL</label>
+
+                        <div>
+                            <label style={labelStyle}>E-POSTA</label>
                             <input
                                 type="email"
                                 placeholder="mail@example.com"
@@ -186,8 +194,9 @@ export default function Register() {
                                 required
                             />
                         </div>
-                        <div style={{ textAlign: 'left' }}>
-                            <label style={labelStyle}>PASSWORD</label>
+
+                        <div>
+                            <label style={labelStyle}>ŞİFRE</label>
                             <input
                                 type="password"
                                 placeholder="min 8 characters"
@@ -198,16 +207,27 @@ export default function Register() {
                             />
                         </div>
 
-                        <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '15px', padding: '15px' }}>
-                            {loading ? 'CREATING...' : 'CREATE ACCOUNT'}
+                        <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '18px', width: '100%' }}>
+                            {loading ? 'OLUŞTURULUYOR...' : 'HESAP OLUŞTUR'}
                         </button>
                     </form>
+                )}
 
-                    <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '800', letterSpacing: '1px' }}>
-                        ALREADY HAVE AN ACCOUNT? <Link href="/auth/login" style={{ color: '#fff', textDecoration: 'underline' }}>LOGIN</Link>
-                    </p>
-                </div>
+                <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '600' }}>
+                    ZATEN ÜYE MİSİNİZ? <Link href="/auth/login" style={{ color: '#fff', textDecoration: 'underline' }}>GİRİŞ YAP</Link>
+                </p>
             </div>
+
+            <style jsx>{`
+                .desktop-visual {
+                    display: none;
+                }
+                @media (min-width: 1024px) {
+                    .desktop-visual {
+                        display: block !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

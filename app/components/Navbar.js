@@ -3,11 +3,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
-import { Instagram, Disc } from 'lucide-react';
+import { Instagram, Disc, Menu } from 'lucide-react';
 
 export default function Navbar() {
     const { data: session } = useSession();
     const [registrationsOpen, setRegistrationsOpen] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const [siteName, setSiteName] = useState('LOST');
     const [socials, setSocials] = useState({});
@@ -73,7 +74,8 @@ export default function Navbar() {
                     {siteName}
                 </Link>
 
-                <div style={{
+                {/* Desktop Menu */}
+                <div className="desktop-menu" style={{
                     display: 'flex',
                     gap: '40px',
                     fontWeight: '800',
@@ -87,7 +89,8 @@ export default function Navbar() {
                     <Link href="/#demo" style={{ transition: 'var(--transition)' }}>DEMO</Link>
                 </div>
 
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                {/* Right Side Actions */}
+                <div className="desktop-actions" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                     {/* Socials in Navbar */}
                     <div style={{ display: 'flex', gap: '15px', marginRight: '20px', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '20px' }}>
                         {socials.discord && (
@@ -149,7 +152,61 @@ export default function Navbar() {
                         </>
                     )}
                 </div>
+
+                {/* Mobile Menu Toggle */}
+                <button
+                    className="mobile-toggle"
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+                >
+                    <Menu size={24} />
+                </button>
             </div>
+
+            {/* Mobile Menu Drawer */}
+            {mobileMenuOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: '80px',
+                    left: 0,
+                    width: '100%',
+                    height: 'calc(100vh - 80px)',
+                    background: '#0a0a0b',
+                    zIndex: 999,
+                    padding: '40px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '30px',
+                    borderTop: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                    <Link href="/releases" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: '#fff' }}>RELEASES</Link>
+                    <Link href="/artists" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: '#fff' }}>ARTISTS</Link>
+                    {registrationsOpen && <Link href="/join" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: 'var(--accent)' }}>JOIN US</Link>}
+                    <Link href="/#demo" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: '#fff' }}>SUBMIT DEMO</Link>
+
+                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0' }}></div>
+
+                    {session ? (
+                        <>
+                            <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: '#fff' }}>DASHBOARD</Link>
+                            <button onClick={() => signOut()} style={{ background: 'none', border: 'none', textAlign: 'left', padding: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: '#888' }}>LOGOUT</button>
+                        </>
+                    ) : (
+                        <>
+                            <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: '#fff' }}>LOGIN</Link>
+                            {registrationsOpen && <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: '14px', fontWeight: '900', letterSpacing: '2px', color: 'var(--accent)' }}>REGISTER</Link>}
+                        </>
+                    )}
+                </div>
+            )}
+
+            <style jsx>{`
+                .mobile-toggle { display: none; }
+                @media (max-width: 768px) {
+                    .desktop-menu, .desktop-actions { display: none !important; }
+                    .mobile-toggle { display: block !important; }
+                }
+            `}</style>
         </nav>
     );
 }

@@ -27,7 +27,10 @@ export async function POST(req) {
             select: {
                 id: true,
                 stageName: true,
-                spotifyUrl: true
+                spotifyUrl: true,
+                artist: {
+                    select: { id: true }
+                }
             }
         });
 
@@ -37,20 +40,42 @@ export async function POST(req) {
         let successCount = 0;
         let errorCount = 0;
 
-        for (const artist of artists) {
+        for (const artistItem of artists) {
             try {
-                console.log(`[Cron] Scraping: ${artist.stageName || artist.id}`);
-                const listeners = await scrapeMonthlyListeners(artist.spotifyUrl);
+                console.log(`[Cron] Scraping: ${artistItem.stageName || artistItem.id}`);
+                const data = await scrapeMonthlyListeners(artistItem.spotifyUrl); // Assuming scraper returns object now or just listeners
+
+                // Note: Modified scraper might return object with monthly_listeners, followers etc.
+                // Let's handle both number (old) and object (new) if possible, but based on recent view it returns number.
+                // Actually view of scraper.js shows it returns data.monthly_listeners (number).
+
+                const listeners = typeof data === 'object' ? data.monthly_listeners : data;
 
                 if (listeners) {
+                    // Update User
                     await prisma.user.update({
-                        where: { id: artist.id },
-                        data: { monthlyListeners: listeners }
+                        where: { id: artistItem.id },
+                        data: {
+                            monthlyListeners: listeners,
+                            updatedAt: new Date()
+                        }
                     });
-                    results.push({ id: artist.id, stageName: artist.stageName, listeners, success: true });
+
+                    // Update Artist profile if linked
+                    if (artistItem.artist?.id) {
+                        await prisma.artist.update({
+                            where: { id: artistItem.artist.id },
+                            data: {
+                                monthlyListeners: listeners,
+                                lastSyncedAt: new Date()
+                            }
+                        });
+                    }
+
+                    results.push({ id: artistItem.id, stageName: artistItem.stageName, listeners, success: true });
                     successCount++;
                 } else {
-                    results.push({ id: artist.id, stageName: artist.stageName, success: false, error: 'No data' });
+                    results.push({ id: artistItem.id, stageName: artistItem.stageName, success: false, error: 'No data' });
                     errorCount++;
                 }
 

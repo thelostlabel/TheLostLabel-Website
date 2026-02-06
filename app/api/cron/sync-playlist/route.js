@@ -83,8 +83,15 @@ export async function POST(req) {
                         image: album.images[0]?.url,
                         spotifyUrl: album.external_urls.spotify,
                         releaseDate: album.release_date,
-                        artistsJson: JSON.stringify(album.artists.map(a => ({ id: a.id, name: a.name })))
+                        artistsJson: JSON.stringify(album.artists.map(a => ({ id: a.id, name: a.name }))),
+                        popularity: item.track.popularity || 0
                     });
+                } else {
+                    // Update popularity if this track is more popular
+                    const existing = playlistReleases.get(album.id);
+                    if ((item.track.popularity || 0) > existing.popularity) {
+                        existing.popularity = item.track.popularity || 0;
+                    }
                 }
             });
 
@@ -108,7 +115,8 @@ export async function POST(req) {
                         image: rel.image,
                         spotifyUrl: rel.spotifyUrl,
                         releaseDate: rel.releaseDate,
-                        artistsJson: rel.artistsJson
+                        artistsJson: rel.artistsJson,
+                        popularity: rel.popularity
                     },
                     create: rel
                 });

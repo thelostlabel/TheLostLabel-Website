@@ -15,6 +15,8 @@ export async function GET(req) {
             pendingDemos,
             totalDemos,
             pendingRequests,
+            albumCount,
+            songCountData,
             recentDemos,
             recentRequests
         ] = await Promise.all([
@@ -23,6 +25,8 @@ export async function GET(req) {
             prisma.demo.count({ where: { status: 'pending' } }),
             prisma.demo.count(),
             prisma.changeRequest.count({ where: { status: 'pending' } }),
+            prisma.release.count({ where: { type: 'album' } }),
+            prisma.release.aggregate({ _sum: { totalTracks: true } }),
             prisma.demo.findMany({
                 take: 5,
                 orderBy: { createdAt: 'desc' },
@@ -41,7 +45,9 @@ export async function GET(req) {
                 artists: totalArtists,
                 pendingDemos,
                 totalDemos,
-                pendingRequests
+                pendingRequests,
+                albums: albumCount,
+                songs: songCountData._sum.totalTracks || 0
             },
             recent: {
                 demos: recentDemos,

@@ -19,7 +19,13 @@ export async function GET(req, { params }) {
             where: { id },
             include: {
                 artist: true,
-                files: true
+                files: true,
+                contract: {
+                    include: {
+                        release: true,
+                        splits: true
+                    }
+                }
             }
         });
 
@@ -45,110 +51,132 @@ export async function PATCH(req, { params }) {
     const body = await req.json();
     const { status, rejectionReason, finalizeData } = body;
 
+    // Fetch existing demo to check ownership
+    const existingDemo = await prisma.demo.findUnique({
+        where: { id },
+        include: { artist: true }
+    });
+
+    if (!existingDemo) {
+        return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
+    }
+
+    const isOwner = existingDemo.artist?.userId === session.user.id;
+
+    if (!isAdminOrAR && !isOwner) {
+        return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Artists can only update assets and scheduled date, not status
+    if (!isAdminOrAR && isOwner) {
+        if (status) return new Response(JSON.stringify({ error: "Only admins can change status" }), { status: 403 });
+    }
+
     try {
-        if (status === 'approved' && finalizeData) {
-            const { releaseName, releaseDate, artistShare, labelShare, notes } = finalizeData;
+        const updateData = {};
 
-            let updatedDemo;
+        if (isAdminOrAR) {
+            if (status) {
+                updateData.status = status;
+                updateData.reviewedBy = session.user.email;
+                updateData.reviewedAt = new Date();
+            }
+            if (rejectionReason) updateData.rejectionReason = rejectionReason;
+        }
 
-            // Transaction: Atomic Update & Create
-            const result = await prisma.$transaction(async (tx) => {
-                // 1. Update Demo
-                updatedDemo = await tx.demo.update({
-                    where: { id },
-                    data: {
-                        status: 'approved',
-                        reviewedBy: session.user.email,
-                        reviewedAt: new Date(),
-                        scheduledReleaseDate: releaseDate // Store chosen date
-                    },
-                    include: { artist: true }
-                });
+        // Phase 5: Scheduling / Assets
+        if (body.scheduledReleaseDate) {
+            updateData.scheduledReleaseDate = body.scheduledReleaseDate;
+        }
 
-                // 2. Create Release (Internal)
-                const release = await tx.release.create({
-                    data: {
-                        id: `DEMO_${id.substring(0, 8)}`, // Semi-unique short ID
-                        name: releaseName || updatedDemo.title,
-                        artistName: updatedDemo.artist.stageName || updatedDemo.artist.fullName,
-                        image: null, // No art yet for demos
-                        releaseDate: releaseDate // Sync date
-                    }
-                });
+        const updatedDemo = await prisma.$transaction(async (tx) => {
+            // NEW: If "Finalize & Send Contract" was clicked
+            if (isAdminOrAR && finalizeData) {
+                const { releaseName, artistShare, labelShare, notes, contractPdf, splits, artistId: finalizedArtistId } = finalizeData;
 
-                // 3. Create Contract (Pending Signature)
                 await tx.contract.create({
                     data: {
-                        releaseId: release.id,
-                        userId: updatedDemo.artistId,
-                        artistShare: parseFloat(artistShare) || 0.70,
-                        labelShare: parseFloat(labelShare) || 0.30,
-                        notes: notes || `Auto-created from Demo: ${updatedDemo.title}`,
-                        status: 'pending',
-                        signedAt: null
+                        demoId: id,
+                        artistId: finalizedArtistId || null, // Use the actual Artist Profile ID from frontend
+                        userId: existingDemo.artistId, // existingDemo.artistId is the UserId in the Demo model
+                        title: releaseName || existingDemo.title,
+                        artistShare: parseFloat(artistShare) || 0.7,
+                        labelShare: parseFloat(labelShare) || 0.3,
+                        notes: notes || null,
+                        pdfUrl: contractPdf || null,
+                        status: 'active', // Active immediately, no signing needed per user request
+                        splits: splits && Array.isArray(splits) ? {
+                            create: splits.filter(s => s.name && s.percentage).map(s => ({
+                                name: s.name,
+                                email: s.email || null,
+                                percentage: parseFloat(s.percentage),
+                                userId: s.userId || null,
+                                artistId: s.artistId || null
+                            }))
+                        } : undefined
                     }
                 });
 
-                return updatedDemo;
+                updateData.status = 'contract_sent';
+            }
+
+            // 1. Update Demo
+            const d = await tx.demo.update({
+                where: { id },
+                data: updateData,
+                include: { artist: true, contract: true }
             });
 
-            // Post-Transaction Notifications (Non-blocking)
-            (async () => {
-                try {
-                    // 1. Send Email to Artist
-                    if (updatedDemo.artist.email) {
-                        await sendMail({
-                            to: updatedDemo.artist.email,
-                            subject: `🎉 Demo Approved: ${updatedDemo.title}`,
-                            html: `
-                                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
-                                    <h1 style="color: #000; letter-spacing: 2px;">CONGRATULATIONS.</h1>
-                                    <p>Your demo <strong>"${updatedDemo.title}"</strong> has been approved for release!</p>
-                                    
-                                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                                        <p style="margin: 0; font-size: 14px; color: #555;">SCHEDULED RELEASE DATE</p>
-                                        <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold;">${new Date(releaseDate).toLocaleDateString()}</p>
-                                    </div>
+            // 2. RELEASE CREATION LOGIC
+            const releaseDateToUse = body.scheduledReleaseDate || (finalizeData && finalizeData.releaseDate);
 
-                                    <p>An official contract has been generated for you. Please log in to your dashboard to view and sign it.</p>
-                                    
-                                    <a href="${process.env.NEXTAUTH_URL}/dashboard?view=contracts" style="display: inline-block; background: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 10px;">VIEW CONTRACT</a>
-                                    
-                                    <p style="margin-top: 30px; font-size: 12px; color: #888;">Cannot wait to share this with the world.<br>The LOST Team.</p>
-                                </div>
-                            `
+            // If we just finalized (created a contract) OR we are scheduling, ensure Release exists
+            if (finalizeData || (body.scheduledReleaseDate && d.contract)) {
+                // We need the contract ID. If we just created it, we can't easily get it from 'd.contract' 
+                // reliably without re-fetching or using the created instance if we had explicitly captured it.
+                // However, since we did `tx.demo.update` with `include: { contract: true }`, `d.contract` SHOULD be defined.
+
+                if (d.contract) {
+                    if (!d.contract.releaseId) {
+                        const release = await tx.release.create({
+                            data: {
+                                id: `REL_${d.id.substring(0, 8)}_${Date.now().toString().substring(10)}`,
+                                name: finalizeData?.releaseName || d.title, // Use explicit release name if provided
+                                artistName: d.artist.stageName || d.artist.fullName,
+                                image: body.coverArtUrl || null,
+                                releaseDate: releaseDateToUse,
+                                spotifyUrl: d.artist.spotifyUrl,
+                                artistsJson: JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }])
+                            }
+                        });
+
+                        await tx.contract.update({
+                            where: { id: d.contract.id },
+                            data: { releaseId: release.id }
+                        });
+                    } else if (releaseDateToUse || body.coverArtUrl) {
+                        // Update existing release
+                        await tx.release.update({
+                            where: { id: d.contract.releaseId },
+                            data: {
+                                ...(releaseDateToUse ? { releaseDate: releaseDateToUse } : {}),
+                                ...(body.coverArtUrl ? { image: body.coverArtUrl } : {})
+                            }
                         });
                     }
-
-                    // 2. Send Discord Notification
-                    await notifyDemoApproval(
-                        updatedDemo.artist.stageName || updatedDemo.artist.fullName,
-                        updatedDemo.title,
-                        releaseDate
-                    );
-
-                } catch (e) {
-                    console.error("Notification Error:", e);
                 }
-            })();
-
-            return new Response(JSON.stringify(result), { status: 200 });
-        }
-
-        const updateData = {
-            status,
-            reviewedBy: session.user.email,
-            reviewedAt: new Date()
-        };
-
-        if (rejectionReason) {
-            updateData.rejectionReason = rejectionReason;
-        }
-
-        const updatedDemo = await prisma.demo.update({
-            where: { id },
-            data: updateData
+            }
+            return d;
         });
+
+        // If status changed to approved, we might want to notify
+        if (status === 'approved' && !body.finalizeData) { // !body.finalizeData check to allow legacy if needed, but we are removing legacy logic
+            await notifyDemoApproval(
+                updatedDemo.artist.stageName || updatedDemo.artist.fullName,
+                updatedDemo.title,
+                "Pending Deal Configuration"
+            );
+        }
 
         return new Response(JSON.stringify(updatedDemo), { status: 200 });
     } catch (error) {

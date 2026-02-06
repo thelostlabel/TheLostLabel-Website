@@ -3,6 +3,10 @@ import prisma from "@/lib/prisma";
 export async function GET(req) {
     try {
         const artists = await prisma.artist.findMany({
+            where: {
+                status: 'active',
+                spotifyUrl: { not: null }
+            },
             orderBy: {
                 monthlyListeners: 'desc'
             }
@@ -18,6 +22,7 @@ export async function GET(req) {
                 followers: a.followers || 0,
                 monthlyListeners: a.monthlyListeners || 0,
                 genres: a.genres ? a.genres.split(',') : [],
+                verified: a.verified || false,
                 lastSyncedAt: a.lastSyncedAt
             }))
         }), {

@@ -1,8 +1,11 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function FAQPage() {
-    const faqs = [
+    const [faqs, setFaqs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const staticFaqs = [
         {
             q: "How do I submit a demo?",
             a: "Register as an artist, access your portal, and use the 'NEW SUBMISSION' button. You can now upload multiple files (Master, Lyrics, etc.) directly."
@@ -24,6 +27,37 @@ export default function FAQPage() {
             a: "Yes. Our system automatically syncs with your Spotify Artist profile to fetch the latest release data and update your portal metrics."
         }
     ];
+
+    useEffect(() => {
+        const fetchFaqs = async () => {
+            try {
+                const res = await fetch('/api/admin/content?key=faq');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.content) {
+                        try {
+                            const parsed = JSON.parse(data.content);
+                            setFaqs(Array.isArray(parsed) ? parsed : staticFaqs);
+                        } catch (e) {
+                            console.error("Failed to parse FAQ JSON", e);
+                            setFaqs(staticFaqs);
+                        }
+                    } else {
+                        setFaqs(staticFaqs);
+                    }
+                } else {
+                    setFaqs(staticFaqs);
+                }
+            } catch (error) {
+                console.error("Fetch FAQs Error:", error);
+                setFaqs(staticFaqs);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFaqs();
+    }, []);
 
     return (
         <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
@@ -80,33 +114,39 @@ export default function FAQPage() {
                     <p style={{ color: '#444', fontSize: '12px', fontWeight: '800', letterSpacing: '3px' }}>LOST MUSIC GROUP // ARTIST SUPPORT</p>
                 </header>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {faqs.map((faq, i) => (
-                        <div
-                            key={i}
-                            className="glass"
-                            style={{
-                                padding: '40px',
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                borderRadius: '0',
-                                transition: 'all 0.3s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.background = 'var(--glass)';
-                            }}
-                        >
-                            <h3 style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '2px', marginBottom: '20px', color: '#fff' }}>
-                                {faq.q.toUpperCase()}
-                            </h3>
-                            <p style={{ color: '#888', fontSize: '15px', lineHeight: '1.8' }}>{faq.a}</p>
-                        </div>
-                    ))}
-                </div>
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '100px', color: '#444', fontSize: '12px', letterSpacing: '2px', fontWeight: '800' }}>
+                        LOADING...
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {faqs.map((faq, i) => (
+                            <div
+                                key={i}
+                                className="glass"
+                                style={{
+                                    padding: '40px',
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    borderRadius: '0',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.background = 'var(--glass)';
+                                }}
+                            >
+                                <h3 style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '2px', marginBottom: '20px', color: '#fff' }}>
+                                    {faq.q.toUpperCase()}
+                                </h3>
+                                <p style={{ color: '#888', fontSize: '15px', lineHeight: '1.8' }}>{faq.a}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

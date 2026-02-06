@@ -4,6 +4,7 @@ import Link from 'next/link';
 import ReleaseCard from './components/ReleaseCard';
 import { motion, useScroll, useTransform, useSpring, useInView, useVelocity, useMotionValue } from 'framer-motion';
 import { Instagram, Disc, Youtube } from 'lucide-react';
+import Footer from './components/Footer';
 
 const Marquee = ({ text, speed = 20, reverse = false }) => {
   return (
@@ -59,10 +60,69 @@ const Scribble = ({ d, delay = 0 }) => {
           initial={{ pathLength: 0, opacity: 0 }}
           whileInView={{ pathLength: 1, opacity: 1 }}
           transition={{ duration: 2, delay, ease: "easeInOut" }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
         />
       </svg>
     </div>
+  );
+};
+
+const TypewriterText = ({ text, delay = 0, style = {}, stagger = 0.05, outline = false }) => {
+  const letters = Array.from(text);
+
+  const container = {
+    hidden: { opacity: 0 },
+    visible: (i = 1) => ({
+      opacity: 1,
+      transition: { staggerChildren: stagger, delayChildren: delay }
+    })
+  };
+
+  const child = {
+    visible: {
+      opacity: 1,
+      y: 0,
+      x: 0,
+      rotateX: 0,
+      color: outline ? '#fff' : style.color || '#fff', // Fill color transition target
+      WebkitTextStroke: '0px transparent', // Remove stroke at end
+      transition: {
+        type: "spring",
+        damping: 12,
+        stiffness: 100,
+        color: { duration: 0.5, delay: 0.2 }, // Delay fill
+        WebkitTextStroke: { duration: 0.5, delay: 0.2 }
+      }
+    },
+    hidden: {
+      opacity: 0,
+      y: 20,
+      x: -10,
+      rotateX: -40,
+      color: outline ? 'transparent' : style.color || '#fff', // Start transparent if outline
+      WebkitTextStroke: outline ? '1px #fff' : '0px transparent', // Start with stroke if outline
+      transition: {
+        type: "spring",
+        damping: 12,
+        stiffness: 100
+      }
+    }
+  };
+
+  return (
+    <motion.div
+      style={{ display: "inline-block", overflow: "hidden", ...style }}
+      variants={container}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: false, amount: 0.3 }}
+    >
+      {letters.map((letter, index) => (
+        <motion.span variants={child} key={index} style={{ display: "inline-block" }}>
+          {letter === " " ? "\u00A0" : letter}
+        </motion.span>
+      ))}
+    </motion.div>
   );
 };
 
@@ -96,13 +156,17 @@ export default function Home() {
   // Removed scroll-driven horizontal effect
 
   useEffect(() => {
+    document.documentElement.classList.add('smooth-scroll');
     const handleMouseMove = (e) => {
       const { clientX, clientY } = e;
       mouseX.set(clientX);
       mouseY.set(clientY);
     };
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.documentElement.classList.remove('smooth-scroll');
+    };
   }, []);
 
   useEffect(() => {
@@ -113,11 +177,11 @@ export default function Home() {
         const config = await resSettings.json();
 
         // Apply Config
-        const plId = config.defaultPlaylistId || '6QHy5LPKDRHDdKZGBFxRY8';
-        const resSpotlight = await fetch(`/api/spotify/playlist/${plId}`);
+        // Apply Config
+        const resSpotlight = await fetch('/api/releases');
         const dataSpotlight = await resSpotlight.json();
         if (dataSpotlight.releases) {
-          setSpotlightReleases(dataSpotlight.releases.slice(0, 12));
+          setSpotlightReleases(dataSpotlight.releases.slice(0, 3)); // LIMITED TO 3
         }
 
         const resStats = await fetch('/api/stats');
@@ -127,7 +191,7 @@ export default function Home() {
         // Fetch featured artists
         const resArtists = await fetch('/api/artists');
         const dataArtists = await resArtists.json();
-        if (dataArtists.artists) setFeaturedArtists(dataArtists.artists.slice(0, 12));
+        if (dataArtists.artists) setFeaturedArtists(dataArtists.artists.slice(0, 3)); // LIMITED TO 3
 
         // Pass config to state if needed for rendering (using a new state variable)
         setSiteConfig(config);
@@ -234,7 +298,7 @@ export default function Home() {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
-        padding: '0 5vw',
+        padding: '0 20px',
         paddingTop: '100px'
       }}>
         <Scribble d="M 0 500 Q 250 100 500 500 T 1000 500" delay={0.5} />
@@ -321,8 +385,8 @@ export default function Home() {
       {/* Marquee Section 1 */}
       <Marquee text="Digital Distribution • Royalty Tracking • Artist First • " speed={40} />
 
-      {/* Trending Releases Section - Simple 3-Column Grid */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '150px 5vw', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Trending Releases Section - Wide Layout */}
+      <section style={{ position: 'relative', zIndex: 2, padding: '100px 0', width: '100%' }}>
         {/* Scroll Background Text */}
         <motion.div
           style={{
@@ -332,7 +396,7 @@ export default function Home() {
             transform: 'translate(-50%, -50%)',
             fontSize: 'clamp(100px, 25vw, 400px)',
             fontWeight: '900',
-            color: 'rgba(255,255,255,0.02)',
+            color: 'rgba(255,255,255,0.01)',
             whiteSpace: 'nowrap',
             zIndex: 0,
             letterSpacing: '-0.05em',
@@ -342,18 +406,24 @@ export default function Home() {
           RELEASES
         </motion.div>
 
+        {/* Header - Wide Layout with Animation */}
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 0.8 }}
-          style={{ marginBottom: '80px', position: 'relative', zIndex: 1 }}
+          style={{ padding: '0 10px', marginBottom: '80px', position: 'relative', zIndex: 1 }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '10px' }}>
-            <div style={{ width: '40px', height: '1px', background: 'var(--accent)' }}></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
+            <motion.div
+              initial={{ width: 0 }}
+              whileInView={{ width: 60 }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              style={{ height: '2px', background: 'var(--accent)' }}
+            />
             <h2 style={{ fontSize: '11px', letterSpacing: '8px', color: 'var(--accent)', fontWeight: '900' }}>01 / DISCOVER</h2>
           </div>
-          <div style={{ fontSize: 'clamp(40px, 8vw, 100px)', fontWeight: '900', letterSpacing: '-0.03em', lineHeight: '0.9' }}>
+          <div style={{ fontSize: 'clamp(50px, 10vw, 120px)', fontWeight: '900', letterSpacing: '-0.03em', lineHeight: '0.9' }}>
             TRENDING <br /> RELEASES
           </div>
         </motion.div>
@@ -361,18 +431,19 @@ export default function Home() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-          gap: '40px'
+          gap: '40px',
+          padding: '0' // Zero padding
         }}>
           {loading ? (
             [1, 2, 3].map(i => <div key={i} style={{ ...glassStyle, height: '500px', opacity: 0.1 }}></div>)
           ) : (
-            spotlightReleases.slice(0, 12).map((release, idx) => (
+            spotlightReleases.slice(0, 3).map((release, idx) => ( // Explicitly showing 3 here too just in case
               <motion.div
                 key={release.id}
                 initial={{ opacity: 0, scale: 0.95, y: 60 }}
                 whileInView={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: idx * 0.1 }}
-                viewport={{ once: true }}
+                viewport={{ once: false }}
                 whileHover={{ y: -10, transition: { duration: 0.3 } }}
               >
                 <HoverCard>
@@ -387,7 +458,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 0.6, delay: 0.4 }}
           style={{ textAlign: 'center', marginTop: '80px' }}
         >
@@ -403,21 +474,19 @@ export default function Home() {
       <section style={{
         position: 'relative',
         zIndex: 2,
-        padding: '150px 5vw',
+        padding: '100px 0', // FULL WIDTH, NO SIDE PADDING ON CONTAINER
         borderTop: '1px solid rgba(255,255,255,0.05)',
-        maxWidth: '1600px',
-        margin: '0 auto'
+        width: '100%'
       }}>
         {/* Scroll Background Text */}
         <motion.div
           style={{
             position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: 'clamp(100px, 25vw, 400px)',
+            top: '200px',
+            right: '-10%',
+            fontSize: 'clamp(100px, 20vw, 300px)',
             fontWeight: '900',
-            color: 'rgba(255,255,255,0.02)',
+            color: 'rgba(255,255,255,0.01)',
             whiteSpace: 'nowrap',
             zIndex: 0,
             letterSpacing: '-0.05em',
@@ -427,38 +496,54 @@ export default function Home() {
           ARTISTS
         </motion.div>
 
-        {/* Header */}
-        <div style={{ marginBottom: '80px', position: 'relative', zIndex: 1 }}>
+        {/* Header - Wide Layout */}
+        <div style={{ padding: '0 10px', marginBottom: '60px', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '30px' }}>
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: false }}
             transition={{ duration: 0.8 }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-              <div style={{ width: '40px', height: '1px', background: 'var(--accent)' }}></div>
-              <span style={{ fontSize: '10px', letterSpacing: '6px', color: '#444', fontWeight: '900' }}>02 / ROSTER</span>
+              {/* Animated Line */}
+              <motion.div
+                initial={{ width: 0 }}
+                whileInView={{ width: 60 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                style={{ height: '2px', background: 'var(--accent)' }}
+              />
+              <span style={{ fontSize: '10px', letterSpacing: '6px', color: '#fff', fontWeight: '900' }}>ROSTER</span>
             </div>
-            <h2 style={{ fontSize: 'clamp(50px, 10vw, 140px)', fontWeight: '300', letterSpacing: '-0.04em', lineHeight: '0.9' }}>
-              Our <span style={{ fontWeight: '900' }}>Artists</span>
+            <h2 style={{ fontSize: 'clamp(60px, 8vw, 120px)', fontWeight: '400', letterSpacing: '-0.03em', lineHeight: '0.9', color: '#fff' }}>
+              Our <span style={{ fontWeight: '900', color: '#fff' }}>Artists</span>
             </h2>
           </motion.div>
+
+          <div style={{ maxWidth: '400px', fontSize: '14px', color: '#888', lineHeight: '1.6' }}>
+            LOST. collaborates with a diverse array of independent acts, covering genres ranging from phonk to ambient.
+            <div style={{ marginTop: '20px' }}>
+              <Link href="/artists" style={{ color: '#fff', textDecoration: 'none', borderBottom: '1px solid #fff', paddingBottom: '2px', fontSize: '12px' }}>
+                View All Artists &rarr;
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Artists Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '30px',
           position: 'relative',
-          zIndex: 1
+          zIndex: 1,
+          padding: '0' // Zero padding
         }}>
           {featuredArtists.length > 0 ? featuredArtists.map((artist, idx) => (
             <motion.div
               key={artist.id}
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ duration: 0.5, delay: idx * 0.05 }}
               whileHover={{ y: -10, transition: { duration: 0.2, delay: 0 } }}
               style={{
@@ -530,7 +615,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           transition={{ duration: 0.6, delay: 0.3 }}
           style={{ textAlign: 'center', marginTop: '80px' }}
         >
@@ -568,7 +653,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: idx * 0.2, ease: "easeOut" }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               style={{ textAlign: 'center' }}
             >
               <motion.div
@@ -587,7 +672,7 @@ export default function Home() {
         padding: '120px 0',
         overflow: 'hidden'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '60px', padding: '0 5vw' }}>
+        <div style={{ textAlign: 'center', marginBottom: '60px', padding: '0 20px' }}>
           <div style={{ fontSize: '10px', letterSpacing: '8px', color: 'var(--accent)', fontWeight: '900', marginBottom: '20px' }}>PARTNER NETWORK</div>
           <h2 style={{ fontSize: '40px', fontWeight: '900', letterSpacing: '-0.02em' }}>GLOBAL DISTRIBUTION</h2>
         </div>
@@ -596,18 +681,16 @@ export default function Home() {
           {/* First Row */}
           <div style={{ display: 'flex', overflow: 'hidden', whiteSpace: 'nowrap' }}>
             <motion.div
-              animate={{ x: [0, -2000] }}
-              transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
+              animate={{ x: [0, -1000] }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
               style={{ display: 'flex', gap: '100px', alignItems: 'center' }}
             >
-              {[
-                { n: "7Digital", d: "7digital.com" }, { n: "AWA", d: "awa.fm" }, { n: "Amazon", d: "amazon.com" },
-                { n: "Anghami", d: "anghami.com" }, { n: "Apple Music", d: "apple.com" }, { n: "Audiomack", d: "audiomack.com" },
-                { n: "Beatport", d: "beatport.com" }, { n: "Beatsource", d: "beatsource.com" }, { n: "Boomplay", d: "boomplay.com" },
+              {/* Duplicated multiple times for seamless loop on wide screens */}
+              {[...Array(6)].flatMap(() => [
                 { n: "7Digital", d: "7digital.com" }, { n: "AWA", d: "awa.fm" }, { n: "Amazon", d: "amazon.com" },
                 { n: "Anghami", d: "anghami.com" }, { n: "Apple Music", d: "apple.com" }, { n: "Audiomack", d: "audiomack.com" },
                 { n: "Beatport", d: "beatport.com" }, { n: "Beatsource", d: "beatsource.com" }, { n: "Boomplay", d: "boomplay.com" }
-              ].map((p, i) => (
+              ]).map((p, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', opacity: 0.4 }}>
                   <img src={`https://logo.clearbit.com/${p.d}`} alt="" style={{ width: '20px', height: '20px', filter: 'grayscale(1) brightness(2)', borderRadius: '4px' }} onError={(e) => e.target.style.display = 'none'} />
                   <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase' }}>{p.n}</span>
@@ -619,18 +702,15 @@ export default function Home() {
           {/* Second Row (Reverse) */}
           <div style={{ display: 'flex', overflow: 'hidden', whiteSpace: 'nowrap' }}>
             <motion.div
-              animate={{ x: [-2000, 0] }}
-              transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+              animate={{ x: [-1000, 0] }}
+              transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
               style={{ display: 'flex', gap: '100px', alignItems: 'center' }}
             >
-              {[
-                { n: "Deezer", d: "deezer.com" }, { n: "Instagram", d: "instagram.com" }, { n: "KKBOX", d: "kkbox.com" },
-                { n: "Meta", d: "meta.com" }, { n: "Mixcloud", d: "mixcloud.com" }, { n: "Napster", d: "napster.com" },
-                { n: "Netease", d: "163.com" }, { n: "Pandora", d: "pandora.com" }, { n: "Shazam", d: "shazam.com" },
+              {[...Array(6)].flatMap(() => [
                 { n: "Deezer", d: "deezer.com" }, { n: "Instagram", d: "instagram.com" }, { n: "KKBOX", d: "kkbox.com" },
                 { n: "Meta", d: "meta.com" }, { n: "Mixcloud", d: "mixcloud.com" }, { n: "Napster", d: "napster.com" },
                 { n: "Netease", d: "163.com" }, { n: "Pandora", d: "pandora.com" }, { n: "Shazam", d: "shazam.com" }
-              ].map((p, i) => (
+              ]).map((p, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', opacity: 0.4 }}>
                   <img src={`https://logo.clearbit.com/${p.d}`} alt="" style={{ width: '20px', height: '20px', filter: 'grayscale(1) brightness(2)', borderRadius: '4px' }} onError={(e) => e.target.style.display = 'none'} />
                   <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase' }}>{p.n}</span>
@@ -642,18 +722,15 @@ export default function Home() {
           {/* Third Row */}
           <div style={{ display: 'flex', overflow: 'hidden', whiteSpace: 'nowrap' }}>
             <motion.div
-              animate={{ x: [0, -2000] }}
-              transition={{ duration: 55, repeat: Infinity, ease: "linear" }}
+              animate={{ x: [0, -1000] }}
+              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
               style={{ display: 'flex', gap: '100px', alignItems: 'center' }}
             >
-              {[
-                { n: "Spotify", d: "spotify.com" }, { n: "Tidal", d: "tidal.com" }, { n: "TikTok", d: "tiktok.com" },
-                { n: "Yandex", d: "yandex.ru" }, { n: "YouTube", d: "youtube.com" }, { n: "iTunes", d: "apple.com" },
-                { n: "iHeartRadio", d: "iheart.com" }, { n: "Soundtrack", d: "soundtrackyourbrand.com" },
+              {[...Array(6)].flatMap(() => [
                 { n: "Spotify", d: "spotify.com" }, { n: "Tidal", d: "tidal.com" }, { n: "TikTok", d: "tiktok.com" },
                 { n: "Yandex", d: "yandex.ru" }, { n: "YouTube", d: "youtube.com" }, { n: "iTunes", d: "apple.com" },
                 { n: "iHeartRadio", d: "iheart.com" }, { n: "Soundtrack", d: "soundtrackyourbrand.com" }
-              ].map((p, i) => (
+              ]).map((p, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', opacity: 0.4 }}>
                   <img src={`https://logo.clearbit.com/${p.d}`} alt="" style={{ width: '20px', height: '20px', filter: 'grayscale(1) brightness(2)', borderRadius: '4px' }} onError={(e) => e.target.style.display = 'none'} />
                   <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase' }}>{p.n}</span>
@@ -666,17 +743,20 @@ export default function Home() {
 
       {/* Final Call to Action */}
       <section style={{ position: 'relative', zIndex: 2, padding: '250px 5vw', textAlign: 'center' }}>
-
-
-        <motion.h2
-          initial={{ y: 50, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          style={{ fontSize: 'clamp(50px, 10vw, 150px)', fontWeight: '900', marginBottom: '80px', letterSpacing: '-0.04em', textTransform: 'uppercase' }}
-        >
-          Define Your <br /> <span style={{ color: 'var(--accent)' }}>Own Sound.</span>
-        </motion.h2>
+        <div style={{ marginBottom: '80px' }}>
+          <TypewriterText
+            text="Define Your"
+            style={{ fontSize: 'clamp(50px, 10vw, 150px)', fontWeight: '900', letterSpacing: '-0.04em', textTransform: 'uppercase', display: 'block', lineHeight: '0.9' }}
+            stagger={0.08}
+            outline={true}
+          />
+          <TypewriterText
+            text="Own Sound."
+            delay={0.8}
+            style={{ fontSize: 'clamp(50px, 10vw, 150px)', fontWeight: '900', letterSpacing: '-0.04em', textTransform: 'uppercase', color: 'var(--accent)', display: 'block', lineHeight: '0.9' }}
+            stagger={0.08}
+          />
+        </div>
 
         <div style={{ display: 'flex', gap: '25px', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
           <Magnetic>
@@ -696,57 +776,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        position: 'relative',
-        zIndex: 2,
-        padding: '120px 5vw',
-        borderTop: '1px solid rgba(255,255,255,0.03)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        background: '#000'
-      }}>
-        <motion.div
-          whileHover={{ scale: 1.1, letterSpacing: '20px' }}
-          style={{ fontSize: '40px', fontWeight: '900', letterSpacing: '12px', marginBottom: '60px', transition: 'all 0.5s ease' }}
-        >
-          LOST.
-        </motion.div>
-
-        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '80px' }}>
-          {['JOIN', 'FAQ', 'PRIVACY', 'TERMS', 'CONTACT'].map(item => (
-            <Link key={item} href={`/${item.toLowerCase()}`} style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '3px', color: '#444', transition: 'color 0.3s' }}>
-              <motion.span whileHover={{ color: '#fff' }}>{item}</motion.span>
-            </Link>
-          ))}
-        </div>
-
-        {siteConfig && (
-          <div style={{ display: 'flex', gap: '25px', marginBottom: '40px', justifyContent: 'center' }}>
-            {siteConfig.discord && (
-              <a href={siteConfig.discord} target="_blank" title="Discord" style={{ color: '#444', transition: 'color 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#fff'} onMouseLeave={(e) => e.currentTarget.style.color = '#444'}>
-                <Disc size={20} />
-              </a>
-            )}
-            {siteConfig.instagram && (
-              <a href={siteConfig.instagram} target="_blank" title="Instagram" style={{ color: '#444', transition: 'color 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#fff'} onMouseLeave={(e) => e.currentTarget.style.color = '#444'}>
-                <Instagram size={20} />
-              </a>
-            )}
-            {siteConfig.youtube && (
-              <a href={siteConfig.youtube} target="_blank" title="YouTube" style={{ color: '#444', transition: 'color 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#fff'} onMouseLeave={(e) => e.currentTarget.style.color = '#444'}>
-                <Youtube size={20} />
-              </a>
-            )}
-          </div>
-        )}
-
-        <p style={{ color: '#222', fontSize: '11px', fontWeight: '900', letterSpacing: '3px', textAlign: 'center', lineHeight: '2.5' }}>
-          © 2026 LOST. MUSIC GROUP <br />
-          DISTRIBUTED GLOBALLY BY THE NEW ORDER.
-        </p>
-      </footer>
+      {/* Footer Component */}
+      <Footer />
     </div>
   );
 }

@@ -52,10 +52,15 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
         }
 
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount)) {
+            return new Response(JSON.stringify({ error: "Invalid amount" }), { status: 400 });
+        }
+
         const payment = await prisma.payment.create({
             data: {
                 userId,
-                amount: parseFloat(amount),
+                amount: parsedAmount,
                 currency: currency || 'USD',
                 method,
                 reference,
@@ -69,6 +74,66 @@ export async function POST(req) {
         // For simplicity, payments are aggregate.
 
         return new Response(JSON.stringify(payment), { status: 201 });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+}
+// PATCH: Update a payment (Admin only)
+export async function PATCH(req) {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    try {
+        const body = await req.json();
+        const { id, amount, method, reference, notes, status } = body;
+
+        if (!id) {
+            return new Response(JSON.stringify({ error: "Missing payment ID" }), { status: 400 });
+        }
+
+        const updateData = {};
+        if (amount !== undefined) updateData.amount = parseFloat(amount);
+        if (method !== undefined) updateData.method = method;
+        if (reference !== undefined) updateData.reference = reference;
+        if (notes !== undefined) updateData.notes = notes;
+        if (status !== undefined) {
+            updateData.status = status;
+            if (status === 'completed') updateData.processedAt = new Date();
+        }
+
+        const payment = await prisma.payment.update({
+            where: { id },
+            data: updateData
+        });
+
+        return new Response(JSON.stringify(payment), { status: 200 });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+}
+
+// DELETE: Remove a payment (Admin only)
+export async function DELETE(req) {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    try {
+        const { searchParams } = new URL(req.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return new Response(JSON.stringify({ error: "Missing payment ID" }), { status: 400 });
+        }
+
+        await prisma.payment.delete({
+            where: { id }
+        });
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

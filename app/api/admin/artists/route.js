@@ -2,131 +2,113 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+// GET: List all artists
 export async function GET(req) {
     const session = await getServerSession(authOptions);
-
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 
     try {
-        const [users, rosterArtists] = await Promise.all([
-            prisma.user.findMany({
-                where: {
-                    OR: [
-                        { role: 'artist' },
-                        { spotifyUrl: { not: null } }
-                    ]
+        const artists = await prisma.artist.findMany({
+            include: {
+                user: {
+                    select: { id: true, email: true, stageName: true, fullName: true }
                 },
-                orderBy: { createdAt: 'desc' },
-                select: {
-                    id: true,
-                    email: true,
-                    stageName: true,
-                    spotifyUrl: true,
-                    monthlyListeners: true,
-                    role: true,
-                    createdAt: true,
-                    _count: { select: { demos: true } }
+                _count: {
+                    select: { contracts: true }
                 }
-            }),
-            prisma.artist.findMany({
-                orderBy: { createdAt: 'desc' }
-            }) // Fetch Roster Artists
-        ]);
+            },
+            orderBy: { name: 'asc' }
+        });
 
-        const formattedUsers = users.map(u => ({
-            id: u.id,
-            type: 'registered',
-            name: u.stageName || 'Unknown',
-            email: u.email,
-            role: u.role,
-            spotifyUrl: u.spotifyUrl,
-            monthlyListeners: u.monthlyListeners,
-            demosCount: u._count.demos,
-            createdAt: u.createdAt
-        }));
+        // Also fetch Users who are NOT linked to any artist, to show as "Available for Linking"
+        const unlistedUsers = await prisma.user.findMany({
+            where: {
+                role: { in: ['artist', 'a&r'] }, // Include A&R as they might need profiles too? Or just artist. Let's stick to 'artist' primarily but maybe 'a&r' if they release music.
+                artist: null
+            },
+            select: { id: true, email: true, stageName: true, fullName: true, role: true }
+        });
 
-        const formattedRoster = rosterArtists.map(a => ({
-            id: a.id,
-            type: 'roster',
-            name: a.name,
-            email: null, // Not registered
-            spotifyUrl: a.spotifyUrl,
-            monthlyListeners: a.monthlyListeners,
-            demosCount: 0,
-            createdAt: a.createdAt
-        }));
-
-        // Combine. Typically we might want to deduplicate if we can match them,
-        // but for now let's just show all.
-        const allArtists = [...formattedUsers, ...formattedRoster].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        return new Response(JSON.stringify(allArtists), { status: 200 });
+        return new Response(JSON.stringify({ artists, unlistedUsers }), { status: 200 });
     } catch (error) {
-        console.error("Fetch Artists Error:", error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }
 
-export async function DELETE(req) {
+// POST: Create a new Artist Profile
+export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-    }
-
-    // Check permissions if A&R
-    if (session.user.role === 'a&r' && !session.user.permissions?.canManageArtists) {
-        return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403 });
-    }
-
-    try {
-        const { searchParams } = new URL(req.url);
-        const id = searchParams.get('id');
-        const type = searchParams.get('type');
-
-        if (!id || !type) return new Response("Missing id or type", { status: 400 });
-
-        if (type === 'registered') {
-            await prisma.user.delete({ where: { id } });
-        } else if (type === 'roster') {
-            await prisma.artist.delete({ where: { id } });
-        }
-
-        return new Response(null, { status: 204 });
-    } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
-    }
-}
-
-export async function PATCH(req) {
-    const session = await getServerSession(authOptions);
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-    }
-
-    if (session.user.role === 'a&r' && !session.user.permissions?.canManageArtists) {
-        return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403 });
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 
     try {
         const body = await req.json();
-        const { id, type, name, spotifyUrl } = body;
+        const { name, spotifyUrl, email, image, userId } = body;
 
-        if (type === 'registered') {
-            await prisma.user.update({
-                where: { id },
-                data: { stageName: name, spotifyUrl }
-            });
-        } else if (type === 'roster') {
-            await prisma.artist.update({
-                where: { id },
-                data: { name, spotifyUrl }
-            });
+        if (!name) {
+            return new Response(JSON.stringify({ error: "Artist Name is required" }), { status: 400 });
         }
 
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
-    } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+        let linkedUserId = userId || null;
+
+        // Auto-link logic: If email provided but no userId, try to find a matching user
+        if (!linkedUserId && email) {
+            const existingUser = await prisma.user.findUnique({
+                where: { email: email.toLowerCase() }
+            });
+            if (existingUser) {
+                linkedUserId = existingUser.id;
+            }
+        }
+
+        const artist = await prisma.artist.create({
+            data: {
+                name,
+                spotifyUrl: spotifyUrl || null,
+                email: email ? email.toLowerCase() : null,
+                image: image || null,
+                userId: linkedUserId
+            }
+        });
+
+        return new Response(JSON.stringify(artist), { status: 201 });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+}
+
+// PUT: Update an Artist (e.g. Link User)
+export async function PUT(req) {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    try {
+        const body = await req.json();
+        const { id, userId, name, email, spotifyUrl, image, status } = body;
+
+        if (!id) return new Response(JSON.stringify({ error: "ID required" }), { status: 400 });
+
+        const updateData = {};
+        if (userId !== undefined) updateData.userId = userId;
+        if (name) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (spotifyUrl !== undefined) updateData.spotifyUrl = spotifyUrl;
+        if (image !== undefined) updateData.image = image;
+        if (status) updateData.status = status;
+
+        const artist = await prisma.artist.update({
+            where: { id },
+            data: updateData,
+            include: { user: true }
+        });
+
+        return new Response(JSON.stringify(artist), { status: 200 });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }

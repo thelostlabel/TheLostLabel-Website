@@ -9,7 +9,7 @@ import {
     Briefcase, DollarSign, CreditCard, Users, ClipboardList,
     MessageSquare, ArrowLeft, SendHorizontal
 } from 'lucide-react';
-import ContractSigningModal from './ContractSigningModal';
+import ProjectView from './ProjectView';
 
 const glassStyle = {
     background: 'rgba(255,255,255,0.02)',
@@ -51,7 +51,8 @@ const inputStyle = {
 export default function ArtistView() {
     const { data: session, update } = useSession();
     const searchParams = useSearchParams();
-    const view = searchParams.get('view') || 'demos';
+    const rawView = searchParams.get('view') || 'overview';
+    const view = rawView.startsWith('my-') ? rawView.replace('my-', '') : rawView;
 
     const [demos, setDemos] = useState([]);
     const [contracts, setContracts] = useState([]);
@@ -61,7 +62,6 @@ export default function ArtistView() {
     const [selectedRequestId, setSelectedRequestId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [actionRequiredContract, setActionRequiredContract] = useState(null);
-    const [showSignModal, setShowSignModal] = useState(false);
 
     // Submit form state
     const [title, setTitle] = useState('');
@@ -85,24 +85,65 @@ export default function ArtistView() {
         setSelectedRequestId(searchParams.get('id'));
     }, [searchParams]);
 
-    const [stats, setStats] = useState({ releases: 0, listeners: 0, pendingRequests: 0, earnings: 0 });
+    const [stats, setStats] = useState({ releases: 0, listeners: 0, pendingRequests: 0, earnings: 0, withdrawn: 0, balance: 0 });
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const [relRes, profRes, reqRes] = await Promise.all([
+            const [relRes, profRes, reqRes, earnRes, payRes] = await Promise.all([
                 fetch('/api/artist/releases'),
                 fetch('/api/profile'),
-                fetch('/api/artist/requests')
+                fetch('/api/artist/requests'),
+                fetch('/api/earnings'),
+                fetch('/api/payments')
             ]);
             const releases = await relRes.json();
             const profile = await profRes.json();
             const requests = await reqRes.json();
+            const earningsData = await earnRes.json();
+            const paymentsData = await payRes.json();
+
+            const earningsList = earningsData.earnings || [];
+            const paymentsList = paymentsData.payments || [];
+
+            const totalEarnings = earningsList.reduce((sum, e) => {
+                if (!e.contract?.splits || e.contract.splits.length === 0) return sum + e.artistAmount;
+
+                // Find if user has any splits either directly or via email/artist profile/stage name
+                const userSplits = e.contract.splits.filter(s =>
+                    s.userId === session?.user?.id ||
+                    (s.artistId && session?.user?.artist?.id === s.artistId) ||
+                    (s.user?.email && s.user.email === session?.user?.email) ||
+                    (s.name && (
+                        s.name.toLowerCase() === session?.user?.email?.toLowerCase() ||
+                        s.name.toLowerCase() === session?.user?.stageName?.toLowerCase() ||
+                        s.name.toLowerCase() === session?.user?.fullName?.toLowerCase()
+                    ))
+                );
+
+                if (userSplits.length > 0) {
+                    const totalUserSplitPercentage = userSplits.reduce((sSum, s) => sSum + parseFloat(s.percentage), 0);
+                    // FIX: Calculate share based on Artist Pool (artistAmount), not Gross Amount
+                    const share = (e.artistAmount * totalUserSplitPercentage) / 100;
+                    return sum + share;
+                }
+
+                // If splits exist but user not found -> 0 (unless they are owner and NO splits exist, which is handled at top)
+                return sum;
+            }, 0);
+
+            const totalWithdrawn = paymentsList
+                .filter(p => p.status === 'completed')
+                .reduce((sum, p) => sum + p.amount, 0);
+
+            const balance = totalEarnings - totalWithdrawn;
 
             setStats({
                 releases: Array.isArray(releases) ? releases.length : 0,
                 listeners: profile.monthlyListeners || 0,
                 pendingRequests: Array.isArray(requests) ? requests.filter(r => r.status === 'pending' || r.status === 'reviewing' || r.status === 'processing' || r.status === 'needs_action').length : 0,
-                earnings: 0 // Placeholder until earnings system is fully integrated
+                earnings: totalEarnings,
+                withdrawn: totalWithdrawn,
+                balance: balance
             });
             setReleases(Array.isArray(releases) ? releases : []);
         } catch (e) { console.error(e); }
@@ -312,7 +353,13 @@ export default function ArtistView() {
                     }}
                 />
             ) : view === 'demos' ? (
-                <DemosView demos={demos} />
+                <DemosView demos={demos} onNavigate={(id) => {
+                    const url = new URL(window.location);
+                    url.searchParams.set('view', 'project');
+                    url.searchParams.set('id', id);
+                    window.history.pushState({}, '', url);
+                    window.dispatchEvent(new Event('popstate'));
+                }} />
             ) : view === 'releases' ? (
                 <ReleasesView />
             ) : view === 'submit' ? (
@@ -332,9 +379,9 @@ export default function ArtistView() {
                     handleSubmit={handleSubmit}
                 />
             ) : view === 'earnings' ? (
-                <ArtistEarningsView earnings={earnings} />
+                <ArtistEarningsView earnings={earnings} session={session} />
             ) : view === 'contracts' ? (
-                <ArtistContractsView contracts={contracts} />
+                <ArtistContractsView contracts={contracts} session={session} />
             ) : view === 'support' ? (
                 <SupportView
                     requests={requests}
@@ -347,22 +394,23 @@ export default function ArtistView() {
                         window.dispatchEvent(new Event('popstate'));
                     }}
                 />
+            ) : view === 'project' ? (
+                <ProjectView
+                    projectId={selectedRequestId}
+                    user={session?.user}
+                    onBack={() => {
+                        const url = new URL(window.location);
+                        url.searchParams.set('view', 'demos');
+                        url.searchParams.delete('id');
+                        window.history.pushState({}, '', url);
+                        window.dispatchEvent(new Event('popstate'));
+                    }}
+                />
             ) : view === 'profile' ? (
                 <ProfileView onUpdate={update} />
             ) : null}
 
-            {showSignModal && actionRequiredContract && (
-                <ContractSigningModal
-                    contract={actionRequiredContract}
-                    user={session.user}
-                    onClose={() => setShowSignModal(false)}
-                    onComplete={() => {
-                        setShowSignModal(false);
-                        setActionRequiredContract(null);
-                        window.location.reload();
-                    }}
-                />
-            )}
+            {/* Signing Modal removed per user request */}
         </div>
     );
 }
@@ -383,45 +431,13 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            {/* Action Required Banner */}
-            {actionRequiredContract && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                        background: 'rgba(255, 170, 0, 0.1)',
-                        border: '1px solid rgba(255, 170, 0, 0.2)',
-                        padding: '20px 30px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <AlertCircle color="#ffaa00" size={24} />
-                        <div>
-                            <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#ffaa00' }}>ACTION_REQUIRED: RELEASE_FINALIZATION</h4>
-                            <p style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>Your track is approved! Please sign the contract and upload artwork to schedule distribution.</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => onSignClick(actionRequiredContract)}
-                        className="glow-button"
-                        style={{ padding: '10px 25px', fontSize: '10px' }}
-                    >
-                        FINALIZE NOW
-                    </button>
-                </motion.div>
-            )}
-
             {/* Stats Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
                 <div style={cardStyle} className="stat-card">
                     <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)', filter: 'blur(30px)' }} />
                     <Users size={20} style={{ color: 'var(--accent)', opacity: 0.5 }} />
                     <div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>{stats.listeners.toLocaleString()}</div>
+                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>{(stats?.listeners || 0).toLocaleString()}</div>
                         <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>MONTHLY_LISTENERS</div>
                     </div>
                 </div>
@@ -446,8 +462,25 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                 <div style={cardStyle} className="stat-card">
                     <DollarSign size={20} style={{ color: '#00aaff', opacity: 0.5 }} />
                     <div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>${stats.earnings}</div>
-                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>ESTIMATED_EARNINGS</div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-1px' }}>${(stats?.earnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: '9px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>TOTAL_EARNINGS</div>
+                    </div>
+                </div>
+
+                <div style={cardStyle} className="stat-card">
+                    <CreditCard size={20} style={{ color: '#ff4444', opacity: 0.5 }} />
+                    <div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-1px' }}>${(stats?.withdrawn || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: '9px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>WITHDRAWN</div>
+                    </div>
+                </div>
+
+                <div style={cardStyle} className="stat-card">
+                    <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+                    <Briefcase size={20} style={{ color: '#00ff88', opacity: 0.5 }} />
+                    <div>
+                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px', color: '#00ff88' }}>${(stats?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>CURRENT_BALANCE</div>
                     </div>
                 </div>
             </div>
@@ -659,7 +692,8 @@ function ReleasesView() {
                     <button
                         onClick={() => {
                             const params = new URLSearchParams(window.location.search);
-                            params.set('view', 'profile');
+                            // My change: Use 'my-profile' instead of 'profile'
+                            params.set('view', 'my-profile');
                             window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
                             window.dispatchEvent(new Event('popstate'));
                         }}
@@ -1036,7 +1070,7 @@ function RequestComments({ request, isArtist }) {
     );
 }
 
-function DemosView({ demos }) {
+function DemosView({ demos, onNavigate }) {
     const getStatusColor = (status) => {
         switch (status) {
             case 'approved': return '#00ff88';
@@ -1058,7 +1092,13 @@ function DemosView({ demos }) {
             ) : (
                 <div style={{ display: 'grid', gap: '15px' }}>
                     {demos.map(demo => (
-                        <div key={demo.id} style={{ ...glassStyle, padding: '25px' }}>
+                        <div
+                            key={demo.id}
+                            onClick={() => onNavigate && onNavigate(demo.id)}
+                            style={{ ...glassStyle, padding: '25px', cursor: 'pointer', transition: 'transform 0.2s' }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                        >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
                                     <h3 style={{ fontSize: '16px', marginBottom: '5px' }}>{demo.title}</h3>
@@ -1337,8 +1377,31 @@ function ProfileView({ onUpdate }) {
     );
 }
 
-function ArtistEarningsView({ earnings }) {
-    const totalArtist = earnings.reduce((sum, e) => sum + e.artistAmount, 0);
+function ArtistEarningsView({ earnings, session }) {
+    const calculateUserShare = (e) => {
+        if (!e.contract?.splits || e.contract.splits.length === 0) return e.artistAmount;
+
+        const userSplits = e.contract.splits.filter(s =>
+            s.userId === session?.user?.id ||
+            (s.artistId && session?.user?.artist?.id === s.artistId) ||
+            (s.user?.email && s.user.email === session?.user?.email) ||
+            (s.name && (
+                s.name.toLowerCase() === session?.user?.email?.toLowerCase() ||
+                s.name.toLowerCase() === session?.user?.stageName?.toLowerCase() ||
+                s.name.toLowerCase() === session?.user?.fullName?.toLowerCase()
+            ))
+        );
+
+        if (userSplits.length > 0) {
+            const totalUserSplitPercentage = userSplits.reduce((sum, s) => sum + parseFloat(s.percentage), 0);
+            return (e.artistAmount * totalUserSplitPercentage) / 100;
+        }
+
+        return 0;
+    };
+
+    const totalArtist = earnings.reduce((sum, e) => sum + calculateUserShare(e), 0);
+    const pendingArtist = earnings.filter(e => !e.paidToArtist).reduce((sum, e) => sum + calculateUserShare(e), 0);
 
     return (
         <div>
@@ -1349,7 +1412,7 @@ function ArtistEarningsView({ earnings }) {
                 </div>
                 <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>PENDING PAYOUTS</div>
-                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff' }}>${earnings.filter(e => !e.paidToArtist).reduce((sum, e) => sum + e.artistAmount, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff' }}>${pendingArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                 </div>
             </div>
 
@@ -1369,30 +1432,37 @@ function ArtistEarningsView({ earnings }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {earnings.map(e => (
-                            <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                                <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.period}</td>
-                                <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                    <div style={{ fontWeight: '800', color: '#fff' }}>{e.contract?.release?.name}</div>
-                                    <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>{e.source}</div>
-                                </td>
-                                <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                    <div style={{ color: '#00ff88', fontWeight: '900' }}>${e.artistAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                    <div style={{ fontSize: '8px', color: '#444' }}>{Math.round(e.contract?.artistShare * 100)}% SPLIT</div>
-                                </td>
-                                <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.streams?.toLocaleString() || '---'}</td>
-                                <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                    <span style={{
-                                        fontSize: '8px', padding: '4px 8px', borderRadius: '4px',
-                                        background: e.paidToArtist ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)',
-                                        color: e.paidToArtist ? '#00ff88' : '#888',
-                                        fontWeight: '900'
-                                    }}>
-                                        {e.paidToArtist ? 'PAID' : 'PENDING'}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
+                        {earnings.map(e => {
+                            const userShare = calculateUserShare(e);
+                            const userSplit = e.contract?.splits?.find(s => s.userId === session?.user?.id);
+
+                            return (
+                                <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.period}</td>
+                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>
+                                        <div style={{ fontWeight: '800', color: '#fff' }}>{e.contract?.release?.name}</div>
+                                        <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>{e.source}</div>
+                                    </td>
+                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>
+                                        <div style={{ color: '#00ff88', fontWeight: '900' }}>${userShare.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                        <div style={{ fontSize: '8px', color: '#444' }}>
+                                            {userSplit ? `${userSplit.percentage}% OF ARTIST SHARE` : `${Math.round(e.contract?.artistShare * 100)}% SPLIT`}
+                                        </div>
+                                    </td>
+                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.streams?.toLocaleString() || '---'}</td>
+                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>
+                                        <span style={{
+                                            fontSize: '8px', padding: '4px 8px', borderRadius: '4px',
+                                            background: e.paidToArtist ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)',
+                                            color: e.paidToArtist ? '#00ff88' : '#888',
+                                            fontWeight: '900'
+                                        }}>
+                                            {e.paidToArtist ? 'PAID' : 'PENDING'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                         {earnings.length === 0 && (
                             <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', padding: '50px', color: '#444' }}>NO EARNING DATA YET_</td></tr>
                         )}
@@ -1403,7 +1473,7 @@ function ArtistEarningsView({ earnings }) {
     );
 }
 
-function ArtistContractsView({ contracts }) {
+function ArtistContractsView({ contracts, session }) {
     return (
         <div>
             <div style={{ ...glassStyle, padding: '40px', marginBottom: '30px' }}>
@@ -1418,47 +1488,94 @@ function ArtistContractsView({ contracts }) {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-                {contracts.map(c => (
-                    <div key={c.id} style={{ ...glassStyle, padding: '25px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                            <div>
-                                <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '4px' }}>{c.release?.name}</h4>
-                                <p style={{ fontSize: '9px', color: '#444' }}>CONTRACT ID: {c.id.slice(0, 8)}...</p>
-                            </div>
-                            <span style={{ fontSize: '8px', padding: '4px 8px', borderRadius: '4px', background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontWeight: '900' }}>
-                                {c.status.toUpperCase()}
-                            </span>
-                        </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                {contracts.map(c => {
+                    const isOwner = c.userId === session?.user?.id ||
+                        c.primaryArtistEmail === session?.user?.email ||
+                        c.artist?.userId === session?.user?.id;
 
-                        <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>YOUR ROYALTY SHARE</span>
-                                <span style={{ fontSize: '14px', color: '#00ff88', fontWeight: '900' }}>{Math.round(c.artistShare * 100)}%</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>LABEL SHARE</span>
-                                <span style={{ fontSize: '14px', color: '#fff', fontWeight: '900' }}>{Math.round(c.labelShare * 100)}%</span>
-                            </div>
-                        </div>
+                    const userSplit = c.splits?.find(s =>
+                        s.userId === session?.user?.id ||
+                        (s.user?.email && s.user.email === session?.user?.email)
+                    );
 
-                        {c.notes && (
-                            <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.5', fontStyle: 'italic' }}>
-                                "{c.notes}"
+                    return (
+                        <div key={c.id} style={{ ...glassStyle, padding: '25px', border: isOwner ? '1px solid rgba(255,255,255,0.03)' : '1px solid rgba(0, 255, 136, 0.2)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                                <div>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '4px' }}>{c.release?.name || c.title || 'Untitled Contract'}</h4>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <p style={{ fontSize: '9px', color: '#444' }}>CONTRACT ID: {c.id.slice(0, 8)}...</p>
+                                        {!isOwner && <span style={{ fontSize: '8px', padding: '2px 4px', background: 'rgba(0,255,136,0.1)', color: '#00ff88', borderRadius: '3px' }}>COLLABORATOR</span>}
+                                    </div>
+                                </div>
+                                <span style={{ fontSize: '8px', padding: '4px 8px', borderRadius: '4px', background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontWeight: '900' }}>
+                                    {c.status.toUpperCase()}
+                                </span>
                             </div>
-                        )}
 
-                        <div style={{ marginTop: '20px', pt: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '9px', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>CREATED: {new Date(c.createdAt).toLocaleDateString()}</span>
-                            {c.pdfUrl && (
-                                <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 12px', background: 'var(--accent)', color: '#000', border: 'none' }}>
-                                    VIEW SIGNED PDF
-                                </a>
+                            <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', marginBottom: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                                    <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>{isOwner ? 'TOTAL ARTIST SHARE' : 'YOUR EFFECTIVE SHARE'}</span>
+                                    <span style={{ fontSize: '14px', color: '#00ff88', fontWeight: '900' }}>
+                                        {isOwner
+                                            ? `${Math.round(c.artistShare * 100)}%`
+                                            : (() => {
+                                                // Find if user has any splits either directly or via artist profile
+                                                const userSplits = c.splits?.filter(s =>
+                                                    s.userId === session?.user?.id ||
+                                                    (s.artistId && session?.user?.artist?.id === s.artistId)
+                                                ) || [];
+
+                                                // Sum up all matching split percentages
+                                                const totalUserSplitPercentage = userSplits.reduce((sum, s) => sum + parseFloat(s.percentage), 0);
+
+                                                return `${((c.artistShare * totalUserSplitPercentage) / 100 * 100).toFixed(1)}%`;
+                                            })()
+                                        }
+                                    </span>
+                                </div>
+
+                                {c.splits?.length > 0 && (
+                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px', marginTop: '5px' }}>
+                                        <p style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '10px' }}>ROYALTY_SPLITS</p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {c.splits.map((s, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '11px', color: s.userId === session?.user?.id ? '#fff' : '#888', fontWeight: s.userId === session?.user?.id ? '900' : '700' }}>
+                                                        {s.name} {s.userId === session?.user?.id && '(YOU)'}
+                                                    </span>
+                                                    <span style={{ fontSize: '11px', color: s.userId === session?.user?.id ? 'var(--accent)' : '#666', fontWeight: '900' }}>{s.percentage}%</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
+                                    <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>LABEL SHARE</span>
+                                    <span style={{ fontSize: '14px', color: '#fff', fontWeight: '900' }}>{Math.round(c.labelShare * 100)}%</span>
+                                </div>
+                            </div>
+
+                            {c.notes && (
+                                <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.5', fontStyle: 'italic' }}>
+                                    "{c.notes}"
+                                </div>
                             )}
-                            <span>LOST_COMPLIANCE_ENFORCED</span>
+
+                            <div style={{ marginTop: '20px', pt: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '9px', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>CREATED: {new Date(c.createdAt).toLocaleDateString()}</span>
+                                {c.pdfUrl && (
+                                    <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 12px', background: 'var(--accent)', color: '#000', border: 'none' }}>
+                                        VIEW SIGNED PDF
+                                    </a>
+                                )}
+                                <span>LOST_COMPLIANCE_ENFORCED</span>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {contracts.length === 0 && (
                     <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '100px', color: '#444' }}>

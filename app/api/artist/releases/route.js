@@ -14,32 +14,31 @@ export async function GET(req) {
         select: { spotifyUrl: true, email: true }
     });
 
-    if (!user || !user.spotifyUrl) {
-        return new Response(JSON.stringify({ error: "Spotify URL not set" }), { status: 400 });
+    // Extract Artist ID
+    let spotifyId = null;
+    if (user && user.spotifyUrl) {
+        const rawUrl = user.spotifyUrl;
+        const parts = rawUrl.split('/').filter(p => p.trim() !== '');
+        const lastPart = parts.pop() || '';
+        spotifyId = lastPart.split('?')[0];
     }
 
-    // Extract Artist ID
-    const rawUrl = user.spotifyUrl;
-    // Handle various URL formats and trailing slashes
-    const parts = rawUrl.split('/').filter(p => p.trim() !== '');
-    const lastPart = parts.pop() || '';
-    const spotifyId = lastPart.split('?')[0];
-
-    console.log("--- DEBUG ARTIST RELEASES ---");
-    console.log("User Email:", user.email);
-    console.log("Raw Spotify URL:", rawUrl);
-    console.log("Extracted ID:", spotifyId);
-    console.log("-----------------------------");
-
     try {
-        // Find releases where artistsJson contains the ID.
-        // artistsJson format: [{"id":"123","name":"..."}]
+        // Build OR conditions
+        const orConditions = [
+            { contracts: { some: { userId: session.user.id } } }
+        ];
+
+        if (spotifyId) {
+            orConditions.push({ artistsJson: { contains: spotifyId } });
+        }
+
         const releases = await prisma.release.findMany({
             where: {
-                artistsJson: { contains: spotifyId }
+                OR: orConditions
             },
             orderBy: { createdAt: 'desc' },
-            include: { requests: true } // Include status of any open requests
+            include: { requests: true }
         });
 
         return new Response(JSON.stringify(releases), { status: 200 });

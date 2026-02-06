@@ -3,6 +3,9 @@ import { useState, useEffect, use } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
+import { useToast } from '@/app/components/ToastContext';
 
 const glassStyle = {
     background: 'rgba(255,255,255,0.02)',
@@ -24,29 +27,31 @@ const inputStyle = {
     transition: 'border-color 0.2s'
 };
 
+const btnStyle = {
+    padding: '12px 15px',
+    fontSize: '9px',
+    fontWeight: '900',
+    letterSpacing: '1px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    border: '1px solid rgba(255,255,255,0.1)',
+    transition: 'all 0.2s',
+    textTransform: 'uppercase',
+    width: '100%'
+};
+
 export default function DemoReviewPage({ params }) {
     const { id } = use(params);
     const { data: session } = useSession();
     const router = useRouter();
+    const { showToast, showConfirm } = useToast();
     const [demo, setDemo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeFile, setActiveFile] = useState(null);
     const [showApproveModal, setShowApproveModal] = useState(false);
-    const [approving, setApproving] = useState(false);
-    const [finalizeData, setFinalizeData] = useState({
-        releaseName: '',
-        releaseDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 2 weeks from now
-        artistShare: '0.70',
-        labelShare: '0.30',
-        notes: ''
-    });
+    const [processing, setProcessing] = useState(false);
 
-    useEffect(() => {
-        if (demo) {
-            setFinalizeData(prev => ({ ...prev, releaseName: demo.title }));
-        }
-    }, [demo]);
 
     useEffect(() => {
         fetchDemo();
@@ -78,17 +83,25 @@ export default function DemoReviewPage({ params }) {
             if (reason === null) return; // Cancelled
         }
 
+        setProcessing(true);
         try {
+            // Simple status update (Reviewing, Approved, Rejected)
             const res = await fetch(`/api/demo/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status, rejectionReason: reason })
             });
+
             if (res.ok) {
-                router.push('/dashboard?view=submissions');
+                const updated = await res.json();
+                setDemo(updated);
+            } else {
+                alert("Failed to update status");
             }
         } catch (e) {
             alert("Error updating status");
+        } finally {
+            setProcessing(false);
         }
     };
 
@@ -254,59 +267,106 @@ export default function DemoReviewPage({ params }) {
                     <div className="glass" style={{ padding: '30px', border: '1px solid #222', borderRadius: '8px' }}>
                         <h4 style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '20px' }}>A&R DECISION</h4>
 
-                        {demo.status === 'pending' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                 <button
-                                    onClick={() => setShowApproveModal(true)}
-                                    className="glow-button"
-                                    style={{ width: '100%', padding: '18px', fontSize: '12px', fontWeight: '900', letterSpacing: '2px' }}
+                                    onClick={() => handleStatusUpdate('reviewing')}
+                                    disabled={processing}
+                                    style={{
+                                        ...btnStyle,
+                                        background: demo.status === 'reviewing' ? 'rgba(255, 170, 0, 0.2)' : 'transparent',
+                                        color: '#ffaa00',
+                                        borderColor: '#ffaa0040',
+                                        opacity: processing ? 0.5 : 1
+                                    }}
                                 >
-                                    APPROVE SUBMISSION
+                                    REVIEWING
                                 </button>
                                 <button
-                                    onClick={() => handleStatusUpdate('rejected')}
+                                    onClick={() => handleStatusUpdate('pending')}
+                                    disabled={processing}
+                                    style={{
+                                        ...btnStyle,
+                                        background: demo.status === 'pending' ? 'rgba(255,255,255,0.05)' : 'transparent',
+                                        color: '#fff',
+                                        borderColor: 'rgba(255,255,255,0.1)',
+                                        opacity: processing ? 0.5 : 1
+                                    }}
+                                >
+                                    PENDING
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => handleStatusUpdate('approved')}
+                                disabled={processing}
+                                style={{
+                                    ...btnStyle,
+                                    background: demo.status === 'approved' ? 'rgba(0, 255, 136, 0.2)' : 'transparent',
+                                    color: '#00ff88',
+                                    borderColor: '#00ff8840',
+                                    opacity: processing ? 0.5 : 1
+                                }}
+                            >
+                                {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
+                            </button>
+                            <button
+                                onClick={() => handleStatusUpdate('rejected')}
+                                disabled={processing}
+                                style={{
+                                    ...btnStyle,
+                                    background: demo.status === 'rejected' ? 'rgba(255, 68, 68, 0.2)' : 'transparent',
+                                    color: '#ff4444',
+                                    borderColor: '#ff444440',
+                                    opacity: processing ? 0.5 : 1
+                                }}
+                            >
+                                {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
+                            </button>
+                        </div>
+
+                        {demo.status === 'approved' && (
+                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #1a1a1b' }}>
+                                <Link
+                                    href={`/dashboard/demo/${id}/finalize`}
+                                    className="glow-button"
                                     style={{
                                         width: '100%',
                                         padding: '15px',
-                                        background: 'transparent',
-                                        border: '1px solid #ff4444',
-                                        color: '#ff4444',
-                                        fontSize: '11px',
-                                        fontWeight: '800',
-                                        cursor: 'pointer',
-                                        letterSpacing: '2px',
-                                        borderRadius: '4px'
+                                        fontSize: '12px',
+                                        display: 'block',
+                                        textAlign: 'center',
+                                        textDecoration: 'none'
                                     }}
                                 >
-                                    REJECT SUBMISSION
-                                </button>
-                            </div>
-                        ) : (
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{
-                                    padding: '20px',
-                                    border: '1px solid #1a1a1b',
-                                    borderRadius: '6px',
-                                    marginBottom: '20px'
-                                }}>
-                                    <p style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '10px' }}>FINAL STATUS</p>
-                                    <p style={{ fontSize: '18px', fontWeight: '900', color: getStatusColor(demo.status), letterSpacing: '2px' }}>
-                                        {demo.status.toUpperCase()}
-                                    </p>
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#555', lineHeight: '1.6' }}>
-                                    Reviewed by <br /><strong>{demo.reviewedBy}</strong><br />
-                                    on {demo.reviewedAt ? new Date(demo.reviewedAt).toLocaleDateString() : '---'}
-                                </div>
+                                    PROCEED TO FINALIZATION & CONTRACT
+                                </Link>
+                                <p style={{ fontSize: '9px', color: '#444', textAlign: 'center', marginTop: '10px', letterSpacing: '1px' }}>
+                                    You will be guided through identity, financials, and assets.
+                                </p>
                             </div>
                         )}
+
+                        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '11px', color: '#444' }}>
+                            {demo.reviewedBy && (
+                                <p>Last handle by <strong>{demo.reviewedBy}</strong></p>
+                            )}
+                        </div>
 
                         <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #1a1a1b' }}>
                             <button
                                 onClick={() => {
-                                    if (confirm('Are you absolutely sure you want to PERMANENTLY delete this demo?')) {
-                                        fetch(`/api/demo/${id}`, { method: 'DELETE' }).then(() => router.push('/dashboard?view=submissions'));
-                                    }
+                                    showConfirm(
+                                        "DELETE RECORD?",
+                                        "Are you absolutely sure you want to PERMANENTLY delete this demo? This action is irreversible.",
+                                        () => {
+                                            fetch(`/api/demo/${id}`, { method: 'DELETE' })
+                                                .then(() => {
+                                                    showToast("Demo deleted successfully", "success");
+                                                    router.push('/dashboard?view=submissions');
+                                                })
+                                                .catch(err => showToast("Failed to delete demo", "error"));
+                                        }
+                                    );
                                 }}
                                 style={{ background: 'none', border: 'none', color: '#333', fontSize: '10px', fontWeight: '800', cursor: 'pointer', width: '100%' }}
                             >
@@ -318,146 +378,11 @@ export default function DemoReviewPage({ params }) {
                 </div>
             </div>
 
-            {/* Approval Modal */}
-            {showApproveModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-                    padding: '20px'
-                }}>
-                    <div className="glass" style={{
-                        width: '100%', maxWidth: '500px', padding: '40px',
-                        border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px',
-                        display: 'flex', flexDirection: 'column', gap: '25px'
-                    }}>
-                        <div>
-                            <h2 style={{ fontSize: '18px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>FINALIZE_APPROVAL</h2>
-                            <p style={{ fontSize: '11px', color: '#666', lineHeight: '1.6' }}>
-                                Set the release details and commission splits. This will automatically create an active contract and release record.
-                            </p>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '8px', display: 'block' }}>RELEASE NAME</label>
-                                <input
-                                    type="text"
-                                    value={finalizeData.releaseName}
-                                    onChange={(e) => setFinalizeData({ ...finalizeData, releaseName: e.target.value })}
-                                    style={inputStyle}
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '8px', display: 'block' }}>SCHEDULED RELEASE DATE</label>
-                                <input
-                                    type="date"
-                                    value={finalizeData.releaseDate}
-                                    onChange={(e) => setFinalizeData({ ...finalizeData, releaseDate: e.target.value })}
-                                    style={inputStyle}
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <div>
-                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '8px', display: 'block' }}>ARTIST SHARE (0-1.0)</label>
-                                    <input
-                                        type="number"
-                                        step="0.05"
-                                        min="0"
-                                        max="1"
-                                        value={finalizeData.artistShare}
-                                        onChange={(e) => setFinalizeData({ ...finalizeData, artistShare: e.target.value, labelShare: (1 - parseFloat(e.target.value)).toFixed(2) })}
-                                        style={inputStyle}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '8px', display: 'block' }}>LABEL SHARE (0-1.0)</label>
-                                    <input
-                                        type="number"
-                                        step="0.05"
-                                        min="0"
-                                        max="1"
-                                        value={finalizeData.labelShare}
-                                        onChange={(e) => setFinalizeData({ ...finalizeData, labelShare: e.target.value, artistShare: (1 - parseFloat(e.target.value)).toFixed(2) })}
-                                        style={inputStyle}
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '8px', display: 'block' }}>CONTRACT NOTES</label>
-                                <textarea
-                                    value={finalizeData.notes}
-                                    onChange={(e) => setFinalizeData({ ...finalizeData, notes: e.target.value })}
-                                    placeholder="Optional notes for the contract..."
-                                    style={{ ...inputStyle, minHeight: '80px', resize: 'none' }}
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
-                            <button
-                                disabled={approving}
-                                onClick={async () => {
-                                    setApproving(true);
-                                    try {
-                                        const res = await fetch(`/api/demo/${id}`, {
-                                            method: 'PATCH',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                status: 'approved',
-                                                finalizeData
-                                            })
-                                        });
-                                        if (res.ok) {
-                                            router.push('/dashboard?view=submissions');
-                                        } else {
-                                            const err = await res.json();
-                                            alert(err.error || "Failed to approve");
-                                        }
-                                    } catch (e) {
-                                        alert("Approval error");
-                                    } finally {
-                                        setApproving(false);
-                                    }
-                                }}
-                                className="glow-button"
-                                style={{ flex: 1, padding: '15px', fontWeight: '900' }}
-                            >
-                                {approving ? 'CONFIRMING...' : 'CONFIRM_APPROVAL'}
-                            </button>
-                            <button
-                                onClick={() => setShowApproveModal(false)}
-                                style={{
-                                    flex: 0.5, padding: '15px', background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.05)', color: '#fff',
-                                    borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '10px'
-                                }}
-                            >
-                                CANCEL
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <style jsx>{`
-                .btn-secondary {
-                    background: #111;
-                    border: 1px solid #222;
-                    color: #fff;
-                    font-weight: 800;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    text-decoration: none;
-                    transition: all 0.2s ease;
-                }
-                .btn-secondary:hover {
-                    background: #1a1a1a;
-                    border-color: #333;
-                }
+                .glow-button { background: #fff; color: #000; border: none; box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
+                .glow-button:hover { background: #00ff88; box-shadow: 0 4px 25px rgba(0,255,136,0.3); transform: translateY(-2px); }
+                .glow-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
             `}</style>
         </div>
     );

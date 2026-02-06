@@ -52,17 +52,36 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                 overflow: 'hidden'
             }}>
                 {image ? (
-                    <img
-                        src={image}
-                        alt={title}
-                        className="release-image"
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            transition: 'transform 0.5s ease'
-                        }}
-                    />
+                    <>
+                        <img
+                            src={image}
+                            alt={title}
+                            className="release-image"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                transition: 'transform 0.5s ease'
+                            }}
+                        />
+                        {data?.stream_count_text && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                                background: 'var(--accent)',
+                                color: '#000',
+                                padding: '4px 8px',
+                                fontSize: '10px',
+                                fontWeight: '900',
+                                letterSpacing: '1px',
+                                borderRadius: '4px',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.5)'
+                            }}>
+                                {data.stream_count_text} STREAMS
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                         <span style={{ fontSize: '10px', color: '#1a1a1a', fontWeight: '800', letterSpacing: '5px' }}>

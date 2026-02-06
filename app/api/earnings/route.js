@@ -28,11 +28,21 @@ export async function GET(req) {
         } else {
             earnings = await prisma.earning.findMany({
                 where: {
-                    contract: { userId }
+                    contract: {
+                        OR: [
+                            { userId },
+                            { primaryArtistEmail: session.user.email },
+                            { artist: { userId } },
+                            { artist: { email: session.user.email } },
+                            { splits: { some: { userId } } },
+                            { splits: { some: { email: session.user.email } } }, // Direct email match
+                            { splits: { some: { user: { email: session.user.email } } } }
+                        ]
+                    }
                 },
                 include: {
                     contract: {
-                        include: { release: true }
+                        include: { release: true, splits: true, artist: true }
                     }
                 },
                 orderBy: { period: 'desc' }
@@ -42,6 +52,58 @@ export async function GET(req) {
         return new Response(JSON.stringify({ earnings }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+}
+
+export async function DELETE(req) {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'admin') {
+        return new Response("Unauthorized", { status: 401 });
+    }
+
+    try {
+        const body = await req.json();
+        const { artistId, userId, deleteType } = body;
+
+        let whereClause = {};
+
+        if (deleteType === 'all_artist_earnings') {
+            if (artistId) {
+                // Find all contracts for this artist profile
+                whereClause = {
+                    contract: {
+                        OR: [
+                            { artistId: artistId },
+                            { userId: userId } // Fallback if linked via user
+                        ]
+                    }
+                };
+            } else if (userId) {
+                whereClause = {
+                    contract: { userId: userId }
+                };
+            } else {
+                return new Response(JSON.stringify({ error: "Missing artistId or userId" }), { status: 400 });
+            }
+        } else {
+            return new Response(JSON.stringify({ error: "Invalid delete type" }), { status: 400 });
+        }
+
+        // If we strictly want to delete by artistId from Artist model
+        if (artistId && !userId) {
+            whereClause = {
+                contract: { artistId: artistId }
+            };
+        }
+
+        const deleted = await prisma.earning.deleteMany({
+            where: whereClause
+        });
+
+        return new Response(JSON.stringify({ deletedCount: deleted.count }), { status: 200 });
+
+    } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
     }
 }
 
@@ -60,35 +122,43 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
         }
 
-        // Get contract to calculate shares
+        // Get contract with splits to calculate shares
         const contract = await prisma.contract.findUnique({
-            where: { id: contractId }
+            where: { id: contractId },
+            include: { splits: true }
         });
 
         if (!contract) {
             return new Response(JSON.stringify({ error: "Contract not found" }), { status: 404 });
         }
 
-        const artistAmount = parseFloat(grossAmount) * contract.artistShare;
-        const labelAmount = parseFloat(grossAmount) * contract.labelShare;
+        const expenses = parseFloat(body.expenseAmount) || 0;
+        const gross = parseFloat(grossAmount);
 
+        // Net Receipts Deal: Expenses come off the top
+        const netReceipts = Math.max(0, gross - expenses);
+
+        const labelAmount = netReceipts * contract.labelShare;
+        const totalArtistPool = netReceipts * contract.artistShare;
+
+        // Create the main earning record
         const earning = await prisma.earning.create({
             data: {
                 contractId,
                 period,
-                grossAmount: parseFloat(grossAmount),
-                artistAmount,
+                grossAmount: gross,
+                expenseAmount: expenses,
+                artistAmount: totalArtistPool, // This is the TOTAL paid out to all artists/collaborators
                 labelAmount,
                 currency: currency || 'USD',
                 streams: streams ? parseInt(streams) : null,
                 source: source || 'spotify'
-            },
-            include: {
-                contract: {
-                    include: { release: true }
-                }
             }
         });
+
+        // NOTE: In a more complex system, we might want an 'EarningSplit' table 
+        // to track exactly how much each collaborator got from THIS specific payment.
+        // For now, the 'artistAmount' represents the total pool shared by splits.
 
         return new Response(JSON.stringify(earning), { status: 201 });
     } catch (error) {

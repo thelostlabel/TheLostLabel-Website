@@ -1,6 +1,8 @@
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import AuthProvider from "./components/AuthProvider";
+import SmoothScroll from "./components/SmoothScroll";
+import { ToastProvider } from "./components/ToastContext";
 
 export const metadata = {
   title: "LOST MUSIC | Independent Label & Artist Management",
@@ -38,14 +40,17 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/logo.png" />
       </head>
       <body>
+        <SmoothScroll />
         <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
+          <ToastProvider>
+            <Navbar />
+            <main>{children}</main>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

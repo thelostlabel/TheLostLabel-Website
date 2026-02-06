@@ -18,16 +18,32 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "No files provided" }), { status: 400 });
         }
 
-        // Create uploads directory if not exists
-        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'demos');
-        await mkdir(uploadsDir, { recursive: true });
+        // Create uploads directories
+        const demoDir = join(process.cwd(), 'public', 'uploads', 'demos');
+        const releaseDir = join(process.cwd(), 'public', 'uploads', 'releases');
+        await mkdir(demoDir, { recursive: true });
+        await mkdir(releaseDir, { recursive: true });
 
         const uploadedFiles = [];
 
         for (const file of files) {
-            // Validate file type
-            if (!file.name.toLowerCase().endsWith('.wav')) {
-                continue; // Skip non-WAV files
+            const ext = file.name.split('.').pop().toLowerCase();
+            let targetDir;
+            let publicPath;
+
+            if (ext === 'wav') {
+                targetDir = demoDir;
+                publicPath = '/uploads/demos/';
+            } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+                targetDir = releaseDir;
+                publicPath = '/uploads/releases/';
+            } else if (ext === 'pdf') {
+                const contractDir = join(process.cwd(), 'public', 'uploads', 'contracts');
+                await mkdir(contractDir, { recursive: true });
+                targetDir = contractDir;
+                publicPath = '/uploads/contracts/';
+            } else {
+                continue; // Skip unsupported
             }
 
             // Generate unique filename
@@ -35,7 +51,7 @@ export async function POST(req) {
             const randomStr = Math.random().toString(36).substring(7);
             const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const uniqueFilename = `${timestamp}_${randomStr}_${safeFilename}`;
-            const filepath = join(uploadsDir, uniqueFilename);
+            const filepath = join(targetDir, uniqueFilename);
 
             // Write file
             const bytes = await file.arrayBuffer();
@@ -43,13 +59,13 @@ export async function POST(req) {
 
             uploadedFiles.push({
                 filename: file.name,
-                filepath: `/uploads/demos/${uniqueFilename}`,
+                filepath: `${publicPath}${uniqueFilename}`,
                 filesize: file.size
             });
         }
 
         if (uploadedFiles.length === 0) {
-            return new Response(JSON.stringify({ error: "No valid WAV files uploaded" }), { status: 400 });
+            return new Response(JSON.stringify({ error: "No supported files were uploaded. Please use .wav for demos or .jpg/.png for artwork." }), { status: 400 });
         }
 
         return new Response(JSON.stringify({

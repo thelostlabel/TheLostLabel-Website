@@ -3,13 +3,23 @@ import prisma from "@/lib/prisma";
 // GET: Fetch total artist count
 export async function GET() {
     try {
-        const count = await prisma.user.count({
-            where: { role: 'artist' }
-        });
+        const [artistCount, albumCountData, songCountData] = await Promise.all([
+            prisma.artist.count(),
+            prisma.release.count({ where: { type: 'album' } }),
+            prisma.release.aggregate({
+                _sum: {
+                    totalTracks: true
+                }
+            })
+        ]);
 
-        return new Response(JSON.stringify({ count }), { status: 200 });
+        return new Response(JSON.stringify({
+            artistCount,
+            albumCount: albumCountData,
+            songCount: songCountData._sum.totalTracks || 0
+        }), { status: 200 });
     } catch (error) {
         console.error("Stats Error:", error);
-        return new Response(JSON.stringify({ count: 0 }), { status: 200 });
+        return new Response(JSON.stringify({ artistCount: 0, albumCount: 0, songCount: 0 }), { status: 200 });
     }
 }

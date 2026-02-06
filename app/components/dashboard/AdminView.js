@@ -4,15 +4,18 @@ import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle } from 'lucide-react';
+import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download } from 'lucide-react';
+import { useToast } from '@/app/components/ToastContext';
 
 export default function AdminView() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
+    const { showToast, showConfirm } = useToast();
     const view = searchParams.get('view') || 'overview';
 
     const [submissions, setSubmissions] = useState([]);
     const [artists, setArtists] = useState([]);
+    const [unlistedUsers, setUnlistedUsers] = useState([]);
     const [users, setUsers] = useState([]);
     const [requests, setRequests] = useState([]);
     const [siteContent, setSiteContent] = useState([]);
@@ -25,11 +28,11 @@ export default function AdminView() {
 
     useEffect(() => {
         if (view === 'submissions') fetchSubmissions();
-        else if (view === 'artists') fetchArtists();
+        else if (view === 'artists') { fetchArtists(); fetchUsers(); }
         else if (view === 'users') fetchUsers();
         else if (view === 'requests') fetchRequests();
         else if (view === 'content') fetchContent();
-        else if (view === 'contracts') { fetchContracts(); fetchArtists(); fetchReleases(); }
+        else if (view === 'contracts') { fetchContracts(); fetchArtists(); fetchReleases(); fetchSubmissions(); }
         else if (view === 'releases') fetchReleases();
         else if (view === 'earnings') { fetchEarnings(); fetchContracts(); }
         else if (view === 'payments') { fetchPayments(); fetchUsers(); }
@@ -75,7 +78,8 @@ export default function AdminView() {
         try {
             const res = await fetch('/api/admin/artists');
             const data = await res.json();
-            setArtists(Array.isArray(data) ? data : []);
+            setArtists(data.artists || []);
+            setUnlistedUsers(data.unlistedUsers || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -151,7 +155,7 @@ export default function AdminView() {
         } catch (e) { console.error(e); }
     };
 
-    const handleSyncStats = async (userId, existingUrl) => {
+    const handleSyncStats = async (userId, existingUrl, artistId = null) => {
         let spotifyUrl = existingUrl;
         if (!spotifyUrl) {
             spotifyUrl = prompt("Enter Artist Spotify Profile URL:");
@@ -162,17 +166,22 @@ export default function AdminView() {
             const res = await fetch('/api/admin/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, spotifyUrl })
+                body: JSON.stringify({ userId, artistId, spotifyUrl })
             });
             const data = await res.json();
             if (data.success) {
-                alert(`SUCCESS: ${data.monthlyListeners?.toLocaleString()} Monthly Listeners`);
+                showToast(`SYNC_COMPLETED: ${data.monthlyListeners?.toLocaleString()} Listeners`, "success");
                 fetchArtists();
+                if (view === 'users') fetchUsers();
             } else {
-                alert(data.error || "Sync failed");
+                showToast(data.error || "Sync failed", "error");
             }
-        } catch (e) { console.error(e); alert("Sync error"); }
-        finally { setLoading(false); }
+        } catch (e) {
+            console.error(e);
+            showToast("Sync error", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleStatusUpdate = async (id, status, reason = null) => {
@@ -202,19 +211,27 @@ export default function AdminView() {
     };
 
     const handleDeleteDemo = async (id) => {
-        if (!confirm('Delete this submission?')) return;
-        try {
-            await fetch(`/api/demo/${id}`, { method: 'DELETE' });
-            fetchSubmissions();
-        } catch (e) { console.error(e); }
+        showConfirm(
+            "DELETE SUBMISSION?",
+            "Are you sure you want to PERMANENTLY delete this submission? This action cannot be undone.",
+            async () => {
+                try {
+                    await fetch(`/api/demo/${id}`, { method: 'DELETE' });
+                    showToast("Submission deleted", "success");
+                    fetchSubmissions();
+                } catch (e) {
+                    showToast("Delete failed", "error");
+                }
+            }
+        );
     };
 
     const handleTestWebhook = async () => {
         try {
             const res = await fetch('/api/webhook/test', { method: 'POST' });
             const data = await res.json();
-            alert(data.success ? "Webhook sent!" : "Webhook failed");
-        } catch (e) { alert("Error testing webhook"); }
+            showToast(data.success ? "Webhook sent!" : "Webhook failed", data.success ? "success" : "error");
+        } catch (e) { showToast("Error testing webhook", "error"); }
     };
 
     const perms = session?.user?.permissions || {};
@@ -251,10 +268,10 @@ export default function AdminView() {
 
             {view === 'overview' && <HomeView />}
             {view === 'submissions' && <SubmissionsView demos={submissions} onUpdateStatus={handleStatusUpdate} />}
-            {view === 'artists' && <ArtistsView artists={artists} onSync={handleSyncStats} />}
+            {view === 'artists' && <ArtistsView artists={artists} users={users} unlistedUsers={unlistedUsers} onSync={handleSyncStats} />}
             {view === 'users' && <UsersView users={users} onRoleChange={handleRoleChange} onRefresh={fetchUsers} />}
             {view === 'requests' && <RequestsView requests={requests} onUpdateStatus={handleRequestStatusUpdate} />}
-            {view === 'contracts' && <ContractsView contracts={contracts} artists={artists} releases={releases} onRefresh={fetchContracts} />}
+            {view === 'contracts' && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
             {view === 'earnings' && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} />}
             {view === 'payments' && <PaymentsView payments={payments} users={users} onRefresh={fetchPayments} />}
             {view === 'content' && <ContentView content={siteContent} onRefresh={fetchContent} />}
@@ -325,6 +342,10 @@ const inputStyle = {
 };
 
 function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
+    const { showToast, showConfirm } = useToast();
+    const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'reviewing', 'approved', 'rejected'
+    const [searchTerm, setSearchTerm] = useState('');
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'approved': return '#00ff88';
@@ -334,344 +355,320 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
         }
     };
 
+    const filteredDemos = demos.filter(demo => {
+        const matchesTab = demo.status === activeTab;
+        const matchesSearch = demo.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            demo.artist?.stageName?.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesTab && matchesSearch;
+    });
+
     return (
-        <div style={glassStyle}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                    <tr style={{ background: '#111' }}>
-                        <th style={thStyle}>DATE</th>
-                        <th style={thStyle}>ARTIST</th>
-                        <th style={thStyle}>TRACK / GENRE</th>
-                        <th style={thStyle}>STATUS</th>
-                        <th style={thStyle}>ACTIONS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {demos.map(demo => (
-                        <tr key={demo.id} style={{ borderBottom: '1px solid #1a1a1b' }}>
-                            <td style={tdStyle}>{new Date(demo.createdAt).toLocaleDateString()}</td>
-                            <td style={tdStyle}>
-                                <strong>{demo.artist?.stageName || demo.artist?.email || 'Unknown'}</strong>
-                            </td>
-                            <td style={tdStyle}>
-                                <div>{demo.title}</div>
-                                <div style={{ fontSize: '10px', color: '#555' }}>{demo.genre}</div>
-                            </td>
-                            <td style={tdStyle}>
-                                <span style={{ fontSize: '10px', fontWeight: '800', color: getStatusColor(demo.status) }}>
-                                    {demo.status.toUpperCase()}
-                                </span>
-                                {demo.reviewedBy && (
-                                    <div style={{ fontSize: '8px', color: '#444', marginTop: '2px' }}>BY {demo.reviewedBy.split('@')[0]}</div>
-                                )}
-                            </td>
-                            <td style={tdStyle}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <Link
-                                        href={`/dashboard/demo/${demo.id}`} // UPDATED LINK TO NEW STRUCTURE
-                                        style={{ ...btnStyle, color: '#fff', border: '1px solid #333', background: '#111', textDecoration: 'none' }}
-                                    >
-                                        REVIEW
-                                    </Link>
-                                    <button onClick={() => onDelete(demo.id)} style={{ ...btnStyle, color: '#444' }}>DELETE</button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                    {demos.length === 0 && (
-                        <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '50px' }}>NO SUBMISSIONS</td></tr>
-                    )}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
-function ArtistsView({ artists, onSync }) {
-    const { data: session } = useSession();
-    const canManage = session?.user?.role === 'admin' || session?.user?.permissions?.canManageArtists;
-
-    // List View State
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedArtist, setSelectedArtist] = useState(null);
-    const [activeTab, setActiveTab] = useState('profile');
-
-    // Filter artists based on search
-    const filteredArtists = artists.filter(artist =>
-        artist.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artist.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artist.stageName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const [artistData, setArtistData] = useState({ loading: false, demos: [], releases: [] });
-    const [editingArtist, setEditingArtist] = useState(null);
-    const [editForm, setEditForm] = useState({ name: '', spotifyUrl: '' });
-    const [saving, setSaving] = useState(false);
-
-    useEffect(() => {
-        if (selectedArtist) fetchArtistDetails(selectedArtist);
-    }, [selectedArtist]);
-
-    const fetchArtistDetails = async (artist) => {
-        setArtistData(prev => ({ ...prev, loading: true }));
-        try {
-            const url = new URL('/api/admin/releases', window.location.origin);
-            if (artist.type === 'roster') url.searchParams.set('artistId', artist.id);
-
-            const [demosRes, releasesRes] = await Promise.all([
-                fetch(`/api/demo?userId=${artist.type === 'registered' ? artist.id : ''}`),
-                fetch(url)
-            ]);
-            const demos = await demosRes.json();
-            const releases = await releasesRes.json();
-
-            setArtistData({
-                loading: false,
-                demos: Array.isArray(demos) ? demos : [],
-                releases: Array.isArray(releases) ? releases : []
-            });
-        } catch (e) {
-            console.error(e);
-            setArtistData(prev => ({ ...prev, loading: false }));
-        }
-    };
-
-    const openEdit = (artist) => {
-        setEditingArtist(artist);
-        setEditForm({ name: artist.name, spotifyUrl: artist.spotifyUrl || '' });
-    };
-
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            const res = await fetch('/api/admin/artists', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: editingArtist.id,
-                    type: editingArtist.type,
-                    name: editForm.name,
-                    spotifyUrl: editForm.spotifyUrl
-                })
-            });
-            if (res.ok) {
-                setEditingArtist(null);
-                window.location.reload();
-            }
-        } catch (e) { console.error(e); }
-        finally { setSaving(false); }
-    };
-
-    const handleDelete = async (id, type) => {
-        if (!confirm("Are you sure? This cannot be undone.")) return;
-        try {
-            const res = await fetch(`/api/admin/artists?id=${id}&type=${type}`, { method: 'DELETE' });
-            if (res.ok) window.location.reload();
-        } catch (e) { console.error(e); }
-    };
-
-    if (selectedArtist) {
-        return (
-            <div style={{ ...glassStyle, minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-                {/* HEADER */}
-                <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <button onClick={() => setSelectedArtist(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '18px' }}>←</button>
-                        <div>
-                            <h3 style={{ fontSize: '16px', letterSpacing: '1px', margin: 0, fontWeight: '800' }}>{selectedArtist.name}</h3>
-                            <div style={{ fontSize: '11px', color: '#666' }}>{selectedArtist.email}</div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => onSync(selectedArtist.id, selectedArtist.spotifyUrl)} style={{ ...btnStyle, fontSize: '11px' }}>
-                            {selectedArtist.spotifyUrl ? 'SYNC SPOTIFY' : 'LINK SPOTIFY'}
-                        </button>
-                        <a href={selectedArtist.spotifyUrl} target="_blank" rel="noreferrer" style={{ ...btnStyle, fontSize: '11px', textDecoration: 'none', display: selectedArtist.spotifyUrl ? 'block' : 'none' }}>
-                            OPEN SPOTIFY ↗
-                        </a>
-                    </div>
-                </div>
-
-                {/* TABS */}
-                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '15px 30px 0 30px' }}>
-                    {['profile', 'demos', 'releases'].map(tab => (
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <div style={{ display: 'flex', gap: '20px' }}>
+                    {['pending', 'reviewing', 'approved', 'rejected'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             style={{
-                                background: 'transparent',
+                                background: 'none',
                                 border: 'none',
+                                color: activeTab === tab ? '#fff' : '#444',
                                 borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
-                                color: activeTab === tab ? '#fff' : '#666',
-                                padding: '15px 20px',
-                                fontSize: '11px',
-                                fontWeight: '800',
-                                letterSpacing: '1px',
+                                paddingBottom: '5px',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                fontWeight: '800',
+                                fontSize: '11px',
+                                letterSpacing: '1px',
+                                textTransform: 'uppercase'
                             }}
                         >
-                            {tab.toUpperCase()}
+                            {tab}
                         </button>
                     ))}
                 </div>
+                <input
+                    type="text"
+                    placeholder="Search submissions..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ ...inputStyle, width: '300px', background: 'rgba(255,255,255,0.02)' }}
+                />
+            </div>
 
-                {/* CONTENT */}
-                <div style={{ padding: '30px', flex: 1, overflowY: 'auto' }}>
-                    {artistData.loading ? (
-                        <div style={{ textAlign: 'center', padding: '50px', color: '#444', fontSize: '12px' }}>LOADING DATA...</div>
-                    ) : (
-                        <>
-                            {activeTab === 'profile' && (
-                                <div style={{ maxWidth: '600px' }}>
-                                    <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
-                                        <div style={{ width: '100px', height: '100px', background: '#222', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#444' }}>
-                                            {selectedArtist.image ? <img src={selectedArtist.image} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : '👤'}
+            <div style={glassStyle}>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                        <thead>
+                            <tr style={{ background: '#111' }}>
+                                <th style={thStyle}>DATE</th>
+                                <th style={thStyle}>ARTIST</th>
+                                <th style={thStyle}>TRACK / GENRE</th>
+                                <th style={thStyle}>STATUS</th>
+                                <th style={thStyle}>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredDemos.map(demo => (
+                                <tr key={demo.id} style={{ borderBottom: '1px solid #1a1a1b' }}>
+                                    <td style={tdStyle}>{new Date(demo.createdAt).toLocaleDateString()}</td>
+                                    <td style={tdStyle}>
+                                        <strong>{demo.artist?.stageName || demo.artist?.email || 'Unknown'}</strong>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <div>{demo.title}</div>
+                                        <div style={{ fontSize: '10px', color: '#555' }}>{demo.genre}</div>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{ fontSize: '10px', fontWeight: '800', color: getStatusColor(demo.status) }}>
+                                            {demo.status.toUpperCase()}
+                                        </span>
+                                        {demo.reviewedBy && (
+                                            <div style={{ fontSize: '8px', color: '#444', marginTop: '2px' }}>BY {demo.reviewedBy.split('@')[0]}</div>
+                                        )}
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <Link
+                                                href={`/dashboard/demo/${demo.id}`}
+                                                style={{ ...btnStyle, color: '#fff', border: '1px solid #333', background: '#111', textDecoration: 'none' }}
+                                            >
+                                                REVIEW
+                                            </Link>
+                                            <button onClick={() => onDelete(demo.id)} style={{ ...btnStyle, color: '#444' }}>DELETE</button>
                                         </div>
-                                        <div>
-                                            <div style={{ marginBottom: '15px' }}>
-                                                <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '2px', fontWeight: '800' }}>FULL NAME / ID</label>
-                                                <div style={{ fontSize: '14px' }}>{selectedArtist.fullName || selectedArtist.id}</div>
-                                            </div>
-                                            <div style={{ marginBottom: '15px' }}>
-                                                <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '2px', fontWeight: '800' }}>STAGE NAME</label>
-                                                <div style={{ fontSize: '14px' }}>{selectedArtist.stageName || selectedArtist.name}</div>
-                                            </div>
-                                            <div style={{ marginBottom: '15px' }}>
-                                                <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '2px', fontWeight: '800' }}>MONTHLY LISTENERS</label>
-                                                <div style={{ fontSize: '18px', color: 'var(--accent)', fontWeight: '800' }}>
-                                                    {selectedArtist.monthlyListeners ? selectedArtist.monthlyListeners.toLocaleString() : '---'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filteredDemos.length === 0 && (
+                                <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '50px' }}>NO {activeTab.toUpperCase()} SUBMISSIONS</td></tr>
                             )}
-
-                            {activeTab === 'demos' && (
-                                <div>
-                                    {artistData.demos.length === 0 ? (
-                                        <div style={{ textAlign: 'center', color: '#444', fontSize: '12px', padding: '40px' }}>NO DEMOS SUBMITTED</div>
-                                    ) : (
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                            <thead>
-                                                <tr style={{ borderBottom: '1px solid #222' }}>
-                                                    <th style={{ ...thStyle, padding: '10px' }}>DATE</th>
-                                                    <th style={{ ...thStyle, padding: '10px' }}>TITLE</th>
-                                                    <th style={{ ...thStyle, padding: '10px' }}>STATUS</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {artistData.demos.map(demo => (
-                                                    <tr key={demo.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                                                        <td style={{ ...tdStyle, padding: '10px' }}>{new Date(demo.createdAt).toLocaleDateString()}</td>
-                                                        <td style={{ ...tdStyle, padding: '10px' }}>{demo.title}</td>
-                                                        <td style={{ ...tdStyle, padding: '10px' }}>
-                                                            <span style={{
-                                                                color: demo.status === 'approved' ? '#00ff88' : demo.status === 'rejected' ? '#ff4444' : '#ffaa00',
-                                                                fontSize: '10px', fontWeight: '800'
-                                                            }}>
-                                                                {demo.status.toUpperCase()}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
-                                </div>
-                            )}
-
-                            {activeTab === 'releases' && (
-                                <div>
-                                    {artistData.releases.length === 0 ? (
-                                        <div style={{ textAlign: 'center', color: '#444', fontSize: '12px', padding: '40px' }}>NO RELEASES FOUND</div>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-
-                                            {/* UPCOMING */}
-                                            {artistData.releases.some(r => new Date(r.releaseDate) > new Date()) && (
-                                                <div>
-                                                    <h4 style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '900', letterSpacing: '2px', marginBottom: '15px' }}>UPCOMING</h4>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '20px' }}>
-                                                        {artistData.releases.filter(r => new Date(r.releaseDate) > new Date()).map(release => (
-                                                            <div key={release.id} className="glass" style={{ padding: '15px', border: '1px solid rgba(0,255,136,0.1)' }}>
-                                                                <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '10px' }}>
-                                                                    {release.image && <img src={release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                                                                </div>
-                                                                <div style={{ fontSize: '12px', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.name}</div>
-                                                                <div style={{ fontSize: '10px', color: 'var(--accent)' }}>{new Date(release.releaseDate || release.createdAt).toLocaleDateString()}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* PAST */}
-                                            <div>
-                                                <h4 style={{ fontSize: '11px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '15px' }}>DISCOGRAPHY</h4>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '20px' }}>
-                                                    {artistData.releases.filter(r => new Date(r.releaseDate) <= new Date()).map(release => (
-                                                        <div key={release.id} className="glass" style={{ padding: '15px', border: '1px solid #222' }}>
-                                                            <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '10px' }}>
-                                                                {release.image && <img src={release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                                                            </div>
-                                                            <div style={{ fontSize: '12px', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.name}</div>
-                                                            <div style={{ fontSize: '10px', color: '#666' }}>{new Date(release.releaseDate || release.createdAt).toLocaleDateString()}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
+}
 
-    // LIST VIEW (Existing functionality wrapped)
+
+function UserLinker({ artistId, users, artistEmail }) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [linking, setLinking] = useState(false);
+
+    // Auto-suggest based on email match
+    const suggestedUser = artistEmail ? users.find(u => u.email.toLowerCase() === artistEmail.toLowerCase()) : null;
+
+    const filteredUsers = users?.filter(u =>
+    (u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.stageName?.toLowerCase().includes(searchTerm.toLowerCase()))
+    ).slice(0, 5) || [];
+
+    const handleLink = async (userToLink) => {
+        const user = userToLink || selectedUser;
+        if (!user) return;
+        setLinking(true);
+        try {
+            const res = await fetch('/api/admin/artists', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: artistId, userId: user.id })
+            });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                showToast('Failed to link user', "error");
+            }
+        } catch (e) { console.error(e); showToast('Error linking user', "error"); }
+        finally { setLinking(false); }
+    };
+
     return (
-        <div>
-            {/* Edit Modal */}
-            {editingArtist && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.9)', zIndex: 1000,
-                    display: 'flex', justifyContent: 'center', alignItems: 'center'
-                }}>
-                    <div className="glass" style={{ padding: '30px', width: '400px', border: '1px solid #333' }}>
-                        <h3 style={{ fontSize: '14px', marginBottom: '25px', letterSpacing: '2px' }}>EDIT ARTIST</h3>
+        <div style={{ marginTop: '15px', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', color: '#666', marginBottom: '10px' }}>LINK EXISTING USER ACCOUNT</div>
 
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>ARTIST NAME</label>
-                            <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff' }} />
+            {suggestedUser && !selectedUser && (
+                <div style={{ marginBottom: '15px', padding: '10px', background: 'rgba(0, 255, 136, 0.05)', borderRadius: '6px', border: '1px solid rgba(0, 255, 136, 0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <div style={{ fontSize: '9px', color: '#00ff88', fontWeight: 'bold', marginBottom: '2px' }}>SUGGESTED MATCH</div>
+                            <div style={{ fontSize: '11px', color: '#fff' }}>{suggestedUser.email}</div>
                         </div>
-
-                        <div style={{ marginBottom: '25px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>SPOTIFY URL</label>
-                            <input type="url" value={editForm.spotifyUrl} onChange={(e) => setEditForm({ ...editForm, spotifyUrl: e.target.value })}
-                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff' }} />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button onClick={handleSave} disabled={saving} className="glow-button" style={{ flex: 1, padding: '12px' }}>
-                                {saving ? 'SAVING...' : 'SAVE'}
-                            </button>
-                            <button onClick={() => setEditingArtist(null)} style={{ flex: 1, padding: '12px', background: '#222', border: 'none', color: '#fff', cursor: 'pointer' }}>
-                                CANCEL
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => handleLink(suggestedUser)}
+                            disabled={linking}
+                            style={{ ...btnStyle, background: '#00ff88', color: '#000', fontSize: '9px', padding: '5px 10px' }}
+                        >
+                            {linking ? 'LINKING...' : 'LINK NOW'}
+                        </button>
                     </div>
                 </div>
             )}
 
-            <div style={{ marginBottom: '20px' }}>
+            {!selectedUser ? (
+                <>
+                    <input
+                        placeholder="Search other user email or name..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{ ...inputStyle, marginBottom: '10px' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {searchTerm && filteredUsers.map(u => (
+                            <div
+                                key={u.id}
+                                onClick={() => setSelectedUser(u)}
+                                style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', cursor: 'pointer', fontSize: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            >
+                                <span>{u.stageName || 'No Stage Name'} <span style={{ color: '#666' }}>({u.email})</span></span>
+                                <span style={{ color: 'var(--accent)', fontSize: '9px', border: '1px solid var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>SELECT</span>
+                            </div>
+                        ))}
+                        {searchTerm && filteredUsers.length === 0 && (
+                            <div style={{ fontSize: '10px', color: '#666', fontStyle: 'italic', padding: '5px' }}>No users found matching search</div>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div style={{ textAlign: 'center', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
+                    <div style={{ marginBottom: '10px', fontSize: '12px' }}>
+                        Link <strong>{selectedUser.email}</strong>?
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={() => handleLink()} disabled={linking} style={{ ...btnStyle, flex: 1, background: '#00ff88', color: '#000', justifyContent: 'center' }}>
+                            {linking ? 'LINKING...' : 'CONFIRM LINK'}
+                        </button>
+                        <button onClick={() => setSelectedUser(null)} style={{ ...btnStyle, flex: 1, justifyContent: 'center' }}>CANCEL</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ArtistsView({ artists, users, onSync }) {
+    const { showToast, showConfirm } = useToast();
+    const { data: session } = useSession();
+    const canManage = session?.user?.role === 'admin' || session?.user?.permissions?.canManageArtists;
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedArtist, setSelectedArtist] = useState(null);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newArtist, setNewArtist] = useState({ name: '', spotifyUrl: '', email: '' });
+    const [saving, setSaving] = useState(false);
+
+    // Filter artists based on search
+    const filteredArtists = artists.filter(artist =>
+        artist.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        artist.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleCreate = async () => {
+        if (!newArtist.name) return showToast('Name Required', "warning");
+        setSaving(true);
+        try {
+            const res = await fetch('/api/admin/artists', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newArtist)
+            });
+            if (res.ok) {
+                setIsCreating(false);
+                setNewArtist({ name: '', spotifyUrl: '', email: '' });
+                showToast("Artist profile created", "success");
+                window.location.reload();
+            } else {
+                const err = await res.json();
+                showToast(err.error || "Creation failed", "error");
+            }
+        } catch (e) { showToast("Create error", "error"); }
+        finally { setSaving(false); }
+    };
+
+    if (selectedArtist) {
+        // ... (Detail view logic remains similar, maybe simplified)
+        return (
+            <div style={{ ...glassStyle, padding: '30px' }}>
+                <button onClick={() => setSelectedArtist(null)} style={{ marginBottom: '20px', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>← BACK</button>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '30px' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {selectedArtist.image ? <img src={selectedArtist.image} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : <span style={{ fontSize: '24px' }}>👤</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <h2 style={{ margin: 0, fontSize: '24px' }}>{selectedArtist.name}</h2>
+                        <div style={{ color: '#666', fontSize: '12px', marginTop: '5px' }}>{selectedArtist.email || 'No Email Linked'}</div>
+                        {selectedArtist.spotifyUrl && <a href={selectedArtist.spotifyUrl} target="_blank" style={{ color: '#00ff88', fontSize: '11px', textDecoration: 'none', display: 'block', marginTop: '5px' }}>OPEN SPOTIFY ↗</a>}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '5px' }}>MONTHLY LISTENERS</div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', color: selectedArtist.monthlyListeners ? 'var(--accent)' : '#ff4444' }}>
+                            {selectedArtist.monthlyListeners?.toLocaleString() || (
+                                <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <AlertCircle size={14} /> SYNC NEEDED
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSync(selectedArtist.userId, selectedArtist.spotifyUrl, selectedArtist.id);
+                            }}
+                            className="glow-button"
+                            style={{ padding: '8px 20px', fontSize: '11px', marginTop: '10px' }}
+                        >
+                            <RefreshCw size={12} style={{ marginRight: '5px' }} /> SYNC SPOTIFY
+                        </button>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                        <h3 style={{ fontSize: '11px', color: '#666', fontWeight: '800', marginBottom: '15px' }}>LINKED USER ACCOUNT</h3>
+                        {selectedArtist.user ? (
+                            <div>
+                                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{selectedArtist.user.stageName || selectedArtist.user.fullName}</div>
+                                <div style={{ fontSize: '12px', color: '#555' }}>{selectedArtist.user.email}</div>
+                                <div style={{ marginTop: '10px', fontSize: '10px', color: '#00ff88' }}>✓ ACCOUNT LINKED</div>
+                                <button
+                                    onClick={() => {
+                                        showConfirm(
+                                            "UNLINK ACCOUNT?",
+                                            "Are you sure you want to unlink this user from the artist profile? They will lose access to their stats and dashboard.",
+                                            async () => {
+                                                try {
+                                                    const res = await fetch('/api/admin/artists', {
+                                                        method: 'PUT',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ id: selectedArtist.id, userId: null })
+                                                    });
+                                                    if (res.ok) {
+                                                        showToast("Account unlinked successfully", "success");
+                                                        window.location.reload();
+                                                    } else {
+                                                        showToast("Failed to unlink account", "error");
+                                                    }
+                                                } catch (e) { showToast('Error unlinking account', "error"); }
+                                            }
+                                        );
+                                    }}
+                                    style={{ ...btnStyle, marginTop: '15px', color: '#ff4444', borderColor: '#ff444430', width: '100%', justifyContent: 'center' }}
+                                >
+                                    UNLINK ACCOUNT
+                                </button>
+                            </div>
+                        ) : (
+                            <UserLinker artistId={selectedArtist.id} users={users} artistEmail={selectedArtist.email} />
+                        )}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <input
                     type="text"
                     placeholder="Search artists..."
@@ -679,71 +676,95 @@ function ArtistsView({ artists, onSync }) {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{ ...inputStyle, width: '100%', maxWidth: '300px', background: 'rgba(255,255,255,0.02)' }}
                 />
+                {canManage && (
+                    <button onClick={() => setIsCreating(true)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}>
+                        <Plus size={14} /> NEW ARTIST
+                    </button>
+                )}
             </div>
+
+            {isCreating && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="glass" style={{ width: '400px', padding: '30px', border: '1px solid #333' }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px' }}>CREATE NEW ARTIST</h3>
+                        <input
+                            placeholder="Artist Name *"
+                            value={newArtist.name}
+                            onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })}
+                            style={{ ...inputStyle, marginBottom: '10px' }}
+                        />
+                        <input
+                            placeholder="Email (Optional)"
+                            value={newArtist.email}
+                            onChange={(e) => setNewArtist({ ...newArtist, email: e.target.value })}
+                            style={{ ...inputStyle, marginBottom: '10px' }}
+                        />
+                        <input
+                            placeholder="Spotify URL (Optional)"
+                            value={newArtist.spotifyUrl}
+                            onChange={(e) => setNewArtist({ ...newArtist, spotifyUrl: e.target.value })}
+                            style={{ ...inputStyle, marginBottom: '20px' }}
+                        />
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={handleCreate} disabled={saving} style={{ ...btnStyle, flex: 1, justifyContent: 'center', background: 'var(--accent)', color: '#000' }}>
+                                {saving ? 'CREATING...' : 'CREATE'}
+                            </button>
+                            <button onClick={() => setIsCreating(false)} style={{ ...btnStyle, flex: 1, justifyContent: 'center' }}>CANCEL</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="glass" style={{ overflow: 'hidden', border: '1px solid #222' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr style={{ background: '#111' }}>
-                            <th style={thStyle}>JOINED</th>
                             <th style={thStyle}>ARTIST</th>
+                            <th style={thStyle}>MONTHLY</th>
                             <th style={thStyle}>STATUS</th>
-                            <th style={thStyle}>LISTENERS</th>
-                            <th style={thStyle}>DEMOS</th>
+                            <th style={thStyle}>LINKED USER</th>
                             <th style={thStyle}>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredArtists.map(artist => (
-                            <tr key={artist.id} style={{ borderBottom: '1px solid #1a1a1b', cursor: 'pointer', background: selectedArtist?.id === artist.id ? '#1a1a1a' : 'transparent' }} onClick={() => setSelectedArtist(artist)}>
-                                <td style={tdStyle}>{new Date(artist.createdAt).toLocaleDateString()}</td>
+                            <tr key={artist.id} style={{ borderBottom: '1px solid #1a1a1b', cursor: 'pointer' }} onClick={() => setSelectedArtist(artist)}>
                                 <td style={tdStyle}>
-                                    <div style={{ fontWeight: '800', color: '#fff', fontSize: '13px' }}>{artist.name}</div>
-                                    <div style={{ fontSize: '11px', color: '#555' }}>{artist.email || '---'}</div>
+                                    <div style={{ fontWeight: '800', color: '#fff' }}>{artist.name}</div>
                                 </td>
                                 <td style={tdStyle}>
-                                    {artist.type === 'registered' ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <span style={{ fontSize: '10px', background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', padding: '4px 10px', borderRadius: '4px', letterSpacing: '1px', fontWeight: '800', textAlign: 'center' }}>
-                                                REGISTERED
-                                            </span>
-                                            {artist.role && artist.role !== 'artist' && (
-                                                <span style={{ fontSize: '9px', background: 'rgba(255,255,255,0.05)', color: '#666', padding: '3px 8px', borderRadius: '4px', letterSpacing: '1px', fontWeight: '900', textAlign: 'center' }}>
-                                                    {artist.role.toUpperCase()}
-                                                </span>
-                                            )}
+                                    <div style={{ fontSize: '11px', fontWeight: '900', color: 'var(--accent)' }}>{artist.monthlyListeners?.toLocaleString() || '---'}</div>
+                                    <div style={{ fontSize: '9px', color: '#444' }}>{artist.lastSyncedAt ? new Date(artist.lastSyncedAt).toLocaleDateString() : 'NEVER'}</div>
+                                </td>
+                                <td style={tdStyle}>
+                                    <span style={{ fontSize: '10px', color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '2px 6px', borderRadius: '4px' }}>ACTIVE</span>
+                                </td>
+                                <td style={tdStyle}>
+                                    {artist.user ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ color: '#00ff88', fontSize: '10px' }}>{artist.user.email}</span>
+                                            <span style={{ color: '#666', fontSize: '9px' }}>{artist.user.stageName}</span>
                                         </div>
                                     ) : (
-                                        <span style={{ fontSize: '10px', background: 'rgba(255, 255, 255, 0.05)', color: '#444', padding: '4px 10px', borderRadius: '4px', letterSpacing: '1px', fontWeight: '800' }}>
-                                            ROSTER_ONLY
-                                        </span>
+                                        <span style={{ color: '#444', fontSize: '10px' }}>UNLINKED</span>
                                     )}
                                 </td>
                                 <td style={tdStyle}>
-                                    <span style={{ color: artist.monthlyListeners ? 'var(--accent)' : '#444', fontWeight: '800', fontSize: '13px' }}>
-                                        {artist.monthlyListeners ? artist.monthlyListeners.toLocaleString() : '---'}
-                                    </span>
-                                </td>
-                                <td style={tdStyle}>{artist.demosCount || 0}</td>
-                                <td style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button onClick={(e) => { e.stopPropagation(); setSelectedArtist(artist); }} style={{ ...btnStyle, marginRight: '5px' }}>VIEW</button>
-                                        <button onClick={(e) => { e.stopPropagation(); onSync(artist.id, artist.spotifyUrl); }} style={{ ...btnStyle, color: '#fff', fontSize: '10px' }}>
-                                            {artist.spotifyUrl ? 'REFRESH' : 'SYNC'}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onSync(artist.userId, artist.spotifyUrl, artist.id);
+                                            }}
+                                            style={{ ...btnStyle, fontSize: '10px', padding: '5px 10px', background: 'rgba(255,255,255,0.05)' }}
+                                        >
+                                            <RefreshCw size={10} />
                                         </button>
-                                        {canManage && (
-                                            <>
-                                                <button onClick={(e) => { e.stopPropagation(); openEdit(artist); }} style={{ ...btnStyle, fontSize: '10px' }}>EDIT</button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(artist.id, artist.type); }} style={{ ...btnStyle, color: '#ff4444', fontSize: '10px' }}>DELETE</button>
-                                            </>
-                                        )}
+                                        <button style={{ ...btnStyle, fontSize: '10px', padding: '5px 10px' }}>MANAGE</button>
                                     </div>
                                 </td>
                             </tr>
                         ))}
-                        {filteredArtists.length === 0 && (
-                            <tr><td colSpan="6" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '50px' }}>NO ARTISTS FOUND</td></tr>
-                        )}
                     </tbody>
                 </table>
             </div>
@@ -754,6 +775,50 @@ function ArtistsView({ artists, onSync }) {
 function ReleasesView({ releases }) {
     const [activeTab, setActiveTab] = useState('all'); // 'upcoming', 'all'
     const [searchTerm, setSearchTerm] = useState('');
+    const [editingRelease, setEditingRelease] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const { showToast, showConfirm } = useToast();
+
+    const handleDelete = (id) => {
+        showConfirm(
+            "DELETE RELEASE?",
+            "Are you sure? This will delete the release definition. It might NOT delete the tracks from the database depending on configuration.",
+            async () => {
+                try {
+                    const res = await fetch(`/api/releases/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast("Release deleted", "success");
+                        // Trigger refresh? We might need to lift state or reload. 
+                        // For now, let's just reload page or ask parent to refresh if possible.
+                        // Ideally onRefresh prop should be passed to ReleasesView if checking updates.
+                        window.location.reload();
+                    } else {
+                        showToast("Failed to delete", "error");
+                    }
+                } catch (e) { showToast("Error deleting", "error"); }
+            }
+        );
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/releases/${editingRelease.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editingRelease)
+            });
+            if (res.ok) {
+                showToast("Release updated", "success");
+                setEditingRelease(null);
+                window.location.reload();
+            } else {
+                showToast("Failed to update", "error");
+            }
+        } catch (e) { showToast("Error updating", "error"); }
+        finally { setSaving(false); }
+    };
 
     const filteredReleases = releases.filter(r => {
         const matchesSearch = r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -794,8 +859,12 @@ function ReleasesView({ releases }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
                 {filteredReleases.map(release => (
                     <div key={release.id} style={{ ...glassStyle, padding: '20px' }}>
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden' }}>
-                            {release.image && <img src={release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {release.image ? (
+                                <img src={release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <Disc size={40} color="#222" />
+                            )}
                         </div>
                         <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {release.name}
@@ -806,6 +875,22 @@ function ReleasesView({ releases }) {
                         <p style={{ fontSize: '10px', color: '#666' }}>
                             {new Date(release.releaseDate || release.createdAt).toLocaleDateString()}
                         </p>
+
+                        {/* Edit/Delete Overlay */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
+                            <button
+                                onClick={() => setEditingRelease(release)}
+                                style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff', fontSize: '10px', fontWeight: '800' }}
+                            >
+                                EDIT
+                            </button>
+                            <button
+                                onClick={() => handleDelete(release.id)}
+                                style={{ padding: '8px', background: 'rgba(255,68,68,0.1)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#ff4444' }}
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        </div>
                     </div>
                 ))}
 
@@ -815,15 +900,98 @@ function ReleasesView({ releases }) {
                     </div>
                 )}
             </div>
-        </div>
+
+
+            {/* Edit Modal */}
+            {
+                editingRelease && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            style={{ ...glassStyle, padding: '30px', width: '500px', maxWidth: '90vw', border: '1px solid #333' }}
+                        >
+                            <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#fff', marginBottom: '20px' }}>EDIT RELEASE</h3>
+                            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div>
+                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE TITLE</label>
+                                    <input
+                                        value={editingRelease.name || ''}
+                                        onChange={e => setEditingRelease({ ...editingRelease, name: e.target.value })}
+                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ARTIST NAME</label>
+                                    <input
+                                        value={editingRelease.artistName || ''}
+                                        onChange={e => setEditingRelease({ ...editingRelease, artistName: e.target.value })}
+                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE DATE</label>
+                                        <input
+                                            type="date"
+                                            value={new Date(editingRelease.releaseDate).toISOString().split('T')[0]}
+                                            onChange={e => setEditingRelease({ ...editingRelease, releaseDate: e.target.value })}
+                                            style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>GENRE</label>
+                                        <input
+                                            value={editingRelease.genre || ''}
+                                            onChange={e => setEditingRelease({ ...editingRelease, genre: e.target.value })}
+                                            style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SPOTIFY URL</label>
+                                    <input
+                                        value={editingRelease.spotifyUrl || ''}
+                                        onChange={e => setEditingRelease({ ...editingRelease, spotifyUrl: e.target.value })}
+                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>COVER IMAGE URL</label>
+                                    <input
+                                        value={editingRelease.image || ''}
+                                        onChange={e => setEditingRelease({ ...editingRelease, image: e.target.value })}
+                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={() => setEditingRelease(null)} style={btnStyle}>CANCEL</button>
+                                    <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000' }}>
+                                        {saving ? 'SAVING...' : 'SAVE CHANGES'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )
+            }
+        </div >
     );
 }
 
 function UsersView({ users, onRoleChange, onRefresh }) {
+    const { showToast, showConfirm } = useToast();
     const roles = ['artist', 'a&r', 'admin'];
     const [editingUser, setEditingUser] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [saving, setSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = users.filter(user =>
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.stageName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const openEdit = (user) => {
         setEditingUser(user);
@@ -836,34 +1004,64 @@ function UsersView({ users, onRoleChange, onRefresh }) {
             stageName: user.stageName || '',
             spotifyUrl: user.spotifyUrl || '',
             role: user.role || 'artist',
+            status: user.status || 'pending',
             permissions: perms
         });
     };
 
-    const handleSave = async () => {
+    const handleSave = async (overrideData = null) => {
         setSaving(true);
         try {
+            const data = overrideData || {
+                userId: editingUser.id,
+                ...editForm,
+                permissions: JSON.stringify(editForm.permissions)
+            };
+
             await fetch('/api/admin/users', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: editingUser.id,
-                    ...editForm,
-                    permissions: JSON.stringify(editForm.permissions)
-                })
+                body: JSON.stringify(data)
             });
-            setEditingUser(null);
+            if (!overrideData) {
+                setEditingUser(null);
+                showToast("User updated successfully", "success");
+            }
             onRefresh();
-        } catch (e) { console.error(e); alert('Save failed'); }
-        finally { setSaving(false); }
+        } catch (e) {
+            console.error(e);
+            showToast('Save failed', "error");
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleDelete = async (userId) => {
-        if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
-        try {
-            await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
-            onRefresh();
-        } catch (e) { console.error(e); alert('Delete failed'); }
+    const handleApprove = (userId) => {
+        showConfirm(
+            "APPROVE USER?",
+            "Are you sure you want to approve this artist request? They will gain access to the dashboard.",
+            async () => {
+                await handleSave({ userId, status: 'approved' });
+                showToast("User approved", "success");
+            }
+        );
+    };
+
+    const handleDelete = (userId) => {
+        showConfirm(
+            "DELETE USER?",
+            "Are you sure you want to PERMANENTLY delete this user? This cannot be undone.",
+            async () => {
+                try {
+                    await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
+                    showToast("User deleted", "success");
+                    onRefresh();
+                } catch (e) {
+                    console.error(e);
+                    showToast('Delete failed', "error");
+                }
+            }
+        );
     };
 
     return (
@@ -903,6 +1101,15 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                     <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                                         style={{ ...inputStyle, width: '100%', background: '#0d0d0d' }}>
                                         {roles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>ACCOUNT_STATUS</label>
+                                    <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                        style={{ ...inputStyle, width: '100%', background: '#0d0d0d', color: editForm.status === 'approved' ? '#00ff88' : '#ff4444' }}>
+                                        <option value="pending">PENDING APPROVAL</option>
+                                        <option value="approved">APPROVED</option>
+                                        <option value="rejected">REJECTED</option>
                                     </select>
                                 </div>
                             </div>
@@ -964,7 +1171,7 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                         </div>
 
                         <div style={{ display: 'flex', gap: '15px', marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '30px' }}>
-                            <button onClick={handleSave} disabled={saving} className="glow-button" style={{ flex: 1, padding: '15px', fontWeight: '900' }}>
+                            <button onClick={() => handleSave()} disabled={saving} className="glow-button" style={{ flex: 1, padding: '15px', fontWeight: '900' }}>
                                 {saving ? 'SAVING_CHANGES...' : 'SAVE_PERMISSIONS'}
                             </button>
                             <button onClick={() => setEditingUser(null)} style={{ flex: 0.5, padding: '15px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px' }}>
@@ -975,42 +1182,65 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                 </div>
             )}
 
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ ...inputStyle, width: '300px', background: 'rgba(255,255,255,0.02)' }}
+                />
+                <div style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>
+                    {users.filter(u => u.status === 'pending').length} PENDING REGISTRATIONS
+                </div>
+            </div>
+
             <div className="glass" style={{ overflow: 'hidden', border: '1px solid #222' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr style={{ background: '#111' }}>
                             <th style={thStyle}>EMAIL</th>
                             <th style={thStyle}>NAME</th>
-                            <th style={thStyle}>SPOTIFY URL</th>
                             <th style={thStyle}>ROLE</th>
+                            <th style={thStyle}>STATUS</th>
                             <th style={thStyle}>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(user => (
-                            <tr key={user.id} style={{ borderBottom: '1px solid #1a1a1b' }}>
+                        {filteredUsers.map(user => (
+                            <tr key={user.id} style={{ borderBottom: '1px solid #1a1a1b', background: user.status === 'pending' ? 'rgba(255,170,0,0.02)' : 'transparent' }}>
                                 <td style={tdStyle}>{user.email}</td>
                                 <td style={tdStyle}>{user.stageName || user.fullName || '---'}</td>
-                                <td style={tdStyle}>
-                                    {user.spotifyUrl ? (
-                                        <a href={user.spotifyUrl} target="_blank" style={{ color: 'var(--accent)', fontSize: '10px' }}>VIEW</a>
-                                    ) : <span style={{ color: '#444' }}>---</span>}
-                                </td>
                                 <td style={tdStyle}>
                                     <span style={{ fontSize: '10px', fontWeight: '800', color: user.role === 'admin' ? 'var(--accent)' : '#888' }}>
                                         {user.role.toUpperCase()}
                                     </span>
                                 </td>
                                 <td style={tdStyle}>
+                                    <span style={{
+                                        fontSize: '9px',
+                                        fontWeight: '900',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        background: user.status === 'approved' ? 'rgba(0, 255, 136, 0.1)' : user.status === 'pending' ? 'rgba(255, 170, 0, 0.1)' : 'rgba(255, 68, 68, 0.1)',
+                                        color: user.status === 'approved' ? '#00ff88' : user.status === 'pending' ? '#ffaa00' : '#ff4444'
+                                    }}>
+                                        {user.status?.toUpperCase() || 'UNKNOWN'}
+                                    </span>
+                                </td>
+                                <td style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '10px' }}>
+                                        {user.status === 'pending' && (
+                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: '#00ff88', color: '#000', border: 'none' }}>APPROVE</button>
+                                        )}
                                         <button onClick={() => openEdit(user)} style={btnStyle}>EDIT</button>
                                         <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: '#ff4444' }}>DELETE</button>
                                     </div>
                                 </td>
                             </tr>
                         ))}
-                        {users.length === 0 && (
-                            <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '50px' }}>NO USERS</td></tr>
+                        {filteredUsers.length === 0 && (
+                            <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '50px' }}>NO USERS MATCHING SEARCH</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -1020,6 +1250,7 @@ function UsersView({ users, onRoleChange, onRefresh }) {
 }
 
 function WebhooksView({ webhooks, onRefresh, onTest }) {
+    const { showToast, showConfirm } = useToast();
     const [showAdd, setShowAdd] = useState(false);
     const [editingWebhook, setEditingWebhook] = useState(null);
     const [form, setForm] = useState({ name: '', url: '', events: '', enabled: true });
@@ -1066,17 +1297,31 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                 });
             }
             resetForm();
+            showToast("Webhook configuration saved", "success");
             onRefresh();
-        } catch (e) { console.error(e); alert('Save failed'); }
-        finally { setSaving(false); }
+        } catch (e) {
+            console.error(e);
+            showToast('Save failed', "error");
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm('Delete this webhook?')) return;
-        try {
-            await fetch(`/api/admin/webhooks?id=${id}`, { method: 'DELETE' });
-            onRefresh();
-        } catch (e) { console.error(e); }
+    const handleDelete = (id) => {
+        showConfirm(
+            "DELETE WEBHOOK?",
+            "Are you sure you want to delete this webhook? It will stop receiving events immediately.",
+            async () => {
+                try {
+                    await fetch(`/api/admin/webhooks?id=${id}`, { method: 'DELETE' });
+                    showToast("Webhook deleted", "success");
+                    onRefresh();
+                } catch (e) {
+                    console.error(e);
+                    showToast("Delete failed", "error");
+                }
+            }
+        );
     };
 
     const handleToggle = async (webhook) => {
@@ -1099,8 +1344,8 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                     embeds: [{ title: '🔔 Webhook Test', description: 'This is a test notification from LOST Admin Panel.', color: 0x00ff88 }]
                 })
             });
-            alert('Test sent!');
-        } catch (e) { alert('Test failed'); }
+            showToast('Test webhook sent!', "success");
+        } catch (e) { showToast('Test failed', "error"); }
     };
 
     return (
@@ -1316,6 +1561,8 @@ function HomeView() {
     const cards = [
         { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: '#00ff88', icon: <Mic2 size={20} /> },
         { label: 'TOTAL_USERS', value: stats.counts.users, color: '#0088ff', icon: <Users size={20} /> },
+        { label: 'TOTAL_ALBUMS', value: stats.counts.albums || 0, color: '#aa00ff', icon: <Disc size={20} /> },
+        { label: 'TOTAL_SONGS', value: stats.counts.songs || 0, color: '#ff00aa', icon: <Mic2 size={20} /> },
         { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: '#ffaa00', icon: <FileAudio size={20} /> },
         { label: 'PENDING_REQUESTS', value: stats.counts.pendingRequests, color: '#ff4444', icon: <AlertCircle size={20} /> }
     ];
@@ -1427,6 +1674,7 @@ function HomeView() {
 }
 
 function RequestsView({ requests, onUpdateStatus }) {
+    const { showToast, showConfirm } = useToast();
     const { data: session } = useSession();
     const [processing, setProcessing] = useState(null);
     const [selectedRequest, setSelectedRequest] = useState(null);
@@ -1444,13 +1692,24 @@ function RequestsView({ requests, onUpdateStatus }) {
                 status === 'completed' ? 'complete' :
                     status === 'needs_action' ? 'mark as needing action' : status;
 
-        if (!confirm(`Are you sure you want to ${statusVerb.toUpperCase()} this request?`)) return;
-        setProcessing(id);
-        await onUpdateStatus(id, status, adminNote, extra.assignedToId);
-        setProcessing(null);
-        if (selectedRequest && selectedRequest.id === id) {
-            setSelectedRequest(prev => ({ ...prev, status, adminNote, ...extra }));
-        }
+        showConfirm(
+            `${status.toUpperCase().replace('_', ' ')}?`,
+            `Are you sure you want to ${statusVerb} this request? This will notify the user.`,
+            async () => {
+                setProcessing(id);
+                try {
+                    await onUpdateStatus(id, status, adminNote, extra.assignedToId);
+                    showToast(`Request ${status}`, "success");
+                    if (selectedRequest && selectedRequest.id === id) {
+                        setSelectedRequest(prev => ({ ...prev, status, adminNote, ...extra }));
+                    }
+                } catch (e) {
+                    showToast("Failed to update request", "error");
+                } finally {
+                    setProcessing(null);
+                }
+            }
+        );
     };
 
     const getStatusStyles = (status) => {
@@ -1676,6 +1935,7 @@ function RequestsView({ requests, onUpdateStatus }) {
 }
 
 function SettingsView() {
+    const { showToast, showConfirm } = useToast();
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(true);
@@ -1750,9 +2010,13 @@ function SettingsView() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ config })
             });
-            alert('Settings saved!');
-        } catch (e) { alert('Failed to save'); }
-        finally { setSaving(false); }
+            showToast('System settings saved successfully', "success");
+        } catch (e) {
+            console.error(e);
+            showToast('Failed to save settings', "error");
+        } finally {
+            setSaving(false);
+        }
     };
 
     const toggle = (key) => {
@@ -1947,9 +2211,11 @@ function SettingsView() {
 }
 
 function ContentView({ content, onRefresh }) {
+    const { showToast, showConfirm } = useToast();
     const [editing, setEditing] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [editContent, setEditContent] = useState('');
+    const [faqItems, setFaqItems] = useState([]); // Added for structured FAQ editing
     const [saving, setSaving] = useState(false);
 
     const contentTypes = [
@@ -1960,22 +2226,48 @@ function ContentView({ content, onRefresh }) {
     const handleEdit = (item) => {
         setEditing(item?.key || null);
         setEditTitle(item?.title || '');
-        setEditContent(item?.content || '');
+        const contentStr = item?.content || '';
+        setEditContent(contentStr);
+
+        // Handle structured FAQ items
+        if (item?.key === 'faq') {
+            try {
+                const parsed = contentStr ? JSON.parse(contentStr) : [];
+                setFaqItems(Array.isArray(parsed) ? parsed : []);
+            } catch (e) {
+                setFaqItems([]);
+            }
+        }
     };
 
     const handleSave = async () => {
         if (!editing) return;
         setSaving(true);
         try {
+            let finalContent = editContent;
+            if (editing === 'faq') {
+                finalContent = JSON.stringify(faqItems);
+            }
+
             await fetch('/api/admin/content', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: editing, title: editTitle, content: editContent })
+                body: JSON.stringify({ key: editing, title: editTitle, content: finalContent })
             });
             setEditing(null);
             onRefresh();
-        } catch (e) { console.error(e); }
+            showToast("Content updated successfully", "success");
+            onRefresh();
+        } catch (e) { console.error(e); showToast('Save failed', "error"); }
         finally { setSaving(false); }
+    };
+
+    const addFaqItem = () => setFaqItems([...faqItems, { q: '', a: '' }]);
+    const removeFaqItem = (index) => setFaqItems(faqItems.filter((_, i) => i !== index));
+    const updateFaqItem = (index, field, value) => {
+        const newItems = [...faqItems];
+        newItems[index][field] = value;
+        setFaqItems(newItems);
     };
 
     const getContent = (key) => content.find(c => c.key === key);
@@ -2011,13 +2303,41 @@ function ContentView({ content, onRefresh }) {
                                         placeholder="Title"
                                         style={{ width: '100%', padding: '10px', marginBottom: '10px', background: '#111', border: '1px solid #333', color: '#fff' }}
                                     />
-                                    <textarea
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                        placeholder="Content (can be JSON or plain text)"
-                                        rows={8}
-                                        style={{ width: '100%', padding: '10px', background: '#111', border: '1px solid #333', color: '#fff', resize: 'vertical' }}
-                                    />
+                                    {editing === 'faq' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            {faqItems.map((item, index) => (
+                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', border: '1px solid #222', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>QUESTION #{index + 1}</span>
+                                                        <button onClick={() => removeFaqItem(index)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '10px' }}>REMOVE</button>
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        value={item.q}
+                                                        onChange={(e) => updateFaqItem(index, 'q', e.target.value)}
+                                                        placeholder="Question..."
+                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff' }}
+                                                    />
+                                                    <textarea
+                                                        value={item.a}
+                                                        onChange={(e) => updateFaqItem(index, 'a', e.target.value)}
+                                                        placeholder="Answer..."
+                                                        rows={3}
+                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#888', resize: 'vertical' }}
+                                                    />
+                                                </div>
+                                            ))}
+                                            <button onClick={addFaqItem} style={{ ...btnStyle, alignSelf: 'flex-start' }}>+ ADD QUESTION</button>
+                                        </div>
+                                    ) : (
+                                        <textarea
+                                            value={editContent}
+                                            onChange={(e) => setEditContent(e.target.value)}
+                                            placeholder="Content (can be JSON or plain text)"
+                                            rows={8}
+                                            style={{ width: '100%', padding: '10px', background: '#111', border: '1px solid #333', color: '#fff', resize: 'vertical' }}
+                                        />
+                                    )}
                                     <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                                         <button onClick={handleSave} disabled={saving} className="glow-button" style={{ padding: '8px 20px' }}>
                                             {saving ? 'SAVING...' : 'SAVE'}
@@ -2041,16 +2361,199 @@ function ContentView({ content, onRefresh }) {
     );
 }
 
-function ContractsView({ contracts, onRefresh, artists, releases }) {
+const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist...", onClear }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const wrapperRef = useRef(null);
+
+    // Initial value display logic
+    const selectedArtist = artists.find(a => a.id === value);
+    const displayValue = searchTerm || (selectedArtist ? selectedArtist.name : '');
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setShowDropdown(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    const filteredArtists = artists.filter(a =>
+        a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.user?.stageName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div ref={wrapperRef} style={{ position: 'relative' }}>
+            <input
+                placeholder={placeholder}
+                value={displayValue}
+                onFocus={() => {
+                    setSearchTerm('');
+                    setShowDropdown(true);
+                }}
+                onChange={e => {
+                    setSearchTerm(e.target.value);
+                    setShowDropdown(true);
+                }}
+                style={{ ...inputStyle, padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px', width: '100%' }}
+            />
+            {value && !showDropdown && onClear && (
+                <button
+                    type="button"
+                    onClick={() => { onClear(); setSearchTerm(''); }}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#ff4444', fontSize: '16px', cursor: 'pointer' }}
+                >×</button>
+            )}
+
+            {showDropdown && (
+                <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0,
+                    background: '#111', border: '1px solid #333', borderRadius: '8px',
+                    maxHeight: '200px', overflowY: 'auto', zIndex: 100,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                    marginTop: '5px'
+                }}>
+                    {filteredArtists.length > 0 ? filteredArtists.map(a => (
+                        <div
+                            key={a.id}
+                            onClick={() => {
+                                onChange(a);
+                                setSearchTerm('');
+                                setShowDropdown(false);
+                            }}
+                            style={{ padding: '10px', borderBottom: '1px solid #222', cursor: 'pointer', fontSize: '12px', color: '#ccc' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#222'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                            <div style={{ fontWeight: 'bold' }}>{a.name}</div>
+                            {a.user && <div style={{ fontSize: '10px', color: '#666' }}>{a.user.email} {a.user.stageName ? `(${a.user.stageName})` : ''}</div>}
+                        </div>
+                    )) : (
+                        <div style={{ padding: '10px', color: '#666', fontSize: '12px' }}>No matches found</div>
+                    )}
+                    <div
+                        onClick={() => {
+                            if (onClear) onClear();
+                            setSearchTerm('');
+                            setShowDropdown(false);
+                        }}
+                        style={{ padding: '10px', borderTop: '1px solid #222', color: '#ff4444', cursor: 'pointer', fontSize: '12px', textAlign: 'center' }}
+                    >
+                        CLEAR SELECTION
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+function SplitRow({ split, index, onUpdate, onRemove, artists, effectiveShare }) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const wrapperRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setShowDropdown(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    const filteredArtists = artists.filter(a =>
+        a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.user?.stageName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr 1fr 40px', gap: '10px', alignItems: 'center', position: 'relative' }}>
+            <input
+                placeholder="Name (e.g. LXGHTLXSS)"
+                value={split.name}
+                onChange={e => {
+                    const newName = e.target.value;
+                    // Auto-link logic: Try to find exact match
+                    const match = artists.find(a => a.name.toLowerCase() === newName.toLowerCase());
+                    const update = { ...split, name: newName };
+
+                    if (match) {
+                        update.artistId = match.id;
+                        update.userId = match.userId || '';
+                    }
+                    // Optional: If we want to UNLINK when name no longer matches, uncomment below
+                    // else if (split.artistId) { 
+                    //     // Check if the current linked artist name still matches, if not, maybe keep it or unlink? 
+                    //     // For now let's only auto-link POSITIVE matches to avoid accidental unlinking of manual selections
+                    // }
+
+                    onUpdate(update);
+                }}
+                style={{ ...inputStyle, padding: '8px' }}
+            />
+            <div style={{ position: 'relative' }}>
+                <input
+                    type="number"
+                    placeholder="Share"
+                    value={split.percentage}
+                    onChange={e => onUpdate({ ...split, percentage: e.target.value })}
+                    style={{ ...inputStyle, padding: '8px', paddingRight: '20px' }}
+                />
+                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: '#444' }}>%</span>
+            </div>
+
+            {effectiveShare && (
+                <div style={{ fontSize: '9px', color: '#666', textAlign: 'center', lineHeight: '1' }}>
+                    <div style={{ fontWeight: '900', color: 'var(--accent)' }}>{effectiveShare}%</div>
+                    <div style={{ fontSize: '7px' }}>OF TOTAL</div>
+                </div>
+            )}
+
+            <ArtistPicker
+                artists={artists}
+                value={split.artistId}
+                placeholder="Select Artist..."
+                onChange={(a) => onUpdate({ ...split, artistId: a.id, userId: a.user?.id || '', name: a.name })}
+                onClear={() => onUpdate({ ...split, artistId: '', userId: '' })}
+            />
+
+            <button
+                type="button"
+                onClick={onRemove}
+                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}
+            >
+                <Trash2 size={14} />
+            </button>
+        </div>
+    );
+}
+
+function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) {
+    const { showToast, showConfirm } = useToast();
     const [showAdd, setShowAdd] = useState(false);
+    const [editingContract, setEditingContract] = useState(null);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         userId: '',
+        artistId: '',
+        primaryArtistName: '', // Fallback for display
         releaseId: '',
+        title: '',
+        isDemo: false,
         artistShare: 0.70,
         labelShare: 0.30,
         notes: '',
-        pdfUrl: ''
+        pdfUrl: '',
+        isValid: true,
+        splits: [{ name: '', percentage: 100, userId: '', artistId: '' }]
     });
     const [uploadingPdf, setUploadingPdf] = useState(false);
     const pdfInputRef = useRef(null);
@@ -2071,46 +2574,89 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
             const data = await res.json();
             if (data.success) {
                 setForm({ ...form, pdfUrl: data.pdfUrl });
+                showToast("PDF uploaded successfully", "success");
             } else {
-                alert(data.error || "Upload failed");
+                showToast(data.error || "Upload failed", "error");
             }
-        } catch (e) { alert("Error uploading PDF"); }
+        } catch (e) { showToast("Error uploading PDF", "error"); }
         finally { setUploadingPdf(false); }
     };
 
-    const handleCreate = async (e) => {
+    const handleSubmitContract = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch('/api/contracts', {
-                method: 'POST',
+            const url = editingContract ? '/api/contracts' : '/api/contracts';
+            const method = editingContract ? 'PATCH' : 'POST';
+            const body = {
+                ...form,
+                splits: form.splits.filter(s => s.name.trim() !== '')
+            };
+            if (editingContract) body.id = editingContract.id;
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
+                body: JSON.stringify(body)
             });
             if (res.ok) {
                 setShowAdd(false);
+                setEditingContract(null);
+                showToast(`Contract ${editingContract ? 'updated' : 'created'} successfully`, "success");
                 onRefresh();
             } else {
                 const data = await res.json();
-                alert(data.error || "Failed to create contract");
+                showToast(data.error || "Failed to save contract", "error");
             }
-        } catch (e) { alert("Error creating contract"); }
+        } catch (e) { showToast("Error saving contract", "error"); }
         finally { setSaving(false); }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm("Delete this contract? All linked earnings will be lost.")) return;
-        try {
-            await fetch(`/api/contracts/${id}`, { method: 'DELETE' });
-            onRefresh();
-        } catch (e) { alert("Delete failed"); }
+    const handleDeleteContract = async (id) => {
+        showConfirm(
+            "DELETE CONTRACT?",
+            "Are you sure you want to delete this contract? All linked earnings and data will be lost forever.",
+            async () => {
+                try {
+                    const res = await fetch(`/api/contracts?id=${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast("Contract deleted", "success");
+                        onRefresh();
+                    } else {
+                        showToast("Failed to delete contract", "error");
+                    }
+                } catch (e) {
+                    showToast("Error deleting contract", "error");
+                }
+            }
+        );
     };
+
+    const totalSplit = form.splits.reduce((s, a) => s + parseFloat(a.percentage || 0), 0);
 
     return (
         <div>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
-                    onClick={() => setShowAdd(!showAdd)}
+                    onClick={() => {
+                        if (!showAdd) {
+                            setForm({
+                                userId: '',
+                                artistId: '',
+                                primaryArtistName: '',
+                                releaseId: '',
+                                title: '',
+                                isDemo: false,
+                                artistShare: 0.70,
+                                labelShare: 0.30,
+                                notes: '',
+                                pdfUrl: '',
+                                isValid: true,
+                                splits: [{ name: '', percentage: 100, userId: '', artistId: '' }]
+                            });
+                        }
+                        setShowAdd(!showAdd);
+                    }}
                     style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}
                 >
                     <Plus size={14} /> NEW CONTRACT
@@ -2123,33 +2669,118 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
                     animate={{ opacity: 1, y: 0 }}
                     style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid var(--accent)' }}
                 >
-                    <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <form onSubmit={handleSubmitContract} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
-                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ARTIST (USER)</label>
-                            <select
-                                value={form.userId}
-                                onChange={e => setForm({ ...form, userId: e.target.value })}
-                                required
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
-                            >
-                                <option value="">Select Artist...</option>
-                                {artists.filter(a => a.type === 'registered').map(a => (
-                                    <option key={a.id} value={a.id}>{a.name} ({a.email})</option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>PRIMARY ARTIST</label>
+                                <button type="button" onClick={() => {
+                                    setForm({ ...form, splits: [...form.splits, { name: '', percentage: 0, userId: '', artistId: '' }] });
+                                    // Scroll to bottom or highlight splits?
+                                }} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '10px', cursor: 'pointer' }}>
+                                    + ADD FEATURED ARTIST
+                                </button>
+                            </div>
+                            <ArtistPicker
+                                artists={artists}
+                                value={form.artistId}
+                                onChange={(artist) => {
+                                    const update = {
+                                        artistId: artist.id,
+                                        userId: artist.userId || '', // Explicitly link user if available
+                                        primaryArtistName: artist.name
+                                    };
+
+                                    // Logic to auto-update splits if they are default
+                                    let newSplits = [...form.splits];
+                                    if (newSplits.length === 1 && (newSplits[0].name === '' || newSplits[0].name === form.primaryArtistName)) {
+                                        newSplits[0] = { name: artist.name, percentage: 100, userId: artist.userId || '', artistId: artist.id };
+                                    }
+
+                                    setForm({ ...form, ...update, splits: newSplits });
+                                }}
+                                onClear={() => setForm({ ...form, artistId: '', userId: '', primaryArtistName: '' })}
+                            />
+                            <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
+                                Don't see the artist? <button onClick={() => showToast('Please go to the Artists tab to create a new profile first.', "info")} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Create Profile</button>
+                            </div>
                         </div>
                         <div>
-                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE (SPOTIFY)</label>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE / APPROVED DEMO</label>
                             <select
-                                value={form.releaseId}
-                                onChange={e => setForm({ ...form, releaseId: e.target.value })}
+                                value={form.releaseId || form.demoId || ''} // Handle both releaseId and demoId
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    // Check if it's a Release or a Demo
+                                    const release = releases.find(r => r.id === val);
+                                    const demo = demos.find(d => d.id === val);
+
+                                    let newSplits = [...form.splits];
+                                    let update = { ...form };
+
+                                    if (release) {
+                                        update.releaseId = release.id;
+                                        update.demoId = '';
+                                        update.title = ''; // Reset custom title if release selected
+
+                                        // Attempt to parse artists from Release JSON
+                                        if (release.artistsJson) {
+                                            try {
+                                                const artists = JSON.parse(release.artistsJson);
+                                                if (artists.length > 0) {
+                                                    newSplits = artists.map(a => {
+                                                        const regArtist = artists.find(reg => reg.name === a.name || reg.stageName === a.name);
+                                                        return {
+                                                            name: a.name,
+                                                            percentage: Math.floor(100 / artists.length),
+                                                            userId: regArtist ? regArtist.id : '',
+                                                            artistId: regArtist ? regArtist.id : ''
+                                                        };
+                                                    });
+                                                    // Auto set primary artist if possible
+                                                    if (artists[0]) update.primaryArtistName = artists[0].name;
+                                                }
+                                            } catch (e) { console.error("Parse splits error", e); }
+                                        }
+                                    } else if (demo) {
+                                        update.releaseId = '';
+                                        update.demoId = demo.id;
+                                        update.title = demo.title; // Use demo title
+                                        // Demo usually has one artist linked
+                                        // We could try to set primary artist from Demo's artist if linked?
+                                        // demo.artistId is User ID usually in Schema?
+                                        // Wait, Demo artistId is User ID. 
+                                        // We might match it to an Artist Entity if linked.
+                                    } else {
+                                        update.releaseId = '';
+                                        update.demoId = '';
+                                    }
+
+                                    update.splits = newSplits;
+                                    setForm(update);
+                                }}
                                 required
                                 style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
                             >
-                                <option value="">Select Release...</option>
-                                {releases.map(r => (
-                                    <option key={r.id} value={r.id}>{r.name} - {r.artistName}</option>
-                                ))}
+                                <option value="">Select Release or Approved Demo...</option>
+                                <optgroup label="Approved Demos (Not Released)">
+                                    {demos.map(d => (
+                                        <option key={d.id} value={d.id}>DEMO: {d.title} ({new Date(d.createdAt).toLocaleDateString()})</option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="Spotify Releases">
+                                    {releases.map(r => {
+                                        let displayArtist = r.artistName;
+                                        if (r.artistsJson) {
+                                            try {
+                                                const allArtists = JSON.parse(r.artistsJson);
+                                                if (Array.isArray(allArtists) && allArtists.length > 0) {
+                                                    displayArtist = allArtists.map(a => a.name).join(', ');
+                                                }
+                                            } catch (e) { }
+                                        }
+                                        return <option key={r.id} value={r.id}>RELEASE: {r.name} - {displayArtist}</option>;
+                                    })}
+                                </optgroup>
                             </select>
                         </div>
                         <div>
@@ -2167,11 +2798,58 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
                         <div>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>LABEL SHARE (Calculated)</label>
                             <input
-                                type="number" readOnly
-                                value={form.labelShare.toFixed(2)}
-                                style={{ width: '100%', padding: '12px', background: '#111', border: '1px solid #222', color: '#444', borderRadius: '8px' }}
+                                type="number" step="0.01" min="0" max="1"
+                                value={form.labelShare}
+                                onChange={e => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val) && val >= 0 && val <= 1) {
+                                        // If label share is changed manually, do we update artist share?
+                                        // Usually they sum to 1. But user might want custom splits.
+                                        // Let's assume strict 1.0 sum for now, so updating label updates artist.
+                                        setForm({ ...form, labelShare: val, artistShare: parseFloat((1 - val).toFixed(2)) });
+                                    }
+                                }}
+                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
+                        <div style={{ padding: '20px', borderTop: '1px solid #333' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>ADDITIONAL ARTISTS & SPLITS</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setForm({
+                                        ...form,
+                                        splits: [...form.splits, { name: '', percentage: 0, userId: '', artistId: '' }]
+                                    })}
+                                    style={{ ...btnStyle, fontSize: '10px', padding: '5px 10px' }}
+                                >
+                                    + ADD ARTIST / CONTRIBUTOR
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '10px' }}>
+                                {form.splits.map((split, index) => (
+                                    <SplitRow
+                                        key={index}
+                                        split={split}
+                                        index={index}
+                                        artists={artists}
+                                        effectiveShare={((parseFloat(split.percentage || 0) / 100) * form.artistShare * 100).toFixed(1)}
+                                        onUpdate={(updated) => {
+                                            const newSplits = [...form.splits];
+                                            newSplits[index] = updated;
+                                            setForm({ ...form, splits: newSplits });
+                                        }}
+                                        onRemove={() => setForm({ ...form, splits: form.splits.filter((_, i) => i !== index) })}
+                                    />
+                                ))}
+                            </div>
+
+                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: totalSplit !== 100 ? '#ff4444' : '#00ff88' }}>
+                                TOTAL SPLIT: {totalSplit}% (SHOULD BE 100%)
+                            </div>
+                        </div>
+
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SIGNED CONTRACT PDF (OPTIONAL)</label>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -2206,7 +2884,7 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
                         <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
                             <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000' }}>
-                                {saving ? 'CREATING...' : 'CREATE CONTRACT'}
+                                {saving ? 'SAVING...' : editingContract ? 'SAVE CHANGES' : 'CREATE CONTRACT'}
                             </button>
                         </div>
                     </form>
@@ -2230,15 +2908,39 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
                         {contracts.map(c => (
                             <tr key={c.id}>
                                 <td style={tdStyle}>
-                                    <div style={{ fontWeight: '800', color: '#fff' }}>{c.release?.name}</div>
-                                    <div style={{ fontSize: '9px', color: '#444' }}>{c.releaseId}</div>
+                                    <div style={{ fontWeight: '800', color: '#fff' }}>{c.release?.name || c.title || 'Untitled Contract'}</div>
+                                    <div style={{ fontSize: '9px', color: '#444' }}>{c.releaseId ? 'SPOTIFY_RELEASE' : 'MANUAL / DEMO'}</div>
                                 </td>
                                 <td style={tdStyle}>
-                                    <div style={{ fontWeight: '800' }}>{c.user?.stageName || c.user?.fullName}</div>
-                                    <div style={{ fontSize: '10px', color: '#555' }}>{c.user?.email}</div>
+                                    <div style={{ fontWeight: '800' }}>{c.artist?.name || c.primaryArtistName || c.user?.stageName || 'Unknown Artist'}</div>
+                                    {c.splits.length > 1 && (
+                                        <div style={{ fontSize: '9px', color: '#888', marginTop: '2px' }}>
+                                            + {c.splits.length - 1} OTHERS: {c.splits.filter(s => s.name !== (c.primaryArtistName || c.user?.stageName)).map(s => s.name).join(', ')}
+                                        </div>
+                                    )}
+                                    <div style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>
+                                        {c.user ? (
+                                            <span style={{ color: '#00ff88' }}>LINKED: {c.user.email}</span>
+                                        ) : (
+                                            <span style={{ color: '#666' }}>NO ACCOUNT LINKED</span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td style={tdStyle}>
-                                    <span style={{ color: '#00ff88' }}>{Math.round(c.artistShare * 100)}%</span> / <span>{Math.round(c.labelShare * 100)}%</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <div style={{ fontSize: '10px', fontWeight: '900' }}>
+                                            ARTIST: <span style={{ color: '#00ff88' }}>{Math.round(c.artistShare * 100)}%</span> / LABEL: <span style={{ color: 'var(--accent)' }}>{Math.round(c.labelShare * 100)}%</span>
+                                        </div>
+                                        {c.splits?.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
+                                                {c.splits.map((s, i) => (
+                                                    <span key={i} style={{ fontSize: '8px', padding: '2px 5px', background: 'rgba(255,255,255,0.03)', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.05)', color: '#888' }}>
+                                                        {s.name}: <span style={{ color: '#fff' }}>{s.percentage}%</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </td>
                                 <td style={tdStyle}>
                                     {c._count?.earnings || 0} Records
@@ -2258,7 +2960,32 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
                                     )}
                                 </td>
                                 <td style={tdStyle}>
-                                    <button onClick={() => handleDelete(c.id)} style={{ ...btnStyle, color: '#ff4444' }}>
+                                    <button onClick={() => {
+                                        setEditingContract(c);
+                                        setForm({
+                                            userId: c.userId || '',
+                                            artistId: c.artistId || '',
+                                            primaryArtistName: c.primaryArtistName || '',
+                                            releaseId: c.releaseId || '',
+                                            isDemo: !c.releaseId,
+                                            // Handle demoId logic if needed, but releaseId check suffices usually
+                                            artistShare: c.artistShare,
+                                            labelShare: c.labelShare,
+                                            notes: c.notes || '',
+                                            pdfUrl: c.pdfUrl || '',
+                                            isValid: true,
+                                            splits: c.splits.map(s => ({
+                                                name: s.name,
+                                                percentage: s.percentage,
+                                                userId: s.userId || '',
+                                                artistId: s.artistId || ''
+                                            }))
+                                        });
+                                        setShowAdd(true);
+                                    }} style={{ ...btnStyle, marginRight: '5px' }}>
+                                        EDIT
+                                    </button>
+                                    <button onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, color: '#ff4444' }}>
                                         <Trash2 size={12} />
                                     </button>
                                 </td>
@@ -2275,12 +3002,15 @@ function ContractsView({ contracts, onRefresh, artists, releases }) {
 }
 
 function EarningsView({ earnings, onRefresh, contracts }) {
+    const { showToast, showConfirm } = useToast();
     const [showAdd, setShowAdd] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [editingId, setEditingId] = useState(null); // New: Track which ID is being edited
     const [form, setForm] = useState({
         contractId: '',
         period: new Date().toISOString().slice(0, 7), // YYYY-MM
         grossAmount: '',
+        expenseAmount: '', // New field for Ad Spend / Expenses
         streams: '',
         source: 'spotify'
     });
@@ -2289,20 +3019,64 @@ function EarningsView({ earnings, onRefresh, contracts }) {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch('/api/earnings', {
-                method: 'POST',
+            const url = editingId ? `/api/earnings/${editingId}` : '/api/earnings';
+            const method = editingId ? 'PATCH' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form)
             });
             if (res.ok) {
                 setShowAdd(false);
+                setEditingId(null); // Reset editing state
+                setForm({
+                    contractId: '',
+                    period: new Date().toISOString().slice(0, 7),
+                    grossAmount: '',
+                    expenseAmount: '',
+                    streams: '',
+                    source: 'spotify'
+                });
+                showToast(editingId ? "Earning record updated" : "Earning record added", "success");
                 onRefresh();
             } else {
                 const data = await res.json();
-                alert(data.error || "Failed to add earning");
+                showToast(data.error || "Failed to save earning", "error");
             }
-        } catch (e) { alert("Error adding earning"); }
+        } catch (e) { showToast("Error saving earning", "error"); }
         finally { setSaving(false); }
+    };
+
+    const handleEdit = (earning) => {
+        setEditingId(earning.id);
+        setForm({
+            contractId: earning.contractId,
+            period: earning.period,
+            grossAmount: earning.grossAmount,
+            expenseAmount: earning.expenseAmount || '',
+            streams: earning.streams || '',
+            source: earning.source || 'spotify'
+        });
+        setShowAdd(true);
+    };
+
+    const handleDelete = (id) => {
+        showConfirm(
+            "DELETE RECORD?",
+            "Are you sure you want to delete this earning record? This cannot be undone.",
+            async () => {
+                try {
+                    const res = await fetch(`/api/earnings/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast("Record deleted", "success");
+                        onRefresh();
+                    } else {
+                        showToast("Failed to delete", "error");
+                    }
+                } catch (e) { showToast("Error deleting", "error"); }
+            }
+        );
     };
 
     const totalGross = earnings.reduce((sum, e) => sum + e.grossAmount, 0);
@@ -2328,10 +3102,21 @@ function EarningsView({ earnings, onRefresh, contracts }) {
 
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button
-                    onClick={() => setShowAdd(!showAdd)}
+                    onClick={() => {
+                        setEditingId(null);
+                        setForm({
+                            contractId: '',
+                            period: new Date().toISOString().slice(0, 7),
+                            grossAmount: '',
+                            expenseAmount: '',
+                            streams: '',
+                            source: 'spotify'
+                        });
+                        setShowAdd(!showAdd);
+                    }}
                     style={{ ...btnStyle, background: '#fff', color: '#000', border: 'none' }}
                 >
-                    <Plus size={14} /> ADD MANUAL EARNING
+                    <Plus size={14} /> {showAdd && !editingId ? 'CLOSE' : 'ADD MANUAL EARNING'}
                 </button>
             </div>
 
@@ -2341,6 +3126,9 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                     animate={{ opacity: 1, x: 0 }}
                     style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid #fff' }}
                 >
+                    <div style={{ marginBottom: '15px', color: editingId ? 'var(--accent)' : '#fff', fontWeight: '900', fontSize: '11px', letterSpacing: '2px' }}>
+                        {editingId ? 'EDITING EARNING RECORD' : 'NEW EARNING RECORD'}
+                    </div>
                     <form onSubmit={handleAdd} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>CONTRACT (RELEASE + ARTIST)</label>
@@ -2351,9 +3139,15 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="">Select Contract...</option>
-                                {contracts.map(c => (
-                                    <option key={c.id} value={c.id}>{c.release?.name} - {c.user?.stageName || c.user?.fullName}</option>
-                                ))}
+                                {contracts.map(c => {
+                                    const releaseName = c.release?.name || c.title || 'Untitled Release';
+                                    const artistName = c.artist?.name || c.user?.stageName || c.user?.fullName || c.primaryArtistName || 'Unknown Artist';
+                                    return (
+                                        <option key={c.id} value={c.id}>
+                                            {releaseName} - {artistName}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
                         <div>
@@ -2376,6 +3170,15 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                             />
                         </div>
                         <div>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>AD SPEND / EXPENSES ($)</label>
+                            <input
+                                type="number" step="0.01"
+                                value={form.expenseAmount}
+                                onChange={e => setForm({ ...form, expenseAmount: e.target.value })}
+                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                            />
+                        </div>
+                        <div>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>STREAMS (OPTIONAL)</label>
                             <input
                                 type="number"
@@ -2394,13 +3197,14 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 <option value="spotify">Spotify</option>
                                 <option value="apple">Apple Music</option>
                                 <option value="youtube">YouTube</option>
+                                <option value="ad_revenue">Ad Revenue (Meta/TikTok/etc)</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
                         <div style={{ gridColumn: 'span 3', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
                             <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000' }}>
-                                {saving ? 'ADDING...' : 'ADD RECORD'}
+                                {saving ? 'SAVING...' : (editingId ? 'UPDATE RECORD' : 'ADD RECORD')}
                             </button>
                         </div>
                     </form>
@@ -2414,9 +3218,11 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                             <th style={thStyle}>PERIOD</th>
                             <th style={thStyle}>RELEASE / ARTIST</th>
                             <th style={thStyle}>GROSS</th>
+                            <th style={thStyle}>EXPENSES</th>
                             <th style={thStyle}>ARTIST PAY</th>
                             <th style={thStyle}>STREAMS</th>
                             <th style={thStyle}>SOURCE</th>
+                            <th style={thStyle}>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2428,13 +3234,32 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                     <div style={{ fontSize: '10px', color: '#666' }}>{e.contract?.user?.stageName || e.contract?.user?.fullName}</div>
                                 </td>
                                 <td style={tdStyle}>${e.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td style={tdStyle}>${(e.expenseAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td style={tdStyle}>
                                     <div style={{ color: '#00ff88', fontWeight: '800' }}>${e.artistAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                     <div style={{ fontSize: '8px', color: '#444' }}>({Math.round(e.contract?.artistShare * 100)}%)</div>
                                 </td>
                                 <td style={tdStyle}>{e.streams?.toLocaleString() || '---'}</td>
                                 <td style={tdStyle}>
-                                    <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#666' }}>{e.source}</span>
+                                    <div style={{ fontSize: '11px', color: '#fff', textTransform: 'uppercase', fontWeight: '800' }}>{e.source}</div>
+                                </td>
+                                <td style={tdStyle}>
+                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                        <button
+                                            onClick={() => handleEdit(e)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}
+                                            title="Edit"
+                                        >
+                                            <Edit2 size={14} color="#aaa" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(e.id)}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={14} color="#ff4444" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -2449,7 +3274,9 @@ function EarningsView({ earnings, onRefresh, contracts }) {
 }
 
 function PaymentsView({ payments, onRefresh, users }) {
+    const { showToast, showConfirm } = useToast();
     const [showAdd, setShowAdd] = useState(false);
+    const [editingPayment, setEditingPayment] = useState(null);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         userId: '',
@@ -2460,31 +3287,69 @@ function PaymentsView({ payments, onRefresh, users }) {
         status: 'completed'
     });
 
-    const handleAdd = async (e) => {
+    const handleSubmitPayment = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch('/api/payments', {
-                method: 'POST',
+            const url = editingPayment ? '/api/payments' : '/api/payments';
+            const method = editingPayment ? 'PATCH' : 'POST';
+            const body = { ...form };
+            if (editingPayment) body.id = editingPayment.id;
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
+                body: JSON.stringify(body)
             });
             if (res.ok) {
                 setShowAdd(false);
+                setEditingPayment(null);
+                showToast(`Payment ${editingPayment ? 'updated' : 'recorded'} successfully`, "success");
                 onRefresh();
             } else {
                 const data = await res.json();
-                alert(data.error || "Failed to record payment");
+                showToast(data.error || "Failed to save payment", "error");
             }
-        } catch (e) { alert("Error recording payment"); }
+        } catch (e) { showToast("Error saving payment", "error"); }
         finally { setSaving(false); }
+    };
+
+    const handleDeletePayment = async (id) => {
+        showConfirm(
+            "DELETE PAYMENT?",
+            "Are you sure you want to delete this payment record?",
+            async () => {
+                try {
+                    const res = await fetch(`/api/payments?id=${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast("Payment record deleted", "success");
+                        onRefresh();
+                    } else {
+                        showToast("Delete failed", "error");
+                    }
+                } catch (e) { showToast("Delete error", "error"); }
+            }
+        );
     };
 
     return (
         <div>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
-                    onClick={() => setShowAdd(!showAdd)}
+                    onClick={() => {
+                        if (!showAdd) {
+                            setForm({
+                                userId: '',
+                                amount: '',
+                                method: 'bank_transfer',
+                                reference: '',
+                                notes: '',
+                                status: 'completed'
+                            });
+                            setEditingPayment(null);
+                        }
+                        setShowAdd(!showAdd);
+                    }}
                     style={{ ...btnStyle, background: '#00ff88', color: '#000', border: 'none' }}
                 >
                     <Plus size={14} /> RECORD PAYMENT
@@ -2497,7 +3362,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                     animate={{ opacity: 1, scale: 1 }}
                     style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid #00ff88' }}
                 >
-                    <form onSubmit={handleAdd} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                    <form onSubmit={handleSubmitPayment} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ARTIST / USER</label>
                             <select
@@ -2507,7 +3372,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="">Select Recipient...</option>
-                                {users.filter(u => u.role === 'artist' || u.role === 'a&r').map(u => (
+                                {users.filter(u => u.role === 'artist' || u.role === 'a&r' || u.role === 'admin').map(u => (
                                     <option key={u.id} value={u.id}>{u.stageName || u.fullName} ({u.email})</option>
                                 ))}
                             </select>
@@ -2558,7 +3423,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                         <div style={{ gridColumn: 'span 3', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
                             <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#00ff88', color: '#000' }}>
-                                {saving ? 'RECORDING...' : 'RECORD PAYMENT'}
+                                {saving ? 'SAVING...' : editingPayment ? 'SAVE CHANGES' : 'RECORD PAYMENT'}
                             </button>
                         </div>
                     </form>
@@ -2575,6 +3440,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                             <th style={thStyle}>METHOD</th>
                             <th style={thStyle}>REFERENCE</th>
                             <th style={thStyle}>STATUS</th>
+                            <th style={thStyle}>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2604,10 +3470,29 @@ function PaymentsView({ payments, onRefresh, users }) {
                                         {p.status.toUpperCase()}
                                     </span>
                                 </td>
+                                <td style={tdStyle}>
+                                    <button onClick={() => {
+                                        setEditingPayment(p);
+                                        setForm({
+                                            userId: p.userId || '',
+                                            amount: p.amount,
+                                            method: p.method,
+                                            reference: p.reference || '',
+                                            notes: p.notes || '',
+                                            status: p.status
+                                        });
+                                        setShowAdd(true);
+                                    }} style={{ ...btnStyle, marginRight: '5px' }}>
+                                        EDIT
+                                    </button>
+                                    <button onClick={() => handleDeletePayment(p.id)} style={{ ...btnStyle, color: '#ff4444' }}>
+                                        DELETE
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                         {payments.length === 0 && (
-                            <tr><td colSpan="6" style={{ ...tdStyle, textAlign: 'center', padding: '50px' }}>NO PAYMENTS RECORDED</td></tr>
+                            <tr><td colSpan="7" style={{ ...tdStyle, textAlign: 'center', padding: '50px' }}>NO PAYMENTS RECORDED</td></tr>
                         )}
                     </tbody>
                 </table>
