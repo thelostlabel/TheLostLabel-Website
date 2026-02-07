@@ -19,6 +19,7 @@
 
 # local data
 /private/uploads
+/private/db
 /prisma/*.db
 /public/uploads
 

@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -19,17 +21,24 @@ export async function POST(req) {
             return new Response("Missing file or releaseId", { status: 400 });
         }
 
+        if (!file.type?.startsWith('image/')) {
+            return new Response("Invalid image type", { status: 400 });
+        }
+        if (file.size > MAX_IMAGE_BYTES) {
+            return new Response("Image too large (max 10MB)", { status: 400 });
+        }
+
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const uploadDir = join(process.cwd(), 'public', 'uploads', 'covers');
+        const uploadDir = join(process.cwd(), 'private', 'uploads', 'releases');
         await mkdir(uploadDir, { recursive: true });
 
         const filename = `${releaseId}_${Date.now()}_${file.name}`;
         const path = join(uploadDir, filename);
         await writeFile(path, buffer);
 
-        const imageUrl = `/uploads/covers/${filename}`;
+        const imageUrl = `private/uploads/releases/${filename}`;
 
         await prisma.release.update({
             where: { id: releaseId },

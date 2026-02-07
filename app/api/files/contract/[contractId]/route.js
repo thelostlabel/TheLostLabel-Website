@@ -12,11 +12,12 @@ const MIME_BY_EXT = {
 
 const resolveStoragePath = (filepath) => {
   if (!filepath) return null;
-  if (isAbsolute(filepath)) return filepath;
-  if (filepath.startsWith("/uploads/")) {
-    return join(process.cwd(), "public", filepath.replace(/^\/+/, ""));
-  }
-  return join(process.cwd(), filepath.replace(/^\/+/, ""));
+  const root = process.cwd();
+  const candidate = isAbsolute(filepath)
+    ? filepath
+    : join(root, filepath.replace(/^\/+/, ""));
+  if (!candidate.startsWith(root)) return null;
+  return candidate;
 };
 
 export async function GET(req, { params }) {

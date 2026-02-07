@@ -8,7 +8,7 @@ export async function PATCH(req, { params }) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const data = await req.json();
 
     try {
@@ -37,7 +37,7 @@ export async function DELETE(req, { params }) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     try {
         // Optional: clean up contracts or requests if needed, but let's try direct delete first

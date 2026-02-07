@@ -236,11 +236,16 @@ export default function ArtistDetailPage() {
                                             background: 'rgba(255,255,255,0.02)',
                                             borderRadius: '12px'
                                         }}>
-                                            <img
-                                                src={release.image || '/placeholder.png'}
-                                                alt={release.name}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            />
+                                            {(() => {
+                                                const coverSrc = release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : (release.image || '/placeholder.png');
+                                                return (
+                                                    <img
+                                                        src={coverSrc}
+                                                        alt={release.name}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                );
+                                            })()}
                                         </div>
                                         <h3 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {release.name}

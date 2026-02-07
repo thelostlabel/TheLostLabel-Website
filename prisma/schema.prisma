@@ -103,7 +103,7 @@ model Artist {
 }
 
 model Release {
-  id              String          @id
+  id              String          @id @default(uuid())
   name            String
   artistName      String?
   image           String?
