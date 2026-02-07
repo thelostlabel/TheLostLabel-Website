@@ -105,6 +105,7 @@ export default function ProjectView({ projectId, onBack, user }) {
     if (!project) return <div style={{ padding: '50px', textAlign: 'center', color: 'red' }}>PROJECT NOT FOUND</div>;
 
     const currentStageIndex = getCurrentStageIndex(project);
+    const demoFileUrl = project.files?.[0] ? `/api/files/demo/${project.files[0].id}` : null;
     const progress = (currentStageIndex / (stages.length - 1)) * 100;
 
     return (
@@ -187,7 +188,7 @@ export default function ProjectView({ projectId, onBack, user }) {
                         {/* Audio Player if pending */}
                         {project.files?.[0] && (
                             <button
-                                onClick={() => handlePlay(project.files[0].filepath || project.trackLink)} // Assuming trackLink or file path
+                                onClick={() => handlePlay(demoFileUrl || project.trackLink)}
                                 style={{ ...btnStyle, background: 'rgba(255,255,255,0.1)', color: '#fff' }}
                             >
                                 {playing ? <Pause size={14} /> : <Play size={14} />}

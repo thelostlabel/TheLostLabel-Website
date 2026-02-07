@@ -117,6 +117,8 @@ export default function DemoReviewPage({ params }) {
         }
     };
 
+    const activeFileUrl = activeFile ? `/api/files/demo/${activeFile.id}` : null;
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
             {/* Header / Nav */}
@@ -202,14 +204,14 @@ export default function DemoReviewPage({ params }) {
                                     <p style={{ fontSize: '12px', color: '#555', marginBottom: '20px' }}>
                                         NOW MONITORING: <span style={{ color: '#fff', fontWeight: '800' }}>{activeFile.filename.toUpperCase()}</span>
                                     </p>
-                                    <audio controls key={activeFile.filepath} style={{ width: '100%', height: '54px' }}>
-                                        <source src={activeFile.filepath} type="audio/wav" />
-                                        <source src={activeFile.filepath} type="audio/mpeg" />
+                                    <audio controls key={activeFileUrl} style={{ width: '100%', height: '54px' }}>
+                                        <source src={activeFileUrl} type="audio/wav" />
+                                        <source src={activeFileUrl} type="audio/mpeg" />
                                         Your browser does not support the audio element.
                                     </audio>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-                                    <a href={activeFile.filepath} download className="btn-secondary" style={{ padding: '12px 25px', fontSize: '11px', letterSpacing: '1px' }}>
+                                    <a href={`${activeFileUrl}?download=1`} download className="btn-secondary" style={{ padding: '12px 25px', fontSize: '11px', letterSpacing: '1px' }}>
                                         DOWNLOAD SOURCE FILE
                                     </a>
                                 </div>
