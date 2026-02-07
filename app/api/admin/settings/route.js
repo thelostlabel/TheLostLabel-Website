@@ -17,7 +17,11 @@ export async function GET(req) {
                 allowAudio: true,
                 allowDelete: true,
                 allowOther: true,
-                genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other']
+                genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
+                featuredReleaseId: null,
+                featuredReleaseLabel: 'FEATURED RELEASE',
+                featuredReleaseSubLabel: 'NOW STREAMING',
+                featuredReleaseStatus: 'Featured'
             };
             settings = await prisma.systemSettings.create({
                 data: {

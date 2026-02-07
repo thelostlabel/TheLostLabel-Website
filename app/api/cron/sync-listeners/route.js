@@ -78,8 +78,8 @@ export async function POST(req) {
                 // Small delay between requests to avoid rate limiting
                 await new Promise(r => setTimeout(r, 2000));
             } catch (err) {
-                console.error(`[Cron] Error for ${artist.stageName}:`, err.message);
-                results.push({ id: artist.id, stageName: artist.stageName, success: false, error: err.message });
+                console.error(`[Cron] Error for ${artistItem.stageName || artistItem.id}:`, err.message);
+                results.push({ id: artistItem.id, stageName: artistItem.stageName, success: false, error: err.message });
                 errorCount++;
             }
         }

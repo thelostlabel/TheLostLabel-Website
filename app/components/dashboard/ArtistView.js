@@ -766,7 +766,7 @@ function ReleaseCard({ release, getRequestStatus, setRequestModal, onNavigate })
         <div style={{ ...glassStyle, padding: '15px' }}>
             <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden' }}>
                 {release.image ? (
-                    <img src={release.image} alt={release.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>NO ART</div>
                 )}

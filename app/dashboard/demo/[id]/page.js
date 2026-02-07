@@ -8,18 +8,19 @@ import { ChevronRight, ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 
 const glassStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.05)',
+    background: 'var(--surface)',
+    backdropFilter: 'blur(18px)',
+    border: '1px solid var(--border)',
     borderRadius: '16px',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.35)'
 };
 
 const inputStyle = {
     width: '100%',
     padding: '12px 15px',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: '8px',
     color: '#fff',
     fontSize: '12px',
@@ -110,9 +111,9 @@ export default function DemoReviewPage({ params }) {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'approved': return '#00ff88';
+            case 'approved': return 'var(--accent)';
             case 'rejected': return '#ff4444';
-            case 'reviewing': return '#ffaa00';
+            case 'reviewing': return '#f5c542';
             default: return '#888';
         }
     };
@@ -127,7 +128,7 @@ export default function DemoReviewPage({ params }) {
                     fontSize: '10px',
                     fontWeight: '800',
                     letterSpacing: '2px',
-                    color: '#666',
+                    color: '#8b92a7',
                     textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
@@ -149,15 +150,15 @@ export default function DemoReviewPage({ params }) {
                             {demo.status.toUpperCase()} SUBMISSION
                         </p>
                         <h1 style={{ fontSize: '48px', marginBottom: '15px', fontWeight: '900', letterSpacing: '-1px' }}>{demo.title}</h1>
-                        <div style={{ display: 'flex', gap: '30px', color: '#666', fontSize: '13px', fontWeight: '600' }}>
-                            <span style={{ color: '#aaa' }}>{demo.genre}</span>
+                        <div style={{ display: 'flex', gap: '30px', color: '#8b92a7', fontSize: '13px', fontWeight: '600' }}>
+                            <span style={{ color: '#cdd3e1' }}>{demo.genre}</span>
                             <span>•</span>
                             <span>Submitted {new Date(demo.createdAt).toLocaleDateString()} at {new Date(demo.createdAt).toLocaleTimeString()}</span>
                         </div>
                     </div>
 
                     {/* Artist Box */}
-                    <div style={{ background: '#0a0a0b', border: '1px solid #1a1a1b', padding: '30px', borderRadius: '8px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '30px', borderRadius: '8px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <p style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '8px' }}>ARTIST PROFILE</p>
                             <h2 style={{ fontSize: '24px' }}>{demo.artist?.stageName || 'Anonymous'}</h2>
@@ -174,13 +175,13 @@ export default function DemoReviewPage({ params }) {
                     <div style={{ marginBottom: '40px' }}>
                         <h4 style={{ fontSize: '11px', color: '#444', letterSpacing: '2px', fontWeight: '800', marginBottom: '15px' }}>MESSAGE FROM ARTIST</h4>
                         <div style={{
-                            background: '#070708',
+                            background: 'var(--surface)',
                             padding: '30px',
                             borderRadius: '8px',
                             fontSize: '15px',
                             lineHeight: '1.8',
                             color: '#ccc',
-                            border: '1px solid #111',
+                            border: '1px solid var(--border)',
                             whiteSpace: 'pre-wrap'
                         }}>
                             {demo.message || "The artist did not include a message with this submission."}
@@ -188,16 +189,16 @@ export default function DemoReviewPage({ params }) {
                     </div>
 
                     {/* Audio Player Section */}
-                    <div style={{ background: '#0a0a0b', border: '1px solid #1a1a1b', padding: '40px', borderRadius: '12px' }}>
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '40px', borderRadius: '12px' }}>
                         <h4 style={{ fontSize: '10px', color: 'var(--accent)', letterSpacing: '2px', fontWeight: '800', marginBottom: '20px' }}>STUDIO PLAYER</h4>
 
                         {activeFile ? (
                             <div>
                                 <div style={{
-                                    background: '#111',
+                                    background: 'var(--surface-hover)',
                                     padding: '30px',
                                     borderRadius: '8px',
-                                    border: '1px solid #222',
+                                    border: '1px solid var(--border)',
                                     marginBottom: '20px',
                                     textAlign: 'center'
                                 }}>
@@ -217,7 +218,7 @@ export default function DemoReviewPage({ params }) {
                                 </div>
                             </div>
                         ) : demo.trackLink ? (
-                            <div style={{ textAlign: 'center', padding: '40px', border: '2px dashed #222', borderRadius: '8px' }}>
+                            <div style={{ textAlign: 'center', padding: '40px', border: '2px dashed var(--border)', borderRadius: '8px' }}>
                                 <p style={{ fontSize: '13px', color: '#666', marginBottom: '25px' }}>This submission is hosted on an external platform.</p>
                                 <a href={demo.trackLink} target="_blank" className="glow-button" style={{ padding: '15px 40px' }}>
                                     OPEN EXTERNAL LINK
@@ -266,7 +267,7 @@ export default function DemoReviewPage({ params }) {
                     </div>
 
                     {/* Action Panel */}
-                    <div className="glass" style={{ padding: '30px', border: '1px solid #222', borderRadius: '8px' }}>
+                    <div className="glass" style={{ padding: '30px', border: '1px solid var(--border)', borderRadius: '8px' }}>
                         <h4 style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '20px' }}>A&R DECISION</h4>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>

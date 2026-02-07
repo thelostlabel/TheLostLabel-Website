@@ -25,7 +25,7 @@ export async function POST(req) {
         // Create uploads directories
         const demoDir = join(process.cwd(), 'private', 'uploads', 'demos');
         const contractDir = join(process.cwd(), 'private', 'uploads', 'contracts');
-        const releaseDir = join(process.cwd(), 'public', 'uploads', 'releases');
+        const releaseDir = join(process.cwd(), 'private', 'uploads', 'releases');
         await mkdir(demoDir, { recursive: true });
         await mkdir(contractDir, { recursive: true });
         await mkdir(releaseDir, { recursive: true });
@@ -48,7 +48,7 @@ export async function POST(req) {
                     return new Response(JSON.stringify({ error: "Image too large (max 10MB)." }), { status: 400 });
                 }
                 targetDir = releaseDir;
-                publicPath = '/uploads/releases/';
+                publicPath = 'private/uploads/releases/';
             } else if (ext === 'pdf') {
                 if (file.size > MAX_PDF_BYTES) {
                     return new Response(JSON.stringify({ error: "PDF too large (max 25MB)." }), { status: 400 });

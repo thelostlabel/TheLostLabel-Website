@@ -1,21 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
 
 @import "tailwindcss";
 @source "../app";
 @source "../components";
 
 :root {
-  --background: #0a0a0b;
+  --background: #0c1424;
   --foreground: #ffffff;
-  --surface: #141416;
-  --surface-hover: #1c1c1f;
+  --surface: #101a2d;
+  --surface-hover: #14213d;
   --primary: #ffffff;
-  --primary-glow: rgba(255, 255, 255, 0.05);
-  --accent: #8e8e93;
-  --text-secondary: #636366;
-  --border: rgba(255, 255, 255, 0.06);
-  --glass: rgba(20, 20, 22, 0.8);
-  --glass-blur: blur(20px);
+  --primary-glow: rgba(255, 255, 255, 0.1);
+  --accent: #f5c542;
+  --accent-2: #ff9f1a;
+  --text-secondary: #b4bdd5;
+  --border: rgba(255, 255, 255, 0.14);
+  --glass: rgba(16, 26, 44, 0.7);
+  --glass-blur: blur(18px);
   --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -31,7 +32,7 @@ body {
   overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Sora', 'Space Grotesk', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -41,7 +42,11 @@ body {
 
 body {
   min-height: 100vh;
-  background: radial-gradient(circle at 50% 0%, #151518 0%, #0a0a0b 100%);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0, 240, 255, 0.12), transparent 32%),
+    radial-gradient(circle at 70% 10%, rgba(158, 240, 26, 0.12), transparent 35%),
+    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.05), transparent 45%),
+    linear-gradient(135deg, #0c1424 0%, #0a1120 30%, #091022 60%, #0c162c 100%);
 }
 
 a {
@@ -118,6 +123,26 @@ a {
   border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-5px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.typewriter {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid rgba(255, 255, 255, 0.6);
+  animation:
+    typewriter 2.4s steps(var(--chars, 28)) 0.2s both,
+    caret 0.7s steps(1) infinite;
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: calc(var(--chars, 28) * 1ch); }
+}
+
+@keyframes caret {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.2); }
+  50% { border-color: rgba(158, 240, 26, 0.9); }
 }
 
 

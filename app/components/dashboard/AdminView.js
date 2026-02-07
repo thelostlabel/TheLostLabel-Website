@@ -330,8 +330,8 @@ const btnStyle = {
 };
 
 const inputStyle = {
-    background: '#0a0a0a',
-    border: '1px solid #333',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     color: '#fff',
     padding: '10px 15px',
     borderRadius: '8px',
@@ -348,7 +348,7 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'approved': return '#00ff88';
+            case 'approved': return 'var(--accent)';
             case 'rejected': return '#ff4444';
             case 'reviewing': return '#ffaa00';
             default: return '#666';
@@ -400,7 +400,7 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                         <thead>
-                            <tr style={{ background: '#111' }}>
+                            <tr style={{ background: 'var(--surface-hover)' }}>
                                 <th style={thStyle}>DATE</th>
                                 <th style={thStyle}>ARTIST</th>
                                 <th style={thStyle}>TRACK / GENRE</th>
@@ -431,7 +431,7 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <Link
                                                 href={`/dashboard/demo/${demo.id}`}
-                                                style={{ ...btnStyle, color: '#fff', border: '1px solid #333', background: '#111', textDecoration: 'none' }}
+                                                style={{ ...btnStyle, color: '#fff', border: '1px solid var(--border)', background: 'var(--surface-hover)', textDecoration: 'none' }}
                                             >
                                                 REVIEW
                                             </Link>
@@ -489,16 +489,16 @@ function UserLinker({ artistId, users, artistEmail }) {
             <div style={{ fontSize: '11px', fontWeight: '800', color: '#666', marginBottom: '10px' }}>LINK EXISTING USER ACCOUNT</div>
 
             {suggestedUser && !selectedUser && (
-                <div style={{ marginBottom: '15px', padding: '10px', background: 'rgba(0, 255, 136, 0.05)', borderRadius: '6px', border: '1px solid rgba(0, 255, 136, 0.1)' }}>
+                <div style={{ marginBottom: '15px', padding: '10px', background: 'rgba(0, 255, 136, 0.05)', borderRadius: '6px', border: '1px solid rgba(245, 197, 66, 0.18)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <div style={{ fontSize: '9px', color: '#00ff88', fontWeight: 'bold', marginBottom: '2px' }}>SUGGESTED MATCH</div>
+                            <div style={{ fontSize: '9px', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '2px' }}>SUGGESTED MATCH</div>
                             <div style={{ fontSize: '11px', color: '#fff' }}>{suggestedUser.email}</div>
                         </div>
                         <button
                             onClick={() => handleLink(suggestedUser)}
                             disabled={linking}
-                            style={{ ...btnStyle, background: '#00ff88', color: '#000', fontSize: '9px', padding: '5px 10px' }}
+                            style={{ ...btnStyle, background: 'var(--accent)', color: '#000', fontSize: '9px', padding: '5px 10px' }}
                         >
                             {linking ? 'LINKING...' : 'LINK NOW'}
                         </button>
@@ -536,7 +536,7 @@ function UserLinker({ artistId, users, artistEmail }) {
                         Link <strong>{selectedUser.email}</strong>?
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => handleLink()} disabled={linking} style={{ ...btnStyle, flex: 1, background: '#00ff88', color: '#000', justifyContent: 'center' }}>
+                        <button onClick={() => handleLink()} disabled={linking} style={{ ...btnStyle, flex: 1, background: 'var(--accent)', color: '#000', justifyContent: 'center' }}>
                             {linking ? 'LINKING...' : 'CONFIRM LINK'}
                         </button>
                         <button onClick={() => setSelectedUser(null)} style={{ ...btnStyle, flex: 1, justifyContent: 'center' }}>CANCEL</button>
@@ -598,7 +598,7 @@ function ArtistsView({ artists, users, onSync }) {
                     <div style={{ flex: 1 }}>
                         <h2 style={{ margin: 0, fontSize: '24px' }}>{selectedArtist.name}</h2>
                         <div style={{ color: '#666', fontSize: '12px', marginTop: '5px' }}>{selectedArtist.email || 'No Email Linked'}</div>
-                        {selectedArtist.spotifyUrl && <a href={selectedArtist.spotifyUrl} target="_blank" style={{ color: '#00ff88', fontSize: '11px', textDecoration: 'none', display: 'block', marginTop: '5px' }}>OPEN SPOTIFY ↗</a>}
+                        {selectedArtist.spotifyUrl && <a href={selectedArtist.spotifyUrl} target="_blank" style={{ color: 'var(--accent)', fontSize: '11px', textDecoration: 'none', display: 'block', marginTop: '5px' }}>OPEN SPOTIFY ↗</a>}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '5px' }}>MONTHLY LISTENERS</div>
@@ -629,7 +629,7 @@ function ArtistsView({ artists, users, onSync }) {
                             <div>
                                 <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{selectedArtist.user.stageName || selectedArtist.user.fullName}</div>
                                 <div style={{ fontSize: '12px', color: '#555' }}>{selectedArtist.user.email}</div>
-                                <div style={{ marginTop: '10px', fontSize: '10px', color: '#00ff88' }}>✓ ACCOUNT LINKED</div>
+                                <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--accent)' }}>✓ ACCOUNT LINKED</div>
                                 <button
                                     onClick={() => {
                                         showConfirm(
@@ -685,7 +685,7 @@ function ArtistsView({ artists, users, onSync }) {
 
             {isCreating && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="glass" style={{ width: '400px', padding: '30px', border: '1px solid #333' }}>
+                    <div className="glass" style={{ width: '400px', padding: '30px', border: '1px solid var(--border)' }}>
                         <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px' }}>CREATE NEW ARTIST</h3>
                         <input
                             placeholder="Artist Name *"
@@ -715,10 +715,10 @@ function ArtistsView({ artists, users, onSync }) {
                 </div>
             )}
 
-            <div className="glass" style={{ overflow: 'hidden', border: '1px solid #222' }}>
+            <div className="glass" style={{ overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                        <tr style={{ background: '#111' }}>
+                        <tr style={{ background: 'var(--surface)' }}>
                             <th style={thStyle}>ARTIST</th>
                             <th style={thStyle}>MONTHLY</th>
                             <th style={thStyle}>STATUS</th>
@@ -728,7 +728,7 @@ function ArtistsView({ artists, users, onSync }) {
                     </thead>
                     <tbody>
                         {filteredArtists.map(artist => (
-                            <tr key={artist.id} style={{ borderBottom: '1px solid #1a1a1b', cursor: 'pointer' }} onClick={() => setSelectedArtist(artist)}>
+                            <tr key={artist.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedArtist(artist)}>
                                 <td style={tdStyle}>
                                     <div style={{ fontWeight: '800', color: '#fff' }}>{artist.name}</div>
                                 </td>
@@ -737,12 +737,12 @@ function ArtistsView({ artists, users, onSync }) {
                                     <div style={{ fontSize: '9px', color: '#444' }}>{artist.lastSyncedAt ? new Date(artist.lastSyncedAt).toLocaleDateString() : 'NEVER'}</div>
                                 </td>
                                 <td style={tdStyle}>
-                                    <span style={{ fontSize: '10px', color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '2px 6px', borderRadius: '4px' }}>ACTIVE</span>
+                                    <span style={{ fontSize: '10px', color: 'var(--accent)', background: 'rgba(245, 197, 66, 0.18)', padding: '2px 6px', borderRadius: '4px' }}>ACTIVE</span>
                                 </td>
                                 <td style={tdStyle}>
                                     {artist.user ? (
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ color: '#00ff88', fontSize: '10px' }}>{artist.user.email}</span>
+                                            <span style={{ color: 'var(--accent)', fontSize: '10px' }}>{artist.user.email}</span>
                                             <span style={{ color: '#666', fontSize: '9px' }}>{artist.user.stageName}</span>
                                         </div>
                                     ) : (
@@ -777,6 +777,7 @@ function ReleasesView({ releases }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [editingRelease, setEditingRelease] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [expandedReleaseId, setExpandedReleaseId] = useState(null);
     const { showToast, showConfirm } = useToast();
 
     const handleDelete = (id) => {
@@ -830,6 +831,23 @@ function ReleasesView({ releases }) {
         return matchesSearch;
     });
 
+    const getBaseTitle = (name) => {
+        if (!name) return '';
+        return name
+            .toLowerCase()
+            .replace(/\s*-\s*(slowed|super slowed|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version)\s*$/i, '')
+            .replace(/\s*\((slowed|super slowed|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version)\)\s*$/i, '')
+            .trim();
+    };
+
+    const getVariants = (release) => {
+        const base = getBaseTitle(release.name);
+        if (!base) return [];
+        return releases
+            .filter(r => r.id !== release.id && getBaseTitle(r.name) === base)
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    };
+
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -857,11 +875,18 @@ function ReleasesView({ releases }) {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-                {filteredReleases.map(release => (
-                    <div key={release.id} style={{ ...glassStyle, padding: '20px' }}>
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {filteredReleases.map(release => {
+                    const variants = getVariants(release);
+                    const isOpen = expandedReleaseId === release.id;
+                    return (
+                        <div
+                            key={release.id}
+                            style={{ ...glassStyle, padding: '20px', cursor: variants.length ? 'pointer' : 'default' }}
+                            onClick={() => variants.length && setExpandedReleaseId(isOpen ? null : release.id)}
+                        >
+                        <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', marginBottom: '15px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {release.image ? (
-                                <img src={release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                                 <Disc size={40} color="#222" />
                             )}
@@ -875,24 +900,40 @@ function ReleasesView({ releases }) {
                         <p style={{ fontSize: '10px', color: '#666' }}>
                             {new Date(release.releaseDate || release.createdAt).toLocaleDateString()}
                         </p>
+                        {variants.length > 0 && (
+                            <div style={{ marginTop: '10px', fontSize: '10px', color: '#888', letterSpacing: '1px' }}>
+                                {isOpen ? 'HIDE VERSIONS' : `SHOW VERSIONS (${variants.length})`}
+                            </div>
+                        )}
+                        {isOpen && variants.length > 0 && (
+                            <div style={{ marginTop: '10px', display: 'grid', gap: '6px' }}>
+                                {variants.map(v => (
+                                    <div key={v.id} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px', background: 'rgba(255,255,255,0.03)' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#fff' }}>{v.name}</div>
+                                        <div style={{ fontSize: '9px', color: '#777' }}>{new Date(v.releaseDate || v.createdAt).toLocaleDateString()}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Edit/Delete Overlay */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
                             <button
-                                onClick={() => setEditingRelease(release)}
+                                onClick={(e) => { e.stopPropagation(); setEditingRelease(release); }}
                                 style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff', fontSize: '10px', fontWeight: '800' }}
                             >
                                 EDIT
                             </button>
                             <button
-                                onClick={() => handleDelete(release.id)}
+                                onClick={(e) => { e.stopPropagation(); handleDelete(release.id); }}
                                 style={{ padding: '8px', background: 'rgba(255,68,68,0.1)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#ff4444' }}
                             >
                                 <Trash2 size={12} />
                             </button>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
 
                 {filteredReleases.length === 0 && (
                     <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: '#444', fontSize: '11px', letterSpacing: '2px' }}>
@@ -909,7 +950,7 @@ function ReleasesView({ releases }) {
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            style={{ ...glassStyle, padding: '30px', width: '500px', maxWidth: '90vw', border: '1px solid #333' }}
+                            style={{ ...glassStyle, padding: '30px', width: '500px', maxWidth: '90vw', border: '1px solid var(--border)' }}
                         >
                             <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#fff', marginBottom: '20px' }}>EDIT RELEASE</h3>
                             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -918,7 +959,7 @@ function ReleasesView({ releases }) {
                                     <input
                                         value={editingRelease.name || ''}
                                         onChange={e => setEditingRelease({ ...editingRelease, name: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                                     />
                                 </div>
                                 <div>
@@ -926,7 +967,7 @@ function ReleasesView({ releases }) {
                                     <input
                                         value={editingRelease.artistName || ''}
                                         onChange={e => setEditingRelease({ ...editingRelease, artistName: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                                     />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -936,7 +977,7 @@ function ReleasesView({ releases }) {
                                             type="date"
                                             value={new Date(editingRelease.releaseDate).toISOString().split('T')[0]}
                                             onChange={e => setEditingRelease({ ...editingRelease, releaseDate: e.target.value })}
-                                            style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                            style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                                         />
                                     </div>
                                     <div>
@@ -944,7 +985,7 @@ function ReleasesView({ releases }) {
                                         <input
                                             value={editingRelease.genre || ''}
                                             onChange={e => setEditingRelease({ ...editingRelease, genre: e.target.value })}
-                                            style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                            style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                                         />
                                     </div>
                                 </div>
@@ -953,7 +994,7 @@ function ReleasesView({ releases }) {
                                     <input
                                         value={editingRelease.spotifyUrl || ''}
                                         onChange={e => setEditingRelease({ ...editingRelease, spotifyUrl: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                                     />
                                 </div>
                                 <div>
@@ -961,7 +1002,7 @@ function ReleasesView({ releases }) {
                                     <input
                                         value={editingRelease.image || ''}
                                         onChange={e => setEditingRelease({ ...editingRelease, image: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'flex-end' }}>
@@ -1073,7 +1114,7 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                     background: 'rgba(0,0,0,0.9)', zIndex: 1000,
                     display: 'flex', justifyContent: 'center', alignItems: 'center'
                 }}>
-                    <div className="glass" style={{ padding: '30px', width: '800px', border: '1px solid #333', maxHeight: '90vh', overflowY: 'auto' }}>
+                    <div className="glass" style={{ padding: '30px', width: '800px', border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                             <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '800' }}>EDIT USER & PERMISSIONS</h3>
                             <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '20px' }}>×</button>
@@ -1106,7 +1147,7 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                 <div>
                                     <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>ACCOUNT_STATUS</label>
                                     <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', background: '#0d0d0d', color: editForm.status === 'approved' ? '#00ff88' : '#ff4444' }}>
+                                        style={{ ...inputStyle, width: '100%', background: '#0d0d0d', color: editForm.status === 'approved' ? 'var(--accent)' : '#ff4444' }}>
                                         <option value="pending">PENDING APPROVAL</option>
                                         <option value="approved">APPROVED</option>
                                         <option value="rejected">REJECTED</option>
@@ -1195,10 +1236,10 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                 </div>
             </div>
 
-            <div className="glass" style={{ overflow: 'hidden', border: '1px solid #222' }}>
+            <div className="glass" style={{ overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                        <tr style={{ background: '#111' }}>
+                        <tr style={{ background: 'var(--surface-hover)' }}>
                             <th style={thStyle}>EMAIL</th>
                             <th style={thStyle}>NAME</th>
                             <th style={thStyle}>ROLE</th>
@@ -1222,8 +1263,8 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                         fontWeight: '900',
                                         padding: '4px 8px',
                                         borderRadius: '4px',
-                                        background: user.status === 'approved' ? 'rgba(0, 255, 136, 0.1)' : user.status === 'pending' ? 'rgba(255, 170, 0, 0.1)' : 'rgba(255, 68, 68, 0.1)',
-                                        color: user.status === 'approved' ? '#00ff88' : user.status === 'pending' ? '#ffaa00' : '#ff4444'
+                                        background: user.status === 'approved' ? 'rgba(245, 197, 66, 0.18)' : user.status === 'pending' ? 'rgba(255, 170, 0, 0.1)' : 'rgba(255, 68, 68, 0.1)',
+                                        color: user.status === 'approved' ? 'var(--accent)' : user.status === 'pending' ? '#ffaa00' : '#ff4444'
                                     }}>
                                         {user.status?.toUpperCase() || 'UNKNOWN'}
                                     </span>
@@ -1231,7 +1272,7 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                 <td style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         {user.status === 'pending' && (
-                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: '#00ff88', color: '#000', border: 'none' }}>APPROVE</button>
+                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}>APPROVE</button>
                                         )}
                                         <button onClick={() => openEdit(user)} style={btnStyle}>EDIT</button>
                                         <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: '#ff4444' }}>DELETE</button>
@@ -1357,7 +1398,7 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                     background: 'rgba(0,0,0,0.9)', zIndex: 1000,
                     display: 'flex', justifyContent: 'center', alignItems: 'center'
                 }}>
-                    <div className="glass" style={{ padding: '30px', width: '450px', border: '1px solid #333' }}>
+                    <div className="glass" style={{ padding: '30px', width: '450px', border: '1px solid var(--border)' }}>
                         <h3 style={{ fontSize: '14px', marginBottom: '25px', letterSpacing: '2px' }}>
                             {editingWebhook ? 'EDIT WEBHOOK' : 'ADD WEBHOOK'}
                         </h3>
@@ -1366,14 +1407,14 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                             <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>NAME</label>
                             <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                                 placeholder="e.g., New Release Alerts"
-                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff' }} />
+                                style={{ width: '100%', padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff' }} />
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>WEBHOOK URL</label>
                             <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
                                 placeholder="https://discord.com/api/webhooks/..."
-                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff' }} />
+                                style={{ width: '100%', padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff' }} />
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>
@@ -1398,7 +1439,7 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                                                 fontSize: '9px',
                                                 background: isSelected ? 'var(--accent)' : '#111',
                                                 color: isSelected ? '#000' : '#666',
-                                                border: '1px solid #333',
+                                                border: '1px solid var(--border)',
                                                 cursor: 'pointer',
                                                 fontWeight: '800'
                                             }}
@@ -1463,7 +1504,7 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
-                            <tr style={{ background: '#111' }}>
+                            <tr style={{ background: 'var(--surface-hover)' }}>
                                 <th style={thStyle}>NAME</th>
                                 <th style={thStyle}>EVENTS</th>
                                 <th style={thStyle}>STATUS</th>
@@ -1492,8 +1533,8 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
                                         <button
                                             onClick={() => handleToggle(webhook)}
                                             style={{
-                                                background: webhook.enabled ? '#00ff8820' : '#22222240',
-                                                color: webhook.enabled ? '#00ff88' : '#666',
+                                                background: webhook.enabled ? 'var(--accent)20' : '#22222240',
+                                                color: webhook.enabled ? 'var(--accent)' : '#666',
                                                 border: 'none',
                                                 padding: '5px 12px',
                                                 fontSize: '9px',
@@ -1559,7 +1600,7 @@ function HomeView() {
     if (!stats) return null;
 
     const cards = [
-        { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: '#00ff88', icon: <Mic2 size={20} /> },
+        { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: 'var(--accent)', icon: <Mic2 size={20} /> },
         { label: 'TOTAL_USERS', value: stats.counts.users, color: '#0088ff', icon: <Users size={20} /> },
         { label: 'TOTAL_ALBUMS', value: stats.counts.albums || 0, color: '#aa00ff', icon: <Disc size={20} /> },
         { label: 'TOTAL_SONGS', value: stats.counts.songs || 0, color: '#ff00aa', icon: <Mic2 size={20} /> },
@@ -1714,8 +1755,8 @@ function RequestsView({ requests, onUpdateStatus }) {
 
     const getStatusStyles = (status) => {
         switch (status) {
-            case 'completed': return { bg: 'rgba(0, 255, 136, 0.1)', border: '#00ff88', color: '#00ff88' };
-            case 'approved': return { bg: 'rgba(0, 255, 136, 0.1)', border: '#00ff88', color: '#00ff88' };
+            case 'completed': return { bg: 'rgba(245, 197, 66, 0.18)', border: 'var(--accent)', color: 'var(--accent)' };
+            case 'approved': return { bg: 'rgba(245, 197, 66, 0.18)', border: 'var(--accent)', color: 'var(--accent)' };
             case 'processing': return { bg: 'rgba(0, 170, 255, 0.1)', border: '#00aaff', color: '#00aaff' };
             case 'reviewing': return { bg: 'rgba(255, 170, 0, 0.1)', border: '#ffaa00', color: '#ffaa00' };
             case 'needs_action': return { bg: 'rgba(255, 240, 0, 0.1)', border: '#fff000', color: '#fff000' };
@@ -1758,9 +1799,9 @@ function RequestsView({ requests, onUpdateStatus }) {
                 <div style={{ padding: '30px', display: 'flex', gap: '40px' }}>
                     {/* LEFT COLUMN: RELEASE INFO */}
                     <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', border: '1px solid #333', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                             {selectedRequest.release?.image && (
-                                <img src={selectedRequest.release.image} alt="Release" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={selectedRequest.release.image?.startsWith('private/') ? `/api/files/release/${selectedRequest.release.id}` : selectedRequest.release.image} alt="Release" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             )}
                         </div>
                         <div>
@@ -1785,7 +1826,7 @@ function RequestsView({ requests, onUpdateStatus }) {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '25px' }}>
                         <div>
                             <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '10px', fontWeight: '800' }}>REQUEST TYPE</label>
-                            <div style={{ fontSize: '14px', background: '#222', padding: '10px 20px', borderRadius: '4px', display: 'inline-block', border: '1px solid #333' }}>
+                            <div style={{ fontSize: '14px', background: '#222', padding: '10px 20px', borderRadius: '4px', display: 'inline-block', border: '1px solid var(--border)' }}>
                                 {selectedRequest.type.toUpperCase().replace('_', ' ')} CHANGE
                             </div>
                         </div>
@@ -1793,9 +1834,9 @@ function RequestsView({ requests, onUpdateStatus }) {
                         <div>
                             <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '10px', fontWeight: '800' }}>DESCRIPTION & FILES</label>
                             <div style={{
-                                background: '#111',
+                                background: 'var(--surface-hover)',
                                 padding: '20px',
-                                border: '1px solid #333',
+                                border: '1px solid var(--border)',
                                 borderRadius: '4px',
                                 fontSize: '13px',
                                 lineHeight: '1.6',
@@ -1852,7 +1893,7 @@ function RequestsView({ requests, onUpdateStatus }) {
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'completed')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', borderColor: '#00ff8830' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(245, 197, 66, 0.18)', color: 'var(--accent)', borderColor: 'var(--accent)30' }}
                             >
                                 COMPLETED
                             </button>
@@ -1898,8 +1939,8 @@ function RequestsView({ requests, onUpdateStatus }) {
                         >
                             <td style={{ ...tdStyle, padding: '20px 25px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '40px', height: '40px', background: '#111', borderRadius: '4px', overflow: 'hidden' }}>
-                                        {req.release?.image && <img src={req.release.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                                    <div style={{ width: '40px', height: '40px', background: 'var(--surface-hover)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        {req.release?.image && <img src={req.release.image?.startsWith('private/') ? `/api/files/release/${req.release.id}` : req.release.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                                     </div>
                                     <div style={{ fontWeight: '800', fontSize: '13px' }}>{req.release?.name}</div>
                                 </div>
@@ -1940,9 +1981,11 @@ function SettingsView() {
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [releaseOptions, setReleaseOptions] = useState([]);
 
     useEffect(() => {
         fetchSettings();
+        fetchReleases();
     }, []);
 
     const fetchSettings = async () => {
@@ -1976,6 +2019,10 @@ function SettingsView() {
                     // Home Page
                     heroText: parsed.heroText || 'THE NEW ORDER',
                     heroSubText: parsed.heroSubText || 'INDEPENDENT DISTRIBUTION REDEFINED.',
+                    featuredReleaseId: parsed.featuredReleaseId || '',
+                    featuredReleaseLabel: parsed.featuredReleaseLabel || 'FEATURED RELEASE',
+                    featuredReleaseSubLabel: parsed.featuredReleaseSubLabel || 'NOW STREAMING',
+                    featuredReleaseStatus: parsed.featuredReleaseStatus || 'Featured',
                     showStats: parsed.showStats ?? true,
                     // Socials
                     discord: parsed.discord || '',
@@ -1992,7 +2039,9 @@ function SettingsView() {
                 setConfig({
                     allowCoverArt: true, allowAudio: true, allowDelete: true, allowOther: true,
                     siteName: 'LOST MUSIC', registrationsOpen: true, maintenanceMode: false, adminEmail: '',
-                    heroText: 'THE NEW ORDER', heroSubText: 'INDEPENDENT DISTRIBUTION REDEFINED.', showStats: true,
+                    heroText: 'THE NEW ORDER', heroSubText: 'INDEPENDENT DISTRIBUTION REDEFINED.', featuredReleaseId: '',
+                    featuredReleaseLabel: 'FEATURED RELEASE', featuredReleaseSubLabel: 'NOW STREAMING', featuredReleaseStatus: 'Featured',
+                    showStats: true,
                     discord: '', instagram: '', spotify: '', youtube: '',
                     defaultPlaylistId: '6QHy5LPKDRHDdKZGBFxRY8',
                     genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other']
@@ -2000,6 +2049,18 @@ function SettingsView() {
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
+    };
+
+    const fetchReleases = async () => {
+        try {
+            const res = await fetch('/api/releases');
+            const data = await res.json();
+            if (data?.releases) {
+                setReleaseOptions(data.releases.slice(0, 50));
+            }
+        } catch (e) {
+            console.error("Failed to fetch releases for settings", e);
+        }
     };
 
     const handleSave = async () => {
@@ -2040,8 +2101,8 @@ function SettingsView() {
     const inputStyle = {
         width: '100%',
         padding: '12px',
-        background: '#0a0a0a',
-        border: '1px solid #333',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         color: '#fff',
         borderRadius: '8px',
         fontSize: '12px'
@@ -2158,7 +2219,7 @@ function SettingsView() {
                 {activeTab === 'requests' && (
                     <div style={{ display: 'grid', gap: '15px' }}>
                         {[{ k: 'allowCoverArt', l: 'Allow Cover Art Updates' }, { k: 'allowAudio', l: 'Allow Audio File Updates' }, { k: 'allowDelete', l: 'Allow Takedown Requests' }, { k: 'allowOther', l: 'Allow Other Requests' }].map(item => (
-                            <div key={item.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: '#0a0a0a', border: '1px solid #1a1a1b' }}>
+                            <div key={item.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
                                 <span style={{ fontSize: '11px', color: '#ccc', fontWeight: '800' }}>{item.l}</span>
                                 <div onClick={() => toggle(item.k)} style={{ width: '40px', height: '20px', background: config[item.k] ? 'var(--accent)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
                                     <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config[item.k] ? '22px' : '2px', transition: 'left 0.3s' }} />
@@ -2179,7 +2240,49 @@ function SettingsView() {
                             <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>HERO SUBTEXT</label>
                             <textarea value={config.heroSubText} onChange={(e) => handleChange('heroSubText', e.target.value)} style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: '#0a0a0a', border: '1px solid #1a1a1b' }}>
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '10px', fontWeight: '800', color: '#666' }}>FEATURED CARD LABELS</label>
+                            <input
+                                type="text"
+                                value={config.featuredReleaseLabel}
+                                onChange={(e) => handleChange('featuredReleaseLabel', e.target.value)}
+                                placeholder="FEATURED RELEASE"
+                                style={inputStyle}
+                            />
+                            <input
+                                type="text"
+                                value={config.featuredReleaseSubLabel}
+                                onChange={(e) => handleChange('featuredReleaseSubLabel', e.target.value)}
+                                placeholder="NOW STREAMING"
+                                style={inputStyle}
+                            />
+                            <input
+                                type="text"
+                                value={config.featuredReleaseStatus}
+                                onChange={(e) => handleChange('featuredReleaseStatus', e.target.value)}
+                                placeholder="Featured"
+                                style={inputStyle}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>FEATURED RELEASE ID (Hero highlight)</label>
+                            <select
+                                value={config.featuredReleaseId}
+                                onChange={(e) => handleChange('featuredReleaseId', e.target.value)}
+                                style={{ ...inputStyle, background: '#0f1016' }}
+                            >
+                                <option value="">(Auto-pick latest)</option>
+                                {releaseOptions.map(r => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.name} — {r.artistName || 'Unknown'}
+                                    </option>
+                                ))}
+                            </select>
+                            <p style={{ fontSize: '11px', color: '#444', marginTop: '6px' }}>
+                                Anasayfa hero'da görünecek release. Seçilmezse en güncel release kullanılır.
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
                             <span style={{ fontSize: '11px', color: '#ccc', fontWeight: '800' }}>SHOW STATS SECTION</span>
                             <div onClick={() => toggle('showStats')} style={{ width: '40px', height: '20px', background: config.showStats ? 'var(--accent)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
                                 <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.showStats ? '22px' : '2px', transition: 'left 0.3s' }} />
@@ -2301,12 +2404,12 @@ function ContentView({ content, onRefresh }) {
                                         value={editTitle}
                                         onChange={(e) => setEditTitle(e.target.value)}
                                         placeholder="Title"
-                                        style={{ width: '100%', padding: '10px', marginBottom: '10px', background: '#111', border: '1px solid #333', color: '#fff' }}
+                                        style={{ width: '100%', padding: '10px', marginBottom: '10px', background: 'var(--surface-hover)', border: '1px solid var(--border)', color: '#fff' }}
                                     />
                                     {editing === 'faq' ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                             {faqItems.map((item, index) => (
-                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', border: '1px solid #222', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                                         <span style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>QUESTION #{index + 1}</span>
                                                         <button onClick={() => removeFaqItem(index)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '10px' }}>REMOVE</button>
@@ -2316,14 +2419,14 @@ function ContentView({ content, onRefresh }) {
                                                         value={item.q}
                                                         onChange={(e) => updateFaqItem(index, 'q', e.target.value)}
                                                         placeholder="Question..."
-                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff' }}
+                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#fff' }}
                                                     />
                                                     <textarea
                                                         value={item.a}
                                                         onChange={(e) => updateFaqItem(index, 'a', e.target.value)}
                                                         placeholder="Answer..."
                                                         rows={3}
-                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#888', resize: 'vertical' }}
+                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#888', resize: 'vertical' }}
                                                     />
                                                 </div>
                                             ))}
@@ -2335,7 +2438,7 @@ function ContentView({ content, onRefresh }) {
                                             onChange={(e) => setEditContent(e.target.value)}
                                             placeholder="Content (can be JSON or plain text)"
                                             rows={8}
-                                            style={{ width: '100%', padding: '10px', background: '#111', border: '1px solid #333', color: '#fff', resize: 'vertical' }}
+                                            style={{ width: '100%', padding: '10px', background: 'var(--surface-hover)', border: '1px solid var(--border)', color: '#fff', resize: 'vertical' }}
                                         />
                                     )}
                                     <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
@@ -2400,7 +2503,7 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
                     setSearchTerm(e.target.value);
                     setShowDropdown(true);
                 }}
-                style={{ ...inputStyle, padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px', width: '100%' }}
+                style={{ ...inputStyle, padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', width: '100%' }}
             />
             {value && !showDropdown && onClear && (
                 <button
@@ -2413,7 +2516,7 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
             {showDropdown && (
                 <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0,
-                    background: '#111', border: '1px solid #333', borderRadius: '8px',
+                    background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '8px',
                     maxHeight: '200px', overflowY: 'auto', zIndex: 100,
                     boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
                     marginTop: '5px'
@@ -2759,7 +2862,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     setForm(update);
                                 }}
                                 required
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="">Select Release or Approved Demo...</option>
                                 <optgroup label="Approved Demos (Not Released)">
@@ -2792,7 +2895,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     const val = parseFloat(e.target.value);
                                     setForm({ ...form, artistShare: val, labelShare: Math.max(0, 1 - val) });
                                 }}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -2809,7 +2912,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                         setForm({ ...form, labelShare: val, artistShare: parseFloat((1 - val).toFixed(2)) });
                                     }
                                 }}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div style={{ padding: '20px', borderTop: '1px solid #333' }}>
@@ -2845,7 +2948,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: totalSplit !== 100 ? '#ff4444' : '#00ff88' }}>
+                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: totalSplit !== 100 ? '#ff4444' : 'var(--accent)' }}>
                                 TOTAL SPLIT: {totalSplit}% (SHOULD BE 100%)
                             </div>
                         </div>
@@ -2862,12 +2965,12 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                 <button
                                     type="button"
                                     onClick={() => pdfInputRef.current?.click()}
-                                    style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', border: '1px solid #333' }}
+                                    style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)' }}
                                 >
                                     {uploadingPdf ? 'UPLOADING...' : form.pdfUrl ? 'REPLACE PDF' : 'SELECT PDF'}
                                 </button>
                                 {form.pdfUrl && (
-                                    <div style={{ fontSize: '10px', color: '#00ff88', fontWeight: '800' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '800' }}>
                                         <CheckCircle size={10} style={{ marginRight: '5px' }} /> PDF UPLOADED
                                     </div>
                                 )}
@@ -2878,7 +2981,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                             <textarea
                                 value={form.notes}
                                 onChange={e => setForm({ ...form, notes: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px', minHeight: '60px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', minHeight: '60px' }}
                             />
                         </div>
                         <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
@@ -2920,7 +3023,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     )}
                                     <div style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>
                                         {c.user ? (
-                                            <span style={{ color: '#00ff88' }}>LINKED: {c.user.email}</span>
+                                            <span style={{ color: 'var(--accent)' }}>LINKED: {c.user.email}</span>
                                         ) : (
                                             <span style={{ color: '#666' }}>NO ACCOUNT LINKED</span>
                                         )}
@@ -2929,7 +3032,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                 <td style={tdStyle}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                         <div style={{ fontSize: '10px', fontWeight: '900' }}>
-                                            ARTIST: <span style={{ color: '#00ff88' }}>{Math.round(c.artistShare * 100)}%</span> / LABEL: <span style={{ color: 'var(--accent)' }}>{Math.round(c.labelShare * 100)}%</span>
+                                            ARTIST: <span style={{ color: 'var(--accent)' }}>{Math.round(c.artistShare * 100)}%</span> / LABEL: <span style={{ color: 'var(--accent)' }}>{Math.round(c.labelShare * 100)}%</span>
                                         </div>
                                         {c.splits?.length > 0 && (
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
@@ -3092,7 +3195,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                 </div>
                 <div style={{ ...glassStyle, padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '5px' }}>ARTIST PAYOUTS</div>
-                    <div style={{ fontSize: '24px', fontWeight: '900', color: '#00ff88' }}>${totalArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                    <div style={{ fontSize: '24px', fontWeight: '900', color: 'var(--accent)' }}>${totalArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div style={{ ...glassStyle, padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '5px' }}>LABEL EARNINGS</div>
@@ -3136,7 +3239,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 value={form.contractId}
                                 onChange={e => setForm({ ...form, contractId: e.target.value })}
                                 required
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="">Select Contract...</option>
                                 {contracts.map(c => {
@@ -3157,7 +3260,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 value={form.period}
                                 onChange={e => setForm({ ...form, period: e.target.value })}
                                 required
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -3166,7 +3269,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 type="number" step="0.01" required
                                 value={form.grossAmount}
                                 onChange={e => setForm({ ...form, grossAmount: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -3175,7 +3278,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 type="number" step="0.01"
                                 value={form.expenseAmount}
                                 onChange={e => setForm({ ...form, expenseAmount: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -3184,7 +3287,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 type="number"
                                 value={form.streams}
                                 onChange={e => setForm({ ...form, streams: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -3192,7 +3295,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                             <select
                                 value={form.source}
                                 onChange={e => setForm({ ...form, source: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="spotify">Spotify</option>
                                 <option value="apple">Apple Music</option>
@@ -3236,7 +3339,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 <td style={tdStyle}>${e.grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td style={tdStyle}>${(e.expenseAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                 <td style={tdStyle}>
-                                    <div style={{ color: '#00ff88', fontWeight: '800' }}>${e.artistAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                    <div style={{ color: 'var(--accent)', fontWeight: '800' }}>${e.artistAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                     <div style={{ fontSize: '8px', color: '#444' }}>({Math.round(e.contract?.artistShare * 100)}%)</div>
                                 </td>
                                 <td style={tdStyle}>{e.streams?.toLocaleString() || '---'}</td>
@@ -3350,7 +3453,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                         }
                         setShowAdd(!showAdd);
                     }}
-                    style={{ ...btnStyle, background: '#00ff88', color: '#000', border: 'none' }}
+                    style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}
                 >
                     <Plus size={14} /> RECORD PAYMENT
                 </button>
@@ -3360,7 +3463,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid #00ff88' }}
+                    style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid var(--accent)' }}
                 >
                     <form onSubmit={handleSubmitPayment} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
                         <div style={{ gridColumn: 'span 2' }}>
@@ -3369,7 +3472,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 value={form.userId}
                                 onChange={e => setForm({ ...form, userId: e.target.value })}
                                 required
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="">Select Recipient...</option>
                                 {users.filter(u => u.role === 'artist' || u.role === 'a&r' || u.role === 'admin').map(u => (
@@ -3383,7 +3486,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 type="number" step="0.01" required
                                 value={form.amount}
                                 onChange={e => setForm({ ...form, amount: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -3391,7 +3494,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                             <select
                                 value={form.method}
                                 onChange={e => setForm({ ...form, method: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="bank_transfer">Bank Transfer</option>
                                 <option value="paypal">PayPal</option>
@@ -3405,7 +3508,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 type="text"
                                 value={form.reference}
                                 onChange={e => setForm({ ...form, reference: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             />
                         </div>
                         <div>
@@ -3413,7 +3516,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                             <select
                                 value={form.status}
                                 onChange={e => setForm({ ...form, status: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                             >
                                 <option value="completed">Completed</option>
                                 <option value="pending">Pending</option>
@@ -3422,7 +3525,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                         </div>
                         <div style={{ gridColumn: 'span 3', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
-                            <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#00ff88', color: '#000' }}>
+                            <button type="submit" disabled={saving} style={{ ...btnStyle, background: 'var(--accent)', color: '#000' }}>
                                 {saving ? 'SAVING...' : editingPayment ? 'SAVE CHANGES' : 'RECORD PAYMENT'}
                             </button>
                         </div>
@@ -3452,7 +3555,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                     <div style={{ fontSize: '9px', color: '#444' }}>{p.user?.email}</div>
                                 </td>
                                 <td style={tdStyle}>
-                                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#00ff88' }}>${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: '900', color: 'var(--accent)' }}>${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                 </td>
                                 <td style={tdStyle}>
                                     <span style={{ fontSize: '9px', textTransform: 'uppercase' }}>{p.method?.replace('_', ' ')}</span>
@@ -3463,8 +3566,8 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 <td style={tdStyle}>
                                     <span style={{
                                         fontSize: '9px', padding: '4px 8px', borderRadius: '4px',
-                                        background: p.status === 'completed' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)',
-                                        color: p.status === 'completed' ? '#00ff88' : '#888',
+                                        background: p.status === 'completed' ? 'rgba(245, 197, 66, 0.18)' : 'rgba(255,255,255,0.05)',
+                                        color: p.status === 'completed' ? 'var(--accent)' : '#888',
                                         fontWeight: '900'
                                     }}>
                                         {p.status.toUpperCase()}
@@ -3607,7 +3710,7 @@ function RequestComments({ request }) {
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
                     placeholder="Type your message to the artist..."
-                    style={{ flex: 1, padding: '12px 20px', background: '#0a0a0a', border: '1px solid #222', color: '#fff', borderRadius: '8px' }}
+                    style={{ flex: 1, padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
                 />
                 <button
                     disabled={sending || !newComment.trim()}

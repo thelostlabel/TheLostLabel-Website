@@ -1,782 +1,590 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import ReleaseCard from './components/ReleaseCard';
-import { motion, useScroll, useTransform, useSpring, useInView, useVelocity, useMotionValue } from 'framer-motion';
-import { Instagram, Disc, Youtube } from 'lucide-react';
-import Footer from './components/Footer';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  ArrowUpRight,
+  Rocket,
+  Waves,
+  ShieldCheck,
+  Headphones,
+  GaugeCircle,
+  BarChart3,
+  Sparkles,
+} from "lucide-react";
+import ReleaseCard from "./components/ReleaseCard";
+import Footer from "./components/Footer";
+import { useMemo } from "react";
 
-const Marquee = ({ text, speed = 20, reverse = false }) => {
-  return (
-    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', width: '100%', padding: '40px 0' }}>
-      <motion.div
-        animate={{ x: reverse ? [0, -1000] : [-1000, 0] }}
-        transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
-        style={{ display: 'flex', gap: '50px' }}
-      >
-        {[...Array(10)].map((_, i) => (
-          <span key={i} style={{ fontSize: '120px', fontWeight: '900', color: 'rgba(255,255,255,0.05)', textTransform: 'uppercase', letterSpacing: '-0.05em' }}>
-            {text}
-          </span>
-        ))}
-      </motion.div>
-    </div>
-  );
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
 
-const Magnetic = ({ children }) => {
-  return (
-    <div style={{ display: 'inline-block' }}>
-      {children}
-    </div>
-  );
-};
-
-// Optimized HoverCard - GPU accelerated, no heavy 3D transforms
-const HoverCard = ({ children }) => {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+const SectionHead = ({ eyebrow, title, subtitle, align = "left" }) => (
+  <motion.div
+    initial="hidden"
+    whileInView="show"
+    viewport={{ once: true, amount: 0.3 }}
+    variants={fadeUp}
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+      textAlign: align,
+      maxWidth: align === "center" ? "720px" : "640px",
+      margin: align === "center" ? "0 auto" : "0",
+    }}
+  >
+    <span
       style={{
-        willChange: 'transform',
-        transformOrigin: 'center center'
+        fontSize: "11px",
+        letterSpacing: "6px",
+        color: "var(--text-secondary)",
+        fontWeight: 800,
       }}
     >
-      {children}
-    </motion.div>
-  );
-};
-
-const Scribble = ({ d, delay = 0 }) => {
-  return (
-    <div style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, pointerEvents: 'none', zIndex: 1 }}>
-      <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="none" style={{ filter: 'blur(1px)', opacity: 0.2 }}>
-        <motion.path
-          d={d}
-          fill="transparent"
-          stroke="var(--accent)"
-          strokeWidth="1"
-          initial={{ pathLength: 0, opacity: 0 }}
-          whileInView={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2, delay, ease: "easeInOut" }}
-          viewport={{ once: false }}
-        />
-      </svg>
-    </div>
-  );
-};
-
-const TypewriterText = ({ text, delay = 0, style = {}, stagger = 0.05, outline = false }) => {
-  const letters = Array.from(text);
-
-  const container = {
-    hidden: { opacity: 0 },
-    visible: (i = 1) => ({
-      opacity: 1,
-      transition: { staggerChildren: stagger, delayChildren: delay }
-    })
-  };
-
-  const child = {
-    visible: {
-      opacity: 1,
-      y: 0,
-      x: 0,
-      rotateX: 0,
-      color: outline ? '#fff' : style.color || '#fff', // Fill color transition target
-      WebkitTextStroke: '0px transparent', // Remove stroke at end
-      transition: {
-        type: "spring",
-        damping: 12,
-        stiffness: 100,
-        color: { duration: 0.5, delay: 0.2 }, // Delay fill
-        WebkitTextStroke: { duration: 0.5, delay: 0.2 }
-      }
-    },
-    hidden: {
-      opacity: 0,
-      y: 20,
-      x: -10,
-      rotateX: -40,
-      color: outline ? 'transparent' : style.color || '#fff', // Start transparent if outline
-      WebkitTextStroke: outline ? '1px #fff' : '0px transparent', // Start with stroke if outline
-      transition: {
-        type: "spring",
-        damping: 12,
-        stiffness: 100
-      }
-    }
-  };
-
-  return (
-    <motion.div
-      style={{ display: "inline-block", overflow: "hidden", ...style }}
-      variants={container}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: false, amount: 0.3 }}
+      {eyebrow}
+    </span>
+    <h2
+      style={{
+        fontSize: "clamp(32px, 6vw, 72px)",
+        lineHeight: 1,
+        fontWeight: 800,
+        letterSpacing: "-0.04em",
+        color: "#fff",
+      }}
     >
-      {letters.map((letter, index) => (
-        <motion.span variants={child} key={index} style={{ display: "inline-block" }}>
-          {letter === " " ? "\u00A0" : letter}
-        </motion.span>
-      ))}
-    </motion.div>
-  );
-};
+      {title}
+    </h2>
+    {subtitle && (
+      <p
+        style={{
+          color: "var(--text-secondary)",
+          fontSize: "15px",
+          lineHeight: 1.6,
+        }}
+      >
+        {subtitle}
+      </p>
+    )}
+  </motion.div>
+);
+
+const FeatureCard = ({ icon: Icon, title, body, badge }) => (
+  <motion.div
+    className="glass"
+    initial="hidden"
+    whileInView="show"
+    whileHover={{ y: -6 }}
+    viewport={{ once: true, amount: 0.2 }}
+    variants={fadeUp}
+    style={{
+      padding: "28px",
+      borderRadius: "16px",
+      border: "1px solid var(--border)",
+      background: "linear-gradient(140deg, rgba(158,240,26,0.08), rgba(14,14,18,0.9))",
+      display: "flex",
+      flexDirection: "column",
+      gap: "14px",
+      minHeight: "200px",
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: "12px",
+          background: "rgba(255,255,255,0.06)",
+          display: "grid",
+          placeItems: "center",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <Icon size={20} color="var(--accent)" />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span style={{ fontSize: 12, letterSpacing: 2, color: "var(--accent)", fontWeight: 800 }}>
+          {badge}
+        </span>
+        <h3 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{title}</h3>
+      </div>
+    </div>
+    <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.5 }}>{body}</p>
+  </motion.div>
+);
+
+const StepCard = ({ step, title, desc }) => (
+  <div
+    style={{
+      background: "rgba(255,255,255,0.02)",
+      border: "1px solid var(--border)",
+      borderRadius: "16px",
+      padding: "22px",
+      display: "flex",
+      gap: "16px",
+      alignItems: "flex-start",
+    }}
+  >
+    <div
+      style={{
+        width: 38,
+        height: 38,
+        borderRadius: "50%",
+        background: "#0d111a",
+        border: "1px solid var(--border)",
+        color: "var(--accent)",
+        display: "grid",
+        placeItems: "center",
+        fontWeight: 800,
+        fontSize: 12,
+      }}
+    >
+      {step}
+    </div>
+    <div>
+      <h4 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.01em", marginBottom: 6 }}>{title}</h4>
+      <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6 }}>{desc}</p>
+    </div>
+  </div>
+);
 
 export default function Home() {
-  const [spotlightReleases, setSpotlightReleases] = useState([]);
-  const [featuredArtists, setFeaturedArtists] = useState([]);
-  const [artistCount, setArtistCount] = useState(0);
+  const [releases, setReleases] = useState([]);
+  const [artists, setArtists] = useState([]);
+  const [artistCount, setArtistCount] = useState(null);
   const [loading, setLoading] = useState(true);
-  const PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
+  const [heroRelease, setHeroRelease] = useState(null);
+  const [siteConfig, setSiteConfig] = useState(null);
 
-  const { scrollYProgress, scrollY } = useScroll();
-  const scrollVelocity = useVelocity(scrollY);
-  const skew = useSpring(useTransform(scrollVelocity, [-1000, 1000], [-5, 5]), { stiffness: 100, damping: 30 });
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const springX = useSpring(mouseX, { stiffness: 50, damping: 20 });
-  const springY = useSpring(mouseY, { stiffness: 50, damping: 20 });
-
-  const scaleX = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001
-  });
-
-  const heroRef = useRef(null);
-  const statsRef = useRef(null);
-  const artistsSectionRef = useRef(null);
-
-  // Removed scroll-driven horizontal effect
+  const shimmerBg = useMemo(
+    () => ({
+      position: "absolute",
+      inset: 0,
+      background:
+        "radial-gradient(circle at 20% 20%, rgba(158,240,26,0.14), transparent 35%), radial-gradient(circle at 80% 10%, rgba(0,238,255,0.18), transparent 40%)",
+      filter: "blur(40px)",
+      opacity: 0.7,
+    }),
+    []
+  );
 
   useEffect(() => {
-    document.documentElement.classList.add('smooth-scroll');
-    const handleMouseMove = (e) => {
-      const { clientX, clientY } = e;
-      mouseX.set(clientX);
-      mouseY.set(clientY);
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      document.documentElement.classList.remove('smooth-scroll');
-    };
-  }, []);
-
-  useEffect(() => {
-    async function fetchData() {
+    const fetchData = async () => {
       try {
-        // Fetch Settings
-        const resSettings = await fetch('/api/settings/public');
-        const config = await resSettings.json();
+        // Get public site settings for hero text + featured release
+        const resSettings = await fetch("/api/settings/public");
+        const settings = await resSettings.json();
 
-        // Apply Config
-        // Apply Config
-        const resSpotlight = await fetch('/api/releases');
-        const dataSpotlight = await resSpotlight.json();
-        if (dataSpotlight.releases) {
-          setSpotlightReleases(dataSpotlight.releases.slice(0, 3)); // LIMITED TO 3
+        const [resReleases, resStats, resArtists] = await Promise.all([
+          fetch("/api/releases"),
+          fetch("/api/stats"),
+          fetch("/api/artists"),
+        ]);
+
+        const jsonReleases = await resReleases.json();
+        const jsonStats = await resStats.json();
+        const jsonArtists = await resArtists.json();
+
+        if (jsonReleases?.releases) setReleases(jsonReleases.releases.slice(0, 6));
+        if (jsonStats?.artistCount) setArtistCount(jsonStats.artistCount);
+        if (jsonArtists?.artists) setArtists(jsonArtists.artists.slice(0, 4));
+
+        // Pick featured release: admin-configured id, else newest
+        let featured = null;
+        if (settings?.featuredReleaseId && jsonReleases?.releases) {
+          featured = jsonReleases.releases.find((r) => r.id === settings.featuredReleaseId) || null;
+        }
+        if (!featured && jsonReleases?.releases?.length) {
+          featured = jsonReleases.releases[0];
         }
 
-        const resStats = await fetch('/api/stats');
-        const dataStats = await resStats.json();
-        if (dataStats.artistCount) setArtistCount(dataStats.artistCount);
-
-        // Fetch featured artists
-        const resArtists = await fetch('/api/artists');
-        const dataArtists = await resArtists.json();
-        if (dataArtists.artists) setFeaturedArtists(dataArtists.artists.slice(0, 3)); // LIMITED TO 3
-
-        // Pass config to state if needed for rendering (using a new state variable)
-        setSiteConfig(config);
-
-      } catch (err) {
-        console.error(err);
+        setHeroRelease(featured);
+        setSiteConfig(settings);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
-    }
+    };
     fetchData();
   }, []);
 
-  const [siteConfig, setSiteConfig] = useState(null);
+  const metrics = [
+    { label: "Artists", value: artistCount ? `${artistCount}+` : "90+" },
+    { label: "Streams", value: "10M+" },
+    { label: "Territories", value: "190" },
+    { label: "Avg. release time", value: "72h" },
+  ];
 
-  const glassStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '12px',
-    overflow: 'hidden'
-  };
+  const services = [
+    {
+      icon: Rocket,
+      title: "Distribution that moves fast",
+      body: "Same-week delivery to 120+ DSPs with proactive QA so you don’t get kicked back for metadata or loudness issues.",
+      badge: "DELIVERY",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Rights & splits handled",
+      body: "Split rules per track, automated statements, and contract PDF storage. Everyone is paid without spreadsheets.",
+      badge: "ROYALTIES",
+    },
+    {
+      icon: BarChart3,
+      title: "Growth crew on call",
+      body: "Playlist pitching, UGC seeding, short-form edits, and localized campaigns built with you, not for you.",
+      badge: "MARKETING",
+    },
+  ];
+
+  const steps = [
+    {
+      title: "Submit & A&R feedback",
+      desc: "Upload WAV or share a link. Human A&R replies within 72 hours with notes or a deal offer.",
+    },
+    {
+      title: "Deal & splits",
+      desc: "Sign digitally, set splits for collaborators, and lock payment rails before release week.",
+    },
+    {
+      title: "Launch everywhere",
+      desc: "We master-check, generate assets, and deliver to DSPs + UGC platforms with pre-save pages baked in.",
+    },
+    {
+      title: "Report & grow",
+      desc: "Live dashboards, monthly statements, and marketing sprints tuned to what’s actually working.",
+    },
+  ];
 
   return (
-    <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', position: 'relative' }}>
-      {/* Noise Texture Filter */}
-      <svg style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}>
-        <filter id="noiseFilter">
-          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-        </filter>
-      </svg>
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 1,
-        pointerEvents: 'none',
-        opacity: 0.04,
-        filter: 'url(#noiseFilter)'
-      }} />
-
-      {/* Dynamic Progress Bar */}
-      <motion.div
+    <div style={{ background: "#050607", minHeight: "100vh", color: "#fff" }}>
+      {/* HERO */}
+      <section
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '2px',
-          background: 'var(--accent)',
-          transformOrigin: '0%',
-          zIndex: 2000,
-          scaleX
+          padding: "120px clamp(16px,4vw,32px) 80px",
+          position: "relative",
+          overflow: "hidden",
         }}
-      />
+      >
+        <div style={shimmerBg} />
 
-      {/* Enhanced Ambient Glows */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
-        <motion.div style={{
-          position: 'absolute',
-          top: '-10%',
-          left: '-10%',
-          width: '60%',
-          height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
-          filter: 'blur(100px)',
-          x: useTransform(springX, [0, 2000], [-50, 50]),
-          y: useTransform(springY, [0, 1000], [-30, 30])
-        }} />
-        <motion.div style={{
-          position: 'absolute',
-          bottom: '10%',
-          right: '-5%',
-          width: '50%',
-          height: '50%',
-          background: 'radial-gradient(circle, rgba(0,255,136,0.05) 0%, transparent 70%)',
-          filter: 'blur(120px)',
-          x: useTransform(springX, [0, 2000], [30, -30]),
-          y: useTransform(springY, [0, 1000], [20, -20])
-        }} />
-      </div>
-
-      {/* Grid Background Overlay */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
-        backgroundSize: '100px 100px',
-        pointerEvents: 'none',
-        zIndex: 1,
-        opacity: 0.6
-      }} />
-
-      {/* Hero Section */}
-      <section ref={heroRef} style={{
-        position: 'relative',
-        zIndex: 2,
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        padding: '0 20px',
-        paddingTop: '100px'
-      }}>
-        <Scribble d="M 0 500 Q 250 100 500 500 T 1000 500" delay={0.5} />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+        <div
           style={{
-            display: 'inline-block',
-            padding: '4px 12px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            fontSize: '10px',
-            fontWeight: '900',
-            letterSpacing: '5px',
-            marginBottom: '40px',
-            color: 'var(--accent)',
-            width: 'fit-content'
+            position: "relative",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 0.9fr)",
+            gap: "40px",
+            alignItems: "center",
           }}
         >
-          {siteConfig?.siteName ? `${siteConfig.siteName}. COLLECTIVE 2026` : 'LOST. COLLECTIVE 2026'}
-        </motion.div>
-
-        <motion.h1
-          style={{
-            fontSize: 'clamp(60px, 16vw, 220px)',
-            lineHeight: '0.8',
-            letterSpacing: '-0.05em',
-            fontWeight: '900',
-            marginBottom: '60px',
-            maxWidth: '1600px',
-            textTransform: 'uppercase',
-            skewX: skew
-          }}
-        >
-          {(siteConfig?.heroText || "The New Order").split(" ").map((word, idx) => (
-            <motion.span
-              key={idx}
-              initial={{ opacity: 0, y: 50, rotateX: 40 }}
-              animate={{ opacity: 1, y: 0, rotateX: 0 }}
-              transition={{ duration: 0.8, delay: idx * 0.2, ease: "easeOut" }}
-              style={{ display: 'block', color: idx === 1 ? 'rgba(255,255,255,0.1)' : '#fff' }}
-            >
-              {word}
-            </motion.span>
-          ))}
-        </motion.h1>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 1 }}
-          style={{ display: 'flex', gap: '60px', alignItems: 'flex-start', flexWrap: 'wrap' }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <p style={{
-              maxWidth: '400px',
-              fontSize: '15px',
-              lineHeight: '1.6',
-              color: '#666',
-              fontWeight: '600'
-            }}>
-              {siteConfig?.heroSubText ? siteConfig.heroSubText.toUpperCase() : 'INDEPENDENT DISTRIBUTION REDEFINED THROUGH MINIMALISM AND PRECISION.'}
-            </p>
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <Magnetic>
-                <Link href="/auth/register" className="glow-button" style={{ fontSize: '12px' }}>
-                  START JOURNEY <span style={{ fontSize: '14px' }}>→</span>
-                </Link>
-              </Magnetic>
+          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 14px", border: "1px solid var(--border)", borderRadius: 999, background: "rgba(255,255,255,0.04)", width: "fit-content" }}>
+              <Sparkles size={16} color="var(--accent)" />
+              <span style={{ fontSize: 11, letterSpacing: 3, fontWeight: 800 }}>
+                {(siteConfig?.siteName || "LOST").toUpperCase()} • 2026
+              </span>
             </div>
-          </div>
 
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-            style={{ width: '100px', height: '100px', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <span style={{ fontSize: '8px', letterSpacing: '4px', textAlign: 'center', color: '#444' }}>SCROLL<br />TO<br />EXPLORE</span>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* Marquee Section 1 */}
-      <Marquee text="Digital Distribution • Royalty Tracking • Artist First • " speed={40} />
-
-      {/* Trending Releases Section - Wide Layout */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '100px 0', width: '100%' }}>
-        {/* Scroll Background Text */}
-        <motion.div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: 'clamp(100px, 25vw, 400px)',
-            fontWeight: '900',
-            color: 'rgba(255,255,255,0.01)',
-            whiteSpace: 'nowrap',
-            zIndex: 0,
-            letterSpacing: '-0.05em',
-            pointerEvents: 'none'
-          }}
-        >
-          RELEASES
-        </motion.div>
-
-        {/* Header - Wide Layout with Animation */}
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: false }}
-          transition={{ duration: 0.8 }}
-          style={{ padding: '0 10px', marginBottom: '80px', position: 'relative', zIndex: 1 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-            <motion.div
-              initial={{ width: 0 }}
-              whileInView={{ width: 60 }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              style={{ height: '2px', background: 'var(--accent)' }}
-            />
-            <h2 style={{ fontSize: '11px', letterSpacing: '8px', color: 'var(--accent)', fontWeight: '900' }}>01 / DISCOVER</h2>
-          </div>
-          <div style={{ fontSize: 'clamp(50px, 10vw, 120px)', fontWeight: '900', letterSpacing: '-0.03em', lineHeight: '0.9' }}>
-            TRENDING <br /> RELEASES
-          </div>
-        </motion.div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-          gap: '40px',
-          padding: '0' // Zero padding
-        }}>
-          {loading ? (
-            [1, 2, 3].map(i => <div key={i} style={{ ...glassStyle, height: '500px', opacity: 0.1 }}></div>)
-          ) : (
-            spotlightReleases.slice(0, 3).map((release, idx) => ( // Explicitly showing 3 here too just in case
-              <motion.div
-                key={release.id}
-                initial={{ opacity: 0, scale: 0.95, y: 60 }}
-                whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: idx * 0.1 }}
-                viewport={{ once: false }}
-                whileHover={{ y: -10, transition: { duration: 0.3 } }}
-              >
-                <HoverCard>
-                  <ReleaseCard id={release.id} initialData={release} />
-                </HoverCard>
-              </motion.div>
-            ))
-          )}
-        </div>
-
-        {/* View All Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          style={{ textAlign: 'center', marginTop: '80px' }}
-        >
-          <Magnetic>
-            <Link href="/releases" className="glow-button" style={{ fontSize: '12px' }}>
-              VIEW ALL RELEASES <span style={{ fontSize: '14px' }}>→</span>
-            </Link>
-          </Magnetic>
-        </motion.div>
-      </section>
-
-      {/* Artists Section - Simple Grid */}
-      <section style={{
-        position: 'relative',
-        zIndex: 2,
-        padding: '100px 0', // FULL WIDTH, NO SIDE PADDING ON CONTAINER
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        width: '100%'
-      }}>
-        {/* Scroll Background Text */}
-        <motion.div
-          style={{
-            position: 'absolute',
-            top: '200px',
-            right: '-10%',
-            fontSize: 'clamp(100px, 20vw, 300px)',
-            fontWeight: '900',
-            color: 'rgba(255,255,255,0.01)',
-            whiteSpace: 'nowrap',
-            zIndex: 0,
-            letterSpacing: '-0.05em',
-            pointerEvents: 'none'
-          }}
-        >
-          ARTISTS
-        </motion.div>
-
-        {/* Header - Wide Layout */}
-        <div style={{ padding: '0 10px', marginBottom: '60px', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '30px' }}>
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: false }}
-            transition={{ duration: 0.8 }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-              {/* Animated Line */}
-              <motion.div
-                initial={{ width: 0 }}
-                whileInView={{ width: 60 }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                style={{ height: '2px', background: 'var(--accent)' }}
-              />
-              <span style={{ fontSize: '10px', letterSpacing: '6px', color: '#fff', fontWeight: '900' }}>ROSTER</span>
-            </div>
-            <h2 style={{ fontSize: 'clamp(60px, 8vw, 120px)', fontWeight: '400', letterSpacing: '-0.03em', lineHeight: '0.9', color: '#fff' }}>
-              Our <span style={{ fontWeight: '900', color: '#fff' }}>Artists</span>
-            </h2>
-          </motion.div>
-
-          <div style={{ maxWidth: '400px', fontSize: '14px', color: '#888', lineHeight: '1.6' }}>
-            LOST. collaborates with a diverse array of independent acts, covering genres ranging from phonk to ambient.
-            <div style={{ marginTop: '20px' }}>
-              <Link href="/artists" style={{ color: '#fff', textDecoration: 'none', borderBottom: '1px solid #fff', paddingBottom: '2px', fontSize: '12px' }}>
-                View All Artists &rarr;
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Artists Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '30px',
-          position: 'relative',
-          zIndex: 1,
-          padding: '0' // Zero padding
-        }}>
-          {featuredArtists.length > 0 ? featuredArtists.map((artist, idx) => (
-            <motion.div
-              key={artist.id}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false }}
-              transition={{ duration: 0.5, delay: idx * 0.05 }}
-              whileHover={{ y: -10, transition: { duration: 0.2, delay: 0 } }}
+            <h1
               style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.05)',
-                borderRadius: '16px',
-                padding: '25px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '15px'
+                fontSize: "clamp(48px, 10vw, 110px)",
+                lineHeight: 0.95,
+                letterSpacing: "-0.05em",
+                fontWeight: 800,
               }}
             >
-              {/* Index */}
-              <span style={{ fontSize: '11px', color: '#444', fontWeight: '400' }}>({idx + 1})</span>
+              {siteConfig?.heroText || "Lose the label,"}{" "}
+              <span style={{ color: "var(--accent)" }}>keep control.</span>
+            </h1>
 
-              {/* Artist Name */}
-              <Link href={`/artists/${artist.id}`} style={{ textDecoration: 'none' }}>
-                <h3 style={{
-                  fontSize: '24px',
-                  fontWeight: '900',
-                  letterSpacing: '-0.02em',
-                  textTransform: 'uppercase',
-                  color: '#fff'
-                }}>
-                  {artist.name}
-                </h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: 16, lineHeight: 1.7, maxWidth: 640 }}>
+              <span className="typewriter" style={{ "--chars": (siteConfig?.heroSubText || "").length || 64 }}>
+                {siteConfig?.heroSubText || "LOST is a modern music company for artists who want major-level distribution, transparent splits, and marketing that actually ships."}
+              </span>
+            </p>
+
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <Link href="/auth/register" className="glow-button" style={{ letterSpacing: 2, padding: "14px 26px", fontSize: 12 }}>
+                GET STARTED
+                <ArrowUpRight size={14} />
               </Link>
+              <Link
+                href="/artists"
+                className="glass-button"
+                style={{ letterSpacing: 2, padding: "14px 24px", fontSize: 12 }}
+              >
+                SEE ROSTER
+              </Link>
+            </div>
 
-              {/* Genres / Stats */}
-              <p style={{
-                fontSize: '11px',
-                color: '#666',
-                lineHeight: '1.6'
-              }}>
-                {artist.genres?.length > 0 ? artist.genres.slice(0, 2).join(' • ') : `${(artist.monthlyListeners / 1000).toFixed(0)}K monthly listeners`}
-              </p>
+            <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+              {["DSP delivery < 72h", "Real-time splits", "Human A&R", "Marketing pods"].map((item) => (
+                <div
+                  key={item}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 999,
+                    border: "1px solid var(--border)",
+                    background: "rgba(255,255,255,0.03)",
+                    fontSize: 12,
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
 
-              {/* Image with grayscale hover */}
-              <motion.div
-                style={{
-                  width: '100%',
-                  height: '250px',
-                  borderRadius: '12px',
-                  background: artist.image ? `url(${artist.image}) center/cover` : 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-                  backgroundColor: '#1a1a1a',
-                  filter: 'grayscale(100%)',
-                  willChange: 'filter'
-                }}
-                whileHover={{ filter: 'grayscale(0%)' }}
-                transition={{ duration: 0.3 }}
-              />
-
-              {/* Sound wave icon */}
-              <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end' }}>
-                {[4, 8, 12, 8, 4, 10, 6].map((h, i) => (
-                  <div key={i} style={{ width: '2px', height: `${h}px`, background: '#333' }} />
-                ))}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            whileHover={{ y: -6 }}
+            className="glass"
+            style={{
+              borderRadius: 20,
+              padding: 24,
+              border: "1px solid var(--border)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(8,10,15,0.9))",
+              boxShadow: "0 30px 80px rgba(0,0,0,0.35)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 12, letterSpacing: 2, color: "var(--accent)", fontWeight: 800 }}>
+                  {siteConfig?.featuredReleaseLabel || "FEATURED RELEASE"}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
+                  {heroRelease?.name || "Your Release"}
+                </div>
               </div>
-            </motion.div>
-          )) : (
-            // Loading skeleton
-            [1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} style={{ height: '400px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', opacity: 0.3 }} />
-            ))
-          )}
+              <GaugeCircle size={32} color="var(--accent)" />
+            </div>
+            <div
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                minHeight: 260,
+                background: "#0b0d12",
+              }}
+            >
+              {heroRelease?.image ? (
+                <img
+                  src={
+                    heroRelease.image.startsWith("private/")
+                      ? `/api/files/release/${heroRelease.id}`
+                      : heroRelease.image
+                  }
+                  alt={heroRelease.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }}
+                />
+              ) : (
+                <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--text-secondary)" }}>
+                  Artwork preview
+                </div>
+              )}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.6))",
+                }}
+              />
+              <div style={{ position: "absolute", bottom: 16, left: 16, right: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>{heroRelease?.artistName || "Independent Artist"}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                    {siteConfig?.featuredReleaseSubLabel || "NOW STREAMING"}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "var(--accent)" }} />
+                  <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 800 }}>
+                    {siteConfig?.featuredReleaseStatus || "Featured"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* View All Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          style={{ textAlign: 'center', marginTop: '80px' }}
-        >
-          <Magnetic>
-            <Link href="/artists" className="glow-button" style={{ fontSize: '12px' }}>
-              VIEW ALL ARTISTS <span style={{ fontSize: '14px' }}>→</span>
-            </Link>
-          </Magnetic>
-        </motion.div>
-      </section>
-
-      {/* Marquee Section 2 (Reverse) */}
-      <Marquee text="Phonk • Electronic • Minimal • Experimental • " speed={30} reverse={true} />
-
-      {/* Stats Section with Scroll Parallax */}
-      {(siteConfig?.showStats !== false) && (
-        <section ref={statsRef} style={{
-          position: 'relative',
-          zIndex: 2,
-          padding: '200px 5vw',
-          background: 'rgba(255,255,255,0.005)',
-          borderTop: '1px solid rgba(255,255,255,0.03)',
-          borderBottom: '1px solid rgba(255,255,255,0.03)',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '80px'
-        }}>
-          {[
-            { label: 'ARTISTS', value: '95' },
-            { label: 'GLOBAL STREAMS', value: '10M+' },
-            { label: 'ACTIVE CHANNELS', value: '150+' }
-          ].map((stat, idx) => (
+        {/* Metrics */}
+        <div style={{ marginTop: 50, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+          {metrics.map((m, idx) => (
             <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: idx * 0.2, ease: "easeOut" }}
-              viewport={{ once: false }}
-              style={{ textAlign: 'center' }}
+              key={m.label}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.2 }}
+              variants={{ ...fadeUp, show: { ...fadeUp.show, transition: { duration: 0.4, delay: idx * 0.05 } } }}
+              style={{
+                padding: "18px 14px",
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                background: "rgba(255,255,255,0.02)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
             >
-              <motion.div
-                style={{ fontSize: '100px', fontWeight: '900', letterSpacing: '-0.04em', marginBottom: '10px', color: idx === 1 ? 'var(--accent)' : '#fff' }}
-              >
-                {stat.value}
-              </motion.div>
-              <div style={{ fontSize: '10px', letterSpacing: '6px', color: '#444', fontWeight: '900' }}>{stat.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{m.value}</div>
+              <div style={{ fontSize: 12, letterSpacing: 2, color: "var(--text-secondary)", fontWeight: 700 }}>{m.label}</div>
             </motion.div>
           ))}
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* Global Distribution Section */}
-      <section style={{
-        padding: '120px 0',
-        overflow: 'hidden'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '60px', padding: '0 20px' }}>
-          <div style={{ fontSize: '10px', letterSpacing: '8px', color: 'var(--accent)', fontWeight: '900', marginBottom: '20px' }}>PARTNER NETWORK</div>
-          <h2 style={{ fontSize: '40px', fontWeight: '900', letterSpacing: '-0.02em' }}>GLOBAL DISTRIBUTION</h2>
+      {/* SERVICES */}
+      <section style={{ padding: "80px clamp(16px,4vw,32px)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 40, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <SectionHead
+            eyebrow="WHAT WE DO"
+            title="Everything you need between demo and domination."
+            subtitle="We operate like your embedded label team: distribution, splits, marketing pods, and reporting in one motion stack."
+          />
+          <Link href="/join" className="glow-button" style={{ letterSpacing: 2, padding: "12px 20px", fontSize: 11 }}>
+            TALK TO A&R
+          </Link>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-          {/* First Row */}
-          <div style={{ display: 'flex', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            <motion.div
-              animate={{ x: [0, -1000] }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-              style={{ display: 'flex', gap: '100px', alignItems: 'center' }}
-            >
-              {/* Duplicated multiple times for seamless loop on wide screens */}
-              {[...Array(6)].flatMap(() => [
-                { n: "7Digital", d: "7digital.com" }, { n: "AWA", d: "awa.fm" }, { n: "Amazon", d: "amazon.com" },
-                { n: "Anghami", d: "anghami.com" }, { n: "Apple Music", d: "apple.com" }, { n: "Audiomack", d: "audiomack.com" },
-                { n: "Beatport", d: "beatport.com" }, { n: "Beatsource", d: "beatsource.com" }, { n: "Boomplay", d: "boomplay.com" }
-              ]).map((p, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', opacity: 0.4 }}>
-                  <img src={`https://logo.clearbit.com/${p.d}`} alt="" style={{ width: '20px', height: '20px', filter: 'grayscale(1) brightness(2)', borderRadius: '4px' }} onError={(e) => e.target.style.display = 'none'} />
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase' }}>{p.n}</span>
-                </div>
-              ))}
-            </motion.div>
-          </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginTop: 30 }}>
+          {services.map((s) => (
+            <FeatureCard key={s.title} {...s} />
+          ))}
+        </div>
+      </section>
 
-          {/* Second Row (Reverse) */}
-          <div style={{ display: 'flex', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            <motion.div
-              animate={{ x: [-1000, 0] }}
-              transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-              style={{ display: 'flex', gap: '100px', alignItems: 'center' }}
-            >
-              {[...Array(6)].flatMap(() => [
-                { n: "Deezer", d: "deezer.com" }, { n: "Instagram", d: "instagram.com" }, { n: "KKBOX", d: "kkbox.com" },
-                { n: "Meta", d: "meta.com" }, { n: "Mixcloud", d: "mixcloud.com" }, { n: "Napster", d: "napster.com" },
-                { n: "Netease", d: "163.com" }, { n: "Pandora", d: "pandora.com" }, { n: "Shazam", d: "shazam.com" }
-              ]).map((p, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', opacity: 0.4 }}>
-                  <img src={`https://logo.clearbit.com/${p.d}`} alt="" style={{ width: '20px', height: '20px', filter: 'grayscale(1) brightness(2)', borderRadius: '4px' }} onError={(e) => e.target.style.display = 'none'} />
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase' }}>{p.n}</span>
-                </div>
-              ))}
-            </motion.div>
-          </div>
+      {/* RELEASES */}
+      <section style={{ padding: "80px clamp(16px,4vw,32px)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <SectionHead
+          eyebrow="LATEST"
+          title="Releases that feel intentional."
+          subtitle="A small snapshot from the roster. Every drop gets design, delivery, and marketing treatment." 
+        />
 
-          {/* Third Row */}
-          <div style={{ display: 'flex', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            <motion.div
-              animate={{ x: [0, -1000] }}
-              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-              style={{ display: 'flex', gap: '100px', alignItems: 'center' }}
-            >
-              {[...Array(6)].flatMap(() => [
-                { n: "Spotify", d: "spotify.com" }, { n: "Tidal", d: "tidal.com" }, { n: "TikTok", d: "tiktok.com" },
-                { n: "Yandex", d: "yandex.ru" }, { n: "YouTube", d: "youtube.com" }, { n: "iTunes", d: "apple.com" },
-                { n: "iHeartRadio", d: "iheart.com" }, { n: "Soundtrack", d: "soundtrackyourbrand.com" }
-              ]).map((p, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', opacity: 0.4 }}>
-                  <img src={`https://logo.clearbit.com/${p.d}`} alt="" style={{ width: '20px', height: '20px', filter: 'grayscale(1) brightness(2)', borderRadius: '4px' }} onError={(e) => e.target.style.display = 'none'} />
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', letterSpacing: '4px', textTransform: 'uppercase' }}>{p.n}</span>
-                </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24, marginTop: 32 }}>
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 360,
+                    borderRadius: 16,
+                    border: "1px solid var(--border)",
+                    background: "rgba(255,255,255,0.02)",
+                  }}
+                />
+              ))
+            : releases.slice(0, 3).map((release, idx) => (
+                <motion.div
+                  key={release.id}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, amount: 0.2 }}
+                  variants={{ ...fadeUp, show: { ...fadeUp.show, transition: { duration: 0.45, delay: idx * 0.08 } } }}
+                >
+                  <ReleaseCard id={release.id} initialData={release} />
+                </motion.div>
               ))}
+        </div>
+
+        <div style={{ marginTop: 28 }}>
+          <Link href="/releases" style={{ fontSize: 13, color: "var(--accent)", fontWeight: 800, letterSpacing: 2 }}>
+            VIEW FULL CATALOG ↗
+          </Link>
+        </div>
+      </section>
+
+      {/* ARTISTS */}
+      <section style={{ padding: "80px clamp(16px,4vw,32px)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <SectionHead
+          eyebrow="ROSTER"
+          title="Artists who build with us."
+          subtitle="Global talent across phonk, funk carioca, experimental electronica, and alt-pop."
+        />
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18, marginTop: 30 }}>
+          {(artists.length ? artists : Array.from({ length: 4 })).map((artist, idx) => (
+            <motion.div
+              key={artist?.id || idx}
+              className="glass"
+              initial="hidden"
+              whileInView="show"
+              whileHover={{ y: -6 }}
+              viewport={{ once: true, amount: 0.2 }}
+              variants={{ ...fadeUp, show: { ...fadeUp.show, transition: { duration: 0.45, delay: idx * 0.05 } } }}
+              style={{
+                borderRadius: 14,
+                padding: 18,
+                border: "1px solid var(--border)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  aspectRatio: "1/1",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: artist?.image
+                    ? `url(${artist.image.startsWith("private/") ? `/api/files/release/${artist.id}` : artist.image}) center/cover`
+                    : "linear-gradient(135deg, #0d111a, #0a0c12)",
+                  border: "1px solid var(--border)",
+                }}
+              />
+              <div>
+                <div style={{ fontSize: 14, letterSpacing: 2, color: "var(--text-secondary)", marginBottom: 4 }}>ARTIST</div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{artist?.name || "Loading"}</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  {artist?.monthlyListeners ? `${artist.monthlyListeners.toLocaleString()} monthly listeners` : "New drop coming"}
+                </div>
+              </div>
             </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* PIPELINE */}
+      <section style={{ padding: "80px clamp(16px,4vw,32px)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "center" }}>
+          <SectionHead
+            eyebrow="PIPELINE"
+            title="A predictable release engine."
+            subtitle="Clear gates, quick feedback loops, and one place to see where your track lives."
+          />
+          <div style={{ display: "grid", gap: 14 }}>
+            {steps.map((s, i) => (
+              <StepCard key={s.title} step={i + 1} title={s.title} desc={s.desc} />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Final Call to Action */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '250px 5vw', textAlign: 'center' }}>
-        <div style={{ marginBottom: '80px' }}>
-          <TypewriterText
-            text="Define Your"
-            style={{ fontSize: 'clamp(50px, 10vw, 150px)', fontWeight: '900', letterSpacing: '-0.04em', textTransform: 'uppercase', display: 'block', lineHeight: '0.9' }}
-            stagger={0.08}
-            outline={true}
-          />
-          <TypewriterText
-            text="Own Sound."
-            delay={0.8}
-            style={{ fontSize: 'clamp(50px, 10vw, 150px)', fontWeight: '900', letterSpacing: '-0.04em', textTransform: 'uppercase', color: 'var(--accent)', display: 'block', lineHeight: '0.9' }}
-            stagger={0.08}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '25px', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
-          <Magnetic>
-            <Link href="/join" className="glow-button" style={{
-              fontSize: '11px'
-            }}>
-              JOIN NOW <span style={{ fontSize: '14px' }}>→</span>
-            </Link>
-          </Magnetic>
-          <Magnetic>
-            <Link href="/faq" className="glass-button" style={{
-              fontSize: '11px'
-            }}>
-              EXPLORE FAQ
-            </Link>
-          </Magnetic>
+      {/* CTA */}
+      <section style={{ padding: "120px clamp(16px,4vw,32px)", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <h2 style={{ fontSize: "clamp(36px, 7vw, 88px)", fontWeight: 800, letterSpacing: "-0.04em", marginBottom: 16 }}>
+          Ready to drop with LOST?
+        </h2>
+        <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, maxWidth: 640, margin: "0 auto 30px" }}>
+          Apply once. Get feedback fast. If it fits, we ship it everywhere and show you the math.
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/auth/register" className="glow-button" style={{ padding: "14px 24px", letterSpacing: 2, fontSize: 12 }}>
+            SUBMIT A DEMO
+          </Link>
+          <Link href="/faq" className="glass-button" style={{ padding: "14px 22px", letterSpacing: 2, fontSize: 12 }}>
+            READ FAQ
+          </Link>
         </div>
       </section>
 
-      {/* Footer Component */}
       <Footer />
     </div>
   );

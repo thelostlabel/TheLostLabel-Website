@@ -34,6 +34,12 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
     const title = data?.name || fallbackTitle;
     const image = data?.image;
 
+    const normalizedImage = image
+        ? (image.startsWith('private/') && (initialData?.id || id)
+            ? `/api/files/release/${initialData?.id || id}`
+            : image)
+        : null;
+
     return (
         <div className="glass" style={{
             padding: '0',
@@ -51,10 +57,10 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                 position: 'relative',
                 overflow: 'hidden'
             }}>
-                {image ? (
+                {normalizedImage ? (
                     <>
                         <img
-                            src={image}
+                            src={normalizedImage}
                             alt={title}
                             className="release-image"
                             style={{
