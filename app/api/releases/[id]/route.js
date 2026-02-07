@@ -20,7 +20,6 @@ export async function PATCH(req, { params }) {
                 releaseDate: data.releaseDate ? new Date(data.releaseDate).toISOString() : undefined,
                 image: data.image,
                 spotifyUrl: data.spotifyUrl,
-                spotifyUrl: data.spotifyUrl,
                 type: data.type
             }
         });

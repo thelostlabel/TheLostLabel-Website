@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { scrapeMonthlyListeners } from "@/lib/scraper";
+import { scrapeSpotifyStats } from "@/lib/scraper";
 
 // This endpoint syncs monthly listeners for all artists with Spotify URLs
 // Can be called manually or via cron job
@@ -43,13 +43,9 @@ export async function POST(req) {
         for (const artistItem of artists) {
             try {
                 console.log(`[Cron] Scraping: ${artistItem.stageName || artistItem.id}`);
-                const data = await scrapeMonthlyListeners(artistItem.spotifyUrl); // Assuming scraper returns object now or just listeners
+                const data = await scrapeSpotifyStats(artistItem.spotifyUrl); // Assuming scraper returns object now
 
-                // Note: Modified scraper might return object with monthly_listeners, followers etc.
-                // Let's handle both number (old) and object (new) if possible, but based on recent view it returns number.
-                // Actually view of scraper.js shows it returns data.monthly_listeners (number).
-
-                const listeners = typeof data === 'object' ? data.monthly_listeners : data;
+                const listeners = data?.monthlyListeners || null;
 
                 if (listeners) {
                     // Update User
