@@ -1567,7 +1567,7 @@ function ArtistContractsView({ contracts, session }) {
                             <div style={{ marginTop: '20px', pt: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '9px', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
                                 <span>CREATED: {new Date(c.createdAt).toLocaleDateString()}</span>
                                 {c.pdfUrl && (
-                                    <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 12px', background: 'var(--accent)', color: '#000', border: 'none' }}>
+                                    <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 12px', background: 'var(--accent)', color: '#000', border: 'none' }}>
                                         VIEW SIGNED PDF
                                     </a>
                                 )}
@@ -1607,4 +1607,3 @@ const tdStyle = {
     borderBottom: '1px solid rgba(255,255,255,0.02)',
     fontWeight: '700'
 };
-

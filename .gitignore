@@ -17,6 +17,11 @@
 /.next/
 /out/
 
+# local data
+/private/uploads
+/prisma/*.db
+/public/uploads
+
 # production
 /build
 

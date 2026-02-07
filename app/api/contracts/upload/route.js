@@ -3,6 +3,8 @@ import { join } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
+const MAX_PDF_BYTES = 25 * 1024 * 1024;
+
 export async function POST(req) {
     const session = await getServerSession(authOptions);
 
@@ -23,9 +25,12 @@ export async function POST(req) {
         if (!file.name.toLowerCase().endsWith('.pdf')) {
             return new Response(JSON.stringify({ error: "Only PDF files are allowed" }), { status: 400 });
         }
+        if (file.size > MAX_PDF_BYTES) {
+            return new Response(JSON.stringify({ error: "PDF too large (max 25MB)." }), { status: 400 });
+        }
 
         // Create uploads directory if not exists
-        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'contracts');
+        const uploadsDir = join(process.cwd(), 'private', 'uploads', 'contracts');
         await mkdir(uploadsDir, { recursive: true });
 
         // Generate unique filename
@@ -41,7 +46,7 @@ export async function POST(req) {
 
         return new Response(JSON.stringify({
             success: true,
-            pdfUrl: `/uploads/contracts/${uniqueFilename}`
+            pdfUrl: `private/uploads/contracts/${uniqueFilename}`
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }

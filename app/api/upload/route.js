@@ -3,6 +3,10 @@ import { join } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
+const MAX_DEMO_BYTES = 100 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_PDF_BYTES = 25 * 1024 * 1024;
+
 export async function POST(req) {
     const session = await getServerSession(authOptions);
 
@@ -19,9 +23,11 @@ export async function POST(req) {
         }
 
         // Create uploads directories
-        const demoDir = join(process.cwd(), 'public', 'uploads', 'demos');
+        const demoDir = join(process.cwd(), 'private', 'uploads', 'demos');
+        const contractDir = join(process.cwd(), 'private', 'uploads', 'contracts');
         const releaseDir = join(process.cwd(), 'public', 'uploads', 'releases');
         await mkdir(demoDir, { recursive: true });
+        await mkdir(contractDir, { recursive: true });
         await mkdir(releaseDir, { recursive: true });
 
         const uploadedFiles = [];
@@ -32,16 +38,23 @@ export async function POST(req) {
             let publicPath;
 
             if (ext === 'wav') {
+                if (file.size > MAX_DEMO_BYTES) {
+                    return new Response(JSON.stringify({ error: "Demo file too large (max 100MB)." }), { status: 400 });
+                }
                 targetDir = demoDir;
-                publicPath = '/uploads/demos/';
+                publicPath = 'private/uploads/demos/';
             } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+                if (file.size > MAX_IMAGE_BYTES) {
+                    return new Response(JSON.stringify({ error: "Image too large (max 10MB)." }), { status: 400 });
+                }
                 targetDir = releaseDir;
                 publicPath = '/uploads/releases/';
             } else if (ext === 'pdf') {
-                const contractDir = join(process.cwd(), 'public', 'uploads', 'contracts');
-                await mkdir(contractDir, { recursive: true });
+                if (file.size > MAX_PDF_BYTES) {
+                    return new Response(JSON.stringify({ error: "PDF too large (max 25MB)." }), { status: 400 });
+                }
                 targetDir = contractDir;
-                publicPath = '/uploads/contracts/';
+                publicPath = 'private/uploads/contracts/';
             } else {
                 continue; // Skip unsupported
             }

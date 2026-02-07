@@ -2952,7 +2952,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                 </td>
                                 <td style={tdStyle}>
                                     {c.pdfUrl ? (
-                                        <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 10px', fontSize: '8px' }}>
+                                        <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 10px', fontSize: '8px' }}>
                                             VIEW PDF
                                         </a>
                                     ) : (
@@ -3619,4 +3619,3 @@ function RequestComments({ request }) {
         </div>
     );
 }
-
