@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getPlaylistTracks, getArtistsDetails } from "@/lib/spotify";
-import { scrapeMonthlyListeners } from "@/lib/scraper";
+import { scrapeSpotifyStats } from "@/lib/scraper";
 import { chromium } from 'playwright';
 import prisma from "@/lib/prisma";
 
@@ -210,46 +210,46 @@ export async function POST(req) {
                     // Naive check: Scrape everyone if passed param is true. 
                     // Optimally: Check 'lastSyncedAt' for this artist.
 
-                    if (spotifyUrl) {
-                        try {
-                            console.log(`[Sync] Scraping: ${artist.name}`);
-                            monthlyListeners = await scrapeMonthlyListeners(spotifyUrl, browser);
-                            if (monthlyListeners) {
-                                console.log(`[Sync] ${artist.name}: ${monthlyListeners.toLocaleString()} monthly listeners`);
-                            }
+                    try {
+                        console.log(`[Sync] Scraping: ${artist.name}`);
+                        const data = await scrapeSpotifyStats(spotifyUrl, browser);
+                        monthlyListeners = data?.monthlyListeners || null;
 
-                            await prisma.artist.upsert({
-                                where: { id: artist.id },
-                                update: {
-                                    name: artist.name,
-                                    image: artist.images?.[0]?.url || null,
-                                    followers: artist.followers?.total || null,
-                                    monthlyListeners: monthlyListeners || undefined,
-                                    lastSyncedAt: new Date(),
-                                    genres: artist.genres?.join(',') || null
-                                },
-                                create: {
-                                    id: artist.id,
-                                    name: artist.name,
-                                    image: artist.images?.[0]?.url || null,
-                                    followers: artist.followers?.total || null,
-                                    monthlyListeners: monthlyListeners || null,
-                                    lastSyncedAt: new Date(),
-                                    genres: artist.genres?.join(',') || null
-                                }
-                            });
-                            results.push({
+                        if (monthlyListeners) {
+                            console.log(`[Sync] ${artist.name}: ${monthlyListeners.toLocaleString()} monthly listeners`);
+                        }
+
+                        await prisma.artist.upsert({
+                            where: { id: artist.id },
+                            update: {
+                                name: artist.name,
+                                image: artist.images?.[0]?.url || null,
+                                followers: artist.followers?.total || null,
+                                monthlyListeners: monthlyListeners || undefined,
+                                lastSyncedAt: new Date(),
+                                genres: artist.genres?.join(',') || null
+                            },
+                            create: {
                                 id: artist.id,
                                 name: artist.name,
-                                monthlyListeners,
-                                success: true
-                            });
-                            successCount++;
-                        } catch (e) {
-                            errorCount++;
-                            console.error(`[Sync] Error for ${artist.name}:`, e.message);
-                            results.push({ id: artist.id, name: artist.name, success: false, error: e.message });
-                        }
+                                image: artist.images?.[0]?.url || null,
+                                followers: artist.followers?.total || null,
+                                monthlyListeners: monthlyListeners || null,
+                                lastSyncedAt: new Date(),
+                                genres: artist.genres?.join(',') || null
+                            }
+                        });
+                        results.push({
+                            id: artist.id,
+                            name: artist.name,
+                            monthlyListeners,
+                            success: true
+                        });
+                        successCount++;
+                    } catch (e) {
+                        errorCount++;
+                        console.error(`[Sync] Error for ${artist.name}:`, e.message);
+                        results.push({ id: artist.id, name: artist.name, success: false, error: e.message });
                     }
                 }));
             }
