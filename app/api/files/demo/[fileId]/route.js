@@ -29,7 +29,7 @@ export async function GET(req, { params }) {
   const session = await getServerSession(authOptions);
   if (!session) return new Response("Unauthorized", { status: 401 });
 
-  const fileId = params?.fileId;
+  const { fileId } = await params;
   if (!fileId) return new Response("Missing file id", { status: 400 });
 
   const demoFile = await prisma.demoFile.findUnique({

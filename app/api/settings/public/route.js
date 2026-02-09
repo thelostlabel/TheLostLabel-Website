@@ -29,7 +29,9 @@ export async function GET() {
             youtube: config.youtube || '',
             showStats: config.showStats ?? true,
             registrationsOpen: config.registrationsOpen ?? true,
-            maintenanceMode: config.maintenanceMode ?? false
+            maintenanceMode: config.maintenanceMode ?? false,
+            joinHeroTitle: config.joinHeroTitle || 'WORK WITH THE LOST. COMPANY',
+            joinHeroSub: config.joinHeroSub || 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
         }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });

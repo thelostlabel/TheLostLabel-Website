@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { signIn, getSession } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import BackgroundEffects from '../../components/BackgroundEffects';
+import { motion } from 'framer-motion';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -32,46 +34,56 @@ export default function Login() {
         }
     };
 
+    const labelStyle = {
+        display: 'block',
+        marginBottom: '8px',
+        fontSize: '10px',
+        fontWeight: '900',
+        color: 'var(--accent)',
+        letterSpacing: '2px',
+        textTransform: 'uppercase'
+    };
+
+    const inputStyle = {
+        width: '100%',
+        padding: '16px',
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '12px',
+        color: 'white',
+        fontFamily: 'inherit',
+        fontSize: '14px',
+        outline: 'none',
+        transition: 'all 0.3s ease'
+    };
+
     return (
-        <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', display: 'flex' }}>
+        <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', display: 'flex' }}>
+            <BackgroundEffects />
+
             {/* Left Side - Visuals (Hidden on Mobile) */}
             <div style={{
                 flex: '1',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
             }} className="desktop-visual">
-                {/* Background Image / Abstract */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    background: 'radial-gradient(circle at 70% 50%, #1a1a1a, #000)',
-                    zIndex: 0
-                }} />
 
-                {/* Noise */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0.05,
-                    filter: 'url(#noiseFilter)',
-                    zIndex: 1
-                }} />
-
-                <div style={{
-                    position: 'absolute',
-                    bottom: '80px',
-                    left: '80px',
-                    zIndex: 2
-                }}>
-                    <h1 style={{ fontSize: '60px', fontWeight: '900', lineHeight: '0.9', letterSpacing: '-0.03em', marginBottom: '20px' }}>
-                        WELCOME<br />BACK.
-                    </h1>
+                <div style={{ position: 'relative', zIndex: 2, padding: '80px' }}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                    >
+                        <h1 style={{ fontSize: 'clamp(50px, 5vw, 80px)', fontWeight: '900', lineHeight: '0.9', letterSpacing: '-0.04em', marginBottom: '30px' }}>
+                            WELCOME<br /><span style={{ color: 'var(--accent)' }}>BACK.</span>
+                        </h1>
+                        <p style={{ maxWidth: '400px', fontSize: '14px', color: '#888', lineHeight: '1.6', letterSpacing: '0.5px' }}>
+                            Access your artist portal, manage releases, and check your stats.
+                        </p>
+                    </motion.div>
                 </div>
             </div>
 
@@ -79,7 +91,8 @@ export default function Login() {
             <div style={{
                 width: '100%',
                 maxWidth: '600px',
-                background: '#0a0a0a',
+                background: 'rgba(5, 6, 7, 0.8)',
+                backdropFilter: 'blur(20px)',
                 borderLeft: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -88,82 +101,78 @@ export default function Login() {
                 position: 'relative',
                 zIndex: 10
             }}>
-                <div style={{ marginBottom: '60px' }}>
-                    <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>LOGIN</h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600' }}>
-                        ACCESS ARTIST PORTAL
+                <motion.div
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                    <div style={{ marginBottom: '60px' }}>
+                        <Link href="/" style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '2px', color: '#666', marginBottom: '20px', display: 'block', textDecoration: 'none' }}>← BACK TO HOME</Link>
+                        <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>LOGIN</h2>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600', letterSpacing: '1px' }}>
+                            ACCESS ARTIST PORTAL
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                        {error && (
+                            <div style={{ padding: '15px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '12px', color: '#ff4444', fontSize: '11px', fontWeight: '800' }}>
+                                {error.toUpperCase()}
+                            </div>
+                        )}
+
+                        <div>
+                            <label style={labelStyle}>EMAIL ADDRESS</label>
+                            <input
+                                type="email"
+                                placeholder="artist@example.com"
+                                style={inputStyle}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                className="input-focus-glow"
+                            />
+                        </div>
+
+                        <div>
+                            <label style={labelStyle}>PASSWORD</label>
+                            <input
+                                type="password"
+                                placeholder="••••••••"
+                                style={inputStyle}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="input-focus-glow"
+                            />
+                        </div>
+
+                        <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '20px', width: '100%', borderRadius: '16px', fontSize: '13px', letterSpacing: '1px' }}>
+                            {loading ? 'AUTHENTICATING...' : 'ENTER PORTAL'}
+                        </button>
+                    </form>
+
+                    <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '600', textAlign: 'center' }}>
+                        NO ACCOUNT? <Link href="/auth/register" style={{ color: '#fff', textDecoration: 'none', borderBottom: '1px solid #fff', paddingBottom: '2px' }}>APPLY NOW</Link>
                     </p>
-                </div>
-
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                    {error && <p style={{ color: '#ff4444', fontSize: '12px', fontWeight: '800' }}>{error.toUpperCase()}</p>}
-
-                    <div>
-                        <label style={labelStyle}>EMAIL</label>
-                        <input
-                            type="email"
-                            placeholder="mail@example.com"
-                            style={inputStyle}
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label style={labelStyle}>PASSWORD</label>
-                        <input
-                            type="password"
-                            placeholder="••••••••"
-                            style={inputStyle}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '18px', width: '100%' }}>
-                        {loading ? 'WAITING...' : 'ENTER'}
-                    </button>
-                </form>
-
-                <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '600' }}>
-                    NO ACCOUNT? <Link href="/auth/register" style={{ color: '#fff', textDecoration: 'underline' }}>REGISTER</Link>
-                </p>
+                </motion.div>
             </div>
 
             <style jsx>{`
                 .desktop-visual {
                     display: none;
                 }
-                @media (min-width: 900px) {
+                .input-focus-glow:focus {
+                    background: rgba(255,255,255,0.05) !important;
+                    border-color: var(--accent) !important;
+                    box-shadow: 0 0 15px rgba(158, 240, 26, 0.1);
+                }
+                @media (min-width: 1024px) {
                     .desktop-visual {
-                        display: block !important;
+                        display: flex !important;
                     }
                 }
             `}</style>
         </div>
     );
 }
-
-const labelStyle = {
-    display: 'block',
-    marginBottom: '10px',
-    fontSize: '10px',
-    fontWeight: '800',
-    color: '#888',
-    letterSpacing: '2px'
-};
-
-const inputStyle = {
-    width: '100%',
-    padding: '14px',
-    background: '#0a0a0a',
-    border: '1px solid #333',
-    borderRadius: '0',
-    color: 'white',
-    fontFamily: 'inherit',
-    fontSize: '14px',
-    outline: 'none',
-    transition: 'border-color 0.2s'
-};

@@ -29,7 +29,7 @@ export async function GET(req, { params }) {
                 releasesMap.set(album.id, {
                     id: album.id,
                     name: album.name,
-                    artist: album.artists[0]?.name,
+                    artist: album.artists?.[0]?.name || "Unknown",
                     artists: album.artists.map(a => ({ id: a.id, name: a.name })),
                     image: album.images[0]?.url,
                     spotify_url: album.external_urls.spotify,

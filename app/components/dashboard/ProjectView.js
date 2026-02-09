@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     CheckCircle, Clock, FileText, Music, Upload,
@@ -11,7 +12,7 @@ const glassStyle = {
     background: 'rgba(255,255,255,0.02)',
     backdropFilter: 'blur(20px)',
     border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '16px',
+    borderRadius: '24px',
     overflow: 'hidden'
 };
 
@@ -24,7 +25,7 @@ const btnStyle = {
     cursor: 'pointer',
     fontWeight: '900',
     letterSpacing: '2px',
-    borderRadius: '8px',
+    borderRadius: '12px',
     display: 'inline-flex',
     alignItems: 'center',
     gap: '10px'
@@ -65,7 +66,7 @@ export default function ProjectView({ projectId, onBack, user }) {
         return () => {
             if (audio) { audio.pause(); }
         }
-    }, [projectId, refreshTrigger]);
+    }, [projectId, refreshTrigger, audio]);
 
     const handlePlay = (url) => {
         if (playing && audio) {
@@ -148,8 +149,8 @@ export default function ProjectView({ projectId, onBack, user }) {
                             <div key={stage.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', zIndex: 2 }}>
                                 <motion.div
                                     animate={{
-                                        backgroundColor: isActive || isPast ? '#00ff88' : '#111',
-                                        borderColor: isActive ? '#00ff88' : 'rgba(255,255,255,0.1)',
+                                        backgroundColor: isActive || isPast ? 'var(--status-success)' : '#111',
+                                        borderColor: isActive ? 'var(--status-success)' : 'rgba(255,255,255,0.1)',
                                         scale: isActive ? 1.2 : 1
                                     }}
                                     style={{
@@ -205,7 +206,7 @@ export default function ProjectView({ projectId, onBack, user }) {
                     <div style={{ ...glassStyle, padding: '50px', textAlign: 'center', background: 'radial-gradient(circle at top, rgba(0,255,136,0.05) 0%, transparent 70%)' }}>
                         <div style={{ marginBottom: '30px' }}>
                             <h2 style={{ fontSize: '32px', fontWeight: '900', marginBottom: '10px', color: '#fff' }}>CONGRATULATIONS!</h2>
-                            <p style={{ fontSize: '13px', color: '#00ff88', letterSpacing: '3px', fontWeight: '900' }}>WE WANT TO SIGN THIS TRACK</p>
+                            <p style={{ fontSize: '13px', color: 'var(--status-success)', letterSpacing: '3px', fontWeight: '900' }}>WE WANT TO SIGN THIS TRACK</p>
                         </div>
                         <p style={{ fontSize: '12px', color: '#888', maxWidth: '500px', margin: '0 auto 40px', lineHeight: '1.6' }}>
                             Our team is preparing the contract details. You will receive a notification when the official agreement is ready for your signature.
@@ -377,7 +378,7 @@ function ProductionView({ project, onUpdate }) {
                             overflow: 'hidden', position: 'relative'
                         }}>
                         {coverArt ? (
-                            <img src={coverArtPreview} alt="Cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <NextImage src={coverArtPreview} alt="Cover" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                             <div style={{ textAlign: 'center' }}>
                                 <Upload size={24} color="#444" style={{ marginBottom: '10px' }} />

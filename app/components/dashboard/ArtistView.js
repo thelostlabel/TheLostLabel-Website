@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import NextImage from 'next/image';
 import {
     Upload, Music, Disc, User as UserIcon, CheckCircle,
     XCircle, Clock, AlertCircle, Trash2, Send, ExternalLink,
@@ -15,7 +16,7 @@ const glassStyle = {
     background: 'rgba(255,255,255,0.02)',
     backdropFilter: 'blur(20px)',
     border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '16px',
+    borderRadius: '24px',
     overflow: 'hidden'
 };
 
@@ -28,7 +29,7 @@ const btnStyle = {
     cursor: 'pointer',
     fontWeight: '900',
     letterSpacing: '2px',
-    borderRadius: '8px',
+    borderRadius: '12px',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -72,85 +73,29 @@ export default function ArtistView() {
     const [dragActive, setDragActive] = useState(false);
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        if (view === 'overview') fetchStats();
-        else if (view === 'demos') fetchDemos();
-        else if (view === 'contracts') fetchContracts();
-        else if (view === 'earnings') fetchEarnings();
-        else if (view === 'support') fetchRequests();
-        else setLoading(false);
-    }, [view]);
 
     useEffect(() => {
         setSelectedRequestId(searchParams.get('id'));
     }, [searchParams]);
 
-    const [stats, setStats] = useState({ releases: 0, listeners: 0, pendingRequests: 0, earnings: 0, withdrawn: 0, balance: 0 });
-    const fetchStats = async () => {
+    const [stats, setStats] = useState({ releases: 0, listeners: 0, pendingRequests: 0, earnings: 0, withdrawn: 0, balance: 0, trends: [], trendsDaily: [] });
+    const fetchStats = useCallback(async () => {
         setLoading(true);
         try {
-            const [relRes, profRes, reqRes, earnRes, payRes] = await Promise.all([
-                fetch('/api/artist/releases'),
-                fetch('/api/profile'),
-                fetch('/api/artist/requests'),
-                fetch('/api/earnings'),
-                fetch('/api/payments')
-            ]);
-            const releases = await relRes.json();
-            const profile = await profRes.json();
-            const requests = await reqRes.json();
-            const earningsData = await earnRes.json();
-            const paymentsData = await payRes.json();
-
-            const earningsList = earningsData.earnings || [];
-            const paymentsList = paymentsData.payments || [];
-
-            const totalEarnings = earningsList.reduce((sum, e) => {
-                if (!e.contract?.splits || e.contract.splits.length === 0) return sum + e.artistAmount;
-
-                // Find if user has any splits either directly or via email/artist profile/stage name
-                const userSplits = e.contract.splits.filter(s =>
-                    s.userId === session?.user?.id ||
-                    (s.artistId && session?.user?.artist?.id === s.artistId) ||
-                    (s.user?.email && s.user.email === session?.user?.email) ||
-                    (s.name && (
-                        s.name.toLowerCase() === session?.user?.email?.toLowerCase() ||
-                        s.name.toLowerCase() === session?.user?.stageName?.toLowerCase() ||
-                        s.name.toLowerCase() === session?.user?.fullName?.toLowerCase()
-                    ))
-                );
-
-                if (userSplits.length > 0) {
-                    const totalUserSplitPercentage = userSplits.reduce((sSum, s) => sSum + parseFloat(s.percentage), 0);
-                    // FIX: Calculate share based on Artist Pool (artistAmount), not Gross Amount
-                    const share = (e.artistAmount * totalUserSplitPercentage) / 100;
-                    return sum + share;
-                }
-
-                // If splits exist but user not found -> 0 (unless they are owner and NO splits exist, which is handled at top)
-                return sum;
-            }, 0);
-
-            const totalWithdrawn = paymentsList
-                .filter(p => p.status === 'completed')
-                .reduce((sum, p) => sum + p.amount, 0);
-
-            const balance = totalEarnings - totalWithdrawn;
-
-            setStats({
-                releases: Array.isArray(releases) ? releases.length : 0,
-                listeners: profile.monthlyListeners || 0,
-                pendingRequests: Array.isArray(requests) ? requests.filter(r => r.status === 'pending' || r.status === 'reviewing' || r.status === 'processing' || r.status === 'needs_action').length : 0,
-                earnings: totalEarnings,
-                withdrawn: totalWithdrawn,
-                balance: balance
-            });
-            setReleases(Array.isArray(releases) ? releases : []);
+            const res = await fetch('/api/artist/stats');
+            if (res.ok) {
+                const data = await res.json();
+                setStats(data);
+            }
+            // Still fetch releases for the list view
+            const relRes = await fetch('/api/artist/releases');
+            const relData = await relRes.json();
+            setReleases(Array.isArray(relData) ? relData : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, [view]);
 
-    const fetchContracts = async () => {
+    const fetchContracts = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/contracts');
@@ -158,19 +103,22 @@ export default function ArtistView() {
             setContracts(data.contracts || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, []);
 
-    const fetchEarnings = async () => {
+    const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
+
+    const fetchEarnings = useCallback(async (page = 1) => {
         setLoading(true);
         try {
-            const res = await fetch('/api/earnings');
+            const res = await fetch(`/api/earnings?page=${page}&limit=50`);
             const data = await res.json();
             setEarnings(data.earnings || []);
+            if (data.pagination) setEarningsPagination(data.pagination);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, []);
 
-    const fetchDemos = async () => {
+    const fetchDemos = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/demo?filter=mine');
@@ -178,9 +126,9 @@ export default function ArtistView() {
             setDemos(Array.isArray(data) ? data : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, []);
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/artist/requests');
@@ -188,7 +136,16 @@ export default function ArtistView() {
             setRequests(data || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (view === 'overview') fetchStats();
+        else if (view === 'demos') fetchDemos();
+        else if (view === 'contracts') fetchContracts();
+        else if (view === 'earnings') fetchEarnings();
+        else if (view === 'support') fetchRequests();
+        else setLoading(false);
+    }, [view, fetchStats, fetchDemos, fetchContracts, fetchEarnings, fetchRequests]);
 
     // Check for pending contracts on load
     useEffect(() => {
@@ -318,7 +275,7 @@ export default function ArtistView() {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
                 <div style={{ padding: '30px', ...glassStyle, textAlign: 'center', maxWidth: '400px' }}>
-                    <AlertCircle size={32} style={{ color: '#ff4444', marginBottom: '15px' }} />
+                    <AlertCircle size={32} style={{ color: 'var(--status-error)', marginBottom: '15px' }} />
                     <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>ACCESS_RESTRICTED</h3>
                     <p style={{ fontSize: '11px', color: '#666', lineHeight: '1.6' }}>
                         You do not have the required permissions to access this module. If you believe this is an error, please contact the label administration.
@@ -379,7 +336,7 @@ export default function ArtistView() {
                     handleSubmit={handleSubmit}
                 />
             ) : view === 'earnings' ? (
-                <ArtistEarningsView earnings={earnings} session={session} />
+                <ArtistEarningsView earnings={earnings} session={session} pagination={earningsPagination} onPageChange={fetchEarnings} />
             ) : view === 'contracts' ? (
                 <ArtistContractsView contracts={contracts} session={session} />
             ) : view === 'support' ? (
@@ -415,77 +372,356 @@ export default function ArtistView() {
     );
 }
 
-function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick }) {
-    const cardStyle = {
-        ...glassStyle,
-        padding: '30px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        height: '180px',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: 'default',
-        position: 'relative',
-        overflow: 'hidden'
+// ... (Existing)
+
+const GoalProgress = ({ label, current, target, color }) => {
+    const percentage = Math.min(Math.round((current / target) * 100), 100);
+    return (
+        <div style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{label}</span>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: color }}>{percentage}%</span>
+            </div>
+            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${percentage}%` }}
+                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ height: '100%', background: color, borderRadius: '10px', boxShadow: `0 0 15px ${color}40` }}
+                />
+            </div>
+        </div>
+    );
+};
+
+function SimpleChart({ data, color = 'var(--accent)' }) {
+    if (!data || data.length === 0) return null;
+
+    const values = data.map(d => d.value);
+    const rawMax = Math.max(...values, 10);
+    const rawMin = Math.min(...values, 0);
+    const padding = Math.max((rawMax - rawMin) * 0.15, rawMax * 0.1, 10);
+    const maxVal = rawMax + padding;
+    const minVal = Math.max(rawMin - padding, 0);
+    const range = Math.max(maxVal - minVal, 1);
+
+    const getCoords = (i) => {
+        const x = (i / (data.length - 1 || 1)) * 100;
+        const y = 85 - ((data[i].value - minVal) / range) * 70;
+        return { x, y };
     };
 
+    const pathData = `M ${getCoords(0).x} ${getCoords(0).y} ` +
+        Array.from({ length: data.length - 1 }).map((_, i) => {
+            const curr = getCoords(i);
+            const next = getCoords(i + 1);
+            const cp1x = curr.x + (next.x - curr.x) / 2;
+            return `C ${cp1x} ${curr.y}, ${cp1x} ${next.y}, ${next.x} ${next.y}`;
+        }).join(" ");
+
+    const areaPath = `${pathData} L 100 100 L 0 100 Z`;
+    const lastValue = Number(data[data.length - 1]?.value || 0);
+    const yTicks = [0, 25, 50, 75, 100];
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            {/* Stats Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
-                <div style={cardStyle} className="stat-card">
-                    <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)', filter: 'blur(30px)' }} />
-                    <Users size={20} style={{ color: 'var(--accent)', opacity: 0.5 }} />
-                    <div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>{(stats?.listeners || 0).toLocaleString()}</div>
-                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>MONTHLY_LISTENERS</div>
-                    </div>
-                </div>
+        <div style={{ width: '100%', height: '240px', position: 'relative', marginTop: '20px' }}>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block', overflow: 'visible' }}>
+                <defs>
+                    <linearGradient id="areaGradientArtist" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </linearGradient>
+                </defs>
 
-                <div style={cardStyle} className="stat-card">
-                    <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(0,255,136,0.02) 0%, transparent 70%)', filter: 'blur(30px)' }} />
-                    <Disc size={20} style={{ color: '#00ff88', opacity: 0.5 }} />
-                    <div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>{stats.releases}</div>
-                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>TOTAL_RELEASES</div>
-                    </div>
-                </div>
+                {/* Horizontal Grid Lines & Labels */}
+                {yTicks.map(val => (
+                    <line key={val} x1="0" y1={val} x2="100" y2={val} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+                ))}
+                {yTicks.map(val => (
+                    <text key={`y-${val}`} x="-2" y={val + 1.5} textAnchor="end" fill="#444" fontSize="7" fontWeight="700">
+                        {Math.round(maxVal - ((val / 100) * range)).toLocaleString()}
+                    </text>
+                ))}
 
-                <div style={cardStyle} className="stat-card">
-                    <ClipboardList size={20} style={{ color: '#ffaa00', opacity: 0.5 }} />
-                    <div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>{stats.pendingRequests}</div>
-                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>OPEN_REQUESTS</div>
-                    </div>
-                </div>
+                <motion.path
+                    d={areaPath}
+                    fill="url(#areaGradientArtist)"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    transition={{ duration: 1.2 }}
+                />
 
-                <div style={cardStyle} className="stat-card">
-                    <DollarSign size={20} style={{ color: '#00aaff', opacity: 0.5 }} />
-                    <div>
-                        <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-1px' }}>${(stats?.earnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                        <div style={{ fontSize: '9px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>TOTAL_EARNINGS</div>
-                    </div>
-                </div>
+                <motion.path
+                    d={pathData}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    whileInView={{ pathLength: 1 }}
+                    transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
+                    vectorEffect="non-scaling-stroke"
+                    style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
+                />
+            </svg>
 
-                <div style={cardStyle} className="stat-card">
-                    <CreditCard size={20} style={{ color: '#ff4444', opacity: 0.5 }} />
-                    <div>
-                        <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '-1px' }}>${(stats?.withdrawn || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                        <div style={{ fontSize: '9px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>WITHDRAWN</div>
-                    </div>
-                </div>
+            {/* Floating Badge (HTML Overlay) */}
+            <div style={{
+                position: 'absolute',
+                right: '10px',
+                top: '0px',
+                background: 'rgba(0,0,0,0.5)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '11px',
+                fontWeight: '900',
+                letterSpacing: '0.5px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(10px)'
+            }}>
+                ${lastValue.toLocaleString()}
+            </div>
 
-                <div style={cardStyle} className="stat-card">
-                    <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%)', filter: 'blur(30px)' }} />
-                    <Briefcase size={20} style={{ color: '#00ff88', opacity: 0.5 }} />
-                    <div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px', color: '#00ff88' }}>${(stats?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', letterSpacing: '2px', marginTop: '5px' }}>CURRENT_BALANCE</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', padding: '0 5px' }}>
+                {data.filter((_, i) => i % 2 === 0).map((d, i) => (
+                    <span key={i} style={{ fontSize: '8px', color: '#666', fontWeight: '900', letterSpacing: '1px' }}>{d.label.toUpperCase()}</span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick }) {
+    const [chartRange, setChartRange] = useState('monthly'); // monthly | daily
+    const chartData = chartRange === 'daily'
+        ? (stats.trendsDaily && stats.trendsDaily.length ? stats.trendsDaily : stats.trends)
+        : stats.trends;
+    const chartSubtitle = chartRange === 'daily'
+        ? 'ESTIMATED EARNINGS TREND BY DAY (LAST 30)'
+        : 'ESTIMATED EARNINGS TREND BY MONTH';
+
+    // --- Hero / Welcome Section ---
+    const userFirstName = stats.artistName?.split(' ')[0] || 'Artist';
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
+
+            {/* 1. Hero Welcome Area with Blurred Glow */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                    position: 'relative',
+                    padding: '40px 0',
+                    textAlign: 'center',
+                    marginBottom: '10px'
+                }}
+            >
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    width: '60%', height: '100%',
+                    background: 'radial-gradient(circle, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%)',
+                    filter: 'blur(40px)', zIndex: -1
+                }} />
+
+                <h1 style={{ fontSize: '42px', fontWeight: '900', letterSpacing: '-1px', color: '#fff', marginBottom: '10px' }}>
+                    Welcome back, <span style={{ color: 'var(--accent)' }}>{userFirstName}</span>
+                </h1>
+                <p style={{ fontSize: '13px', color: '#888', letterSpacing: '1px', fontWeight: '500' }}>
+                    Here's what's happening with your music today.
+                </p>
+            </motion.div>
+
+            {/* 2. Key Metrics Grid (Redesigned) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px' }}>
+                {[
+                    { label: 'MONTHLY LISTENERS', value: stats.listeners?.toLocaleString() || '0', icon: <Users size={18} />, color: '#fff' },
+                    { label: 'TOTAL STREAMS', value: stats.streams ? stats.streams.toLocaleString() : '0', icon: <Music size={18} />, color: '#fff' },
+                    { label: 'PENDING DEMOS', value: stats.demos || '0', icon: <Clock size={18} />, color: stats.demos > 0 ? '#ffaa00' : '#666' },
+                    { label: 'WALLET BALANCE', value: `$${(stats.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`, icon: <DollarSign size={18} />, color: 'var(--accent)', highlight: true }
+                ].map((card, i) => (
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileHover={{ y: -4, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}
+                        style={{
+                            ...glassStyle,
+                            padding: '24px',
+                            background: card.highlight ? 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)' : 'rgba(255,255,255,0.02)',
+                            border: card.highlight ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.04)',
+                            display: 'flex', flexDirection: 'column', gap: '12px'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', color: card.color }}>
+                                {card.icon}
+                            </div>
+                            {card.trend && <span style={{ fontSize: '9px', fontWeight: '800', color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '4px 8px', borderRadius: '8px' }}>{card.trend}</span>}
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '-0.5px' }}>{card.value}</div>
+                            <div style={{ fontSize: '9px', fontWeight: '800', color: '#555', letterSpacing: '1px', marginTop: '4px' }}>{card.label}</div>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* 3. Main Dashboard Content (Chart + Spotlight) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+
+                {/* Performance Chart */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    style={{ ...glassStyle, padding: '30px', minHeight: '350px' }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <div>
+                            <h3 style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: '900', color: '#fff' }}>PERFORMANCE FLOW</h3>
+                            <p style={{ fontSize: '10px', color: '#555', marginTop: '4px', fontWeight: '700' }}>Your earnings trajectory over time</p>
+                        </div>
+                        {/* Toggle Buttons */}
+                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+                            {['monthly', 'daily'].map(mode => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setChartRange(mode)}
+                                    style={{
+                                        border: 'none',
+                                        background: chartRange === mode ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        color: chartRange === mode ? '#fff' : '#666',
+                                        fontSize: '9px',
+                                        fontWeight: '800',
+                                        padding: '6px 14px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {mode.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    {/* The Chart */}
+                    <div style={{ paddingRight: '10px' }}>
+                        {chartData && chartData.length > 0 ? (
+                            <SimpleChart data={chartData} color="var(--accent)" />
+                        ) : (
+                            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <DollarSign size={16} color="#333" />
+                                </div>
+                                <div style={{ color: '#444', fontSize: '10px', letterSpacing: '1px', fontWeight: '800' }}>NO EARNINGS DATA YET</div>
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* Spotlight / Goals Column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+                    {/* Featured Release Card (Visual Show) */}
+                    {recentReleases[0] && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                            style={{
+                                ...glassStyle,
+                                padding: '0',
+                                overflow: 'hidden',
+                                position: 'relative',
+                                height: '220px'
+                            }}
+                        >
+                            {/* Background Image with Blur */}
+                            <div style={{
+                                position: 'absolute', inset: 0,
+                                backgroundImage: `url(${recentReleases[0].image || '/default-album.jpg'})`,
+                                backgroundSize: 'cover', backgroundPosition: 'center',
+                                filter: 'blur(20px) brightness(0.4)', zIndex: 0
+                            }} />
+
+                            <div style={{ position: 'relative', zIndex: 1, padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '9px', fontWeight: '900', background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '4px', color: '#fff', letterSpacing: '1px' }}>LATEST DROP</span>
+                                    <ExternalLink size={14} color="#fff" style={{ opacity: 0.7 }} />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
+                                        <NextImage src={recentReleases[0].image || '/default-album.jpg'} width={60} height={60} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Art" />
+                                    </div>
+                                    <div>
+                                        <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', margin: 0 }}>{recentReleases[0].name}</h4>
+                                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>{recentReleases[0].type.toUpperCase()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Goals Widget */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        style={{ ...glassStyle, padding: '24px', flex: 1 }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '11px', letterSpacing: '2px', fontWeight: '900', color: '#fff', margin: 0 }}>NEXT MILESTONES</h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <GoalProgress label="EARNINGS ($5K)" current={stats.balance} target={5000} color="var(--accent)" />
+                            <GoalProgress label="RELEASES (12)" current={stats.releases} target={12} color="#00d4ff" />
+                            <GoalProgress label="10K LISTENERS" current={stats.listeners || 0} target={10000} color="#ff0055" />
+                        </div>
+                    </motion.div>
                 </div>
             </div>
 
-            {/* Quick Actions & Recent Releases */}
+            {/* Action Required Banner (if any) */}
+            {actionRequiredContract && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{
+                        background: 'linear-gradient(90deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.02) 100%)',
+                        border: '1px solid rgba(234, 179, 8, 0.2)',
+                        borderRadius: '16px',
+                        padding: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginTop: '-10px'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ padding: '10px', background: 'rgba(234, 179, 8, 0.2)', borderRadius: '50%' }}>
+                            <AlertCircle size={20} color="#eab308" />
+                        </div>
+                        <div>
+                            <h4 style={{ color: '#eab308', fontSize: '13px', fontWeight: '800', margin: 0 }}>ACTION REQUIRED</h4>
+                            <p style={{ color: '#aaa', fontSize: '11px', margin: '4px 0 0' }}>You have a pending contract for "{actionRequiredContract.title}" waiting for signature.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => onSignClick(actionRequiredContract)}
+                        style={{ ...btnStyle, background: '#eab308', color: '#000', border: 'none', boxShadow: '0 4px 15px rgba(234, 179, 8, 0.3)' }}
+                    >
+                        REVIEW & SIGN
+                    </button>
+                </motion.div>
+            )}
+
+
             <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -505,8 +741,8 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
                             {recentReleases.map(r => (
                                 <div key={r.id} style={{ ...glassStyle, padding: '10px' }}>
-                                    <div style={{ aspectRatio: '1/1', background: '#111', borderRadius: '8px', overflow: 'hidden', marginBottom: '10px' }}>
-                                        <img src={r.image} alt={r.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <div style={{ aspectRatio: '1/1', background: '#111', borderRadius: '12px', overflow: 'hidden', marginBottom: '10px' }}>
+                                        <NextImage src={r.image} alt={r.name} width={140} height={140} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     </div>
                                     <div style={{ fontSize: '11px', fontWeight: '900', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name.toUpperCase()}</div>
                                     <div style={{ fontSize: '8px', color: '#444', marginTop: '4px' }}>{new Date(r.releaseDate).toLocaleDateString()}</div>
@@ -702,7 +938,7 @@ function ReleasesView() {
                     </button>
                 </div>
             ) : error ? (
-                <div style={{ textAlign: 'center', padding: '80px', color: '#ff4444' }}>
+                <div style={{ textAlign: 'center', padding: '80px', color: 'var(--status-error)' }}>
                     <p style={{ fontSize: '12px', letterSpacing: '2px', fontWeight: '900' }}>ERROR: {error.toUpperCase()}</p>
                     <button onClick={fetchReleases} style={{ ...btnStyle, marginTop: '20px' }}>RETRY_SYNC</button>
                 </div>
@@ -766,7 +1002,7 @@ function ReleaseCard({ release, getRequestStatus, setRequestModal, onNavigate })
         <div style={{ ...glassStyle, padding: '15px' }}>
             <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden' }}>
                 {release.image ? (
-                    <img src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <NextImage src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>NO ART</div>
                 )}
@@ -789,11 +1025,11 @@ function ReleaseCard({ release, getRequestStatus, setRequestModal, onNavigate })
                     };
 
                     const getStatusColor = (s) => {
-                        if (s === 'approved' || s === 'completed') return '#00ff88';
-                        if (s === 'processing') return '#00aaff';
-                        if (s === 'reviewing') return '#ffaa00';
-                        if (s === 'rejected') return '#ff4444';
-                        return '#aaa';
+                        if (s === 'approved' || s === 'completed') return 'var(--status-success)';
+                        if (s === 'processing') return 'var(--status-info)';
+                        if (s === 'reviewing') return 'var(--status-warning)';
+                        if (s === 'rejected') return 'var(--status-error)';
+                        return 'var(--status-neutral)';
                     };
 
                     return (
@@ -801,8 +1037,8 @@ function ReleaseCard({ release, getRequestStatus, setRequestModal, onNavigate })
                             <div style={{
                                 padding: '12px',
                                 background: 'rgba(255,255,255,0.02)',
-                                border: `1px solid ${isApproved ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255,255,255,0.05)'}`,
-                                borderRadius: '8px'
+                                border: `1px solid ${isApproved ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)'}`,
+                                borderRadius: '12px'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                     <span style={{ fontSize: '9px', color: getStatusColor(activeRequest.status), fontWeight: '900', letterSpacing: '1px' }}>
@@ -933,9 +1169,10 @@ function SupportView({ requests, selectedId, onNavigate }) {
                                         {req.type.toUpperCase().replace('_', ' ')}
                                     </span>
                                     <span style={{ fontSize: '10px', color: '#555' }}>•</span>
-                                    <span style={{ fontSize: '10px', color: '#666' }}>
-                                        {req.details?.length > 60 ? req.details.substring(0, 60) + '...' : req.details || 'No details'}
-                                    </span>
+                                    <p style={{ fontSize: '14px', color: '#888' }}>
+                                        Your profile is currently hidden from the public roster because it&apos;s missing a profile image.
+                                        Upload an image to become visible on the &quot;Artists&quot; page.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -944,8 +1181,8 @@ function SupportView({ requests, selectedId, onNavigate }) {
                             <span style={{ fontSize: '9px', color: '#444' }}>{new Date(req.createdAt).toLocaleDateString()}</span>
                             <div style={{
                                 padding: '4px 8px', borderRadius: '4px',
-                                background: req.status === 'completed' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)',
-                                color: req.status === 'completed' ? '#00ff88' : '#888',
+                                background: req.status === 'completed' ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)',
+                                color: req.status === 'completed' ? 'var(--status-success)' : '#888',
                                 fontSize: '9px', fontWeight: '900'
                             }}>
                                 {req.status === 'pending' ? 'OPEN' : req.status.toUpperCase()}
@@ -1073,10 +1310,10 @@ function RequestComments({ request, isArtist }) {
 function DemosView({ demos, onNavigate }) {
     const getStatusColor = (status) => {
         switch (status) {
-            case 'approved': return '#00ff88';
-            case 'rejected': return '#ff4444';
-            case 'reviewing': return '#ffaa00';
-            default: return '#666';
+            case 'approved': return 'var(--status-success)';
+            case 'rejected': return 'var(--status-error)';
+            case 'reviewing': return 'var(--status-warning)';
+            default: return 'var(--status-neutral)';
         }
     };
 
@@ -1112,8 +1349,8 @@ function DemosView({ demos, onNavigate }) {
                                         </p>
                                     )}
                                     {demo.status === 'rejected' && demo.rejectionReason && (
-                                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid #ff4444', borderRadius: '4px', maxWidth: '400px' }}>
-                                            <p style={{ fontSize: '9px', color: '#ff4444', fontWeight: '800', marginBottom: '4px', letterSpacing: '1px' }}>REJECTION REASON</p>
+                                        <div style={{ marginTop: '12px', padding: '10px', background: 'var(--status-error-bg)', border: '1px solid var(--status-error)', borderRadius: '4px', maxWidth: '400px' }}>
+                                            <p style={{ fontSize: '9px', color: 'var(--status-error)', fontWeight: '800', marginBottom: '4px', letterSpacing: '1px' }}>REJECTION REASON</p>
                                             <p style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.4' }}>{demo.rejectionReason}</p>
                                         </div>
                                     )}
@@ -1240,7 +1477,7 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                                     <button
                                         type="button"
                                         onClick={() => removeFile(index)}
-                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '14px' }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer', fontSize: '14px' }}
                                     >
                                         ×
                                     </button>
@@ -1377,7 +1614,7 @@ function ProfileView({ onUpdate }) {
     );
 }
 
-function ArtistEarningsView({ earnings, session }) {
+function ArtistEarningsView({ earnings, session, pagination, onPageChange }) {
     const calculateUserShare = (e) => {
         if (!e.contract?.splits || e.contract.splits.length === 0) return e.artistAmount;
 
@@ -1402,17 +1639,99 @@ function ArtistEarningsView({ earnings, session }) {
 
     const totalArtist = earnings.reduce((sum, e) => sum + calculateUserShare(e), 0);
     const pendingArtist = earnings.filter(e => !e.paidToArtist).reduce((sum, e) => sum + calculateUserShare(e), 0);
+    const totalSpend = earnings.reduce((sum, e) => sum + (e.expenseAmount || 0), 0);
+    const totalLabel = earnings.reduce((sum, e) => sum + (e.labelAmount || 0), 0);
+
+    const spendByRelease = Object.values(earnings.reduce((acc, e) => {
+        const key = e.contract?.release?.name || 'Unknown';
+        acc[key] = acc[key] || { name: key, spend: 0, revenue: 0 };
+        acc[key].spend += e.expenseAmount || 0;
+        acc[key].revenue += e.labelAmount || 0;
+        return acc;
+    }, {})).sort((a, b) => b.spend - a.spend).slice(0, 4);
+
+    const spendBySource = Object.values(earnings.reduce((acc, e) => {
+        const key = (e.source || 'OTHER').toUpperCase();
+        acc[key] = acc[key] || { source: key, spend: 0, streams: 0 };
+        acc[key].spend += e.expenseAmount || 0;
+        acc[key].streams += e.streams || 0;
+        return acc;
+    }, {})).sort((a, b) => b.spend - a.spend).slice(0, 5);
 
     return (
         <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '24px' }}>
                 <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>TOTAL BALANCE</div>
-                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#00ff88' }}>${totalArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                    <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--status-success)' }}>${totalArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>PENDING PAYOUTS</div>
                     <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff' }}>${pendingArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>AD SPEND (LABEL)</div>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#ffaa00' }}>${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>ROI (LABEL / SPEND)</div>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: totalSpend > 0 ? '#00ff88' : '#777' }}>
+                        {totalSpend > 0 ? `${(totalLabel / totalSpend).toFixed(1)}x` : '—'}
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '18px', marginBottom: '24px' }}>
+                <div style={{ ...glassStyle, padding: '18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', margin: 0 }}>TOP RELEASES BY AD SPEND</h3>
+                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Top 4</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {spendByRelease.map((r, i) => {
+                            const pct = totalSpend ? Math.round((r.spend / totalSpend) * 100) : 0;
+                            return (
+                                <div key={i} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                        <div style={{ color: '#fff', fontWeight: '900' }}>{r.name}</div>
+                                        <div style={{ color: '#ffaa00', fontWeight: '900' }}>${r.spend.toLocaleString()}</div>
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px' }}>Label rev: ${r.revenue.toLocaleString()} • {pct}% of spend</div>
+                                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${pct}%`, height: '100%', background: '#ffaa00', boxShadow: '0 0 10px #ffaa0055' }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {spendByRelease.length === 0 && (
+                            <div style={{ padding: '22px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO SPEND DATA</div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ ...glassStyle, padding: '18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', margin: 0 }}>SPEND BY SOURCE</h3>
+                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Top 5</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {spendBySource.map((s, i) => {
+                            const pct = totalSpend ? Math.round((s.spend / totalSpend) * 100) : 0;
+                            return (
+                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 40px', gap: '8px', alignItems: 'center', padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                                    <div style={{ color: '#fff', fontWeight: '900' }}>{s.source}</div>
+                                    <div style={{ color: '#ffaa00', fontWeight: '900', textAlign: 'right' }}>${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div style={{ fontSize: '9px', color: '#777', fontWeight: '800', textAlign: 'right' }}>{pct}%</div>
+                                    <div style={{ gridColumn: '1 / 4', width: '100%', height: '5px', background: 'rgba(255,255,255,0.04)', borderRadius: '999px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${pct}%`, height: '100%', background: '#ffaa00', boxShadow: '0 0 8px #ffaa0055' }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {spendBySource.length === 0 && (
+                            <div style={{ padding: '22px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO SPEND DATA</div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1444,7 +1763,7 @@ function ArtistEarningsView({ earnings, session }) {
                                         <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>{e.source}</div>
                                     </td>
                                     <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                        <div style={{ color: '#00ff88', fontWeight: '900' }}>${userShare.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                        <div style={{ color: 'var(--status-success)', fontWeight: '900' }}>${userShare.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                         <div style={{ fontSize: '8px', color: '#444' }}>
                                             {userSplit ? `${userSplit.percentage}% OF ARTIST SHARE` : `${Math.round(e.contract?.artistShare * 100)}% SPLIT`}
                                         </div>
@@ -1453,8 +1772,8 @@ function ArtistEarningsView({ earnings, session }) {
                                     <td style={{ ...tdStyle, padding: '15px 25px' }}>
                                         <span style={{
                                             fontSize: '8px', padding: '4px 8px', borderRadius: '4px',
-                                            background: e.paidToArtist ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)',
-                                            color: e.paidToArtist ? '#00ff88' : '#888',
+                                            background: e.paidToArtist ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)',
+                                            color: e.paidToArtist ? 'var(--status-success)' : '#888',
                                             fontWeight: '900'
                                         }}>
                                             {e.paidToArtist ? 'PAID' : 'PENDING'}
@@ -1469,6 +1788,28 @@ function ArtistEarningsView({ earnings, session }) {
                     </tbody>
                 </table>
             </div>
+
+            {pagination && pagination.pages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '20px' }}>
+                    <button
+                        disabled={pagination.page <= 1}
+                        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', color: pagination.page <= 1 ? '#444' : '#fff', cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                        PREVIOUS
+                    </button>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#666', letterSpacing: '1px' }}>
+                        PAGE <span style={{ color: '#fff' }}>{pagination.page}</span> OF {pagination.pages}
+                    </span>
+                    <button
+                        disabled={pagination.page >= pagination.pages}
+                        onClick={() => onPageChange(pagination.page + 1)}
+                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', color: pagination.page >= pagination.pages ? '#444' : '#fff', cursor: pagination.page >= pagination.pages ? 'not-allowed' : 'pointer' }}
+                    >
+                        NEXT
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -1500,16 +1841,16 @@ function ArtistContractsView({ contracts, session }) {
                     );
 
                     return (
-                        <div key={c.id} style={{ ...glassStyle, padding: '25px', border: isOwner ? '1px solid rgba(255,255,255,0.03)' : '1px solid rgba(0, 255, 136, 0.2)' }}>
+                        <div key={c.id} style={{ ...glassStyle, padding: '25px', border: isOwner ? '1px solid rgba(255,255,255,0.03)' : '1px solid var(--status-success-bg)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                                 <div>
                                     <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '4px' }}>{c.release?.name || c.title || 'Untitled Contract'}</h4>
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                         <p style={{ fontSize: '9px', color: '#444' }}>CONTRACT ID: {c.id.slice(0, 8)}...</p>
-                                        {!isOwner && <span style={{ fontSize: '8px', padding: '2px 4px', background: 'rgba(0,255,136,0.1)', color: '#00ff88', borderRadius: '3px' }}>COLLABORATOR</span>}
+                                        {!isOwner && <span style={{ fontSize: '8px', padding: '2px 4px', background: 'var(--status-success-bg)', color: 'var(--status-success)', borderRadius: '3px' }}>COLLABORATOR</span>}
                                     </div>
                                 </div>
-                                <span style={{ fontSize: '8px', padding: '4px 8px', borderRadius: '4px', background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontWeight: '900' }}>
+                                <span style={{ fontSize: '8px', padding: '4px 8px', borderRadius: '4px', background: 'var(--status-success-bg)', color: 'var(--status-success)', fontWeight: '900' }}>
                                     {c.status.toUpperCase()}
                                 </span>
                             </div>
@@ -1517,7 +1858,7 @@ function ArtistContractsView({ contracts, session }) {
                             <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', marginBottom: '20px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                                     <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>{isOwner ? 'TOTAL ARTIST SHARE' : 'YOUR EFFECTIVE SHARE'}</span>
-                                    <span style={{ fontSize: '14px', color: '#00ff88', fontWeight: '900' }}>
+                                    <span style={{ fontSize: '14px', color: 'var(--status-success)', fontWeight: '900' }}>
                                         {isOwner
                                             ? `${Math.round(c.artistShare * 100)}%`
                                             : (() => {
@@ -1560,7 +1901,7 @@ function ArtistContractsView({ contracts, session }) {
 
                             {c.notes && (
                                 <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.5', fontStyle: 'italic' }}>
-                                    "{c.notes}"
+                                    &quot;{c.notes}&quot;
                                 </div>
                             )}
 

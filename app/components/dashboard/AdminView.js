@@ -4,7 +4,8 @@ import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download } from 'lucide-react';
+import NextImage from 'next/image';
+import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download, Search } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 
 export default function AdminView() {
@@ -114,12 +115,17 @@ export default function AdminView() {
         finally { setLoading(false); }
     };
 
-    const fetchEarnings = async () => {
+    const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
+
+    const fetchEarnings = async (page = 1) => {
         setLoading(true);
         try {
-            const res = await fetch('/api/earnings');
+            const res = await fetch(`/api/earnings?page=${page}&limit=50`);
             const data = await res.json();
             setEarnings(data.earnings || []);
+            if (data.pagination) {
+                setEarningsPagination(data.pagination);
+            }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -272,7 +278,7 @@ export default function AdminView() {
             {view === 'users' && <UsersView users={users} onRoleChange={handleRoleChange} onRefresh={fetchUsers} />}
             {view === 'requests' && <RequestsView requests={requests} onUpdateStatus={handleRequestStatusUpdate} />}
             {view === 'contracts' && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
-            {view === 'earnings' && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} />}
+            {view === 'earnings' && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} pagination={earningsPagination} onPageChange={fetchEarnings} />}
             {view === 'payments' && <PaymentsView payments={payments} users={users} onRefresh={fetchPayments} />}
             {view === 'content' && <ContentView content={siteContent} onRefresh={fetchContent} />}
             {view === 'webhooks' && <WebhooksView webhooks={webhooks} onRefresh={fetchWebhooks} />}
@@ -286,11 +292,20 @@ export default function AdminView() {
 // ============ VIEWS ============
 
 const glassStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '16px',
-    overflow: 'hidden'
+    background: 'linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)',
+    backdropFilter: 'blur(26px)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '22px',
+    overflow: 'hidden',
+    boxShadow: '0 20px 50px rgba(0,0,0,0.45)'
+};
+
+const statCardStyle = {
+    ...glassStyle,
+    padding: '28px',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.35)'
 };
 
 const thStyle = {
@@ -299,8 +314,8 @@ const thStyle = {
     letterSpacing: '3px',
     color: '#444',
     fontWeight: '900',
-    borderBottom: '1px solid rgba(255,255,255,0.03)',
-    background: 'rgba(255,255,255,0.01)',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.03)',
     textTransform: 'uppercase'
 };
 
@@ -322,7 +337,7 @@ const btnStyle = {
     fontWeight: '900',
     letterSpacing: '2px',
     textDecoration: 'none',
-    borderRadius: '8px',
+    borderRadius: '12px',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -334,7 +349,7 @@ const inputStyle = {
     border: '1px solid var(--border)',
     color: '#fff',
     padding: '10px 15px',
-    borderRadius: '8px',
+    borderRadius: '12px',
     fontSize: '11px',
     width: '100%',
     outline: 'none',
@@ -348,10 +363,10 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'approved': return 'var(--accent)';
-            case 'rejected': return '#ff4444';
-            case 'reviewing': return '#ffaa00';
-            default: return '#666';
+            case 'approved': return 'var(--status-success)';
+            case 'rejected': return 'var(--status-error)';
+            case 'reviewing': return 'var(--status-warning)';
+            default: return 'var(--status-neutral)';
         }
     };
 
@@ -485,7 +500,7 @@ function UserLinker({ artistId, users, artistEmail }) {
     };
 
     return (
-        <div style={{ marginTop: '15px', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ marginTop: '15px', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div style={{ fontSize: '11px', fontWeight: '800', color: '#666', marginBottom: '10px' }}>LINK EXISTING USER ACCOUNT</div>
 
             {suggestedUser && !selectedUser && (
@@ -519,10 +534,10 @@ function UserLinker({ artistId, users, artistEmail }) {
                             <div
                                 key={u.id}
                                 onClick={() => setSelectedUser(u)}
-                                style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', cursor: 'pointer', fontSize: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', cursor: 'pointer', fontSize: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                             >
                                 <span>{u.stageName || 'No Stage Name'} <span style={{ color: '#666' }}>({u.email})</span></span>
-                                <span style={{ color: 'var(--accent)', fontSize: '9px', border: '1px solid var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>SELECT</span>
+                                <span style={{ color: 'var(--accent)', fontSize: '9px', border: '1px solid var(--accent)', padding: '2px 6px', borderRadius: '16px' }}>SELECT</span>
                             </div>
                         ))}
                         {searchTerm && filteredUsers.length === 0 && (
@@ -593,7 +608,7 @@ function ArtistsView({ artists, users, onSync }) {
                 <button onClick={() => setSelectedArtist(null)} style={{ marginBottom: '20px', background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>← BACK</button>
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '30px' }}>
                     <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {selectedArtist.image ? <img src={selectedArtist.image} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : <span style={{ fontSize: '24px' }}>👤</span>}
+                        {selectedArtist.image ? <NextImage src={selectedArtist.image} alt={selectedArtist.name} width={80} height={80} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : <span style={{ fontSize: '24px' }}>👤</span>}
                     </div>
                     <div style={{ flex: 1 }}>
                         <h2 style={{ margin: 0, fontSize: '24px' }}>{selectedArtist.name}</h2>
@@ -602,8 +617,8 @@ function ArtistsView({ artists, users, onSync }) {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '5px' }}>MONTHLY LISTENERS</div>
-                        <div style={{ fontSize: '24px', fontWeight: '900', color: selectedArtist.monthlyListeners ? 'var(--accent)' : '#ff4444' }}>
-                            {selectedArtist.monthlyListeners?.toLocaleString() || (
+                        <div style={{ fontSize: '24px', fontWeight: '900', color: (selectedArtist.monthlyListeners !== undefined && selectedArtist.monthlyListeners !== null) ? 'var(--accent)' : 'var(--status-error)' }}>
+                            {(selectedArtist.monthlyListeners !== undefined && selectedArtist.monthlyListeners !== null) ? selectedArtist.monthlyListeners.toLocaleString() : (
                                 <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <AlertCircle size={14} /> SYNC NEEDED
                                 </span>
@@ -652,7 +667,7 @@ function ArtistsView({ artists, users, onSync }) {
                                             }
                                         );
                                     }}
-                                    style={{ ...btnStyle, marginTop: '15px', color: '#ff4444', borderColor: '#ff444430', width: '100%', justifyContent: 'center' }}
+                                    style={{ ...btnStyle, marginTop: '15px', color: 'var(--status-error)', borderColor: '#ff444430', width: '100%', justifyContent: 'center' }}
                                 >
                                     UNLINK ACCOUNT
                                 </button>
@@ -684,41 +699,97 @@ function ArtistsView({ artists, users, onSync }) {
             </div>
 
             {isCreating && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="glass" style={{ width: '400px', padding: '30px', border: '1px solid var(--border)' }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px' }}>CREATE NEW ARTIST</h3>
-                        <input
-                            placeholder="Artist Name *"
-                            value={newArtist.name}
-                            onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })}
-                            style={{ ...inputStyle, marginBottom: '10px' }}
-                        />
-                        <input
-                            placeholder="Email (Optional)"
-                            value={newArtist.email}
-                            onChange={(e) => setNewArtist({ ...newArtist, email: e.target.value })}
-                            style={{ ...inputStyle, marginBottom: '10px' }}
-                        />
-                        <input
-                            placeholder="Spotify URL (Optional)"
-                            value={newArtist.spotifyUrl}
-                            onChange={(e) => setNewArtist({ ...newArtist, spotifyUrl: e.target.value })}
-                            style={{ ...inputStyle, marginBottom: '20px' }}
-                        />
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button onClick={handleCreate} disabled={saving} style={{ ...btnStyle, flex: 1, justifyContent: 'center', background: 'var(--accent)', color: '#000' }}>
-                                {saving ? 'CREATING...' : 'CREATE'}
-                            </button>
-                            <button onClick={() => setIsCreating(false)} style={{ ...btnStyle, flex: 1, justifyContent: 'center' }}>CANCEL</button>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        style={{
+                            width: '450px',
+                            padding: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            backdropFilter: 'blur(30px)',
+                            borderRadius: '32px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '30px' }}>
+                            <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
+                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>NEW_ARTIST_PROFILE</h3>
                         </div>
-                    </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>ARTIST_NAME *</label>
+                                <input
+                                    placeholder="e.g. Lost Boy"
+                                    value={newArtist.name}
+                                    onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })}
+                                    style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>EMAIL_ADDRESS</label>
+                                <input
+                                    placeholder="contact@artist.com"
+                                    value={newArtist.email}
+                                    onChange={(e) => setNewArtist({ ...newArtist, email: e.target.value })}
+                                    style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>SPOTIFY_URL</label>
+                                <input
+                                    placeholder="https://open.spotify.com/artist/..."
+                                    value={newArtist.spotifyUrl}
+                                    onChange={(e) => setNewArtist({ ...newArtist, spotifyUrl: e.target.value })}
+                                    style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
+                            <button
+                                onClick={handleCreate}
+                                disabled={saving}
+                                className="glow-button"
+                                style={{ flex: 2, padding: '15px', justifyContent: 'center', height: 'auto' }}
+                            >
+                                {saving ? 'INITIALIZING...' : 'CREATE_PROFILE'}
+                            </button>
+                            <button
+                                onClick={() => setIsCreating(false)}
+                                style={{
+                                    flex: 1,
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    color: '#fff',
+                                    borderRadius: '16px',
+                                    fontSize: '10px',
+                                    fontWeight: '900',
+                                    cursor: 'pointer',
+                                    transition: '0.3s'
+                                }}
+                                onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.08)'}
+                                onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.03)'}
+                            >
+                                CANCEL
+                            </button>
+                        </div>
+                    </motion.div>
                 </div>
             )}
 
-            <div className="glass" style={{ overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <div style={{
+                ...glassStyle,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.02)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)'
+            }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                        <tr style={{ background: 'var(--surface)' }}>
+                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
                             <th style={thStyle}>ARTIST</th>
                             <th style={thStyle}>MONTHLY</th>
                             <th style={thStyle}>STATUS</th>
@@ -728,22 +799,24 @@ function ArtistsView({ artists, users, onSync }) {
                     </thead>
                     <tbody>
                         {filteredArtists.map(artist => (
-                            <tr key={artist.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedArtist(artist)}>
+                            <tr key={artist.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedArtist(artist)}>
                                 <td style={tdStyle}>
                                     <div style={{ fontWeight: '800', color: '#fff' }}>{artist.name}</div>
                                 </td>
                                 <td style={tdStyle}>
-                                    <div style={{ fontSize: '11px', fontWeight: '900', color: 'var(--accent)' }}>{artist.monthlyListeners?.toLocaleString() || '---'}</div>
+                                    <div style={{ fontSize: '11px', fontWeight: '900', color: 'var(--accent)' }}>
+                                        {(artist.monthlyListeners !== null && artist.monthlyListeners !== undefined) ? artist.monthlyListeners.toLocaleString() : '---'}
+                                    </div>
                                     <div style={{ fontSize: '9px', color: '#444' }}>{artist.lastSyncedAt ? new Date(artist.lastSyncedAt).toLocaleDateString() : 'NEVER'}</div>
                                 </td>
                                 <td style={tdStyle}>
-                                    <span style={{ fontSize: '10px', color: 'var(--accent)', background: 'rgba(245, 197, 66, 0.18)', padding: '2px 6px', borderRadius: '4px' }}>ACTIVE</span>
+                                    <span style={{ fontSize: '10px', color: 'var(--accent)', background: 'rgba(245, 197, 66, 0.1)', padding: '2px 8px', borderRadius: '16px', border: '1px solid rgba(245, 197, 66, 0.1)' }}>ACTIVE</span>
                                 </td>
                                 <td style={tdStyle}>
                                     {artist.user ? (
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <span style={{ color: 'var(--accent)', fontSize: '10px' }}>{artist.user.email}</span>
-                                            <span style={{ color: '#666', fontSize: '9px' }}>{artist.user.stageName}</span>
+                                            <p style={{ color: '#666', fontSize: '11px', margin: 0 }}>Verified account linked.</p>
                                         </div>
                                     ) : (
                                         <span style={{ color: '#444', fontSize: '10px' }}>UNLINKED</span>
@@ -756,11 +829,11 @@ function ArtistsView({ artists, users, onSync }) {
                                                 e.stopPropagation();
                                                 onSync(artist.userId, artist.spotifyUrl, artist.id);
                                             }}
-                                            style={{ ...btnStyle, fontSize: '10px', padding: '5px 10px', background: 'rgba(255,255,255,0.05)' }}
+                                            style={{ ...btnStyle, fontSize: '10px', padding: '5px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}
                                         >
                                             <RefreshCw size={10} />
                                         </button>
-                                        <button style={{ ...btnStyle, fontSize: '10px', padding: '5px 10px' }}>MANAGE</button>
+                                        <button style={{ ...btnStyle, fontSize: '10px', padding: '5px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>MANAGE</button>
                                     </div>
                                 </td>
                             </tr>
@@ -773,7 +846,7 @@ function ArtistsView({ artists, users, onSync }) {
 }
 
 function ReleasesView({ releases }) {
-    const [activeTab, setActiveTab] = useState('all'); // 'upcoming', 'all'
+    const [activeTab, setActiveTab] = useState('all'); // 'upcoming', 'all', 'released'
     const [searchTerm, setSearchTerm] = useState('');
     const [editingRelease, setEditingRelease] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -789,9 +862,6 @@ function ReleasesView({ releases }) {
                     const res = await fetch(`/api/releases/${id}`, { method: 'DELETE' });
                     if (res.ok) {
                         showToast("Release deleted", "success");
-                        // Trigger refresh? We might need to lift state or reload. 
-                        // For now, let's just reload page or ask parent to refresh if possible.
-                        // Ideally onRefresh prop should be passed to ReleasesView if checking updates.
                         window.location.reload();
                     } else {
                         showToast("Failed to delete", "error");
@@ -825,11 +895,16 @@ function ReleasesView({ releases }) {
         const matchesSearch = r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             r.artistName?.toLowerCase().includes(searchTerm.toLowerCase());
 
+        const releaseDate = new Date(r.releaseDate);
+        const now = new Date();
+
         if (activeTab === 'upcoming') {
-            return matchesSearch && new Date(r.releaseDate) > new Date();
+            return matchesSearch && releaseDate > now;
+        } else if (activeTab === 'released') {
+            return matchesSearch && releaseDate <= now;
         }
         return matchesSearch;
-    });
+    }).sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
 
     const getBaseTitle = (name) => {
         if (!name) return '';
@@ -850,173 +925,255 @@ function ReleasesView({ releases }) {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <div style={{ display: 'flex', gap: '20px' }}>
-                    <button
-                        onClick={() => setActiveTab('upcoming')}
-                        style={{ background: 'none', border: 'none', color: activeTab === 'upcoming' ? '#fff' : '#666', borderBottom: activeTab === 'upcoming' ? '2px solid var(--accent)' : '2px solid transparent', paddingBottom: '5px', cursor: 'pointer', fontWeight: '800', fontSize: '12px', letterSpacing: '1px' }}
-                    >
-                        UPCOMING
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('all')}
-                        style={{ background: 'none', border: 'none', color: activeTab === 'all' ? '#fff' : '#666', borderBottom: activeTab === 'all' ? '2px solid var(--accent)' : '2px solid transparent', paddingBottom: '5px', cursor: 'pointer', fontWeight: '800', fontSize: '12px', letterSpacing: '1px' }}
-                    >
-                        ALL RELEASES
-                    </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '5px', background: 'rgba(255,255,255,0.03)', padding: '5px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    {['all', 'upcoming', 'released'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            style={{
+                                background: activeTab === tab ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                border: 'none',
+                                color: activeTab === tab ? '#fff' : '#666',
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '800',
+                                fontSize: '11px',
+                                letterSpacing: '1px',
+                                textTransform: 'uppercase',
+                                transition: 'all 0.2s',
+                                boxShadow: activeTab === tab ? '0 2px 10px rgba(0,0,0,0.2)' : 'none'
+                            }}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
-                <input
-                    type="text"
-                    placeholder="Search releases..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ ...inputStyle, width: '300px', background: 'rgba(255,255,255,0.02)' }}
-                />
+                <div style={{ position: 'relative' }}>
+                    <input
+                        type="text"
+                        placeholder="Search by title or artist..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{
+                            ...inputStyle,
+                            width: '300px',
+                            background: 'rgba(255,255,255,0.02)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.08)'
+                        }}
+                    />
+                </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '25px' }}>
                 {filteredReleases.map(release => {
                     const variants = getVariants(release);
                     const isOpen = expandedReleaseId === release.id;
+                    const isReleased = new Date(release.releaseDate) <= new Date();
+
                     return (
                         <div
                             key={release.id}
-                            style={{ ...glassStyle, padding: '20px', cursor: variants.length ? 'pointer' : 'default' }}
+                            className="glass"
+                            style={{
+                                padding: '20px',
+                                cursor: variants.length ? 'pointer' : 'default',
+                                borderRadius: '20px',
+                                transition: 'transform 0.2s, background 0.2s',
+                                background: 'rgba(255,255,255,0.02)'
+                            }}
                             onClick={() => variants.length && setExpandedReleaseId(isOpen ? null : release.id)}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                         >
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', marginBottom: '15px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {release.image ? (
-                                <img src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                                <Disc size={40} color="#222" />
-                            )}
-                        </div>
-                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {release.name}
-                        </h3>
-                        <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', marginBottom: '5px' }}>
-                            {release.artistName || 'Unknown Artist'}
-                        </p>
-                        <p style={{ fontSize: '10px', color: '#666' }}>
-                            {new Date(release.releaseDate || release.createdAt).toLocaleDateString()}
-                        </p>
-                        {variants.length > 0 && (
-                            <div style={{ marginTop: '10px', fontSize: '10px', color: '#888', letterSpacing: '1px' }}>
-                                {isOpen ? 'HIDE VERSIONS' : `SHOW VERSIONS (${variants.length})`}
+                            <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', marginBottom: '15px', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                {release.image ? (
+                                    <NextImage src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name || "Release"} width={240} height={240} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <Disc size={40} color="#222" />
+                                )}
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '10px',
+                                    right: '10px',
+                                    padding: '4px 8px',
+                                    borderRadius: '8px',
+                                    background: isReleased ? 'rgba(0,0,0,0.6)' : 'rgba(255,170,0,0.8)',
+                                    backdropFilter: 'blur(4px)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    color: '#fff',
+                                    fontSize: '9px',
+                                    fontWeight: '900',
+                                    letterSpacing: '1px'
+                                }}>
+                                    {isReleased ? 'RELEASED' : 'UPCOMING'}
+                                </div>
                             </div>
-                        )}
-                        {isOpen && variants.length > 0 && (
-                            <div style={{ marginTop: '10px', display: 'grid', gap: '6px' }}>
-                                {variants.map(v => (
-                                    <div key={v.id} style={{ padding: '8px', border: '1px solid var(--border)', borderRadius: '6px', background: 'rgba(255,255,255,0.03)' }}>
-                                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#fff' }}>{v.name}</div>
-                                        <div style={{ fontSize: '9px', color: '#777' }}>{new Date(v.releaseDate || v.createdAt).toLocaleDateString()}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
 
-                        {/* Edit/Delete Overlay */}
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setEditingRelease(release); }}
-                                style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff', fontSize: '10px', fontWeight: '800' }}
-                            >
-                                EDIT
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleDelete(release.id); }}
-                                style={{ padding: '8px', background: 'rgba(255,68,68,0.1)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#ff4444' }}
-                            >
-                                <Trash2 size={12} />
-                            </button>
+                            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {release.name}
+                            </h3>
+                            <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', marginBottom: '6px' }}>
+                                {release.artistName || 'Unknown Artist'}
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <p style={{ fontSize: '10px', color: '#666', fontWeight: '600' }}>
+                                    {new Date(release.releaseDate || release.createdAt).toLocaleDateString()}
+                                </p>
+                                {variants.length > 0 && (
+                                    <div style={{ fontSize: '9px', color: '#888', fontWeight: '800', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                        {isOpen ? 'HIDE VARIANTS' : `+${variants.length} VARIANTS`}
+                                    </div>
+                                )}
+                            </div>
+
+                            <AnimatePresence>
+                                {isOpen && variants.length > 0 && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        style={{ marginTop: '15px', overflow: 'hidden' }}
+                                    >
+                                        <div style={{ display: 'grid', gap: '8px', paddingBottom: '5px' }}>
+                                            {variants.map(v => (
+                                                <div key={v.id} style={{ padding: '10px', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#ddd' }}>{v.name}</div>
+                                                        <div style={{ fontSize: '9px', color: '#666' }}>{new Date(v.releaseDate).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingRelease(v); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Actions */}
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setEditingRelease(release); }}
+                                    style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', cursor: 'pointer', color: '#fff', fontSize: '10px', fontWeight: '900', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.08)'}
+                                    onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.03)'}
+                                >
+                                    <Edit3 size={12} /> EDIT
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(release.id); }}
+                                    style={{ padding: '10px', background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.1)', borderRadius: '12px', cursor: 'pointer', color: 'var(--status-error)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,68,68,0.15)'}
+                                    onMouseLeave={(e) => e.target.style.background = 'rgba(255,68,68,0.08)'}
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
                         </div>
-                    </div>
                     );
                 })}
 
-                {filteredReleases.length === 0 && (
-                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: '#444', fontSize: '11px', letterSpacing: '2px' }}>
-                        NO RELEASES FOUND
-                    </div>
-                )}
             </div>
 
+            {editingRelease && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        style={{
+                            width: '550px',
+                            padding: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            backdropFilter: 'blur(30px)',
+                            borderRadius: '32px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' }}>
+                            <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
+                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>EDIT_RELEASE_DATA</h3>
+                        </div>
 
-            {/* Edit Modal */}
-            {
-                editingRelease && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            style={{ ...glassStyle, padding: '30px', width: '500px', maxWidth: '90vw', border: '1px solid var(--border)' }}
-                        >
-                            <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#fff', marginBottom: '20px' }}>EDIT RELEASE</h3>
-                            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE TITLE</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE_TITLE</label>
                                     <input
                                         value={editingRelease.name || ''}
                                         onChange={e => setEditingRelease({ ...editingRelease, name: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }}
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ARTIST NAME</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ARTIST_NAME</label>
                                     <input
                                         value={editingRelease.artistName || ''}
                                         onChange={e => setEditingRelease({ ...editingRelease, artistName: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }}
                                     />
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                                    <div>
-                                        <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE DATE</label>
-                                        <input
-                                            type="date"
-                                            value={new Date(editingRelease.releaseDate).toISOString().split('T')[0]}
-                                            onChange={e => setEditingRelease({ ...editingRelease, releaseDate: e.target.value })}
-                                            style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>GENRE</label>
-                                        <input
-                                            value={editingRelease.genre || ''}
-                                            onChange={e => setEditingRelease({ ...editingRelease, genre: e.target.value })}
-                                            style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
-                                        />
-                                    </div>
-                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SPOTIFY URL</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE_DATE</label>
                                     <input
-                                        value={editingRelease.spotifyUrl || ''}
-                                        onChange={e => setEditingRelease({ ...editingRelease, spotifyUrl: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                        type="date"
+                                        value={new Date(editingRelease.releaseDate).toISOString().split('T')[0]}
+                                        onChange={e => setEditingRelease({ ...editingRelease, releaseDate: e.target.value })}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }}
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>COVER IMAGE URL</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>TOTAL_STREAMS</label>
                                     <input
-                                        value={editingRelease.image || ''}
-                                        onChange={e => setEditingRelease({ ...editingRelease, image: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                        value={editingRelease.streamCountText || ''}
+                                        onChange={e => setEditingRelease({ ...editingRelease, streamCountText: e.target.value })}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                        placeholder="e.g. 1.2M"
                                     />
                                 </div>
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'flex-end' }}>
-                                    <button type="button" onClick={() => setEditingRelease(null)} style={btnStyle}>CANCEL</button>
-                                    <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000' }}>
-                                        {saving ? 'SAVING...' : 'SAVE CHANGES'}
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
-                )
-            }
-        </div >
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>POPULARITY (0-100)</label>
+                                <input
+                                    type="number"
+                                    value={editingRelease.popularity || 0}
+                                    onChange={e => setEditingRelease({ ...editingRelease, popularity: parseInt(e.target.value) })}
+                                    style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+                                <button type="submit" disabled={saving} className="glow-button" style={{ flex: 2, padding: '15px', height: 'auto' }}>
+                                    {saving ? 'UPDATING...' : 'SAVE_CHANGES'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingRelease(null)}
+                                    style={{
+                                        flex: 1,
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        color: '#fff',
+                                        borderRadius: '16px',
+                                        fontSize: '10px',
+                                        fontWeight: '900',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    CANCEL
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -1109,45 +1266,60 @@ function UsersView({ users, onRoleChange, onRefresh }) {
         <div>
             {/* Edit Modal */}
             {editingUser && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.9)', zIndex: 1000,
-                    display: 'flex', justifyContent: 'center', alignItems: 'center'
-                }}>
-                    <div className="glass" style={{ padding: '30px', width: '800px', border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                            <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '800' }}>EDIT USER & PERMISSIONS</h3>
-                            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '20px' }}>×</button>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        style={{
+                            width: '850px',
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
+                            padding: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            backdropFilter: 'blur(30px)',
+                            borderRadius: '32px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
+                                <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>USER_ACCESS_CONTROL</h3>
+                            </div>
+                            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '24px' }}>×</button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>EMAIL_ADDRESS</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>EMAIL_ADDRESS</label>
                                     <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                        style={inputStyle} />
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>FULL_NAME</label>
+                                        <input type="text" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>STAGE_NAME</label>
+                                        <input type="text" value={editForm.stageName} onChange={(e) => setEditForm({ ...editForm, stageName: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                    </div>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>FULL_NAME</label>
-                                    <input type="text" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
-                                        style={inputStyle} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>STAGE_NAME</label>
-                                    <input type="text" value={editForm.stageName} onChange={(e) => setEditForm({ ...editForm, stageName: e.target.value })}
-                                        style={inputStyle} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>SYSTEM_ROLE</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SYSTEM_ROLE</label>
                                     <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', background: '#0d0d0d' }}>
+                                        style={{ ...inputStyle, width: '100%', padding: '15px', background: 'rgba(0,0,0,0.5)' }}>
                                         {roles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '10px', color: '#444', marginBottom: '5px', fontWeight: '800' }}>ACCOUNT_STATUS</label>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ACCOUNT_STATUS</label>
                                     <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', background: '#0d0d0d', color: editForm.status === 'approved' ? 'var(--accent)' : '#ff4444' }}>
+                                        style={{ ...inputStyle, width: '100%', padding: '15px', background: 'rgba(0,0,0,0.5)', color: editForm.status === 'approved' ? '#00ff88' : '#ff4444' }}>
                                         <option value="pending">PENDING APPROVAL</option>
                                         <option value="approved">APPROVED</option>
                                         <option value="rejected">REJECTED</option>
@@ -1155,10 +1327,10 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                                 <div>
-                                    <p style={{ fontSize: '10px', color: '#444', marginBottom: '10px', fontWeight: '900', letterSpacing: '1px' }}>ARTIST_PORTAL_PERMISSIONS</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <p style={{ fontSize: '10px', color: '#666', marginBottom: '15px', fontWeight: '900', letterSpacing: '2px' }}>PORTAL_PERMISSIONS</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         {[
                                             { key: 'view_overview', label: 'OVERVIEW' },
                                             { key: 'view_support', label: 'SUPPORT' },
@@ -1170,10 +1342,11 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                             { key: 'submit_demos', label: 'SUBMIT_DEMO' },
                                             { key: 'request_changes', label: 'REQUEST_CHANGE' }
                                         ].map(p => (
-                                            <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '700', color: editForm.permissions?.[p.key] ? '#fff' : '#444' }}>
+                                            <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', color: editForm.permissions?.[p.key] !== false ? '#fff' : '#333' }}>
                                                 <input type="checkbox"
-                                                    checked={editForm.permissions?.[p.key] !== false} // Default to true if not specified
+                                                    checked={editForm.permissions?.[p.key] !== false}
                                                     onChange={(e) => setEditForm({ ...editForm, permissions: { ...editForm.permissions, [p.key]: e.target.checked } })}
+                                                    style={{ accentColor: 'var(--accent)' }}
                                                 />
                                                 {p.label}
                                             </label>
@@ -1182,26 +1355,27 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                 </div>
 
                                 <div>
-                                    <p style={{ fontSize: '10px', color: '#444', marginBottom: '10px', fontWeight: '900', letterSpacing: '1px' }}>ADMIN_PORTAL_PERMISSIONS</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(255,255,255,0.01)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <p style={{ fontSize: '10px', color: '#666', marginBottom: '15px', fontWeight: '900', letterSpacing: '2px' }}>ADMIN_PERMISSIONS</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         {[
-                                            { key: 'admin_view_overview', label: 'DASHBOARD' },
-                                            { key: 'admin_view_submissions', label: 'SUBMISSIONS' },
-                                            { key: 'admin_view_artists', label: 'ARTIST_LIST' },
+                                            { key: 'admin_view_overview', label: 'STATS' },
+                                            { key: 'admin_view_submissions', label: 'DEMOS' },
+                                            { key: 'admin_view_artists', label: 'ARTISTS' },
                                             { key: 'admin_view_contracts', label: 'CONTRACTS' },
                                             { key: 'admin_view_earnings', label: 'EARNINGS' },
                                             { key: 'admin_view_payments', label: 'PAYMENTS' },
-                                            { key: 'admin_view_requests', label: 'CHANGES' },
+                                            { key: 'admin_view_requests', label: 'REQUESTS' },
                                             { key: 'admin_view_users', label: 'USERS' },
                                             { key: 'admin_view_content', label: 'CONTENT' },
                                             { key: 'admin_view_webhooks', label: 'WEBHOOKS' },
                                             { key: 'admin_view_settings', label: 'SETTINGS' }
                                         ].map(p => (
-                                            <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '700', color: editForm.permissions?.[p.key] ? 'var(--accent)' : '#444' }}>
+                                            <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', color: editForm.permissions?.[p.key] === true ? 'var(--accent)' : '#333' }}>
                                                 <input type="checkbox"
                                                     disabled={editForm.role === 'artist'}
                                                     checked={editForm.permissions?.[p.key] === true}
                                                     onChange={(e) => setEditForm({ ...editForm, permissions: { ...editForm.permissions, [p.key]: e.target.checked } })}
+                                                    style={{ accentColor: 'var(--accent)' }}
                                                 />
                                                 {p.label}
                                             </label>
@@ -1211,15 +1385,15 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '15px', marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '30px' }}>
-                            <button onClick={() => handleSave()} disabled={saving} className="glow-button" style={{ flex: 1, padding: '15px', fontWeight: '900' }}>
-                                {saving ? 'SAVING_CHANGES...' : 'SAVE_PERMISSIONS'}
+                        <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
+                            <button onClick={() => handleSave()} disabled={saving} className="glow-button" style={{ flex: 2, padding: '18px', fontWeight: '900' }}>
+                                {saving ? 'APPLYING_CHANGES...' : 'SAVE_USER_PERMISSIONS'}
                             </button>
-                            <button onClick={() => setEditingUser(null)} style={{ flex: 0.5, padding: '15px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px' }}>
+                            <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
                                 CANCEL
                             </button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
@@ -1236,10 +1410,16 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                 </div>
             </div>
 
-            <div className="glass" style={{ overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <div style={{
+                ...glassStyle,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.02)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)'
+            }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                        <tr style={{ background: 'var(--surface-hover)' }}>
+                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
                             <th style={thStyle}>EMAIL</th>
                             <th style={thStyle}>NAME</th>
                             <th style={thStyle}>ROLE</th>
@@ -1249,33 +1429,43 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                     </thead>
                     <tbody>
                         {filteredUsers.map(user => (
-                            <tr key={user.id} style={{ borderBottom: '1px solid #1a1a1b', background: user.status === 'pending' ? 'rgba(255,170,0,0.02)' : 'transparent' }}>
-                                <td style={tdStyle}>{user.email}</td>
-                                <td style={tdStyle}>{user.stageName || user.fullName || '---'}</td>
+                            <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.3s ease' }}>
                                 <td style={tdStyle}>
-                                    <span style={{ fontSize: '10px', fontWeight: '800', color: user.role === 'admin' ? 'var(--accent)' : '#888' }}>
-                                        {user.role.toUpperCase()}
+                                    <div style={{ fontWeight: '700', color: '#fff', fontSize: '11px' }}>{user.email}</div>
+                                </td>
+                                <td style={tdStyle}>
+                                    <div style={{ fontWeight: '800', color: '#ccc' }}>{user.stageName || user.fullName || '---'}</div>
+                                </td>
+                                <td style={tdStyle}>
+                                    <span style={{
+                                        fontSize: '9px',
+                                        fontWeight: '900',
+                                        color: user.role === 'admin' ? 'var(--accent)' : '#888',
+                                        letterSpacing: '1px'
+                                    }}>
+                                        {user.role?.toUpperCase()}
                                     </span>
                                 </td>
                                 <td style={tdStyle}>
                                     <span style={{
                                         fontSize: '9px',
                                         fontWeight: '900',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        background: user.status === 'approved' ? 'rgba(245, 197, 66, 0.18)' : user.status === 'pending' ? 'rgba(255, 170, 0, 0.1)' : 'rgba(255, 68, 68, 0.1)',
-                                        color: user.status === 'approved' ? 'var(--accent)' : user.status === 'pending' ? '#ffaa00' : '#ff4444'
+                                        padding: '4px 12px',
+                                        borderRadius: '16px',
+                                        background: user.status === 'approved' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(245, 197, 66, 0.1)',
+                                        color: user.status === 'approved' ? '#00ff88' : 'var(--accent)',
+                                        border: `1px solid ${user.status === 'approved' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255,255,255,0.05)'}`
                                     }}>
-                                        {user.status?.toUpperCase() || 'UNKNOWN'}
+                                        {user.status?.toUpperCase() || 'PENDING'}
                                     </span>
                                 </td>
                                 <td style={tdStyle}>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
                                         {user.status === 'pending' && (
-                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}>APPROVE</button>
+                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '9px' }}>APPROVE</button>
                                         )}
-                                        <button onClick={() => openEdit(user)} style={btnStyle}>EDIT</button>
-                                        <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: '#ff4444' }}>DELETE</button>
+                                        <button onClick={() => openEdit(user)} style={{ ...btnStyle, background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', fontSize: '9px' }}>EDIT</button>
+                                        <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: 'var(--status-error)', background: 'rgba(255,68,68,0.05)', padding: '6px 12px', borderRadius: '8px', fontSize: '9px' }}>DELETE</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1393,170 +1583,176 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
         <div>
             {/* Add/Edit Modal */}
             {(showAdd || editingWebhook) && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.9)', zIndex: 1000,
-                    display: 'flex', justifyContent: 'center', alignItems: 'center'
-                }}>
-                    <div className="glass" style={{ padding: '30px', width: '450px', border: '1px solid var(--border)' }}>
-                        <h3 style={{ fontSize: '14px', marginBottom: '25px', letterSpacing: '2px' }}>
-                            {editingWebhook ? 'EDIT WEBHOOK' : 'ADD WEBHOOK'}
-                        </h3>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>NAME</label>
-                            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                placeholder="e.g., New Release Alerts"
-                                style={{ width: '100%', padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff' }} />
-                        </div>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>WEBHOOK URL</label>
-                            <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
-                                placeholder="https://discord.com/api/webhooks/..."
-                                style={{ width: '100%', padding: '10px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff' }} />
-                        </div>
-
-                        <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: '800' }}>EVENTS</label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {eventOptions.map(opt => {
-                                    const isSelected = form.events.includes(opt.value);
-                                    return (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => {
-                                                const currentEvents = form.events ? form.events.split(',').filter(e => e) : [];
-                                                if (isSelected) {
-                                                    setForm({ ...form, events: currentEvents.filter(e => e !== opt.value).join(',') });
-                                                } else {
-                                                    setForm({ ...form, events: [...currentEvents, opt.value].join(',') });
-                                                }
-                                            }}
-                                            style={{
-                                                padding: '6px 12px',
-                                                fontSize: '9px',
-                                                background: isSelected ? 'var(--accent)' : '#111',
-                                                color: isSelected ? '#000' : '#666',
-                                                border: '1px solid var(--border)',
-                                                cursor: 'pointer',
-                                                fontWeight: '800'
-                                            }}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    );
-                                })}
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        style={{
+                            width: '500px',
+                            padding: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            backdropFilter: 'blur(30px)',
+                            borderRadius: '32px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
+                                <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>
+                                    {editingWebhook ? 'EDIT_WEBHOOK' : 'ADD_NEW_WEBHOOK'}
+                                </h3>
                             </div>
+                            <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '24px' }}>×</button>
                         </div>
 
-                        {/* Config Field (Playlist ID) */}
-                        {form.events?.includes('playlist_update') && (
-                            <div style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '9px', fontWeight: '900', color: '#666', letterSpacing: '1px' }}>TARGET PLAYLIST ID</label>
-                                <input
-                                    type="text"
-                                    placeholder="Spotify Playlist ID (e.g. 6QHy5LPK...)"
-                                    value={form.config ? JSON.parse(form.config).playlistId || '' : ''}
-                                    onChange={(e) => {
-                                        const currentConfig = form.config ? JSON.parse(form.config) : {};
-                                        setForm({ ...form, config: JSON.stringify({ ...currentConfig, playlistId: e.target.value }) });
-                                    }}
-                                    style={inputStyle}
-                                />
-                                <p style={{ fontSize: '9px', color: '#444', marginTop: '4px' }}>If empty, the system default playlist will be used.</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>WEBHOOK_NAME</label>
+                                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                    placeholder="e.g., Discord Notifications"
+                                    style={{ ...inputStyle, width: '100%', padding: '15px' }} />
                             </div>
-                        )}
 
-                        <div style={{ marginBottom: '25px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
-                                <span style={{ fontSize: '10px', color: '#888', fontWeight: '800' }}>ENABLED</span>
-                            </label>
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ENDPOINT_URL</label>
+                                <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
+                                    placeholder="https://discord.com/api/webhooks/..."
+                                    style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SUBSCRIBE_EVENTS</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    {eventOptions.map(opt => {
+                                        const isSelected = form.events.includes(opt.value);
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => {
+                                                    const currentEvents = form.events ? form.events.split(',').filter(e => e) : [];
+                                                    if (isSelected) {
+                                                        setForm({ ...form, events: currentEvents.filter(e => e !== opt.value).join(',') });
+                                                    } else {
+                                                        setForm({ ...form, events: [...currentEvents, opt.value].join(',') });
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    fontSize: '9px',
+                                                    fontWeight: '900',
+                                                    borderRadius: '12px',
+                                                    background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                                                    color: isSelected ? '#000' : '#444',
+                                                    border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {opt.label.toUpperCase()}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {form.events?.includes('playlist_update') && (
+                                <div>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>TARGET_PLAYLIST_ID</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Spotify Playlist ID"
+                                        value={form.config ? JSON.parse(form.config).playlistId || '' : ''}
+                                        onChange={(e) => {
+                                            const currentConfig = form.config ? JSON.parse(form.config) : {};
+                                            setForm({ ...form, config: JSON.stringify({ ...currentConfig, playlistId: e.target.value }) });
+                                        }}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                    />
+                                </div>
+                            )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button onClick={handleSave} disabled={saving} className="glow-button" style={{ flex: 1, padding: '12px' }}>
-                                {saving ? 'SAVING...' : 'SAVE'}
+                        <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
+                            <button onClick={handleSave} disabled={saving || !form.name || !form.url} className="glow-button" style={{ flex: 2, padding: '18px', fontWeight: '900' }}>
+                                {saving ? 'PROCESSING...' : (editingWebhook ? 'UPDATE_WEBHOOK' : 'CREATE_WEBHOOK')}
                             </button>
-                            <button onClick={resetForm} style={{ flex: 1, padding: '12px', background: '#222', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                            <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
                                 CANCEL
                             </button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                <p style={{ color: '#666', fontSize: '12px' }}>Manage webhook endpoints for Discord notifications.</p>
-                <button onClick={() => setShowAdd(true)} style={{ ...btnStyle, color: '#fff', background: 'var(--accent)', color: '#000', border: 'none' }}>+ ADD WEBHOOK</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <div>
+                    <h3 style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '3px', color: '#fff', margin: 0 }}>AUTOMATION_WEBHOOKS</h3>
+                    <p style={{ fontSize: '9px', color: '#444', marginTop: '5px', fontWeight: '800' }}>NOTIFY DISCORD OR OTHER SERVICES ON SYSTEM EVENTS</p>
+                </div>
+                <button onClick={() => setShowAdd(true)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '12px 25px' }}>+ NEW_WEBHOOK</button>
             </div>
 
-            {/* Webhooks List */}
             <div style={glassStyle}>
-                {webhooks.length === 0 ? (
-                    <div style={{ padding: '50px', textAlign: 'center', color: '#444' }}>
-                        <p style={{ fontSize: '12px', marginBottom: '15px' }}>No webhooks configured</p>
-                        <button onClick={() => setShowAdd(true)} style={{ ...btnStyle, color: 'var(--accent)' }}>Add your first webhook</button>
-                    </div>
-                ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                        <thead>
-                            <tr style={{ background: 'var(--surface-hover)' }}>
-                                <th style={thStyle}>NAME</th>
-                                <th style={thStyle}>EVENTS</th>
-                                <th style={thStyle}>STATUS</th>
-                                <th style={thStyle}>ACTIONS</th>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                            <th style={thStyle}>NAME / ENDPOINT</th>
+                            <th style={thStyle}>SUBSCRIPTIONS</th>
+                            <th style={thStyle}>STATUS</th>
+                            <th style={thStyle}>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {webhooks.map(webhook => (
+                            <tr key={webhook.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={tdStyle}>
+                                    <div style={{ fontSize: '13px', fontWeight: '900', color: '#fff' }}>{webhook.name}</div>
+                                    <div style={{ fontSize: '9px', color: '#444', marginTop: '4px', letterSpacing: '0.5px' }}>{webhook.url.substring(0, 60)}...</div>
+                                </td>
+                                <td style={tdStyle}>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {webhook.events?.split(',').filter(e => e).map(event => (
+                                            <span key={event} style={{ fontSize: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', color: '#888', borderRadius: '4px', fontWeight: '800' }}>
+                                                {event.toUpperCase()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </td>
+                                <td style={tdStyle}>
+                                    <button
+                                        onClick={() => handleToggle(webhook)}
+                                        style={{
+                                            background: webhook.enabled ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255,255,255,0.02)',
+                                            color: webhook.enabled ? '#00ff88' : '#444',
+                                            border: '1px solid rgba(255,255,255,0.05)',
+                                            padding: '6px 12px',
+                                            fontSize: '9px',
+                                            cursor: 'pointer',
+                                            fontWeight: '900',
+                                            borderRadius: '8px'
+                                        }}
+                                    >
+                                        {webhook.enabled ? 'ACTIVE' : 'DISABLED'}
+                                    </button>
+                                </td>
+                                <td style={tdStyle}>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => testWebhook(webhook.url)} style={{ ...btnStyle, fontSize: '9px', background: 'rgba(255,255,255,0.02)' }}>TEST</button>
+                                        <button onClick={() => setEditingWebhook(webhook)} style={{ ...btnStyle, fontSize: '9px', background: 'rgba(255,255,255,0.02)' }}>EDIT</button>
+                                        <button onClick={() => handleDelete(webhook.id)} style={{ ...btnStyle, fontSize: '9px', color: 'var(--status-error)', background: 'rgba(255,68,68,0.05)' }}>DELETE</button>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {webhooks.map(webhook => (
-                                <tr key={webhook.id} style={{ borderBottom: '1px solid #1a1a1b' }}>
-                                    <td style={tdStyle}>
-                                        <strong>{webhook.name}</strong>
-                                        <div style={{ fontSize: '9px', color: '#444', marginTop: '3px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {webhook.url.substring(0, 50)}...
-                                        </div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                                            {webhook.events?.split(',').filter(e => e).map(event => (
-                                                <span key={event} style={{ fontSize: '8px', background: '#1a1a1a', padding: '3px 6px', color: '#888' }}>
-                                                    {event}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <button
-                                            onClick={() => handleToggle(webhook)}
-                                            style={{
-                                                background: webhook.enabled ? 'var(--accent)20' : '#22222240',
-                                                color: webhook.enabled ? 'var(--accent)' : '#666',
-                                                border: 'none',
-                                                padding: '5px 12px',
-                                                fontSize: '9px',
-                                                cursor: 'pointer',
-                                                fontWeight: '800'
-                                            }}
-                                        >
-                                            {webhook.enabled ? 'ACTIVE' : 'DISABLED'}
-                                        </button>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button onClick={() => testWebhook(webhook.url)} style={btnStyle}>TEST</button>
-                                            <button onClick={() => openEdit(webhook)} style={btnStyle}>EDIT</button>
-                                            <button onClick={() => handleDelete(webhook.id)} style={{ ...btnStyle, color: '#ff4444' }}>DELETE</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                        ))}
+                        {webhooks.length === 0 && (
+                            <tr><td colSpan="4" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '60px' }}>NO_WEBHOOKS_CONFIGURED</td></tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -1564,13 +1760,283 @@ function WebhooksView({ webhooks, onRefresh, onTest }) {
 
 // ... (Existing ContentView)
 
+const GoalProgress = ({ label, current, target, color }) => {
+    const percentage = Math.min(Math.round((current / target) * 100), 100);
+    const safeColor = color || 'var(--accent)';
+    return (
+        <div style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{label}</span>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: safeColor }}>{percentage}%</span>
+            </div>
+            <div style={{ width: '100%', height: '7px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${percentage}%` }}
+                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ height: '100%', background: safeColor, borderRadius: '10px', boxShadow: `0 0 18px ${safeColor}50` }}
+                />
+            </div>
+        </div>
+    );
+};
+
+const DonutChart = ({ data }) => {
+    const total = data.reduce((acc, curr) => acc + curr.value, 0);
+    let cumulativePercent = 0;
+    const topItem = data.reduce((best, item) => (item.value > best.value ? item : best), data[0] || { label: 'TOTAL', value: 0, color: '#666' });
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+            <div style={{ position: 'relative', width: '190px', height: '190px' }}>
+                <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="50" cy="50" r="45" fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+                    {data.map((item, i) => {
+                        const percent = total ? item.value / total : 0;
+                        const dashArray = `${percent * 282.6} 282.6`;
+                        const dashOffset = -cumulativePercent * 282.6;
+                        cumulativePercent += percent;
+
+                        return (
+                            <motion.circle
+                                key={i}
+                                cx="50"
+                                cy="50"
+                                r="45"
+                                fill="transparent"
+                                stroke={item.color}
+                                strokeWidth="10"
+                                strokeDasharray={dashArray}
+                                strokeDashoffset={dashOffset}
+                                initial={{ strokeDasharray: "0 282.6" }}
+                                whileInView={{ strokeDasharray: dashArray }}
+                                transition={{ duration: 1.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ strokeLinecap: 'round', filter: `drop-shadow(0 0 8px ${item.color}55)` }}
+                            />
+                        );
+                    })}
+                </svg>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '22px', fontWeight: '900', color: '#fff' }}>
+                        {total ? `${Math.round((topItem.value / total) * 100)}%` : '0%'}
+                    </div>
+                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1px' }}>{topItem.label}</div>
+                </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {data.map((item, i) => (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr 36px', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}66` }} />
+                        <div style={{ fontSize: '10px', fontWeight: '800', color: '#fff', letterSpacing: '0.5px' }}>{item.label}</div>
+                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#777', textAlign: 'right' }}>
+                            {total ? Math.round((item.value / total) * 100) : 0}%
+                        </div>
+                        <div style={{ gridColumn: '2 / 4', height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, boxShadow: `0 0 10px ${item.color}55` }} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+function SimpleChart({ data, color = '#f5c542' }) {
+    const [hoveredIndex, setHoveredIndex] = useState(null);
+    const gradId = color.replace(/[^a-zA-Z0-9]/g, '');
+
+
+    if (!data || data.length === 0) return (
+        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px' }}>
+            NO DATA AVAILABLE
+        </div>
+    );
+
+    // Handle single data point case better: Start from 0 to show growth
+    let renderData = [...data];
+    if (data.length === 1) {
+        renderData = [
+            { label: 'START', value: 0 },
+            data[0]
+        ];
+    }
+
+    const values = renderData.map(d => d.value);
+    const rawMax = Math.max(...values, 10);
+    const rawMin = Math.min(...values, 0);
+    const padding = (rawMax - rawMin) * 0.2 || rawMax * 0.1 || 10;
+    const maxVal = rawMax + padding;
+    const minVal = Math.max(rawMin - padding, 0);
+    const range = Math.max(maxVal - minVal, 1);
+
+    const getCoords = (i) => {
+        const x = (i / (renderData.length - 1)) * 100;
+        const val = renderData[i].value;
+        const y = 90 - ((val - minVal) / range) * 80;
+        return { x, y };
+    };
+
+    // Monotone X Cubic Interpolation for smooth, non-overshooting curves
+    const points = renderData.map((_, i) => getCoords(i));
+
+    let pathData = `M ${points[0].x} ${points[0].y}`;
+
+    if (points.length > 1) {
+        const tangents = [];
+
+        // Calculate finite differences
+        for (let i = 0; i < points.length; i++) {
+            if (i === 0) {
+                tangents.push((points[1].y - points[0].y) / (points[1].x - points[0].x));
+            } else if (i === points.length - 1) {
+                tangents.push((points[i].y - points[i - 1].y) / (points[i].x - points[i - 1].x));
+            } else {
+                // Average of slopes
+                const m1 = (points[i].y - points[i - 1].y) / (points[i].x - points[i - 1].x);
+                const m2 = (points[i + 1].y - points[i].y) / (points[i + 1].x - points[i].x);
+                if (Math.sign(m1) !== Math.sign(m2)) {
+                    tangents.push(0); // Flat tangent at peaks/valleys
+                } else {
+                    tangents.push((m1 + m2) / 2);
+                }
+            }
+        }
+
+        // Generate Bezier path
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i];
+            const p1 = points[i + 1];
+            const m0 = tangents[i];
+            const m1 = tangents[i + 1];
+            const dx = p1.x - p0.x;
+
+            // Control points
+            // Scale factor 0.333 reduces the "looseness" of the curve
+            const cp1x = p0.x + dx / 3;
+            const cp1y = p0.y + m0 * dx / 3;
+            const cp2x = p1.x - dx / 3;
+            const cp2y = p1.y - m1 * dx / 3;
+
+            pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+        }
+    }
+
+    const areaPath = `${pathData} L 100 100 L 0 100 Z`;
+    const yTicks = [0, 25, 50, 75, 100];
+
+    return (
+        <div style={{ width: '100%', height: '260px', position: 'relative', marginTop: '10px' }}>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                <defs>
+                    <linearGradient id={`areaGradient-${gradId}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </linearGradient>
+                </defs>
+
+                {/* Grid Lines */}
+                {yTicks.map(t => (
+                    <line key={t} x1="0" y1={t} x2="100" y2={t} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" strokeDasharray="2" />
+                ))}
+
+                {/* Y-Axis Labels */}
+                {yTicks.map(t => (
+                    <text key={t} x="-2" y={100 - t * 0.8 - 8.5} textAnchor="end" fill="#666" fontSize="5" fontWeight="700" style={{ pointerEvents: 'none' }}>
+                        {/* Calculate value from percentage t (0-100 map to minVal-maxVal) */}
+                        {/* Note: t=0 is top in SVG usually but here we mapped 0-100 to yTicks which are just positions? 
+                            Wait, loop above uses 0,25,50,75,100 as SVG y-coordinates. 
+                            100 is bottom (min val), 0 is top (max val).
+                        */}
+                        {Math.round(minVal + ((100 - t) / 100) * range).toLocaleString(undefined, { notation: "compact", compactDisplay: "short" })}
+                    </text>
+                ))}
+
+                {/* Area Fill */}
+                <motion.path
+                    d={areaPath}
+                    fill={`url(#areaGradient-${gradId})`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1 }}
+                />
+
+                {/* Line Stroke */}
+                <motion.path
+                    d={pathData}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    vectorEffect="non-scaling-stroke"
+                    style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
+                />
+
+                {/* Data Points & Tooltips */}
+                {renderData.map((d, i) => {
+                    const { x, y } = getCoords(i);
+                    // Only show points if enough space or few points
+                    if (renderData.length > 20 && i % 2 !== 0 && hoveredIndex !== i) return null;
+
+                    return (
+                        <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
+                            <circle cx={x} cy={y} r={hoveredIndex === i ? 2 : 1} fill="#000" stroke={color} strokeWidth="0.5" style={{ cursor: 'pointer', transition: 'all 0.2s' }} />
+
+                            {/* Tooltip on Hover */}
+                            {hoveredIndex === i && (
+                                <g>
+                                    <rect x={x - 15} y={y - 15} width="30" height="10" rx="2" fill="rgba(0,0,0,0.8)" stroke={color} strokeWidth="0.2" />
+                                    <text x={x} y={y - 8} textAnchor="middle" fill="#fff" fontSize="4" fontWeight="bold">
+                                        {d.value.toLocaleString()}
+                                    </text>
+                                </g>
+                            )}
+                        </g>
+                    );
+                })}
+            </svg>
+
+            {/* X-Axis Labels */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', padding: '0 10px' }}>
+                {data.map((d, i) => {
+                    // Show sparsely if many points
+                    if (data.length > 12 && i % 3 !== 0) return null;
+                    if (data.length > 6 && i % 2 !== 0) return null;
+                    return (
+                        <span key={i} style={{ fontSize: '9px', color: '#555', fontWeight: '700', transform: 'translateX(-50%)' }}>
+                            {(d.label ? (d.label.includes('-') ? d.label.split('-')[1] : d.label) : '')}
+                        </span>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+
+function pickPlatformColor(label) {
+    const upper = (label || '').toUpperCase();
+    if (upper.includes('SPOT')) return '#1DB954';
+    if (upper.includes('APPLE')) return '#FA243C';
+    if (upper.includes('YT') || upper.includes('YOU')) return '#FF0000';
+    if (upper.includes('AMAZON')) return '#FF9900';
+    if (upper.includes('TIDAL')) return '#00A0FF';
+    return '#777';
+}
 
 function HomeView() {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [range, setRange] = useState('12m'); // 3m, 6m, 12m
+    const [miniEarnings, setMiniEarnings] = useState([]);
+    const [miniPayments, setMiniPayments] = useState([]);
 
     useEffect(() => {
         fetchStats();
+        fetchMiniData();
     }, []);
 
     const fetchStats = async () => {
@@ -1582,6 +2048,27 @@ function HomeView() {
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
+    };
+
+    const fetchMiniData = async () => {
+        try {
+            const [earnRes, payRes] = await Promise.all([
+                fetch('/api/earnings'),
+                fetch('/api/payments')
+            ]);
+            if (earnRes.ok) {
+                const data = await earnRes.json();
+                const sorted = (data.earnings || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                setMiniEarnings(sorted.slice(0, 5));
+            }
+            if (payRes.ok) {
+                const data = await payRes.json();
+                const sorted = (data.payments || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                setMiniPayments(sorted.slice(0, 5));
+            }
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     if (loading) {
@@ -1600,117 +2087,361 @@ function HomeView() {
     if (!stats) return null;
 
     const cards = [
-        { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: 'var(--accent)', icon: <Mic2 size={20} /> },
-        { label: 'TOTAL_USERS', value: stats.counts.users, color: '#0088ff', icon: <Users size={20} /> },
-        { label: 'TOTAL_ALBUMS', value: stats.counts.albums || 0, color: '#aa00ff', icon: <Disc size={20} /> },
-        { label: 'TOTAL_SONGS', value: stats.counts.songs || 0, color: '#ff00aa', icon: <Mic2 size={20} /> },
-        { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: '#ffaa00', icon: <FileAudio size={20} /> },
-        { label: 'PENDING_REQUESTS', value: stats.counts.pendingRequests, color: '#ff4444', icon: <AlertCircle size={20} /> }
+        { label: 'GROSS_VOLUME', value: `$${(stats.counts.gross || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <DollarSign size={20} />, trend: '+12.5%' },
+        { label: 'NET_REVENUE', value: `$${(stats.counts.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <Briefcase size={20} />, trend: '+8.2%' },
+        { label: 'TOTAL_PAYOUTS', value: `$${(stats.counts.payouts || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#666', icon: <CreditCard size={20} /> },
+        { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: '#fff', icon: <Mic2 size={20} /> },
+        { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: stats.counts.pendingDemos > 0 ? 'var(--accent)' : '#fff', icon: <FileAudio size={20} /> },
+        { label: 'OPEN_REQUESTS', value: stats.counts.pendingRequests, color: stats.counts.pendingRequests > 0 ? 'var(--status-warning)' : '#fff', icon: <AlertCircle size={20} /> }
     ];
 
+    const chartData = (() => {
+        if (!stats?.trends) return [];
+        const arr = [...stats.trends];
+        if (range === '3m') return arr.slice(-3);
+        if (range === '6m') return arr.slice(-6);
+        return arr.slice(-12);
+    })();
+
+    const platformData = (stats?.platforms?.length ? stats.platforms : []).map(p => ({
+        label: p.label,
+        value: p.value,
+        color: pickPlatformColor(p.label)
+    }));
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ padding: '0px' }}
-        >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '30px', marginBottom: '40px' }}>
+        <>
+            {/* Stats Cards Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '36px' }}>
                 {cards.map((card, i) => (
                     <motion.div
                         key={i}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                        style={{ ...glassStyle, padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                        style={{
+                            ...statCardStyle,
+                            padding: '26px',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            borderRadius: '20px'
+                        }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '2px' }}>{card.label}</div>
-                            <div style={{ color: card.color, opacity: 0.5 }}>{card.icon}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+                            <div style={{
+                                width: '45px',
+                                height: '45px',
+                                borderRadius: '14px',
+                                background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.09), rgba(255,255,255,0.02))',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: card.color
+                            }}>
+                                {card.icon}
+                            </div>
+                            {card.trend && (
+                                <div style={{ fontSize: '10px', color: '#00ff88', fontWeight: '900', background: 'rgba(0,255,136,0.1)', padding: '4px 10px', borderRadius: '999px', border: '1px solid rgba(0,255,136,0.25)' }}>
+                                    {card.trend}
+                                </div>
+                            )}
                         </div>
-                        <div style={{ fontSize: '42px', fontWeight: '900', color: '#fff', letterSpacing: '-0.04em' }}>{card.value}</div>
-                        <div style={{ height: '2px', width: '20px', background: card.color }}></div>
+
+                        <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff', letterSpacing: '-1px', lineHeight: 1, marginBottom: '8px' }}>
+                            {card.value}
+                        </div>
+
+                        <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            {card.label}
+                        </div>
                     </motion.div>
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '30px' }}>
+            {/* Main Content Area: Charts */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '22px', marginBottom: '36px' }}>
+                {/* Revenue Chart */}
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 }}
-                    style={glassStyle}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    style={{ ...glassStyle, padding: '28px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)' }}
                 >
-                    <div style={{ padding: '25px 30px', borderBottom: '1px solid rgba(255,255,255,0.03)', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ fontSize: '10px', letterSpacing: '3px', fontWeight: '900', color: '#fff' }}>RECENT_DEMOS</h3>
-                        <RefreshCw size={14} color="#222" style={{ cursor: 'pointer' }} onClick={fetchStats} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '12px', flexWrap: 'wrap' }}>
+                        <div>
+                            <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>REVENUE_OVERVIEW</h3>
+                            <p style={{ fontSize: '9px', color: '#444', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--accent)' }} />
+                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#666' }}>ESTIMATED_VOLUME</span>
+                            </div>
+                            <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '4px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                {['3m', '6m', '12m'].map(r => (
+                                    <button
+                                        key={r}
+                                        onClick={() => setRange(r)}
+                                        style={{
+                                            border: 'none',
+                                            background: range === r ? 'var(--accent)' : 'transparent',
+                                            color: range === r ? '#000' : '#777',
+                                            fontSize: '9px',
+                                            fontWeight: '900',
+                                            letterSpacing: '1px',
+                                            padding: '7px 12px',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s'
+                                        }}
+                                    >
+                                        {r.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <SimpleChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color="#f5c542" />
+                </motion.div>
+
+                {/* Payout Trends Chart */}
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 }}
+                    style={{ ...glassStyle, padding: '28px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)' }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <div>
+                            <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>PAYOUT_TRENDS</h3>
+                            <p style={{ fontSize: '9px', color: '#444', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
+                        </div>
+                    </div>
+                    <SimpleChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color="#00ff88" />
+                </motion.div>
+
+                {/* Donut Chart */}
+                <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    style={{ ...glassStyle, padding: '28px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)' }}
+                >
+                    <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', marginBottom: '25px' }}>PLATFORM_DISTRIBUTION</h3>
+                    <DonutChart data={platformData.length ? platformData : [
+                        { label: 'NO_DATA', value: 1, color: '#444' }
+                    ]} />
+                </motion.div>
+            </div>
+
+            {/* Bottom Section: Goals, Top Performers, Recent Submit */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '22px', marginBottom: '32px' }}>
+                {/* Goals */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    style={{ ...glassStyle, padding: '30px' }}
+                >
+                    <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', marginBottom: '25px' }}>OPERATIONAL_GOALS</h3>
+                    <GoalProgress label="REVENUE_TARGET" current={stats.counts.gross} target={100000} color="var(--accent)" />
+                    <GoalProgress label="ARTIST_RETENTION" current={stats.counts.artists} target={1000} color="#fff" />
+                    <GoalProgress label="SUBMISSION_KPI" current={200 - stats.counts.pendingDemos} target={200} color="#444" />
+                </motion.div>
+
+                {/* Top Performers */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 }}
+                    style={{ ...glassStyle, overflow: 'hidden' }}
+                >
+                    <div style={{
+                        padding: '24px 30px',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        background: 'rgba(255,255,255,0.02)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <h3 style={{ fontSize: '10px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>TOP_PERFORMERS</h3>
+                        <Users size={14} color="#555" />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {stats.recent.demos.map((demo, i) => (
-                            <motion.div
-                                key={demo.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.5 + (i * 0.05) }}
-                                style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '6px', letterSpacing: '-0.02em' }}>{demo.title}</div>
-                                    <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '900', letterSpacing: '1px' }}>{demo.artist?.stageName || 'Unknown'}</div>
+                        {stats.topArtists?.slice(0, 5).map((artist, i) => (
+                            <div key={artist.id} style={{ padding: '16px 30px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#222', width: '25px' }}>#{i + 1}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>{artist.name}</div>
                                 </div>
-                                <div style={{ fontSize: '9px', padding: '6px 12px', borderRadius: '30px', background: 'rgba(255,255,255,0.02)', color: '#444', fontWeight: '900', border: '1px solid rgba(255,255,255,0.05)', letterSpacing: '1px' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '900', color: 'var(--accent)' }}>{artist.monthlyListeners?.toLocaleString()}</div>
+                                    <div style={{ fontSize: '8px', color: '#333', fontWeight: '800', letterSpacing: '1px' }}>MONTHLY_LISTENERS</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </motion.div>
+
+                {/* Recent Items */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 }}
+                    style={{ ...glassStyle, overflow: 'hidden' }}
+                >
+                    <div style={{
+                        padding: '24px 30px',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        background: 'rgba(255,255,255,0.02)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <h3 style={{ fontSize: '10px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>RECENT_SUBMISSIONS</h3>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <RefreshCw size={14} color="#555" style={{ cursor: 'pointer' }} onClick={fetchStats} />
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {stats.recent.demos.slice(0, 5).map((demo, i) => (
+                            <div key={demo.id} style={{ padding: '16px 30px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>{demo.title}</div>
+                                    <div style={{ fontSize: '10px', color: '#444', fontWeight: '700' }}>{demo.artist?.stageName || 'Unknown'}</div>
+                                </div>
+                                <div style={{ fontSize: '9px', color: '#222', fontWeight: '900', background: 'rgba(255,255,255,0.02)', padding: '5px 12px', borderRadius: '12px' }}>
                                     {new Date(demo.createdAt).toLocaleDateString()}
                                 </div>
-                            </motion.div>
+                            </div>
                         ))}
-                        {stats.recent.demos.length === 0 && <div style={{ padding: '60px', textAlign: 'center', color: '#222', fontSize: '10px', fontWeight: '900', letterSpacing: '2px' }}>NO_RECENT_ACTIVITY</div>}
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Data Tables: Earnings & Payouts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '22px', marginBottom: '28px' }}>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    style={{ ...glassStyle, padding: '24px' }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>RECENT_EARNINGS</h3>
+                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Last 5</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr', fontSize: '10px', color: '#666', fontWeight: '800', letterSpacing: '1px', padding: '0 4px 8px' }}>
+                        <span>PERIOD</span><span>SOURCE</span><span>LABEL</span><span>CREATED</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {miniEarnings.map((e, i) => (
+                            <div key={e.id || i} style={{ display: 'grid', gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                                <div style={{ color: '#fff', fontWeight: '800' }}>{e.period || '-'}</div>
+                                <div style={{ color: '#999', fontWeight: '800' }}>{(e.source || 'OTHER').toUpperCase()}</div>
+                                <div style={{ color: 'var(--accent)', fontWeight: '900' }}>${Number(e.labelAmount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                <div style={{ color: '#555', fontWeight: '800' }}>{new Date(e.createdAt).toLocaleDateString()}</div>
+                            </div>
+                        ))}
+                        {miniEarnings.length === 0 && (
+                            <div style={{ padding: '32px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO_EARNINGS_YET</div>
+                        )}
                     </div>
                 </motion.div>
 
                 <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 }}
-                    style={glassStyle}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    style={{ ...glassStyle, padding: '24px' }}
                 >
-                    <div style={{ padding: '25px 30px', borderBottom: '1px solid rgba(255,255,255,0.03)', background: 'rgba(255,255,255,0.01)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ fontSize: '10px', letterSpacing: '3px', fontWeight: '900', color: '#fff' }}>RECENT_REQUESTS</h3>
-                        <RefreshCw size={14} color="#222" style={{ cursor: 'pointer' }} onClick={fetchStats} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>RECENT_PAYOUTS</h3>
+                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Last 5</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {stats.recent.requests.map((req, i) => (
-                            <motion.div
-                                key={req.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.6 + (i * 0.05) }}
-                                style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                            >
-                                <div>
-                                    <div style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '6px', letterSpacing: '-0.02em' }}>{req.type.toUpperCase().replace('_', ' ')}</div>
-                                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '1px' }}>{req.user?.stageName || 'Unknown'}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', fontSize: '10px', color: '#666', fontWeight: '800', letterSpacing: '1px', padding: '0 4px 8px' }}>
+                        <span>AMOUNT</span><span>STATUS</span><span>CREATED</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {miniPayments.map((p, i) => (
+                            <div key={p.id || i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                                <div style={{ color: '#fff', fontWeight: '900' }}>${Number(p.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '800', color: p.status === 'completed' ? '#00ff88' : '#ffaa00' }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.status === 'completed' ? '#00ff88' : '#ffaa00', boxShadow: `0 0 8px ${p.status === 'completed' ? '#00ff88' : '#ffaa00'}55` }} />
+                                    {p.status?.toUpperCase() || 'PENDING'}
                                 </div>
-                                <div
-                                    style={{
-                                        fontSize: '9px',
-                                        padding: '6px 12px',
-                                        borderRadius: '30px',
-                                        background: req.status === 'pending' ? 'rgba(255,170,0,0.05)' : 'rgba(255,255,255,0.02)',
-                                        color: req.status === 'pending' ? '#ffaa00' : '#444',
-                                        fontWeight: '900',
-                                        border: '1px solid rgba(255,255,255,0.05)',
-                                        letterSpacing: '1px'
-                                    }}
-                                >
-                                    {req.status.toUpperCase()}
-                                </div>
-                            </motion.div>
+                                <div style={{ color: '#555', fontWeight: '800' }}>{new Date(p.createdAt).toLocaleDateString()}</div>
+                            </div>
                         ))}
-                        {stats.recent.requests.length === 0 && <div style={{ padding: '60px', textAlign: 'center', color: '#222', fontSize: '10px', fontWeight: '900', letterSpacing: '2px' }}>NO_RECENT_ACTIVITY</div>}
+                        {miniPayments.length === 0 && (
+                            <div style={{ padding: '32px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO_PAYOUTS_YET</div>
+                        )}
                     </div>
                 </motion.div>
             </div>
-        </motion.div>
+
+            {/* Bottom Row: Recent Requests */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                style={{ ...glassStyle, overflow: 'hidden' }}
+            >
+                <div style={{
+                    padding: '24px 30px',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(255,255,255,0.02)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <h3 style={{ fontSize: '10px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>ACTIVE_SERVICE_REQUESTS</h3>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {stats.recent.requests.map((req, i) => (
+                        <div key={req.id} style={{ padding: '18px 30px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                <div style={{
+                                    width: '35px',
+                                    height: '35px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid rgba(255,255,255,0.04)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '14px'
+                                }}>
+                                    {req.type === 'takedown' ? '🗑️' : req.type === 'cover_art' ? '🎨' : '📝'}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>{req.type.toUpperCase().replace('_', ' ')}</div>
+                                    <div style={{ fontSize: '10px', color: '#444', fontWeight: '700' }}>{req.user?.stageName || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            <div style={{
+                                fontSize: '9px',
+                                padding: '6px 15px',
+                                borderRadius: '20px',
+                                background: req.status === 'pending' ? 'rgba(255, 170, 0, 0.08)' : 'rgba(255,255,255,0.02)',
+                                color: req.status === 'pending' ? '#ffaa00' : '#444',
+                                fontWeight: '900',
+                                border: `1px solid ${req.status === 'pending' ? 'rgba(255, 170, 0, 0.2)' : 'rgba(255,255,255,0.04)'}`,
+                                letterSpacing: '1px'
+                            }}>
+                                {req.status.toUpperCase()}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+        </>
     );
 }
 
@@ -1755,13 +2486,13 @@ function RequestsView({ requests, onUpdateStatus }) {
 
     const getStatusStyles = (status) => {
         switch (status) {
-            case 'completed': return { bg: 'rgba(245, 197, 66, 0.18)', border: 'var(--accent)', color: 'var(--accent)' };
-            case 'approved': return { bg: 'rgba(245, 197, 66, 0.18)', border: 'var(--accent)', color: 'var(--accent)' };
-            case 'processing': return { bg: 'rgba(0, 170, 255, 0.1)', border: '#00aaff', color: '#00aaff' };
-            case 'reviewing': return { bg: 'rgba(255, 170, 0, 0.1)', border: '#ffaa00', color: '#ffaa00' };
+            case 'completed': return { bg: 'var(--status-accent-bg)', border: 'var(--accent)', color: 'var(--accent)' };
+            case 'approved': return { bg: 'var(--status-accent-bg)', border: 'var(--accent)', color: 'var(--accent)' };
+            case 'processing': return { bg: 'var(--status-info-bg)', border: 'var(--status-info)', color: 'var(--status-info)' };
+            case 'reviewing': return { bg: 'var(--status-warning-bg)', border: 'var(--status-warning)', color: 'var(--status-warning)' };
             case 'needs_action': return { bg: 'rgba(255, 240, 0, 0.1)', border: '#fff000', color: '#fff000' };
-            case 'rejected': return { bg: 'rgba(255, 68, 68, 0.1)', border: '#ff4444', color: '#ff4444' };
-            default: return { bg: 'rgba(102, 102, 102, 0.1)', border: '#666', color: '#666' };
+            case 'rejected': return { bg: 'var(--status-error-bg)', border: 'var(--status-error)', color: 'var(--status-error)' };
+            default: return { bg: 'var(--status-neutral-bg)', border: '#666', color: '#666' };
         }
     };
 
@@ -1799,9 +2530,9 @@ function RequestsView({ requests, onUpdateStatus }) {
                 <div style={{ padding: '30px', display: 'flex', gap: '40px' }}>
                     {/* LEFT COLUMN: RELEASE INFO */}
                     <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
                             {selectedRequest.release?.image && (
-                                <img src={selectedRequest.release.image?.startsWith('private/') ? `/api/files/release/${selectedRequest.release.id}` : selectedRequest.release.image} alt="Release" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <NextImage src={selectedRequest.release.image?.startsWith('private/') ? `/api/files/release/${selectedRequest.release.id}` : selectedRequest.release.image} alt="Release" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             )}
                         </div>
                         <div>
@@ -1826,7 +2557,7 @@ function RequestsView({ requests, onUpdateStatus }) {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '25px' }}>
                         <div>
                             <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '10px', fontWeight: '800' }}>REQUEST TYPE</label>
-                            <div style={{ fontSize: '14px', background: '#222', padding: '10px 20px', borderRadius: '4px', display: 'inline-block', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '14px', background: '#222', padding: '10px 20px', borderRadius: '16px', display: 'inline-block', border: '1px solid var(--border)' }}>
                                 {selectedRequest.type.toUpperCase().replace('_', ' ')} CHANGE
                             </div>
                         </div>
@@ -1837,7 +2568,7 @@ function RequestsView({ requests, onUpdateStatus }) {
                                 background: 'var(--surface-hover)',
                                 padding: '20px',
                                 border: '1px solid var(--border)',
-                                borderRadius: '4px',
+                                borderRadius: '16px',
                                 fontSize: '13px',
                                 lineHeight: '1.6',
                                 whiteSpace: 'pre-wrap',
@@ -1872,14 +2603,14 @@ function RequestsView({ requests, onUpdateStatus }) {
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'reviewing')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 170, 0, 0.1)', color: '#ffaa00', borderColor: '#ffaa0030' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 170, 0, 0.1)', color: 'var(--status-warning)', borderColor: '#ffaa0030' }}
                             >
                                 REVIEWING
                             </button>
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'processing')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(0, 170, 255, 0.1)', color: '#00aaff', borderColor: '#00aaff30' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(0, 170, 255, 0.1)', color: 'var(--status-info)', borderColor: '#00aaff30' }}
                             >
                                 PROCESSING
                             </button>
@@ -1900,7 +2631,7 @@ function RequestsView({ requests, onUpdateStatus }) {
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'rejected')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, color: '#ff4444', borderColor: '#ff444430' }}
+                                style={{ ...btnStyle, flex: 1, color: 'var(--status-error)', borderColor: '#ff444430' }}
                             >
                                 REJECT
                             </button>
@@ -1939,8 +2670,8 @@ function RequestsView({ requests, onUpdateStatus }) {
                         >
                             <td style={{ ...tdStyle, padding: '20px 25px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '40px', height: '40px', background: 'var(--surface-hover)', borderRadius: '4px', overflow: 'hidden' }}>
-                                        {req.release?.image && <img src={req.release.image?.startsWith('private/') ? `/api/files/release/${req.release.id}` : req.release.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                                    <div style={{ width: '40px', height: '40px', background: 'var(--surface-hover)', borderRadius: '16px', overflow: 'hidden' }}>
+                                        {req.release?.image && <NextImage src={req.release.image?.startsWith('private/') ? `/api/files/release/${req.release.id}` : req.release.image} alt={req.release.name || "Release"} width={40} height={40} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                                     </div>
                                     <div style={{ fontWeight: '800', fontSize: '13px' }}>{req.release?.name}</div>
                                 </div>
@@ -1953,7 +2684,7 @@ function RequestsView({ requests, onUpdateStatus }) {
                                     background: getStatusStyles(req.status).bg,
                                     border: `1px solid ${getStatusStyles(req.status).border}`,
                                     color: getStatusStyles(req.status).color,
-                                    fontSize: '9px', fontWeight: '900', borderRadius: '4px'
+                                    fontSize: '9px', fontWeight: '900', borderRadius: '16px'
                                 }}>
                                     {req.status.toUpperCase()}
                                 </span>
@@ -2029,10 +2760,11 @@ function SettingsView() {
                     instagram: parsed.instagram || '',
                     spotify: parsed.spotify || '',
                     youtube: parsed.youtube || '',
-                    // System
-                    defaultPlaylistId: parsed.defaultPlaylistId || '6QHy5LPKDRHDdKZGBFxRY8',
                     // Genres
-                    genres: parsed.genres || ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other']
+                    genres: parsed.genres || ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
+                    // Join Page
+                    joinHeroTitle: parsed.joinHeroTitle || 'WORK WITH THE LOST. COMPANY',
+                    joinHeroSub: parsed.joinHeroSub || 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
                 });
             } else {
                 // Defaults
@@ -2044,7 +2776,9 @@ function SettingsView() {
                     showStats: true,
                     discord: '', instagram: '', spotify: '', youtube: '',
                     defaultPlaylistId: '6QHy5LPKDRHDdKZGBFxRY8',
-                    genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other']
+                    genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
+                    joinHeroTitle: 'WORK WITH THE LOST. COMPANY',
+                    joinHeroSub: 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
                 });
             }
         } catch (e) { console.error(e); }
@@ -2095,6 +2829,7 @@ function SettingsView() {
         { id: 'genres', label: 'GENRES' },
         { id: 'requests', label: 'REQUESTS' },
         { id: 'home', label: 'HOME PAGE' },
+        { id: 'join', label: 'JOIN PAGE' },
         { id: 'socials', label: 'SOCIALS' }
     ];
 
@@ -2104,7 +2839,7 @@ function SettingsView() {
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         color: '#fff',
-        borderRadius: '8px',
+        borderRadius: '16px',
         fontSize: '12px'
     };
 
@@ -2153,8 +2888,8 @@ function SettingsView() {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#ff4444' }}>MAINTENANCE MODE</span>
-                                <div onClick={() => toggle('maintenanceMode')} style={{ width: '40px', height: '20px', background: config.maintenanceMode ? '#ff4444' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--status-error)' }}>MAINTENANCE MODE</span>
+                                <div onClick={() => toggle('maintenanceMode')} style={{ width: '40px', height: '20px', background: config.maintenanceMode ? 'var(--status-error)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
                                     <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.maintenanceMode ? '22px' : '2px', transition: 'left 0.3s' }} />
                                 </div>
                             </div>
@@ -2190,7 +2925,7 @@ function SettingsView() {
                                         input.value = '';
                                     }
                                 }}
-                                style={{ ...btnStyle, background: 'var(--accent)', color: '#000', padding: '12px 20px', border: 'none', borderRadius: '8px' }}
+                                style={{ ...btnStyle, background: 'var(--accent)', color: '#000', padding: '12px 20px', border: 'none', borderRadius: '16px' }}
                             >
                                 ADD
                             </button>
@@ -2200,12 +2935,12 @@ function SettingsView() {
                             {config.genres.map(g => (
                                 <div key={g} style={{
                                     padding: '10px 15px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                    borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                    borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                 }}>
                                     <span style={{ fontSize: '11px', fontWeight: '800' }}>{g}</span>
                                     <button
                                         onClick={() => handleChange('genres', config.genres.filter(genre => genre !== g))}
-                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '14px' }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer', fontSize: '14px' }}
                                     >
                                         ×
                                     </button>
@@ -2269,7 +3004,7 @@ function SettingsView() {
                             <select
                                 value={config.featuredReleaseId}
                                 onChange={(e) => handleChange('featuredReleaseId', e.target.value)}
-                                style={{ ...inputStyle, background: '#0f1016' }}
+                                style={{ ...inputStyle, background: '#0d0d0d' }}
                             >
                                 <option value="">(Auto-pick latest)</option>
                                 {releaseOptions.map(r => (
@@ -2279,7 +3014,7 @@ function SettingsView() {
                                 ))}
                             </select>
                             <p style={{ fontSize: '11px', color: '#444', marginTop: '6px' }}>
-                                Anasayfa hero'da görünecek release. Seçilmezse en güncel release kullanılır.
+                                Anasayfa hero&apos;da görünecek release. Seçilmezse en güncel release kullanılır.
                             </p>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -2287,6 +3022,23 @@ function SettingsView() {
                             <div onClick={() => toggle('showStats')} style={{ width: '40px', height: '20px', background: config.showStats ? 'var(--accent)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
                                 <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.showStats ? '22px' : '2px', transition: 'left 0.3s' }} />
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* JOIN PAGE SETTINGS */}
+                {activeTab === 'join' && (
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>JOIN PAGE TITLE</label>
+                            <input type="text" value={config.joinHeroTitle} onChange={(e) => handleChange('joinHeroTitle', e.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>JOIN PAGE SUBTITLE</label>
+                            <input type="text" value={config.joinHeroSub} onChange={(e) => handleChange('joinHeroSub', e.target.value)} style={inputStyle} />
+                        </div>
+                        <div style={{ padding: '20px', background: 'rgba(245, 197, 66, 0.05)', border: '1px solid rgba(245, 197, 66, 0.1)', borderRadius: '12px' }}>
+                            <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', margin: 0 }}>TIP: Detailed information like Accepted Genres and Commission Table are managed in the &ldquo;CONTENT&rdquo; section of the Admin Dashboard.</p>
                         </div>
                     </div>
                 )}
@@ -2323,20 +3075,58 @@ function ContentView({ content, onRefresh }) {
 
     const contentTypes = [
         { key: 'faq', label: 'FAQ / Sıkça Sorulan Sorular' },
+        { key: 'join_genres', label: 'Join Us: Accepted Genres' },
+        { key: 'join_commissions', label: 'Join Us: Commission Table' },
+        { key: 'terms', label: 'Terms of Service' },
+        { key: 'privacy', label: 'Privacy Policy' },
         { key: 'commission_rules', label: 'Commission Rules / Komisyon Kuralları' }
     ];
 
-    const handleEdit = (item) => {
-        setEditing(item?.key || null);
-        setEditTitle(item?.title || '');
-        const contentStr = item?.content || '';
+    const DEFAULT_CONTENT = {
+        faq: JSON.stringify([
+            { q: "How do I submit a demo?", a: "Register as an artist, access your portal, and use the 'NEW SUBMISSION' button. You can now upload multiple files (Master, Lyrics, etc.) directly." },
+            { q: "How can I track my distribution?", a: "Once signed, our A&R team will provide updates through the portal. You can use the 'CHANGE REQUEST' system to manage revisions or metadata updates for your releases." },
+            { q: "How do royalties and payments work?", a: "Royalties from Spotify, Apple Music, and other DSPs are calculated monthly. You can view your detailed revenue breakdown in the 'EARNINGS' tab and request withdrawals once the $50 threshold is met." },
+            { q: "What about legal contracts?", a: "All signing contracts are generated digitally. You can view, download, and track the status of your contracts in the 'CONTRACTS' section of your Artist Dashboard." },
+            { q: "Do you offer Spotify sync?", a: "Yes. Our system automatically syncs with your Spotify Artist profile to fetch the latest release data and update your portal metrics." }
+        ]),
+        join_genres: "House (Deep House / Slap House / G-House)\nPop\nPhonk\nHardstyle\nHyperTechno\nGaming Music (Midtempo, D&B, Trap, Future Bass)\nReggaeton\nOther",
+        join_commissions: JSON.stringify([
+            { released: "Yes", listeners: "0 – 250K", commission: "$25 or 1% royalties" },
+            { released: "Yes", listeners: "250K – 750K", commission: "$50 or 2.5% royalties" },
+            { released: "Yes", listeners: "750K+", commission: "$75 or 5% royalties" },
+            { released: "No", listeners: "0 – 250K", commission: "$25 or 5% royalties" },
+            { released: "No", listeners: "250K – 500K", commission: "$50 or 5% royalties" },
+            { released: "No", listeners: "500K – 1M", commission: "$75 or 5% royalties" },
+            { released: "No", listeners: "1M+", commission: "$100 or 7.5% royalties" }
+        ]),
+        commission_rules: "1. Only high-quality original demos are accepted.\n2. No uncleared samples or copyrighted material.\n3. Commissions are paid out 30 days after the track is signed and processed.\n4. We reserve the right to decline any submission for any reason.",
+        terms: "1. ARTIST ELIGIBILITY: By registering with LOST MUSIC GROUP, you affirm that you are at least 18 years of age (or have legal guardian consent) and possess the full authority to enter into a distribution agreement for the musical works you submit.\n\n2. DEMO SUBMISSIONS & CONTENT STANDARDS: Submitting a demo does not guarantee a release. You represent that all submissions are 100% original works. Use of uncleared samples, stolen tracks, or fraudulent content will result in immediate account termination and potential legal action.\n\n3. GLOBAL DISTRIBUTION RIGHTS: Upon formal acceptance and contract execution, you grant LOST MUSIC GROUP the exclusive, sub-licensable right to distribute, promote, and monetize your content across over 50 global Digital Service Providers (DSPs), including Spotify, Apple Music, and Amazon.\n\n4. ROYALTIES & PAYMENTS: Royalties are calculated based on net revenue received from DSPs. Payouts are made quarterly (every 3 months) via Bank Transfer or PayPal. The minimum payout threshold is $50.00 USD. Undistributed earnings remain in your account until the threshold is met.\n\n5. INTELLECTUAL PROPERTY: The \"LOST.\" trademark, logos, and website infrastructure remain the sole property of LOST MUSIC GROUP. Artists retain ownership of their compositions unless otherwise specified in a separate, written Recording or Publishing Agreement.",
+        privacy: "1. DATA COLLECTION: We collect personal identifiers (name, email, stage name), financial information for royalty processing, and musical content submitted through our portal. We also collect technical data such as IP addresses and browser cookies to improve your user experience and for security purposes.\n\n2. PURPOSE OF DATA USAGE: Your data is used exclusively to manage your artist profile, evaluate demo submissions, facilitate contract execution, and process royalty payments. We may also use your contact information to provide critical system updates or A&R feedback.\n\n3. DATA PROTECTION & DISCLOSURE: We implement professional-grade encryption (Bcrypt for passwords, SSL/TLS for data in transit) to safeguard your information. We do not sell your data. Disclosure only occurs to trusted third-party partners (e.g., DSPs, payment processors) necessary to fulfill our distribution and payment obligations.\n\n4. YOUR RIGHTS (GDPR/CCPA): You have the right to access, correct, or request the deletion of your personal data at any time. You may also request a copy of the data we hold about you. For such inquiries, please contact our data compliance team through the Support portal."
+    };
+
+    const handleEdit = (item, type = null) => {
+        const key = item?.key || type?.key;
+        setEditing(key || null);
+        setEditTitle(item?.title || type?.label || '');
+        const contentStr = item?.content || DEFAULT_CONTENT[key] || '';
         setEditContent(contentStr);
 
         // Handle structured FAQ items
-        if (item?.key === 'faq') {
+        if (key === 'faq') {
             try {
                 const parsed = contentStr ? JSON.parse(contentStr) : [];
                 setFaqItems(Array.isArray(parsed) ? parsed : []);
+            } catch (e) {
+                setFaqItems([]);
+            }
+        }
+
+        // Auto-handle JSON content for commissions if needed
+        if (key === 'join_commissions') {
+            try {
+                const parsed = contentStr ? JSON.parse(contentStr) : [];
+                setFaqItems(Array.isArray(parsed) ? parsed : []); // Reuse state or add new one? Let's reuse for simplicity if structure is similar
             } catch (e) {
                 setFaqItems([]);
             }
@@ -2348,7 +3138,7 @@ function ContentView({ content, onRefresh }) {
         setSaving(true);
         try {
             let finalContent = editContent;
-            if (editing === 'faq') {
+            if (editing === 'faq' || editing === 'join_commissions') {
                 finalContent = JSON.stringify(faqItems);
             }
 
@@ -2389,72 +3179,181 @@ function ContentView({ content, onRefresh }) {
                     return (
                         <div key={type.key} style={{ ...glassStyle, padding: '25px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                <h3 style={{ fontSize: '13px', fontWeight: '800' }}>{type.label}</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', color: 'var(--accent)' }}>
+                                        {type.key === 'faq' ? <MessageSquare size={16} /> :
+                                            type.key.includes('join') ? <Target size={16} /> :
+                                                type.key.includes('commission') ? <DollarSign size={16} /> : <FileText size={16} />}
+                                    </div>
+                                    <h3 style={{ fontSize: '13px', fontWeight: '900', letterSpacing: '1px' }}>{type.label.toUpperCase()}</h3>
+                                </div>
                                 {!isEditing && (
-                                    <button onClick={() => handleEdit(item || { key: type.key })} style={{ ...btnStyle, color: 'var(--accent)' }}>
-                                        {item ? 'EDIT' : 'CREATE'}
+                                    <button onClick={() => handleEdit(item, type)} style={{ ...btnStyle, color: 'var(--accent)', background: 'rgba(255,102,0,0.05)', padding: '8px 20px', borderRadius: '12px' }}>
+                                        {item ? 'EDIT CONTENT' : 'CUSTOMIZE'}
                                     </button>
                                 )}
                             </div>
 
                             {isEditing ? (
-                                <div>
-                                    <input
-                                        type="text"
-                                        value={editTitle}
-                                        onChange={(e) => setEditTitle(e.target.value)}
-                                        placeholder="Title"
-                                        style={{ width: '100%', padding: '10px', marginBottom: '10px', background: 'var(--surface-hover)', border: '1px solid var(--border)', color: '#fff' }}
-                                    />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    style={{
+                                        background: 'rgba(255,255,255,0.01)',
+                                        padding: '30px',
+                                        borderRadius: '20px',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        marginTop: '20px'
+                                    }}
+                                >
+                                    <div style={{ marginBottom: '25px' }}>
+                                        <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px', marginBottom: '8px' }}>DISPLAY TITLE</label>
+                                        <input
+                                            type="text"
+                                            value={editTitle}
+                                            onChange={(e) => setEditTitle(e.target.value)}
+                                            placeholder="Section Title..."
+                                            style={{ width: '100%', padding: '12px 15px', background: '#000', border: '1px solid var(--border)', color: '#fff', borderRadius: '10px', fontSize: '12px' }}
+                                        />
+                                    </div>
+
                                     {editing === 'faq' ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>FAQ BUILDER</label>
                                             {faqItems.map((item, index) => (
-                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        <span style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>QUESTION #{index + 1}</span>
-                                                        <button onClick={() => removeFaqItem(index)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '10px' }}>REMOVE</button>
+                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '900' }}>QUESTION {index + 1}</span>
+                                                        <button onClick={() => removeFaqItem(index)} style={{ background: 'rgba(255,0,0,0.1)', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '9px', padding: '5px 10px', borderRadius: '6px' }}>REMOVE</button>
                                                     </div>
                                                     <input
                                                         type="text"
                                                         value={item.q}
                                                         onChange={(e) => updateFaqItem(index, 'q', e.target.value)}
-                                                        placeholder="Question..."
-                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#fff' }}
+                                                        placeholder="The question..."
+                                                        style={{ width: '100%', padding: '12px', background: '#080808', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', borderRadius: '8px', fontSize: '12px' }}
                                                     />
                                                     <textarea
                                                         value={item.a}
                                                         onChange={(e) => updateFaqItem(index, 'a', e.target.value)}
-                                                        placeholder="Answer..."
+                                                        placeholder="The answer..."
                                                         rows={3}
-                                                        style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#888', resize: 'vertical' }}
+                                                        style={{ width: '100%', padding: '12px', background: '#080808', border: '1px solid rgba(255,255,255,0.05)', color: '#888', borderRadius: '8px', resize: 'vertical', fontSize: '12px' }}
                                                     />
                                                 </div>
                                             ))}
-                                            <button onClick={addFaqItem} style={{ ...btnStyle, alignSelf: 'flex-start' }}>+ ADD QUESTION</button>
+                                            <button onClick={addFaqItem} style={{ ...btnStyle, alignSelf: 'flex-start', border: '1px dashed var(--border)', width: '100%', padding: '15px' }}>+ ADD NEW QUESTION</button>
+                                        </div>
+                                    ) : editing === 'join_commissions' ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>COMMISSION ROWS</label>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr 40px', gap: '10px', padding: '0 10px', fontSize: '9px', color: '#333' }}>
+                                                <span>RELEASED</span>
+                                                <span>LISTENERS RANGE</span>
+                                                <span>RATE/AMOUNT</span>
+                                                <span></span>
+                                            </div>
+                                            {faqItems.map((item, index) => (
+                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '80px 1fr 1fr auto', gap: '12px', alignItems: 'center' }}>
+                                                    <select
+                                                        value={item.released || 'No'}
+                                                        onChange={(e) => updateFaqItem(index, 'released', e.target.value)}
+                                                        style={{ padding: '10px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', borderRadius: '8px' }}
+                                                    >
+                                                        <option value="Yes">YES</option>
+                                                        <option value="No">NO</option>
+                                                    </select>
+                                                    <input
+                                                        type="text"
+                                                        value={item.listeners || ''}
+                                                        onChange={(e) => updateFaqItem(index, 'listeners', e.target.value)}
+                                                        placeholder="e.g. 100K - 500K"
+                                                        style={{ padding: '10px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', borderRadius: '8px' }}
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={item.commission || ''}
+                                                        onChange={(e) => updateFaqItem(index, 'commission', e.target.value)}
+                                                        placeholder="e.g. 5% Royalties"
+                                                        style={{ padding: '10px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', borderRadius: '8px' }}
+                                                    />
+                                                    <button onClick={() => removeFaqItem(index)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '14px', fontWeight: '900' }}>×</button>
+                                                </div>
+                                            ))}
+                                            <button onClick={() => setFaqItems([...faqItems, { released: 'No', listeners: '', commission: '' }])} style={{ ...btnStyle, alignSelf: 'flex-start', border: '1px dashed var(--border)', width: '100%', padding: '12px' }}>+ ADD NEW ROW</button>
                                         </div>
                                     ) : (
-                                        <textarea
-                                            value={editContent}
-                                            onChange={(e) => setEditContent(e.target.value)}
-                                            placeholder="Content (can be JSON or plain text)"
-                                            rows={8}
-                                            style={{ width: '100%', padding: '10px', background: 'var(--surface-hover)', border: '1px solid var(--border)', color: '#fff', resize: 'vertical' }}
-                                        />
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px', marginBottom: '8px' }}>CONTENT EDITOR</label>
+                                            <textarea
+                                                value={editContent}
+                                                onChange={(e) => setEditContent(e.target.value)}
+                                                placeholder={editing === 'join_genres' ? "Enter genres separated by new lines or commas..." : "Enter document content..."}
+                                                rows={editing === 'join_genres' ? 12 : 15}
+                                                style={{ width: '100%', padding: '15px', background: '#080808', border: '1px solid var(--border)', color: '#bbb', borderRadius: '12px', resize: 'vertical', fontSize: '13px', lineHeight: '1.6' }}
+                                            />
+                                            <p style={{ fontSize: '10px', color: '#444', marginTop: '10px' }}>TIP: Use double-enter for new paragraphs.</p>
+                                        </div>
                                     )}
-                                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                                        <button onClick={handleSave} disabled={saving} className="glow-button" style={{ padding: '8px 20px' }}>
-                                            {saving ? 'SAVING...' : 'SAVE'}
+
+                                    <div style={{ display: 'flex', gap: '15px', marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
+                                        <button onClick={handleSave} disabled={saving} className="glow-button" style={{ padding: '12px 35px', borderRadius: '12px', fontSize: '11px' }}>
+                                            {saving ? 'PUBLISHING...' : 'SAVE & PUBLISH'}
                                         </button>
-                                        <button onClick={() => setEditing(null)} style={{ ...btnStyle, padding: '8px 20px' }}>CANCEL</button>
+                                        <button onClick={() => setEditing(null)} style={{ ...btnStyle, padding: '12px 25px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)' }}>DISCARD</button>
+                                    </div>
+                                </motion.div>
+                            ) : item ? (
+                                <div style={{ background: 'rgba(255,255,255,0.01)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ fontSize: '11px', color: '#888' }}>
+                                            <span style={{ color: 'var(--accent)', fontWeight: '900', marginRight: '10px' }}>LIVE:</span> {item.title}
+                                        </div>
+                                        <div style={{ fontSize: '9px', color: '#444', fontWeight: '800' }}>LAST UPDATED: {new Date(item.updatedAt).toLocaleDateString()}</div>
+                                    </div>
+                                    <div style={{
+                                        marginTop: '15px',
+                                        padding: '15px',
+                                        background: 'rgba(0,0,0,0.1)',
+                                        borderRadius: '10px',
+                                        fontSize: '11px',
+                                        color: '#555',
+                                        maxHeight: '60px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}>
+                                        {item.content.length > 200 ? item.content.substring(0, 200) + '...' : item.content}
                                     </div>
                                 </div>
-                            ) : item ? (
-                                <div style={{ fontSize: '12px', color: '#888' }}>
-                                    <p><strong>Title:</strong> {item.title}</p>
-                                    <p style={{ marginTop: '10px' }}><strong>Updated:</strong> {new Date(item.updatedAt).toLocaleDateString()}</p>
-                                </div>
                             ) : (
-                                <p style={{ fontSize: '11px', color: '#444' }}>No content yet. Click CREATE to add.</p>
+                                <div style={{ fontSize: '11px', color: '#444' }}>
+                                    <p style={{ marginBottom: '10px' }}>Site using system defaults. Use "CUSTOMIZE" to override with your own content.</p>
+                                    <div style={{
+                                        padding: '15px',
+                                        background: 'rgba(255,255,255,0.01)',
+                                        border: '1px solid rgba(255,255,255,0.03)',
+                                        borderRadius: '12px',
+                                        maxHeight: '100px',
+                                        overflow: 'hidden',
+                                        opacity: 0.5,
+                                        fontSize: '10px',
+                                        lineHeight: '1.6',
+                                        whiteSpace: 'pre-line'
+                                    }}>
+                                        {(() => {
+                                            const def = DEFAULT_CONTENT[type.key];
+                                            if (!def) return 'No preview available.';
+                                            try {
+                                                const parsed = JSON.parse(def);
+                                                if (Array.isArray(parsed)) {
+                                                    if (type.key === 'faq') return parsed.map((f, i) => `Q: ${f.q}`).join('\n');
+                                                    if (type.key === 'join_commissions') return parsed.map((c, i) => `${c.listeners}: ${c.commission}`).join('\n');
+                                                }
+                                                return def;
+                                            } catch (e) { return def; }
+                                        })()}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     );
@@ -2503,7 +3402,7 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
                     setSearchTerm(e.target.value);
                     setShowDropdown(true);
                 }}
-                style={{ ...inputStyle, padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', width: '100%' }}
+                style={{ ...inputStyle, padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px', width: '100%' }}
             />
             {value && !showDropdown && onClear && (
                 <button
@@ -2516,7 +3415,7 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
             {showDropdown && (
                 <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0,
-                    background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '8px',
+                    background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '16px',
                     maxHeight: '200px', overflowY: 'auto', zIndex: 100,
                     boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
                     marginTop: '5px'
@@ -2545,7 +3444,7 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
                             setSearchTerm('');
                             setShowDropdown(false);
                         }}
-                        style={{ padding: '10px', borderTop: '1px solid #222', color: '#ff4444', cursor: 'pointer', fontSize: '12px', textAlign: 'center' }}
+                        style={{ padding: '10px', borderTop: '1px solid #222', color: 'var(--status-error)', cursor: 'pointer', fontSize: '12px', textAlign: 'center' }}
                     >
                         CLEAR SELECTION
                     </div>
@@ -2631,7 +3530,7 @@ function SplitRow({ split, index, onUpdate, onRemove, artists, effectiveShare })
             <button
                 type="button"
                 onClick={onRemove}
-                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer' }}
             >
                 <Trash2 size={14} />
             </button>
@@ -2804,7 +3703,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                 onClear={() => setForm({ ...form, artistId: '', userId: '', primaryArtistName: '' })}
                             />
                             <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
-                                Don't see the artist? <button onClick={() => showToast('Please go to the Artists tab to create a new profile first.', "info")} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Create Profile</button>
+                                Don&apos;t see the artist? <button onClick={() => showToast('Please go to the Artists tab to create a new profile first.', "info")} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Create Profile</button>
                             </div>
                         </div>
                         <div>
@@ -2862,7 +3761,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     setForm(update);
                                 }}
                                 required
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
                                 <option value="">Select Release or Approved Demo...</option>
                                 <optgroup label="Approved Demos (Not Released)">
@@ -2895,7 +3794,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     const val = parseFloat(e.target.value);
                                     setForm({ ...form, artistShare: val, labelShare: Math.max(0, 1 - val) });
                                 }}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -2912,7 +3811,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                         setForm({ ...form, labelShare: val, artistShare: parseFloat((1 - val).toFixed(2)) });
                                     }
                                 }}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div style={{ padding: '20px', borderTop: '1px solid #333' }}>
@@ -2948,7 +3847,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: totalSplit !== 100 ? '#ff4444' : 'var(--accent)' }}>
+                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: totalSplit !== 100 ? 'var(--status-error)' : 'var(--accent)' }}>
                                 TOTAL SPLIT: {totalSplit}% (SHOULD BE 100%)
                             </div>
                         </div>
@@ -2981,7 +3880,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                             <textarea
                                 value={form.notes}
                                 onChange={e => setForm({ ...form, notes: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', minHeight: '60px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px', minHeight: '60px' }}
                             />
                         </div>
                         <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
@@ -3049,7 +3948,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     {c._count?.earnings || 0} Records
                                 </td>
                                 <td style={tdStyle}>
-                                    <span style={{ fontSize: '9px', padding: '4px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontWeight: '900' }}>
+                                    <span style={{ fontSize: '9px', padding: '4px 8px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', fontWeight: '900' }}>
                                         {c.status.toUpperCase()}
                                     </span>
                                 </td>
@@ -3088,7 +3987,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
                                     }} style={{ ...btnStyle, marginRight: '5px' }}>
                                         EDIT
                                     </button>
-                                    <button onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, color: '#ff4444' }}>
+                                    <button onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, color: 'var(--status-error)' }}>
                                         <Trash2 size={12} />
                                     </button>
                                 </td>
@@ -3104,7 +4003,7 @@ function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) 
     );
 }
 
-function EarningsView({ earnings, onRefresh, contracts }) {
+function EarningsView({ earnings, onRefresh, contracts, pagination, onPageChange }) {
     const { showToast, showConfirm } = useToast();
     const [showAdd, setShowAdd] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -3182,13 +4081,30 @@ function EarningsView({ earnings, onRefresh, contracts }) {
         );
     };
 
-    const totalGross = earnings.reduce((sum, e) => sum + e.grossAmount, 0);
-    const totalArtist = earnings.reduce((sum, e) => sum + e.artistAmount, 0);
-    const totalLabel = earnings.reduce((sum, e) => sum + e.labelAmount, 0);
+    const totalGross = earnings.reduce((sum, e) => sum + (e.grossAmount || 0), 0);
+    const totalArtist = earnings.reduce((sum, e) => sum + (e.artistAmount || 0), 0);
+    const totalLabel = earnings.reduce((sum, e) => sum + (e.labelAmount || 0), 0);
+    const totalExpense = earnings.reduce((sum, e) => sum + (e.expenseAmount || 0), 0);
+
+    const spendByRelease = Object.values(earnings.reduce((acc, e) => {
+        const key = e.contract?.release?.name || 'Unknown';
+        acc[key] = acc[key] || { name: key, spend: 0, revenue: 0 };
+        acc[key].spend += e.expenseAmount || 0;
+        acc[key].revenue += e.labelAmount || 0;
+        return acc;
+    }, {})).sort((a, b) => b.spend - a.spend).slice(0, 5);
+
+    const spendBySource = Object.values(earnings.reduce((acc, e) => {
+        const key = (e.source || 'OTHER').toUpperCase();
+        acc[key] = acc[key] || { source: key, spend: 0, streams: 0 };
+        acc[key].spend += e.expenseAmount || 0;
+        acc[key].streams += e.streams || 0;
+        return acc;
+    }, {})).sort((a, b) => b.spend - a.spend).slice(0, 6);
 
     return (
         <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
+            <div className="earnings-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '18px', marginBottom: '24px' }}>
                 <div style={{ ...glassStyle, padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '5px' }}>TOTAL REVENUE</div>
                     <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff' }}>${totalGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
@@ -3200,6 +4116,10 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                 <div style={{ ...glassStyle, padding: '20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '5px' }}>LABEL EARNINGS</div>
                     <div style={{ fontSize: '24px', fontWeight: '900', color: 'var(--accent)' }}>${totalLabel.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div style={{ ...glassStyle, padding: '20px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '5px' }}>AD SPEND</div>
+                    <div style={{ fontSize: '24px', fontWeight: '900', color: '#ffaa00' }}>${totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                 </div>
             </div>
 
@@ -3223,6 +4143,61 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                 </button>
             </div>
 
+            {/* Spend analytics */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '18px', marginBottom: '22px' }}>
+                <div style={{ ...glassStyle, padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>TOP RELEASES BY AD SPEND</h3>
+                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Top 5</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {spendByRelease.map((r, i) => {
+                            const pct = totalExpense ? Math.round((r.spend / totalExpense) * 100) : 0;
+                            return (
+                                <div key={i} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                        <div style={{ color: '#fff', fontWeight: '900' }}>{r.name}</div>
+                                        <div style={{ color: '#ffaa00', fontWeight: '900' }}>${r.spend.toLocaleString()}</div>
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px' }}>REV: ${r.revenue.toLocaleString()} • {pct}% of spend</div>
+                                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${pct}%`, height: '100%', background: '#ffaa00', boxShadow: '0 0 10px #ffaa0055' }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {spendByRelease.length === 0 && (
+                            <div style={{ padding: '24px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO SPEND DATA</div>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ ...glassStyle, padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>SPEND BY SOURCE</h3>
+                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Top 6</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {spendBySource.map((s, i) => {
+                            const pct = totalExpense ? Math.round((s.spend / totalExpense) * 100) : 0;
+                            return (
+                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 40px', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                                    <div style={{ color: '#fff', fontWeight: '900' }}>{s.source}</div>
+                                    <div style={{ color: '#ffaa00', fontWeight: '900', textAlign: 'right' }}>${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div style={{ fontSize: '9px', color: '#777', fontWeight: '800', textAlign: 'right' }}>{pct}%</div>
+                                    <div style={{ gridColumn: '1 / 4', width: '100%', height: '5px', background: 'rgba(255,255,255,0.04)', borderRadius: '999px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${pct}%`, height: '100%', background: '#ffaa00', boxShadow: '0 0 8px #ffaa0055' }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {spendBySource.length === 0 && (
+                            <div style={{ padding: '24px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO SPEND DATA</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {showAdd && (
                 <motion.div
                     initial={{ opacity: 0, x: 20 }}
@@ -3232,14 +4207,14 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                     <div style={{ marginBottom: '15px', color: editingId ? 'var(--accent)' : '#fff', fontWeight: '900', fontSize: '11px', letterSpacing: '2px' }}>
                         {editingId ? 'EDITING EARNING RECORD' : 'NEW EARNING RECORD'}
                     </div>
-                    <form onSubmit={handleAdd} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                    <form className="earnings-form" onSubmit={handleAdd} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>CONTRACT (RELEASE + ARTIST)</label>
                             <select
                                 value={form.contractId}
                                 onChange={e => setForm({ ...form, contractId: e.target.value })}
                                 required
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
                                 <option value="">Select Contract...</option>
                                 {contracts.map(c => {
@@ -3260,7 +4235,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 value={form.period}
                                 onChange={e => setForm({ ...form, period: e.target.value })}
                                 required
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -3269,7 +4244,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 type="number" step="0.01" required
                                 value={form.grossAmount}
                                 onChange={e => setForm({ ...form, grossAmount: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -3278,7 +4253,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 type="number" step="0.01"
                                 value={form.expenseAmount}
                                 onChange={e => setForm({ ...form, expenseAmount: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -3287,7 +4262,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                 type="number"
                                 value={form.streams}
                                 onChange={e => setForm({ ...form, streams: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -3295,7 +4270,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                             <select
                                 value={form.source}
                                 onChange={e => setForm({ ...form, source: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
                                 <option value="spotify">Spotify</option>
                                 <option value="apple">Apple Music</option>
@@ -3360,7 +4335,7 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}
                                             title="Delete"
                                         >
-                                            <Trash2 size={14} color="#ff4444" />
+                                            <Trash2 size={14} color="var(--status-error)" />
                                         </button>
                                     </div>
                                 </td>
@@ -3372,6 +4347,28 @@ function EarningsView({ earnings, onRefresh, contracts }) {
                     </tbody>
                 </table>
             </div>
+
+            {pagination && pagination.pages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '20px' }}>
+                    <button
+                        disabled={pagination.page <= 1}
+                        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', color: pagination.page <= 1 ? '#444' : '#fff', cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                        PREVIOUS
+                    </button>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#666', letterSpacing: '1px' }}>
+                        PAGE <span style={{ color: '#fff' }}>{pagination.page}</span> OF {pagination.pages}
+                    </span>
+                    <button
+                        disabled={pagination.page >= pagination.pages}
+                        onClick={() => onPageChange(pagination.page + 1)}
+                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', color: pagination.page >= pagination.pages ? '#444' : '#fff', cursor: pagination.page >= pagination.pages ? 'not-allowed' : 'pointer' }}
+                    >
+                        NEXT
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -3472,7 +4469,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 value={form.userId}
                                 onChange={e => setForm({ ...form, userId: e.target.value })}
                                 required
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
                                 <option value="">Select Recipient...</option>
                                 {users.filter(u => u.role === 'artist' || u.role === 'a&r' || u.role === 'admin').map(u => (
@@ -3486,7 +4483,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 type="number" step="0.01" required
                                 value={form.amount}
                                 onChange={e => setForm({ ...form, amount: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -3494,7 +4491,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                             <select
                                 value={form.method}
                                 onChange={e => setForm({ ...form, method: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
                                 <option value="bank_transfer">Bank Transfer</option>
                                 <option value="paypal">PayPal</option>
@@ -3508,7 +4505,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 type="text"
                                 value={form.reference}
                                 onChange={e => setForm({ ...form, reference: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
                         <div>
@@ -3516,7 +4513,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                             <select
                                 value={form.status}
                                 onChange={e => setForm({ ...form, status: e.target.value })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
                                 <option value="completed">Completed</option>
                                 <option value="pending">Pending</option>
@@ -3565,7 +4562,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                 </td>
                                 <td style={tdStyle}>
                                     <span style={{
-                                        fontSize: '9px', padding: '4px 8px', borderRadius: '4px',
+                                        fontSize: '9px', padding: '4px 8px', borderRadius: '16px',
                                         background: p.status === 'completed' ? 'rgba(245, 197, 66, 0.18)' : 'rgba(255,255,255,0.05)',
                                         color: p.status === 'completed' ? 'var(--accent)' : '#888',
                                         fontWeight: '900'
@@ -3588,7 +4585,7 @@ function PaymentsView({ payments, onRefresh, users }) {
                                     }} style={{ ...btnStyle, marginRight: '5px' }}>
                                         EDIT
                                     </button>
-                                    <button onClick={() => handleDeletePayment(p.id)} style={{ ...btnStyle, color: '#ff4444' }}>
+                                    <button onClick={() => handleDeletePayment(p.id)} style={{ ...btnStyle, color: 'var(--status-error)' }}>
                                         DELETE
                                     </button>
                                 </td>
@@ -3710,7 +4707,7 @@ function RequestComments({ request }) {
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
                     placeholder="Type your message to the artist..."
-                    style={{ flex: 1, padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px' }}
+                    style={{ flex: 1, padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                 />
                 <button
                     disabled={sending || !newComment.trim()}
