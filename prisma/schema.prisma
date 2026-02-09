@@ -117,6 +117,7 @@ model Release {
   type            String          @default("album") // album, single, ep
   totalTracks     Int             @default(1)
   requests        ChangeRequest[]
+  previewUrl      String?
   contracts       Contract[]
 }
 

@@ -1,27 +1,24 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function TermsPage() {
+    const [content, setContent] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchContent = async () => {
+            try {
+                const res = await fetch('/api/admin/content?key=terms');
+                const data = await res.json();
+                if (data && data.content) setContent(data.content);
+            } catch (e) { console.error(e); }
+            finally { setLoading(false); }
+        };
+        fetchContent();
+    }, []);
+
     return (
         <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
-            {/* Noise Texture Filter */}
-            <svg style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}>
-                <filter id="noiseFilter">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-                </filter>
-            </svg>
-            <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                zIndex: 1,
-                pointerEvents: 'none',
-                opacity: 0.04,
-                filter: 'url(#noiseFilter)'
-            }} />
-
             {/* Enhanced Ambient Glows */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
                 <div style={{
@@ -59,30 +56,39 @@ export default function TermsPage() {
 
                 <div className="glass" style={{ padding: '60px 50px', borderRadius: '0', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ fontSize: '14px', lineHeight: '2', color: '#888' }}>
-                        <section style={{ marginBottom: '60px', padding: 0 }}>
-                            <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>1. ARTIST ELIGIBILITY</h2>
-                            <p>By registering with LOST MUSIC GROUP, you affirm that you are at least 18 years of age (or have legal guardian consent) and possess the full authority to enter into a distribution agreement for the musical works you submit.</p>
-                        </section>
 
-                        <section style={{ marginBottom: '60px', padding: 0 }}>
-                            <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>2. DEMO SUBMISSIONS & CONTENT STANDARDS</h2>
-                            <p>Submitting a demo does not guarantee a release. You represent that all submissions are 100% original works. Use of uncleared samples, stolen tracks, or fraudulent content will result in immediate account termination and potential legal action.</p>
-                        </section>
+                        {loading ? (
+                            <p style={{ color: '#444', fontSize: '10px', letterSpacing: '2px' }}>LOADING_LEGAL_DOCUMENTS...</p>
+                        ) : content ? (
+                            <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>
+                        ) : (
+                            <>
+                                <section style={{ marginBottom: '60px', padding: 0 }}>
+                                    <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>1. ARTIST ELIGIBILITY</h2>
+                                    <p>By registering with LOST MUSIC GROUP, you affirm that you are at least 18 years of age (or have legal guardian consent) and possess the full authority to enter into a distribution agreement for the musical works you submit.</p>
+                                </section>
 
-                        <section style={{ marginBottom: '60px', padding: 0 }}>
-                            <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>3. GLOBAL DISTRIBUTION RIGHTS</h2>
-                            <p>Upon formal acceptance and contract execution, you grant LOST MUSIC GROUP the exclusive, sub-licensable right to distribute, promote, and monetize your content across over 50 global Digital Service Providers (DSPs), including Spotify, Apple Music, and Amazon.</p>
-                        </section>
+                                <section style={{ marginBottom: '60px', padding: 0 }}>
+                                    <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>2. DEMO SUBMISSIONS & CONTENT STANDARDS</h2>
+                                    <p>Submitting a demo does not guarantee a release. You represent that all submissions are 100% original works. Use of uncleared samples, stolen tracks, or fraudulent content will result in immediate account termination and potential legal action.</p>
+                                </section>
 
-                        <section style={{ marginBottom: '60px', padding: 0 }}>
-                            <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>4. ROYALTIES & PAYMENTS</h2>
-                            <p>Royalties are calculated based on net revenue received from DSPs. Payouts are made quarterly (every 3 months) via Bank Transfer or PayPal. The minimum payout threshold is $50.00 USD. Undistributed earnings remain in your account until the threshold is met.</p>
-                        </section>
+                                <section style={{ marginBottom: '60px', padding: 0 }}>
+                                    <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>3. GLOBAL DISTRIBUTION RIGHTS</h2>
+                                    <p>Upon formal acceptance and contract execution, you grant LOST MUSIC GROUP the exclusive, sub-licensable right to distribute, promote, and monetize your content across over 50 global Digital Service Providers (DSPs), including Spotify, Apple Music, and Amazon.</p>
+                                </section>
 
-                        <section style={{ marginBottom: 0, padding: 0 }}>
-                            <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>5. INTELLECTUAL PROPERTY</h2>
-                            <p>The "LOST." trademark, logos, and website infrastructure remain the sole property of LOST MUSIC GROUP. Artists retain ownership of their compositions unless otherwise specified in a separate, written Recording or Publishing Agreement.</p>
-                        </section>
+                                <section style={{ marginBottom: '60px', padding: 0 }}>
+                                    <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>4. ROYALTIES & PAYMENTS</h2>
+                                    <p>Royalties are calculated based on net revenue received from DSPs. Payouts are made quarterly (every 3 months) via Bank Transfer or PayPal. The minimum payout threshold is $50.00 USD. Undistributed earnings remain in your account until the threshold is met.</p>
+                                </section>
+
+                                <section style={{ marginBottom: 0, padding: 0 }}>
+                                    <h2 style={{ fontSize: '18px', color: '#fff', marginBottom: '20px', fontWeight: '900', letterSpacing: '2px' }}>5. INTELLECTUAL PROPERTY</h2>
+                                    <p>The &quot;LOST.&quot; trademark, logos, and website infrastructure remain the sole property of LOST MUSIC GROUP. Artists retain ownership of their compositions unless otherwise specified in a separate, written Recording or Publishing Agreement.</p>
+                                </section>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 // GET: Fetch earnings
+// GET: Fetch earnings with pagination
 export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -10,46 +11,63 @@ export async function GET(req) {
     }
 
     try {
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get('page')) || 1;
+        const limit = parseInt(searchParams.get('limit')) || 50;
+        const skip = (page - 1) * limit;
+
         const { role, id: userId } = session.user;
-        let earnings;
+        let whereClause = {};
 
         if (role === 'admin' || role === 'a&r') {
-            earnings = await prisma.earning.findMany({
+            // Admin sees all
+            whereClause = {};
+        } else {
+            // Artist sees their own
+            whereClause = {
+                contract: {
+                    OR: [
+                        { userId },
+                        { primaryArtistEmail: session.user.email },
+                        { artist: { userId } },
+                        { artist: { email: session.user.email } },
+                        { splits: { some: { userId } } },
+                        { splits: { some: { email: session.user.email } } }, // Direct email match
+                        { splits: { some: { user: { email: session.user.email } } } }
+                    ]
+                }
+            };
+        }
+
+        const [earnings, total] = await Promise.all([
+            prisma.earning.findMany({
+                where: whereClause,
+                take: limit,
+                skip: skip,
                 include: {
                     contract: {
                         include: {
                             user: { select: { id: true, stageName: true, email: true } },
-                            release: true
+                            release: true,
+                            splits: true, // Needed for Artist view logic
+                            artist: true
                         }
                     }
                 },
                 orderBy: { period: 'desc' }
-            });
-        } else {
-            earnings = await prisma.earning.findMany({
-                where: {
-                    contract: {
-                        OR: [
-                            { userId },
-                            { primaryArtistEmail: session.user.email },
-                            { artist: { userId } },
-                            { artist: { email: session.user.email } },
-                            { splits: { some: { userId } } },
-                            { splits: { some: { email: session.user.email } } }, // Direct email match
-                            { splits: { some: { user: { email: session.user.email } } } }
-                        ]
-                    }
-                },
-                include: {
-                    contract: {
-                        include: { release: true, splits: true, artist: true }
-                    }
-                },
-                orderBy: { period: 'desc' }
-            });
-        }
+            }),
+            prisma.earning.count({ where: whereClause })
+        ]);
 
-        return new Response(JSON.stringify({ earnings }), { status: 200 });
+        return new Response(JSON.stringify({
+            earnings,
+            pagination: {
+                total,
+                page,
+                limit,
+                pages: Math.ceil(total / limit)
+            }
+        }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

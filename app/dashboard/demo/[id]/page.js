@@ -158,7 +158,7 @@ export default function DemoReviewPage({ params }) {
                     </div>
 
                     {/* Artist Box */}
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '30px', borderRadius: '8px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '30px', borderRadius: '12px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 12px 40px rgba(0,0,0,0.35)' }}>
                         <div>
                             <p style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '8px' }}>ARTIST PROFILE</p>
                             <h2 style={{ fontSize: '24px' }}>{demo.artist?.stageName || 'Anonymous'}</h2>
@@ -243,9 +243,9 @@ export default function DemoReviewPage({ params }) {
                                     onClick={() => setActiveFile(file)}
                                     style={{
                                         padding: '15px',
-                                        background: activeFile?.id === file.id ? '#151515' : '#0a0a0b',
+                                        background: activeFile?.id === file.id ? 'var(--surface-hover)' : 'var(--surface)',
                                         border: '1px solid',
-                                        borderColor: activeFile?.id === file.id ? 'var(--accent)' : '#1a1a1b',
+                                        borderColor: activeFile?.id === file.id ? 'var(--accent)' : 'var(--border)',
                                         borderRadius: '6px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
@@ -267,7 +267,7 @@ export default function DemoReviewPage({ params }) {
                     </div>
 
                     {/* Action Panel */}
-                    <div className="glass" style={{ padding: '30px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                    <div className="glass" style={{ padding: '30px', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.35)' }}>
                         <h4 style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '20px' }}>A&R DECISION</h4>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
@@ -304,9 +304,9 @@ export default function DemoReviewPage({ params }) {
                                 disabled={processing}
                                 style={{
                                     ...btnStyle,
-                                    background: demo.status === 'approved' ? 'rgba(0, 255, 136, 0.2)' : 'transparent',
-                                    color: '#00ff88',
-                                    borderColor: '#00ff8840',
+                                    background: demo.status === 'approved' ? 'rgba(245, 197, 66, 0.22)' : 'transparent',
+                                    color: 'var(--accent)',
+                                    borderColor: 'rgba(245, 197, 66, 0.4)',
                                     opacity: processing ? 0.5 : 1
                                 }}
                             >
@@ -328,7 +328,7 @@ export default function DemoReviewPage({ params }) {
                         </div>
 
                         {demo.status === 'approved' && (
-                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #1a1a1b' }}>
+                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
                                 <Link
                                     href={`/dashboard/demo/${id}/finalize`}
                                     className="glow-button"
@@ -349,13 +349,13 @@ export default function DemoReviewPage({ params }) {
                             </div>
                         )}
 
-                        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '11px', color: '#444' }}>
+                        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '11px', color: '#666' }}>
                             {demo.reviewedBy && (
                                 <p>Last handle by <strong>{demo.reviewedBy}</strong></p>
                             )}
                         </div>
 
-                        <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #1a1a1b' }}>
+                        <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
                             <button
                                 onClick={() => {
                                     showConfirm(
@@ -384,7 +384,7 @@ export default function DemoReviewPage({ params }) {
 
             <style jsx>{`
                 .glow-button { background: #fff; color: #000; border: none; box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
-                .glow-button:hover { background: #00ff88; box-shadow: 0 4px 25px rgba(0,255,136,0.3); transform: translateY(-2px); }
+                .glow-button:hover { background: var(--accent); box-shadow: 0 4px 25px rgba(245,197,66,0.35); transform: translateY(-2px); }
                 .glow-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
             `}</style>
         </div>

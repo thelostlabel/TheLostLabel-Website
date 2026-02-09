@@ -74,24 +74,22 @@ export async function POST(req) {
             const playlistReleases = new Map();
             items.forEach(item => {
                 if (!item.track || !item.track.album) return;
-                const album = item.track.album;
-                if (!playlistReleases.has(album.id)) {
-                    playlistReleases.set(album.id, {
-                        id: album.id,
-                        name: album.name,
-                        artistName: album.artists[0]?.name,
+                const track = item.track;
+                const album = track.album;
+
+                // Use TRACK ID instead of ALBUM ID to treat every song as a unique entry
+                if (!playlistReleases.has(track.id)) {
+                    playlistReleases.set(track.id, {
+                        id: track.id,
+                        name: track.name, // Track Name
+                        artistName: track.artists[0]?.name,
                         image: album.images[0]?.url,
-                        spotifyUrl: album.external_urls.spotify,
+                        spotifyUrl: track.external_urls.spotify, // Track URL
                         releaseDate: album.release_date,
-                        artistsJson: JSON.stringify(album.artists.map(a => ({ id: a.id, name: a.name }))),
-                        popularity: item.track.popularity || 0
+                        artistsJson: JSON.stringify(track.artists.map(a => ({ id: a.id, name: a.name }))),
+                        popularity: track.popularity || 0,
+                        previewUrl: track.preview_url // Save preview URL
                     });
-                } else {
-                    // Update popularity if this track is more popular
-                    const existing = playlistReleases.get(album.id);
-                    if ((item.track.popularity || 0) > existing.popularity) {
-                        existing.popularity = item.track.popularity || 0;
-                    }
                 }
             });
 
@@ -116,7 +114,8 @@ export async function POST(req) {
                         spotifyUrl: rel.spotifyUrl,
                         releaseDate: rel.releaseDate,
                         artistsJson: rel.artistsJson,
-                        popularity: rel.popularity
+                        popularity: rel.popularity,
+                        previewUrl: rel.previewUrl
                     },
                     create: rel
                 });
@@ -292,7 +291,7 @@ export async function GET(req) {
             totalArtists,
             withListeners,
             lastSync: lastSync?.lastSyncedAt || null,
-            playlistId: PLAYLIST_ID
+            playlistId: DEFAULT_PLAYLIST_ID
         }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });

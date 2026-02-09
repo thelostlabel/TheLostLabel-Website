@@ -230,7 +230,7 @@ export default function FinalizeReleasePage({ params }) {
                         <div style={{ fontSize: '10px', fontWeight: '900', color: 'var(--accent)', letterSpacing: '3px', marginBottom: '10px' }}>RELEASE_PROTOCOL</div>
                         <h1 style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-1px', marginBottom: '15px', lineHeight: '1.2' }}>Finalize Release</h1>
                         <p style={{ color: '#888', fontSize: '12px', lineHeight: '1.6', marginBottom: '30px' }}>
-                            Transforming demo <span style={{ color: '#fff', fontWeight: 'bold' }}>"{demo.title}"</span> into an official release.
+                            Transforming demo <span style={{ color: '#fff', fontWeight: 'bold' }}>&quot;{demo.title}&quot;</span> into an official release.
                             Please ensure all metadata is accurate as this will directly affect distribution.
                         </p>
 
@@ -273,6 +273,10 @@ export default function FinalizeReleasePage({ params }) {
                                         </div>
                                     </div>
 
+                                    <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.6' }}>
+                                        By clicking &quot;Accept & Sign&quot;, you agree to the terms of this exclusive distribution agreement.
+                                        This action is legally binding and cannot be undone.
+                                    </p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
                                         {/* Release Title */}
                                         <div>
@@ -368,7 +372,7 @@ export default function FinalizeReleasePage({ params }) {
                                                                     >
                                                                         <Plus size={14} color="var(--accent)" />
                                                                         <div>
-                                                                            <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent)' }}>CREATE_NEW_ARTIST: "{searchQuery}"</span>
+                                                                            <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent)' }}>CREATE_NEW_ARTIST: &quot;{searchQuery}&quot;</span>
                                                                             <span style={{ fontSize: '10px', color: '#444', display: 'block' }}>WILL GENERATE OFFICIAL PROFILE ON FINALIZE</span>
                                                                         </div>
                                                                     </div>

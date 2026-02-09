@@ -5,24 +5,6 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 export const PremiumBackground = ({ children }) => {
     return (
         <>
-            {/* Noise Texture Filter */}
-            <svg style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}>
-                <filter id="noiseFilter">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-                </filter>
-            </svg>
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                zIndex: 0,
-                pointerEvents: 'none',
-                opacity: 0.04,
-                filter: 'url(#noiseFilter)'
-            }} />
-
             {/* Ambient Glows */}
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
                 <div style={{

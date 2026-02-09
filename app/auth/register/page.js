@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import BackgroundEffects from '../../components/BackgroundEffects';
+import { motion } from 'framer-motion';
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -58,6 +60,29 @@ export default function Register() {
         }
     };
 
+    const labelStyle = {
+        display: 'block',
+        marginBottom: '8px',
+        fontSize: '10px',
+        fontWeight: '900',
+        color: 'var(--accent)',
+        letterSpacing: '2px',
+        textTransform: 'uppercase'
+    };
+
+    const inputStyle = {
+        width: '100%',
+        padding: '16px',
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '12px',
+        color: 'white',
+        fontFamily: 'inherit',
+        fontSize: '14px',
+        outline: 'none',
+        transition: 'all 0.3s ease'
+    };
+
     if (!registrationsOpen) {
         return (
             <div style={{
@@ -65,61 +90,47 @@ export default function Register() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#000',
-                color: '#fff'
+                background: '#050607',
+                color: '#fff',
+                position: 'relative'
             }}>
-                <div style={{ textAlign: 'center' }}>
-                    <h2 style={{ fontSize: '24px', letterSpacing: '8px', marginBottom: '20px' }}>INVITE ONLY</h2>
-                    <p style={{ color: '#666', fontSize: '11px', letterSpacing: '2px' }}>REGISTRATIONS ARE CURRENTLY CLOSED.</p>
-                    <Link href="/" style={{ display: 'block', marginTop: '40px', fontSize: '10px', color: '#444', textDecoration: 'underline' }}>RETURN HOME</Link>
+                <BackgroundEffects />
+                <div className="glass-premium" style={{ textAlign: 'center', padding: '60px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', zIndex: 10 }}>
+                    <h2 style={{ fontSize: '24px', letterSpacing: '8px', marginBottom: '20px', fontWeight: '900' }}>INVITE ONLY</h2>
+                    <p style={{ color: '#888', fontSize: '11px', letterSpacing: '2px' }}>REGISTRATIONS ARE CURRENTLY CLOSED.</p>
+                    <Link href="/" className="glow-button" style={{ display: 'inline-block', marginTop: '40px', padding: '12px 30px', borderRadius: '50px', fontSize: '11px', textDecoration: 'none' }}>RETURN HOME</Link>
                 </div>
             </div>
         );
     }
 
     return (
-        <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', display: 'flex' }}>
+        <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', display: 'flex' }}>
+            <BackgroundEffects />
+
             {/* Left Side - Visuals (Hidden on Mobile) */}
             <div style={{
                 flex: '1',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
             }} className="desktop-visual">
-                {/* Background Image / Abstract */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    background: 'radial-gradient(circle at 30% 50%, #2a2a2a, #000)',
-                    zIndex: 0
-                }} />
 
-                {/* Noise */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0.05,
-                    filter: 'url(#noiseFilter)',
-                    zIndex: 1
-                }} />
-
-                <div style={{
-                    position: 'absolute',
-                    bottom: '80px',
-                    left: '80px',
-                    zIndex: 2
-                }}>
-                    <h1 style={{ fontSize: '60px', fontWeight: '900', lineHeight: '0.9', letterSpacing: '-0.03em', marginBottom: '20px' }}>
-                        DEFINE<br />YOUR<br /><span style={{ color: 'var(--accent)' }}>SOUND.</span>
-                    </h1>
-                    <p style={{ maxWidth: '400px', fontSize: '13px', color: '#888', lineHeight: '1.6', letterSpacing: '0.5px' }}>
-                        Join the fastest growing independent distribution network. Keep 100% of your rights.
-                    </p>
+                <div style={{ position: 'relative', zIndex: 2, padding: '80px' }}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8 }}
+                    >
+                        <h1 style={{ fontSize: 'clamp(50px, 5vw, 80px)', fontWeight: '900', lineHeight: '0.9', letterSpacing: '-0.04em', marginBottom: '30px' }}>
+                            DEFINE<br />YOUR<br /><span style={{ color: 'var(--accent)' }}>SOUND.</span>
+                        </h1>
+                        <p style={{ maxWidth: '400px', fontSize: '14px', color: '#888', lineHeight: '1.6', letterSpacing: '0.5px' }}>
+                            Join the fastest growing independent distribution network. Keep 100% of your rights.
+                        </p>
+                    </motion.div>
                 </div>
             </div>
 
@@ -127,7 +138,8 @@ export default function Register() {
             <div style={{
                 width: '100%',
                 maxWidth: '600px',
-                background: '#0a0a0a',
+                background: 'rgba(5, 6, 7, 0.8)',
+                backdropFilter: 'blur(20px)',
                 borderLeft: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -136,119 +148,118 @@ export default function Register() {
                 position: 'relative',
                 zIndex: 10
             }}>
-                <div style={{ marginBottom: '60px' }}>
-                    <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>KAYIT OL</h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600' }}>
-                        LOST. HESABI OLUŞTURUN
-                    </p>
-                </div>
-
-                {success ? (
-                    <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s' }}>
-                        <h2 style={{ fontSize: '24px', letterSpacing: '2px', marginBottom: '20px', color: '#00ff88' }}>BAŞVURU ALINDI</h2>
-                        <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.6', marginBottom: '40px' }}>
-                            Hesabınız oluşturuldu ve onay bekliyor.<br />
-                            Erişiminiz onaylandığında e-posta ile bilgilendirileceksiniz.
+                <motion.div
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                    <div style={{ marginBottom: '60px' }}>
+                        <Link href="/" style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '2px', color: '#666', marginBottom: '20px', display: 'block', textDecoration: 'none' }}>← BACK TO HOME</Link>
+                        <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>CREATE ACCOUNT</h2>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600', letterSpacing: '1px' }}>
+                            JOIN THE COLLECTIVE
                         </p>
-                        <Link href="/auth/login" className="glow-button" style={{ display: 'inline-block', padding: '15px 30px', textDecoration: 'none', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                            GİRİŞ EKRANINA DÖN
-                        </Link>
                     </div>
-                ) : (
-                    <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {error && <p style={{ color: '#ff4444', fontSize: '12px', fontWeight: '800' }}>{error.toUpperCase()}</p>}
 
-                        <div style={{ display: 'flex', gap: '20px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={labelStyle}>AD SOYAD</label>
+                    {success ? (
+                        <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(0,255,136,0.05)', borderRadius: '24px', border: '1px solid rgba(0,255,136,0.2)' }}>
+                            <h2 style={{ fontSize: '24px', letterSpacing: '2px', marginBottom: '20px', color: '#00ff88', fontWeight: '900' }}>APPLICATION RECEIVED</h2>
+                            <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.6', marginBottom: '40px' }}>
+                                Your account is pending approval.<br />
+                                You&apos;ll receive an email once your artist profile is verified.
+                            </p>
+                            <Link href="/auth/login" className="glow-button" style={{ display: 'inline-block', padding: '15px 40px', borderRadius: '50px', textDecoration: 'none', width: '100%', textAlign: 'center' }}>
+                                RETURN TO LOGIN
+                            </Link>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                            {error && (
+                                <div style={{ padding: '15px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '12px', color: '#ff4444', fontSize: '11px', fontWeight: '800' }}>
+                                    {error.toUpperCase()}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '20px', flexDirection: 'row', flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 200px' }}>
+                                    <label style={labelStyle}>FULL NAME</label>
+                                    <input
+                                        type="text"
+                                        placeholder="John Doe"
+                                        style={inputStyle}
+                                        value={formData.fullName}
+                                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                        required
+                                        className="input-focus-glow"
+                                    />
+                                </div>
+                                <div style={{ flex: '1 1 200px' }}>
+                                    <label style={labelStyle}>STAGE NAME</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Phantom"
+                                        style={inputStyle}
+                                        value={formData.stageName}
+                                        onChange={(e) => setFormData({ ...formData, stageName: e.target.value })}
+                                        required
+                                        className="input-focus-glow"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={labelStyle}>EMAIL ADDRESS</label>
                                 <input
-                                    type="text"
-                                    placeholder="Your Name"
+                                    type="email"
+                                    placeholder="artist@example.com"
                                     style={inputStyle}
-                                    value={formData.fullName}
-                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     required
+                                    className="input-focus-glow"
                                 />
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={labelStyle}>SANATÇI İSMİ (Stage Name)</label>
+
+                            <div>
+                                <label style={labelStyle}>PASSWORD</label>
                                 <input
-                                    type="text"
-                                    placeholder="Phantom"
+                                    type="password"
+                                    placeholder="Min 8 characters"
                                     style={inputStyle}
-                                    value={formData.stageName}
-                                    onChange={(e) => setFormData({ ...formData, stageName: e.target.value })}
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     required
+                                    className="input-focus-glow"
                                 />
                             </div>
-                        </div>
 
-                        <div>
-                            <label style={labelStyle}>E-POSTA</label>
-                            <input
-                                type="email"
-                                placeholder="mail@example.com"
-                                style={inputStyle}
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                required
-                            />
-                        </div>
+                            <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '20px', width: '100%', borderRadius: '16px', fontSize: '13px', letterSpacing: '1px' }}>
+                                {loading ? 'PROCESSING...' : 'CREATE ACCOUNT'}
+                            </button>
+                        </form>
+                    )}
 
-                        <div>
-                            <label style={labelStyle}>ŞİFRE</label>
-                            <input
-                                type="password"
-                                placeholder="min 8 characters"
-                                style={inputStyle}
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '18px', width: '100%' }}>
-                            {loading ? 'OLUŞTURULUYOR...' : 'HESAP OLUŞTUR'}
-                        </button>
-                    </form>
-                )}
-
-                <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '600' }}>
-                    ZATEN ÜYE MİSİNİZ? <Link href="/auth/login" style={{ color: '#fff', textDecoration: 'underline' }}>GİRİŞ YAP</Link>
-                </p>
+                    <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '600', textAlign: 'center' }}>
+                        Already have an account? <Link href="/auth/login" style={{ color: 'var(--accent)' }}>Login</Link>
+                    </p>
+                </motion.div>
             </div>
 
             <style jsx>{`
                 .desktop-visual {
                     display: none;
                 }
+                .input-focus-glow:focus {
+                    background: rgba(255,255,255,0.05) !important;
+                    border-color: var(--accent) !important;
+                    box-shadow: 0 0 15px rgba(158, 240, 26, 0.1);
+                }
                 @media (min-width: 1024px) {
                     .desktop-visual {
-                        display: block !important;
+                        display: flex !important;
                     }
                 }
             `}</style>
         </div>
     );
 }
-
-const labelStyle = {
-    display: 'block',
-    marginBottom: '10px',
-    fontSize: '10px',
-    fontWeight: '800',
-    color: '#888',
-    letterSpacing: '2px'
-};
-
-const inputStyle = {
-    width: '100%',
-    padding: '14px',
-    background: '#0a0a0a',
-    border: '1px solid #333',
-    borderRadius: '0',
-    color: 'white',
-    fontFamily: 'inherit',
-    fontSize: '14px',
-    outline: 'none'
-};

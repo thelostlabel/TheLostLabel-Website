@@ -3,22 +3,31 @@ import Navbar from "./components/Navbar";
 import AuthProvider from "./components/AuthProvider";
 import SmoothScroll from "./components/SmoothScroll";
 import { ToastProvider } from "./components/ToastContext";
+import { PlayerProvider } from "./components/PlayerContext";
+import Player from "./components/Player";
 
 export const metadata = {
-  title: "LOST MUSIC | Independent Label & Artist Management",
-  description: "Join LOST MUSIC collective. Submit demos, manage releases, and track royalties on the next-gen artist portal.",
-  keywords: ["music label", "demo submission", "artist portal", "phonk", "brazilian funk", "music distribution"],
-  authors: [{ name: "LOST MUSIC" }],
+  metadataBase: new URL('https://lostmusic.io'), // Update this with your actual domain later
+  title: {
+    default: "LOST MUSIC | Independent Record Label & Artist Portal",
+    template: "%s | LOST MUSIC"
+  },
+  description: "Official portal for LOST MUSIC. Discover the best Brazilian Phonk, Funk, and Electronic music. Submit your demos and join the collective.",
+  keywords: ["LOST MUSIC", "Phonk", "Brazilian Funk", "Funk Mandelo", "Music Label", "Artist Portal", "Demo Submission", "Independent Label", "Music Distribution"],
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
   openGraph: {
     title: "LOST MUSIC | Next-Gen Artist Portal",
-    description: "Submit demos and manage your artist career with LOST MUSIC.",
-    url: "https://lostmusic.collective", // Placeholder, user can update
+    description: "The home of Brazilian Phonk and Funk. submit your tracks and manage your artist career.",
+    url: "https://lostmusic.io",
     siteName: "LOST MUSIC",
     images: [
       {
-        url: "/og-image.jpg", // User should add this to public/
-        width: 1200,
-        height: 630,
+        url: "/logo.png",
+        width: 800,
+        height: 800,
       },
     ],
     locale: "en_US",
@@ -26,14 +35,25 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "LOST MUSIC | Next-Gen Artist Portal",
-    description: "Join the collective. Submit your demos now.",
-    images: ["/og-image.jpg"],
+    title: "LOST MUSIC | Brazilian Phonk & Funk Label",
+    description: "Submit your demos to the LOST MUSIC collective.",
+    images: ["/logo.png"],
   },
-  robots: "index, follow",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 };
 
 export const viewport = {
+  themeColor: '#000000',
   width: "device-width",
   initialScale: 1,
 };
@@ -41,15 +61,15 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/logo.png" />
-      </head>
       <body>
         <SmoothScroll />
         <AuthProvider>
           <ToastProvider>
-            <Navbar />
-            <main>{children}</main>
+            <PlayerProvider>
+              <Navbar />
+              <main>{children}</main>
+              <Player />
+            </PlayerProvider>
           </ToastProvider>
         </AuthProvider>
       </body>

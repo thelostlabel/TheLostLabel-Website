@@ -43,7 +43,8 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Sync failed. Data could not be retrieved." }), { status: 500 });
         }
 
-        const monthlyListeners = stats?.monthlyListeners || 0;
+        // Handle stats being a raw number (from our new scraper update) or an object
+        const monthlyListeners = (typeof stats === 'number') ? stats : (stats?.monthlyListeners || 0);
         const followers = apiStats?.followers || stats?.followers || 0;
         const verified = stats?.verified || false; // Spotify API doesn't expose verified flag easily
         const imageUrl = apiStats?.imageUrl || stats?.imageUrl;

@@ -61,7 +61,7 @@ function DashboardContent() {
                     background: 'rgba(255,170,0,0.05)',
                     border: '1px solid rgba(255,170,0,0.2)',
                     padding: '40px',
-                    borderRadius: '16px'
+                    borderRadius: '24px'
                 }}>
                     <h2 style={{ fontSize: '24px', letterSpacing: '4px', color: '#ffaa00', marginBottom: '20px' }}>HESABINIZ ONAY BEKLİYOR</h2>
                     <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.6', marginBottom: '30px' }}>
@@ -70,7 +70,7 @@ function DashboardContent() {
                     </p>
                     <button
                         onClick={() => window.location.href = '/'}
-                        style={{ background: 'none', border: '1px solid #333', color: '#666', padding: '10px 20px', fontSize: '11px', cursor: 'pointer', borderRadius: '4px' }}
+                        style={{ background: 'none', border: '1px solid #333', color: '#666', padding: '10px 20px', fontSize: '11px', cursor: 'pointer', borderRadius: '12px' }}
                     >
                         ANA SAYFAYA DÖN
                     </button>

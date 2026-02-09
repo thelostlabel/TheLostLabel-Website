@@ -15,8 +15,8 @@ export async function GET(req) {
             pendingDemos,
             totalDemos,
             pendingRequests,
-            albumCount,
-            songCountData,
+            uniqueAlbumsGroup,
+            totalSongs,
             recentDemos,
             recentRequests
         ] = await Promise.all([
@@ -25,8 +25,11 @@ export async function GET(req) {
             prisma.demo.count({ where: { status: 'pending' } }),
             prisma.demo.count(),
             prisma.changeRequest.count({ where: { status: 'pending' } }),
-            prisma.release.count({ where: { type: 'album' } }),
-            prisma.release.aggregate({ _sum: { totalTracks: true } }),
+            prisma.release.groupBy({
+                by: ['image'],
+                _count: { image: true }
+            }),
+            prisma.release.count(),
             prisma.demo.findMany({
                 take: 5,
                 orderBy: { createdAt: 'desc' },
@@ -39,6 +42,69 @@ export async function GET(req) {
             })
         ]);
 
+        // Calculate unique albums
+        const albumCount = uniqueAlbumsGroup.length;
+
+        // Financial aggregates (Optimized for SQLite)
+        const [earningAgg, paymentAgg, trendRows, platformRows, topArtists] = await Promise.all([
+            prisma.earning.aggregate({
+                _sum: { grossAmount: true, artistAmount: true, labelAmount: true }
+            }),
+            prisma.payment.aggregate({
+                where: { status: 'completed' },
+                _sum: { amount: true }
+            }),
+            prisma.$queryRaw`
+                SELECT strftime('%Y-%m', createdAt) as label, 
+                       SUM(labelAmount) as revenue, 
+                       SUM(artistAmount) as artistShare 
+                FROM Earning 
+                GROUP BY label 
+                ORDER BY label ASC 
+                LIMIT 12
+            `,
+            prisma.earning.groupBy({
+                by: ['source'],
+                _sum: { labelAmount: true }
+            }),
+            prisma.artist.findMany({
+                take: 5,
+                orderBy: { monthlyListeners: 'desc' },
+                select: { name: true, monthlyListeners: true, id: true }
+            })
+
+        ]);
+
+        // Payment Trends (Optimized for SQLite)
+        const payoutTrendRows = await prisma.$queryRaw`
+            SELECT strftime('%Y-%m', createdAt) as label, 
+                   SUM(amount) as amount 
+            FROM Payment 
+            WHERE status = 'completed'
+            GROUP BY label 
+            ORDER BY label ASC 
+            LIMIT 12
+        `;
+
+        const totalRevenue = earningAgg._sum.labelAmount || 0;
+        const totalGross = earningAgg._sum.grossAmount || 0;
+        const totalPayouts = paymentAgg._sum.amount || 0;
+
+        const trendData = (trendRows || []).map(r => ({
+            label: r.label,
+            revenue: Number(r.revenue) || 0,
+            artistShare: Number(r.artistShare) || 0
+        }));
+
+        const payoutTrends = (payoutTrendRows || []).map(r => ({
+            label: r.label,
+            amount: Number(r.amount) || 0
+        }));
+
+        const platforms = (platformRows || [])
+            .map(p => ({ label: (p.source || 'OTHER').toUpperCase(), value: Number(p._sum.labelAmount) || 0 }))
+            .sort((a, b) => b.value - a.value);
+
         return new Response(JSON.stringify({
             counts: {
                 users: totalUsers,
@@ -47,12 +113,19 @@ export async function GET(req) {
                 totalDemos,
                 pendingRequests,
                 albums: albumCount,
-                songs: songCountData._sum.totalTracks || 0
+                songs: totalSongs,
+                revenue: totalRevenue,
+                gross: totalGross,
+                payouts: totalPayouts
             },
             recent: {
                 demos: recentDemos,
                 requests: recentRequests
-            }
+            },
+            trends: trendData,
+            payoutTrends,
+            platforms,
+            topArtists
         }), { status: 200 });
 
     } catch (e) {
