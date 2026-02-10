@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
-import { motion, useMotionValue } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import NextImage from "next/image";
 
@@ -12,7 +11,7 @@ const ArtistBadge = ({ artist }) => (
             style={{
                 width: "200px",
                 height: "280px",
-                borderRadius: "100px", // Pill shape
+                borderRadius: "100px",
                 overflow: "hidden",
                 position: "relative",
                 margin: "0 20px",
@@ -27,6 +26,7 @@ const ArtistBadge = ({ artist }) => (
                     alt={artist.name}
                     width={200}
                     height={280}
+                    loading="lazy"
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
             ) : (
@@ -44,21 +44,8 @@ const ArtistBadge = ({ artist }) => (
     </Link>
 );
 
-export default function ArtistsSection() {
-    const [artists, setArtists] = useState([]);
-
-    useEffect(() => {
-        fetch("/api/artists")
-            .then((res) => res.json())
-            .then((data) => {
-                if (data && Array.isArray(data.artists)) {
-                    setArtists(data.artists);
-                }
-            })
-            .catch((err) => {
-                console.error("Failed to load artists:", err);
-            });
-    }, []);
+export default function ArtistsSection({ artists: propArtists }) {
+    const artists = propArtists || [];
 
     if (!artists.length) return null;
 

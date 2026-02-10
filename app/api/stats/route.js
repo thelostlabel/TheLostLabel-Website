@@ -17,7 +17,13 @@ export async function GET() {
             artistCount,
             albumCount: albumCountData,
             songCount: songCountData._sum.totalTracks || 0
-        }), { status: 200 });
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+            }
+        });
     } catch (error) {
         console.error("Stats Error:", error);
         return new Response(JSON.stringify({ artistCount: 0, albumCount: 0, songCount: 0 }), { status: 200 });

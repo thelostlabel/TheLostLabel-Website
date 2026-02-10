@@ -12,73 +12,13 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
     const { playTrack, currentTrack, isPlaying } = usePlayer();
 
     useEffect(() => {
-        async function fetchData() {
-            try {
-                let endpoint = `/api/spotify/album/${id}`;
-
-                // Smart detection: Check if it's a Track or Album based on URL
-                if (initialData?.spotify_url) {
-                    if (initialData.spotify_url.includes('/track/')) {
-                        const match = initialData.spotify_url.match(/track\/([a-zA-Z0-9]+)/);
-                        if (match?.[1]) endpoint = `/api/spotify/track/${match[1]}`;
-                    } else if (initialData.spotify_url.includes('/album/')) {
-                        const match = initialData.spotify_url.match(/album\/([a-zA-Z0-9]+)/);
-                        if (match?.[1]) endpoint = `/api/spotify/album/${match[1]}`;
-                    }
-                }
-
-
-
-                const res = await fetch(endpoint);
-                const json = await res.json();
-                if (res.ok && !json.error) {
-                    setData(prev => prev ? { ...prev, ...json } : json);
-                } else {
-                    // console.warn("Spotify enrichment failed", json);
-                }
-            } catch (e) {
-                console.error("Fetch error:", e);
-            } finally {
-                setLoading(false);
-            }
-        }
-
         if (initialData) {
             setData(initialData);
-
-            // Optimization: If we already have preview_url from DB (new logic), don't fetch!
-            if (initialData.previewUrl || initialData.preview_url) {
-                setLoading(false);
-            } else if (id && !id.startsWith('archive')) {
-                // Only fetch if strictly necessary (missing preview and valid spotify ID)
-                fetchData();
-            } else {
-                setLoading(false);
-            }
-        } else if (id && !id.startsWith('archive')) {
-            fetchData();
+            setLoading(false);
         } else {
             setLoading(false);
         }
-    }, [id, initialData]);
-
-    // Fallback: if no preview_url but track URL exists, fetch track preview
-    useEffect(() => {
-        if (data?.preview_url) return;
-        const trackMatch = data?.spotify_url?.match(/track\/([a-zA-Z0-9]+)/);
-        if (!trackMatch) return;
-        const trackId = trackMatch[1];
-        const fetchTrack = async () => {
-            try {
-                const res = await fetch(`/api/spotify/track/${trackId}`);
-                const json = await res.json();
-                if (res.ok && !json.error && json.preview_url) {
-                    setData(prev => prev ? { ...prev, preview_url: json.preview_url, preview_track_name: json.name, image: prev.image || json.image } : json);
-                }
-            } catch (_) { /* silent */ }
-        };
-        fetchTrack();
-    }, [data?.preview_url, data?.spotify_url]);
+    }, [initialData]);
 
     const artist = data?.artists?.map(a => a.name).join(", ") || data?.artist || fallbackArtist;
     const title = data?.name || fallbackTitle;

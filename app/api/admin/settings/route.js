@@ -9,51 +9,52 @@ export async function GET(req) {
     }
 
     try {
-        let settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
+        const settings = await prisma.systemSettings.findUnique({
+            where: { id: "default" }
+        });
+
         if (!settings) {
-            // Default config
-            const defaultConfig = {
-                allowCoverArt: true,
-                allowAudio: true,
-                allowDelete: true,
-                allowOther: true,
-                genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
-                featuredReleaseId: null,
-                featuredReleaseLabel: 'FEATURED RELEASE',
-                featuredReleaseSubLabel: 'NOW STREAMING',
-                featuredReleaseStatus: 'Featured'
-            };
-            settings = await prisma.systemSettings.create({
+            // Seed default settings if not exists
+            const defaultSettings = await prisma.systemSettings.create({
                 data: {
                     id: "default",
-                    config: JSON.stringify(defaultConfig)
+                    config: JSON.stringify({
+                        maintenanceMode: false,
+                        allowRegistrations: true,
+                        autoApproveDemos: false,
+                        featuredPlaylistId: "",
+                        homepageNotice: ""
+                    })
                 }
             });
+            return new Response(defaultSettings.config, { status: 200 });
         }
-        return new Response(JSON.stringify(settings), { status: 200 });
-    } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+
+        return new Response(settings.config, { status: 200 });
+    } catch (error) {
+        console.error("Fetch Settings Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }
 
-export async function PATCH(req) {
+export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'admin') {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
     try {
-        const body = await req.json();
-        const { config } = body; // Expect JSON object
+        const config = await req.json();
 
-        const updated = await prisma.systemSettings.upsert({
+        const settings = await prisma.systemSettings.upsert({
             where: { id: "default" },
             update: { config: JSON.stringify(config) },
             create: { id: "default", config: JSON.stringify(config) }
         });
 
-        return new Response(JSON.stringify(updated), { status: 200 });
-    } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+        return new Response(settings.config, { status: 200 });
+    } catch (error) {
+        console.error("Save Settings Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }

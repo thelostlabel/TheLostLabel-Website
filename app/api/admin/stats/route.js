@@ -45,7 +45,7 @@ export async function GET(req) {
         // Calculate unique albums
         const albumCount = uniqueAlbumsGroup.length;
 
-        // Financial aggregates (Optimized for SQLite)
+        // Financial aggregates (PostgreSQL compatible)
         const [earningAgg, paymentAgg, trendRows, platformRows, topArtists] = await Promise.all([
             prisma.earning.aggregate({
                 _sum: { grossAmount: true, artistAmount: true, labelAmount: true }
@@ -55,10 +55,10 @@ export async function GET(req) {
                 _sum: { amount: true }
             }),
             prisma.$queryRaw`
-                SELECT strftime('%Y-%m', createdAt) as label, 
-                       SUM(labelAmount) as revenue, 
-                       SUM(artistAmount) as artistShare 
-                FROM Earning 
+                SELECT TO_CHAR("createdAt", 'YYYY-MM') as label, 
+                       SUM("labelAmount") as revenue, 
+                       SUM("artistAmount") as "artistShare" 
+                FROM "Earning" 
                 GROUP BY label 
                 ORDER BY label ASC 
                 LIMIT 12
@@ -72,15 +72,14 @@ export async function GET(req) {
                 orderBy: { monthlyListeners: 'desc' },
                 select: { name: true, monthlyListeners: true, id: true }
             })
-
         ]);
 
-        // Payment Trends (Optimized for SQLite)
+        // Payment Trends (PostgreSQL compatible)
         const payoutTrendRows = await prisma.$queryRaw`
-            SELECT strftime('%Y-%m', createdAt) as label, 
-                   SUM(amount) as amount 
-            FROM Payment 
-            WHERE status = 'completed'
+            SELECT TO_CHAR("createdAt", 'YYYY-MM') as label, 
+                   SUM("amount") as amount 
+            FROM "Payment" 
+            WHERE "status" = 'completed'
             GROUP BY label 
             ORDER BY label ASC 
             LIMIT 12
