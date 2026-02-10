@@ -8,8 +8,9 @@ import {
     Upload, Music, Disc, User as UserIcon, CheckCircle,
     XCircle, Clock, AlertCircle, Trash2, Send, ExternalLink,
     Briefcase, DollarSign, CreditCard, Users, ClipboardList,
-    MessageSquare, ArrowLeft, SendHorizontal
+    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp
 } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ProjectView from './ProjectView';
 
 const glassStyle = {
@@ -18,6 +19,74 @@ const glassStyle = {
     border: '1px solid rgba(255,255,255,0.05)',
     borderRadius: '24px',
     overflow: 'hidden'
+};
+
+const ChartTooltip = ({ active, payload, label, color }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: 'rgba(10,10,12,0.95)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+        }}>
+            <div style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
+            {payload.map((p, i) => (
+                <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
+                    ${Number(p.value).toLocaleString()}
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
+    if (!data || data.length === 0) return (
+        <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
+            NO DATA AVAILABLE
+        </div>
+    );
+
+    return (
+        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tickLine={false}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                        tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
+                    />
+                    <YAxis
+                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
+                    />
+                    <Tooltip content={<ChartTooltip color={color} />} />
+                    <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={color}
+                        strokeWidth={2.5}
+                        fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
+                        dot={{ r: 3, fill: '#0a0a0c', stroke: color, strokeWidth: 2 }}
+                        activeDot={{ r: 5, fill: color, stroke: '#0a0a0c', strokeWidth: 2 }}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
 };
 
 const btnStyle = {
@@ -191,28 +260,45 @@ export default function ArtistView() {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title.trim() || files.length === 0) {
-            alert('Please provide a title and at least one WAV file');
+            showToast('Please provide a title and at least one WAV file', 'warning');
             return;
         }
 
         setUploading(true);
+        setUploadProgress(0);
+
         try {
-            // First upload files
+            // First upload files using XMLHttpRequest for progress tracking
             const formData = new FormData();
             files.forEach(f => formData.append('files', f));
 
-            const uploadRes = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            });
-            const uploadData = await uploadRes.json();
+            const uploadData = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/upload');
 
-            if (!uploadRes.ok) {
-                throw new Error(uploadData.error || 'Upload failed');
-            }
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(percentComplete);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        reject(new Error('Upload failed'));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Upload network error'));
+                xhr.send(formData);
+            });
 
             // Then create demo with file references
             const demoRes = await fetch('/api/demo', {
@@ -226,23 +312,24 @@ export default function ArtistView() {
                 })
             });
 
-            if (!demoRes.ok) {
-                throw new Error('Failed to submit demo');
-            }
+            if (!demoRes.ok) throw new Error('Failed to submit demo');
 
-            alert('Demo submitted successfully!');
+            showToast('Demo submitted successfully!', 'success');
             setTitle('');
             setGenre('');
             setMessage('');
             setFiles([]);
+
             const url = new URL(window.location);
             url.searchParams.set('view', 'demos');
             window.history.pushState({}, '', url);
+            window.dispatchEvent(new Event('popstate'));
             fetchDemos();
         } catch (err) {
-            alert(err.message);
+            showToast(err.message, 'error');
         } finally {
             setUploading(false);
+            setUploadProgress(0);
         }
     };
 
@@ -376,18 +463,22 @@ export default function ArtistView() {
 
 const GoalProgress = ({ label, current, target, color }) => {
     const percentage = Math.min(Math.round((current / target) * 100), 100);
+    const safeColor = color || 'var(--accent)';
     return (
         <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '10px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{label}</span>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: color }}>{percentage}%</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#555' }}>{Number(current).toLocaleString()} / {Number(target).toLocaleString()}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: safeColor }}>{percentage}%</span>
+                </div>
             </div>
-            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ width: '100%', height: '7px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${percentage}%` }}
                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ height: '100%', background: color, borderRadius: '10px', boxShadow: `0 0 15px ${color}40` }}
+                    style={{ height: '100%', background: safeColor, borderRadius: '10px', boxShadow: `0 0 18px ${safeColor}50` }}
                 />
             </div>
         </div>
@@ -610,9 +701,9 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     </div>
 
                     {/* The Chart */}
-                    <div style={{ paddingRight: '10px' }}>
+                    <div style={{ height: '280px' }}>
                         {chartData && chartData.length > 0 ? (
-                            <SimpleChart data={chartData} color="var(--accent)" />
+                            <RechartsAreaChart data={chartData} color="var(--accent)" height={280} />
                         ) : (
                             <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '15px' }}>
                                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1375,7 +1466,7 @@ function DemosView({ demos, onNavigate }) {
     );
 }
 
-function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, files, dragActive, handleDrag, handleDrop, handleFileSelect, removeFile, fileInputRef, uploading, handleSubmit }) {
+function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, files, dragActive, handleDrag, handleDrop, handleFileSelect, removeFile, fileInputRef, uploading, handleSubmit, uploadProgress }) {
     const [genres, setGenres] = useState(['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Other']);
 
     useEffect(() => {
@@ -1389,45 +1480,47 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
         fetchGenres();
     }, []);
 
-    const labelStyle = { display: 'block', fontSize: '10px', letterSpacing: '2px', color: '#666', marginBottom: '8px', fontWeight: '800' };
-    const inputStyle = { width: '100%', padding: '12px 15px', background: '#0a0a0a', border: '1px solid #222', color: '#fff', fontSize: '13px' };
+    const labelStyle = { display: 'block', fontSize: '9px', letterSpacing: '2px', color: '#555', marginBottom: '8px', fontWeight: '900' };
+    const inputStyle = { width: '100%', padding: '14px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', color: '#fff', fontSize: '13px', outline: 'none', transition: 'border-color 0.2s' };
 
     return (
-        <form onSubmit={handleSubmit} style={{ maxWidth: '800px' }}>
+        <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '0 auto' }}>
             <div style={{ ...glassStyle, padding: '40px' }}>
-                <div style={{ marginBottom: '35px' }}>
-                    <label style={labelStyle}>TRACK TITLE *</label>
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="ENTER TRACK TITLE"
-                        required
-                        style={inputStyle}
-                    />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '30px' }}>
+                    <div>
+                        <label style={labelStyle}>TRACK_TITLE *</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="TITLE"
+                            required
+                            style={inputStyle}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={labelStyle}>GENRE / VIBE</label>
+                        <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
+                            <option value="">Select Genre</option>
+                            {genres.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                    </div>
                 </div>
 
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>GENRE</label>
-                    <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
-                        <option value="">Select genre</option>
-                        {genres.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                </div>
-
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>MESSAGE (Optional)</label>
+                <div style={{ marginBottom: '30px' }}>
+                    <label style={labelStyle}>MESSAGE_FOR_AR (OPTIONAL)</label>
                     <textarea
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Any notes about your submission..."
-                        rows={4}
-                        style={{ ...inputStyle, resize: 'vertical' }}
+                        placeholder="Tell us about this record..."
+                        rows={3}
+                        style={{ ...inputStyle, resize: 'none' }}
                     />
                 </div>
 
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>AUDIO FILES (WAV ONLY) *</label>
+                <div style={{ marginBottom: '30px' }}>
+                    <label style={labelStyle}>MASTERED_AUDIO (WAV ONLY) *</label>
                     <div
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
@@ -1435,19 +1528,21 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                         style={{
-                            border: `2px dashed ${dragActive ? 'var(--accent)' : 'rgba(255,255,255,0.1)'}`,
-                            padding: '60px 40px',
+                            border: `2px dashed ${dragActive ? 'var(--accent)' : 'rgba(255,255,255,0.05)'}`,
+                            padding: '50px 30px',
                             textAlign: 'center',
                             cursor: 'pointer',
-                            background: dragActive ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.01)',
-                            borderRadius: '12px',
-                            transition: 'all 0.2s'
+                            background: dragActive ? 'rgba(var(--accent-rgb), 0.05)' : 'rgba(255,255,255,0.01)',
+                            borderRadius: '16px',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                     >
-                        <p style={{ color: '#666', fontSize: '12px', marginBottom: '10px' }}>
-                            {dragActive ? 'Drop files here...' : 'Drag & drop WAV files here or click to browse'}
+                        <div style={{ marginBottom: '15px' }}>
+                            <Upload size={32} style={{ color: dragActive ? 'var(--accent)' : '#333' }} />
+                        </div>
+                        <p style={{ color: '#888', fontSize: '12px', fontWeight: '500' }}>
+                            {dragActive ? 'DROP_FILE_NOW' : 'DRAG & DROP WAV OR CLICK_TO_BROWSE'}
                         </p>
-                        <p style={{ color: '#444', fontSize: '10px' }}>Only .wav files are accepted</p>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -1459,27 +1554,31 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                     </div>
 
                     {files.length > 0 && (
-                        <div style={{ marginTop: '15px' }}>
+                        <div style={{ marginTop: '20px', display: 'grid', gap: '10px' }}>
                             {files.map((file, index) => (
                                 <div key={index} style={{
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    padding: '12px 15px',
+                                    padding: '12px 20px',
                                     background: 'rgba(255,255,255,0.02)',
                                     border: '1px solid rgba(255,255,255,0.05)',
-                                    marginBottom: '8px',
-                                    borderRadius: '6px'
+                                    borderRadius: '12px'
                                 }}>
-                                    <span style={{ fontSize: '11px', color: '#888' }}>
-                                        🎵 {file.name} <span style={{ color: '#444' }}>({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ padding: '8px', background: 'rgba(var(--accent-rgb), 0.1)', color: 'var(--accent)', borderRadius: '8px' }}>
+                                            <Music size={14} />
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: '#fff', fontWeight: '600' }}>
+                                            {file.name} <span style={{ color: '#555', marginLeft: '6px' }}>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                                        </span>
+                                    </div>
                                     <button
                                         type="button"
-                                        onClick={() => removeFile(index)}
-                                        style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer', fontSize: '14px' }}
+                                        onClick={(e) => { e.stopPropagation(); removeFile(index); }}
+                                        style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', padding: '5px' }}
                                     >
-                                        ×
+                                        <Trash2 size={14} />
                                     </button>
                                 </div>
                             ))}
@@ -1487,18 +1586,49 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                     )}
                 </div>
 
-                <button
-                    type="submit"
-                    disabled={uploading}
-                    className="glow-button"
-                    style={{ width: '100%', padding: '15px', opacity: uploading ? 0.5 : 1, fontWeight: '900', letterSpacing: '2px' }}
-                >
-                    {uploading ? 'UPLOADING...' : 'SUBMIT DEMO'}
-                </button>
+                <div style={{ marginTop: '40px' }}>
+                    {uploading ? (
+                        <div style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '2px', color: 'var(--accent)' }}>UPLOADING_TRACK...</span>
+                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#fff' }}>{uploadProgress}%</span>
+                            </div>
+                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${uploadProgress}%` }}
+                                    style={{ height: '100%', background: 'var(--accent)', boxShadow: '0 0 15px var(--accent)' }}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            type="submit"
+                            style={{
+                                width: '100%',
+                                padding: '18px',
+                                background: 'var(--accent)',
+                                color: '#000',
+                                border: 'none',
+                                borderRadius: '16px',
+                                fontSize: '11px',
+                                fontWeight: '900',
+                                letterSpacing: '4px',
+                                cursor: 'pointer',
+                                transition: '0.3s'
+                            }}
+                            onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
+                        >
+                            SUBMIT_DEMO
+                        </button>
+                    )}
+                </div>
             </div>
         </form>
     );
 }
+
 
 function ProfileView({ onUpdate }) {
     const [profile, setProfile] = useState(null);

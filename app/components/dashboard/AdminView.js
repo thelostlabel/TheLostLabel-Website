@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import NextImage from 'next/image';
-import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download, Search } from 'lucide-react';
+import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download, Search, Music, BarChart3, TrendingUp } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 export default function AdminView() {
     const { data: session } = useSession();
@@ -692,9 +693,25 @@ function ArtistsView({ artists, users, onSync }) {
                     style={{ ...inputStyle, width: '100%', maxWidth: '300px', background: 'rgba(255,255,255,0.02)' }}
                 />
                 {canManage && (
-                    <button onClick={() => setIsCreating(true)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}>
-                        <Plus size={14} /> NEW ARTIST
-                    </button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={async () => {
+                                if (!confirm("Start bulk background sync? This will process up to 10 artists needing update.")) return;
+                                try {
+                                    const res = await fetch('/api/admin/scrape/refresh', { method: 'POST' });
+                                    const data = await res.json();
+                                    showToast(`Synced ${data.count} artists.`, "success");
+                                    onSync(); // Refresh lists
+                                } catch (e) { showToast("Sync failed", "error"); }
+                            }}
+                            style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            <RefreshCw size={14} /> SYNC ALL
+                        </button>
+                        <button onClick={() => setIsCreating(true)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Plus size={14} /> NEW ARTIST
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -1767,7 +1784,10 @@ const GoalProgress = ({ label, current, target, color }) => {
         <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '10px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{label}</span>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: safeColor }}>{percentage}%</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#555' }}>{current.toLocaleString()} / {target.toLocaleString()}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: safeColor }}>{percentage}%</span>
+                </div>
             </div>
             <div style={{ width: '100%', height: '7px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <motion.div
@@ -1781,41 +1801,119 @@ const GoalProgress = ({ label, current, target, color }) => {
     );
 };
 
+const ChartTooltip = ({ active, payload, label, color }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: 'rgba(10,10,12,0.95)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+        }}>
+            <div style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
+            {payload.map((p, i) => (
+                <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
+                    ${Number(p.value).toLocaleString()}
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
+    if (!data || data.length === 0) return (
+        <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
+            NO DATA AVAILABLE
+        </div>
+    );
+
+    return (
+        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tickLine={false}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                        tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
+                    />
+                    <YAxis
+                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
+                    />
+                    <Tooltip content={<ChartTooltip color={color} />} />
+                    <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={color}
+                        strokeWidth={2.5}
+                        fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
+                        dot={{ r: 3, fill: '#0a0a0c', stroke: color, strokeWidth: 2 }}
+                        activeDot={{ r: 5, fill: color, stroke: '#0a0a0c', strokeWidth: 2 }}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+};
+
 const DonutChart = ({ data }) => {
     const total = data.reduce((acc, curr) => acc + curr.value, 0);
-    let cumulativePercent = 0;
     const topItem = data.reduce((best, item) => (item.value > best.value ? item : best), data[0] || { label: 'TOTAL', value: 0, color: '#666' });
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-            <div style={{ position: 'relative', width: '190px', height: '190px' }}>
-                <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="50" cy="50" r="45" fill="transparent" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
-                    {data.map((item, i) => {
-                        const percent = total ? item.value / total : 0;
-                        const dashArray = `${percent * 282.6} 282.6`;
-                        const dashOffset = -cumulativePercent * 282.6;
-                        cumulativePercent += percent;
-
-                        return (
-                            <motion.circle
-                                key={i}
-                                cx="50"
-                                cy="50"
-                                r="45"
-                                fill="transparent"
-                                stroke={item.color}
-                                strokeWidth="10"
-                                strokeDasharray={dashArray}
-                                strokeDashoffset={dashOffset}
-                                initial={{ strokeDasharray: "0 282.6" }}
-                                whileInView={{ strokeDasharray: dashArray }}
-                                transition={{ duration: 1.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                                style={{ strokeLinecap: 'round', filter: `drop-shadow(0 0 8px ${item.color}55)` }}
-                            />
-                        );
-                    })}
-                </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={data}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={85}
+                            paddingAngle={3}
+                            dataKey="value"
+                            nameKey="label"
+                            strokeWidth={0}
+                        >
+                            {data.map((entry, i) => (
+                                <Cell key={i} fill={entry.color} style={{ filter: `drop-shadow(0 0 6px ${entry.color}55)` }} />
+                            ))}
+                        </Pie>
+                        <Tooltip
+                            content={({ active, payload }) => {
+                                if (!active || !payload?.length) return null;
+                                return (
+                                    <div style={{
+                                        background: 'rgba(10,10,12,0.95)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px',
+                                        padding: '10px 14px',
+                                        backdropFilter: 'blur(20px)'
+                                    }}>
+                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#fff' }}>{payload[0].name}</div>
+                                        <div style={{ fontSize: '12px', fontWeight: '900', color: payload[0].payload.color }}>
+                                            ${Number(payload[0].value).toLocaleString()} ({total ? Math.round((payload[0].value / total) * 100) : 0}%)
+                                        </div>
+                                    </div>
+                                );
+                            }}
+                        />
+                    </PieChart>
+                </ResponsiveContainer>
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
                     <div style={{ fontSize: '22px', fontWeight: '900', color: '#fff' }}>
                         {total ? `${Math.round((topItem.value / total) * 100)}%` : '0%'}
@@ -1823,7 +1921,7 @@ const DonutChart = ({ data }) => {
                     <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1px' }}>{topItem.label}</div>
                 </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minWidth: '150px' }}>
                 {data.map((item, i) => (
                     <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr 36px', alignItems: 'center', gap: '10px' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}66` }} />
@@ -1832,7 +1930,7 @@ const DonutChart = ({ data }) => {
                             {total ? Math.round((item.value / total) * 100) : 0}%
                         </div>
                         <div style={{ gridColumn: '2 / 4', height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
-                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, boxShadow: `0 0 10px ${item.color}55` }} />
+                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, boxShadow: `0 0 10px ${item.color}55`, transition: 'width 1s ease' }} />
                         </div>
                     </div>
                 ))}
@@ -1841,182 +1939,6 @@ const DonutChart = ({ data }) => {
     );
 };
 
-function SimpleChart({ data, color = '#f5c542' }) {
-    const [hoveredIndex, setHoveredIndex] = useState(null);
-    const gradId = color.replace(/[^a-zA-Z0-9]/g, '');
-
-
-    if (!data || data.length === 0) return (
-        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px' }}>
-            NO DATA AVAILABLE
-        </div>
-    );
-
-    // Handle single data point case better: Start from 0 to show growth
-    let renderData = [...data];
-    if (data.length === 1) {
-        renderData = [
-            { label: 'START', value: 0 },
-            data[0]
-        ];
-    }
-
-    const values = renderData.map(d => d.value);
-    const rawMax = Math.max(...values, 10);
-    const rawMin = Math.min(...values, 0);
-    const padding = (rawMax - rawMin) * 0.2 || rawMax * 0.1 || 10;
-    const maxVal = rawMax + padding;
-    const minVal = Math.max(rawMin - padding, 0);
-    const range = Math.max(maxVal - minVal, 1);
-
-    const getCoords = (i) => {
-        const x = (i / (renderData.length - 1)) * 100;
-        const val = renderData[i].value;
-        const y = 90 - ((val - minVal) / range) * 80;
-        return { x, y };
-    };
-
-    // Monotone X Cubic Interpolation for smooth, non-overshooting curves
-    const points = renderData.map((_, i) => getCoords(i));
-
-    let pathData = `M ${points[0].x} ${points[0].y}`;
-
-    if (points.length > 1) {
-        const tangents = [];
-
-        // Calculate finite differences
-        for (let i = 0; i < points.length; i++) {
-            if (i === 0) {
-                tangents.push((points[1].y - points[0].y) / (points[1].x - points[0].x));
-            } else if (i === points.length - 1) {
-                tangents.push((points[i].y - points[i - 1].y) / (points[i].x - points[i - 1].x));
-            } else {
-                // Average of slopes
-                const m1 = (points[i].y - points[i - 1].y) / (points[i].x - points[i - 1].x);
-                const m2 = (points[i + 1].y - points[i].y) / (points[i + 1].x - points[i].x);
-                if (Math.sign(m1) !== Math.sign(m2)) {
-                    tangents.push(0); // Flat tangent at peaks/valleys
-                } else {
-                    tangents.push((m1 + m2) / 2);
-                }
-            }
-        }
-
-        // Generate Bezier path
-        for (let i = 0; i < points.length - 1; i++) {
-            const p0 = points[i];
-            const p1 = points[i + 1];
-            const m0 = tangents[i];
-            const m1 = tangents[i + 1];
-            const dx = p1.x - p0.x;
-
-            // Control points
-            // Scale factor 0.333 reduces the "looseness" of the curve
-            const cp1x = p0.x + dx / 3;
-            const cp1y = p0.y + m0 * dx / 3;
-            const cp2x = p1.x - dx / 3;
-            const cp2y = p1.y - m1 * dx / 3;
-
-            pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-        }
-    }
-
-    const areaPath = `${pathData} L 100 100 L 0 100 Z`;
-    const yTicks = [0, 25, 50, 75, 100];
-
-    return (
-        <div style={{ width: '100%', height: '260px', position: 'relative', marginTop: '10px' }}>
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                <defs>
-                    <linearGradient id={`areaGradient-${gradId}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={color} stopOpacity="0.4" />
-                        <stop offset="100%" stopColor={color} stopOpacity="0" />
-                    </linearGradient>
-                </defs>
-
-                {/* Grid Lines */}
-                {yTicks.map(t => (
-                    <line key={t} x1="0" y1={t} x2="100" y2={t} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" strokeDasharray="2" />
-                ))}
-
-                {/* Y-Axis Labels */}
-                {yTicks.map(t => (
-                    <text key={t} x="-2" y={100 - t * 0.8 - 8.5} textAnchor="end" fill="#666" fontSize="5" fontWeight="700" style={{ pointerEvents: 'none' }}>
-                        {/* Calculate value from percentage t (0-100 map to minVal-maxVal) */}
-                        {/* Note: t=0 is top in SVG usually but here we mapped 0-100 to yTicks which are just positions? 
-                            Wait, loop above uses 0,25,50,75,100 as SVG y-coordinates. 
-                            100 is bottom (min val), 0 is top (max val).
-                        */}
-                        {Math.round(minVal + ((100 - t) / 100) * range).toLocaleString(undefined, { notation: "compact", compactDisplay: "short" })}
-                    </text>
-                ))}
-
-                {/* Area Fill */}
-                <motion.path
-                    d={areaPath}
-                    fill={`url(#areaGradient-${gradId})`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1 }}
-                />
-
-                {/* Line Stroke */}
-                <motion.path
-                    d={pathData}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    vectorEffect="non-scaling-stroke"
-                    style={{ filter: `drop-shadow(0 0 8px ${color}66)` }}
-                />
-
-                {/* Data Points & Tooltips */}
-                {renderData.map((d, i) => {
-                    const { x, y } = getCoords(i);
-                    // Only show points if enough space or few points
-                    if (renderData.length > 20 && i % 2 !== 0 && hoveredIndex !== i) return null;
-
-                    return (
-                        <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
-                            <circle cx={x} cy={y} r={hoveredIndex === i ? 2 : 1} fill="#000" stroke={color} strokeWidth="0.5" style={{ cursor: 'pointer', transition: 'all 0.2s' }} />
-
-                            {/* Tooltip on Hover */}
-                            {hoveredIndex === i && (
-                                <g>
-                                    <rect x={x - 15} y={y - 15} width="30" height="10" rx="2" fill="rgba(0,0,0,0.8)" stroke={color} strokeWidth="0.2" />
-                                    <text x={x} y={y - 8} textAnchor="middle" fill="#fff" fontSize="4" fontWeight="bold">
-                                        {d.value.toLocaleString()}
-                                    </text>
-                                </g>
-                            )}
-                        </g>
-                    );
-                })}
-            </svg>
-
-            {/* X-Axis Labels */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', padding: '0 10px' }}>
-                {data.map((d, i) => {
-                    // Show sparsely if many points
-                    if (data.length > 12 && i % 3 !== 0) return null;
-                    if (data.length > 6 && i % 2 !== 0) return null;
-                    return (
-                        <span key={i} style={{ fontSize: '9px', color: '#555', fontWeight: '700', transform: 'translateX(-50%)' }}>
-                            {(d.label ? (d.label.includes('-') ? d.label.split('-')[1] : d.label) : '')}
-                        </span>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-
 function pickPlatformColor(label) {
     const upper = (label || '').toUpperCase();
     if (upper.includes('SPOT')) return '#1DB954';
@@ -2024,6 +1946,8 @@ function pickPlatformColor(label) {
     if (upper.includes('YT') || upper.includes('YOU')) return '#FF0000';
     if (upper.includes('AMAZON')) return '#FF9900';
     if (upper.includes('TIDAL')) return '#00A0FF';
+    if (upper.includes('DEEZER')) return '#A238FF';
+    if (upper.includes('TIKTOK')) return '#FE2C55';
     return '#777';
 }
 
@@ -2089,9 +2013,13 @@ function HomeView() {
     const cards = [
         { label: 'GROSS_VOLUME', value: `$${(stats.counts.gross || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <DollarSign size={20} />, trend: '+12.5%' },
         { label: 'NET_REVENUE', value: `$${(stats.counts.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <Briefcase size={20} />, trend: '+8.2%' },
-        { label: 'TOTAL_PAYOUTS', value: `$${(stats.counts.payouts || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#666', icon: <CreditCard size={20} /> },
+        { label: 'TOTAL_PAYOUTS', value: `$${(stats.counts.payouts || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#00ff88', icon: <CreditCard size={20} /> },
+        { label: 'TOTAL_USERS', value: stats.counts.users || 0, color: '#fff', icon: <Users size={20} /> },
         { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: '#fff', icon: <Mic2 size={20} /> },
-        { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: stats.counts.pendingDemos > 0 ? 'var(--accent)' : '#fff', icon: <FileAudio size={20} /> },
+        { label: 'TOTAL_RELEASES', value: stats.counts.albums || 0, color: '#fff', icon: <Disc size={20} /> },
+        { label: 'TOTAL_SONGS', value: stats.counts.songs || 0, color: '#fff', icon: <Music size={20} /> },
+        { label: 'TOTAL_DEMOS', value: stats.counts.totalDemos || 0, color: '#fff', icon: <FileAudio size={20} /> },
+        { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: stats.counts.pendingDemos > 0 ? 'var(--accent)' : '#fff', icon: <BarChart3 size={20} /> },
         { label: 'OPEN_REQUESTS', value: stats.counts.pendingRequests, color: stats.counts.pendingRequests > 0 ? 'var(--status-warning)' : '#fff', icon: <AlertCircle size={20} /> }
     ];
 
@@ -2112,7 +2040,7 @@ function HomeView() {
     return (
         <>
             {/* Stats Cards Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '36px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '36px' }}>
                 {cards.map((card, i) => (
                     <motion.div
                         key={i}
@@ -2149,7 +2077,7 @@ function HomeView() {
                             )}
                         </div>
 
-                        <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff', letterSpacing: '-1px', lineHeight: 1, marginBottom: '8px' }}>
+                        <div style={{ fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '-1px', lineHeight: 1, marginBottom: '8px' }}>
                             {card.value}
                         </div>
 
@@ -2204,7 +2132,7 @@ function HomeView() {
                         </div>
                     </div>
 
-                    <SimpleChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color="#f5c542" />
+                    <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color="#f5c542" />
                 </motion.div>
 
                 {/* Payout Trends Chart */}
@@ -2221,10 +2149,9 @@ function HomeView() {
                             <p style={{ fontSize: '9px', color: '#444', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
                         </div>
                     </div>
-                    <SimpleChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color="#00ff88" />
+                    <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color="#00ff88" />
                 </motion.div>
 
-                {/* Donut Chart */}
                 <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     whileInView={{ opacity: 1, x: 0 }}
@@ -2826,6 +2753,7 @@ function SettingsView() {
 
     const tabs = [
         { id: 'general', label: 'GENERAL' },
+        { id: 'system', label: 'SYSTEM' },
         { id: 'genres', label: 'GENRES' },
         { id: 'requests', label: 'REQUESTS' },
         { id: 'home', label: 'HOME PAGE' },
@@ -2894,6 +2822,25 @@ function SettingsView() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'system' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        {[
+                            { label: 'TOTAL_USERS', value: users.length, icon: <Users size={16} /> },
+                            { label: 'TOTAL_ARTISTS', value: artists.length, icon: <Music size={16} /> },
+                            { label: 'TOTAL_RELEASES', value: artists.reduce((acc, a) => acc + (a._count?.releases || 0), 0), icon: <Disc size={16} /> },
+                            { label: 'TOTAL_CONTRACTS', value: artists.reduce((acc, a) => acc + (a._count?.contracts || 0), 0), icon: <FileText size={16} /> },
+                        ].map((stat, i) => (
+                            <div key={i} style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#444', marginBottom: '10px' }}>
+                                    {stat.icon}
+                                    <span style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '2px' }}>{stat.label}</span>
+                                </div>
+                                <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff' }}>{stat.value}</div>
+                            </div>
+                        ))}
                     </div>
                 )}
 

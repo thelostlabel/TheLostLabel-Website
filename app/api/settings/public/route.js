@@ -32,7 +32,13 @@ export async function GET() {
             maintenanceMode: config.maintenanceMode ?? false,
             joinHeroTitle: config.joinHeroTitle || 'WORK WITH THE LOST. COMPANY',
             joinHeroSub: config.joinHeroSub || 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
-        }), { status: 200 });
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+            }
+        });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

@@ -435,7 +435,7 @@ export default function Home() {
       </section>
 
       {/* --- ARTISTS MARQUEE --- */}
-      <ArtistsSection />
+      <ArtistsSection artists={artists} />
 
       {/* --- SELECTED RELEASES --- */}
       <section style={{ padding: "100px 24px", background: "#0d0e12" }}>
@@ -448,7 +448,7 @@ export default function Home() {
             <Link href="/releases" style={{ fontSize: "13px", fontWeight: "800", letterSpacing: "1px", borderBottom: "1px solid var(--accent)", paddingBottom: "4px" }}>VIEW ALL RELEASES</Link>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px", justifyContent: "center" }}>
             {loading
               ? [1, 2, 3].map(i => <div key={i} style={{ height: "300px", background: "rgba(255,255,255,0.05)", borderRadius: "16px" }} />)
               : releases.slice(0, 3).map((r, i) => (

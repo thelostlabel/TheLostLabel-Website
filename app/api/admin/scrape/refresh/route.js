@@ -45,8 +45,8 @@ export async function POST(req) {
                         where: { id: artist.id },
                         data: {
                             monthlyListeners: stats.monthlyListeners,
-                            followers: stats.followers || undefined, // Keep old if null?
-                            verified: stats.verified,
+                            followers: stats.followers || undefined,
+                            verified: stats.verified || false,
                             image: stats.imageUrl || undefined,
                             lastSyncedAt: new Date()
                         }

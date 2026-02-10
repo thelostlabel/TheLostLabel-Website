@@ -25,7 +25,7 @@ export default function BackgroundEffects() {
     useEffect(() => {
         // Move generation to a timeout to avoid synchronous blocking and satisfy linter
         const timer = setTimeout(() => {
-            const generatedParticles = Array.from({ length: 30 }).map((_, i) => ({
+            const generatedParticles = Array.from({ length: 12 }).map((_, i) => ({
                 id: i,
                 style: {
                     left: `${Math.random() * 100}%`,
