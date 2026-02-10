@@ -7,7 +7,7 @@ import { PlayerProvider } from "./components/PlayerContext";
 import Player from "./components/Player";
 
 export const metadata = {
-  metadataBase: new URL('https://thelostlabel.com'), // Using new domain for absolute image paths
+  metadataBase: new URL('https://87-248-157-4.sslip.io'), // Using sslip domain for absolute image paths
   title: {
     default: "LOST MUSIC | Independent Record Label & Artist Portal",
     template: "%s | LOST MUSIC"
@@ -24,7 +24,7 @@ export const metadata = {
   openGraph: {
     title: "LOST MUSIC | Next-Gen Artist Portal",
     description: "The home of Brazilian Phonk and Funk. submit your tracks and manage your artist career.",
-    url: "https://thelostlabel.com",
+    url: "https://87-248-157-4.sslip.io",
     siteName: "LOST MUSIC",
     images: [
       {

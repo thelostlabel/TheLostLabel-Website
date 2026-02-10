@@ -1,5 +1,5 @@
-wexport default function sitemap() {
-    const baseUrl = 'https://thelostlabel.com';
+export default function sitemap() {
+    const baseUrl = 'https://87-248-157-4.sslip.io';
 
     const routes = [
         '',
