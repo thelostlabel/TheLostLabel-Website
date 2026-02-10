@@ -28,6 +28,8 @@ WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
+# Set Playwright path explicitly
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
 
 # Install Playwright dependencies for Chromium
 # Using debian-specific dependencies
@@ -56,16 +58,20 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Chromium only (to keep it light)
+# Install Chromium browser to the specific path
 RUN npx playwright install chromium
 
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create user with a proper home directory to avoid "/nonexistent" issues
+RUN adduser --system --uid 1001 --group nextjs --home /home/nextjs
 
 # Copy necessary files
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Ensure the app user owns the browsers and the app dir
+RUN chown -R nextjs:nodejs /app/ms-playwright
 
 USER nextjs
 
