@@ -7,6 +7,6 @@ export default function robots() {
                 disallow: ['/dashboard/', '/api/admin/'],
             },
         ],
-        sitemap: 'https://lostmusic.io/sitemap.xml',
+        sitemap: 'https://thelostlabel.com/sitemap.xml',
     };
 }

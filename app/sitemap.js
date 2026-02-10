@@ -1,5 +1,5 @@
-export default function sitemap() {
-    const baseUrl = 'https://lostmusic.io';
+wexport default function sitemap() {
+    const baseUrl = 'https://thelostlabel.com';
 
     const routes = [
         '',
