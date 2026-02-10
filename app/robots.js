@@ -7,6 +7,6 @@ export default function robots() {
                 disallow: ['/dashboard/', '/api/admin/'],
             },
         ],
-        sitemap: 'https://87-248-157-4.sslip.io/sitemap.xml',
+        sitemap: 'https://thelostlabel.com/sitemap.xml',
     };
 }

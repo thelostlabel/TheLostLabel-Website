@@ -1,0 +1,222 @@
+2026-Feb-10 07:47:51.335532 Starting deployment of grxtor/Lost-Website:main to localhost.
+2026-Feb-10 07:47:54.545218 Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.12
+2026-Feb-10 07:47:55.516180 [DEBUG] [CMD]: docker stop -t 30 vsg00k0gcokwkwcs88gsg0cs
+2026-Feb-10 07:47:55.516180 [DEBUG] Error response from daemon: No such container: vsg00k0gcokwkwcs88gsg0cs
+2026-Feb-10 07:47:56.780151 [DEBUG] [CMD]: docker run -d --network coolify --name vsg00k0gcokwkwcs88gsg0cs  --rm -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/coollabsio/coolify-helper:1.0.12
+2026-Feb-10 07:47:56.780151 [DEBUG] 3a4d20737a33a6d5d53da4ae851c7c72e8d051d726faa4701821f5c3b4138c04
+2026-Feb-10 07:48:02.884177 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git ls-remote https://x-access-token:<REDACTED>@github.com/grxtor/Lost-Website.git refs/heads/main'
+2026-Feb-10 07:48:02.884177 [DEBUG] 2723e54caef2054559d3f109ffb693c086af4d2a	refs/heads/main
+2026-Feb-10 07:48:04.163509 [DEBUG] [CMD]: docker images -q sk0cgwgsgoo8s4gw8k0ksos8:2723e54caef2054559d3f109ffb693c086af4d2a 2>/dev/null
+2026-Feb-10 07:48:04.163509 [DEBUG] b8f80105ce44
+2026-Feb-10 07:48:04.219983 Configuration changed. Rebuilding image.
+2026-Feb-10 07:48:04.813867 ----------------------------------------
+2026-Feb-10 07:48:04.827126 Importing grxtor/Lost-Website:main (commit sha 2723e54caef2054559d3f109ffb693c086af4d2a) to /artifacts/vsg00k0gcokwkwcs88gsg0cs.
+2026-Feb-10 07:48:05.949062 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'git clone --depth=1 --recurse-submodules --shallow-submodules -b 'main' 'https://x-access-token:<REDACTED>@github.com/grxtor/Lost-Website.git' '/artifacts/vsg00k0gcokwkwcs88gsg0cs' && cd '/artifacts/vsg00k0gcokwkwcs88gsg0cs' && if [ -f .gitmodules ]; then git submodule sync && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git submodule update --init --recursive --depth=1; fi && cd '/artifacts/vsg00k0gcokwkwcs88gsg0cs' && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git lfs pull'
+2026-Feb-10 07:48:05.949062 [DEBUG] Cloning into '/artifacts/vsg00k0gcokwkwcs88gsg0cs'...
+2026-Feb-10 07:48:11.771860 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'cd /artifacts/vsg00k0gcokwkwcs88gsg0cs && git log -1 2723e54caef2054559d3f109ffb693c086af4d2a --pretty=%B'
+2026-Feb-10 07:48:11.771860 [DEBUG] feat: Add SQLite export and PostgreSQL import scripts, update Prisma schema, and configure website metadata URLs.
+2026-Feb-10 07:48:11.779152 [DEBUG] Signed-off-by: grxtor <<REDACTED>>
+2026-Feb-10 07:48:12.888639 Generating nixpacks configuration with: nixpacks plan -f json --env NIXPACKS_NODE_VERSION=22 --env COOLIFY_URL=https://87-248-157-4.sslip.io --env COOLIFY_FQDN=87-248-157-4.sslip.io --env COOLIFY_BRANCH=main --env COOLIFY_RESOURCE_UUID=sk0cgwgsgoo8s4gw8k0ksos8 --build-cmd "npm run build" --start-cmd "npm run dev" --install-cmd "npm install" /artifacts/vsg00k0gcokwkwcs88gsg0cs
+2026-Feb-10 07:48:14.179743 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'nixpacks plan -f json --env NIXPACKS_NODE_VERSION=22 --env COOLIFY_URL=https://87-248-157-4.sslip.io --env COOLIFY_FQDN=87-248-157-4.sslip.io --env COOLIFY_BRANCH=main --env COOLIFY_RESOURCE_UUID=sk0cgwgsgoo8s4gw8k0ksos8 --build-cmd "npm run build" --start-cmd "npm run dev" --install-cmd "npm install" /artifacts/vsg00k0gcokwkwcs88gsg0cs'
+2026-Feb-10 07:48:14.179743 [DEBUG] {
+2026-Feb-10 07:48:14.179743 [DEBUG] "providers": [],
+2026-Feb-10 07:48:14.179743 [DEBUG] "buildImage": "ghcr.io/railwayapp/nixpacks:ubuntu-1745885067",
+2026-Feb-10 07:48:14.179743 [DEBUG] "variables": {
+2026-Feb-10 07:48:14.179743 [DEBUG] "CI": "true",
+2026-Feb-10 07:48:14.179743 [DEBUG] "COOLIFY_BRANCH": "main",
+2026-Feb-10 07:48:14.179743 [DEBUG] "COOLIFY_FQDN": "87-248-157-4.sslip.io",
+2026-Feb-10 07:48:14.179743 [DEBUG] "COOLIFY_RESOURCE_UUID": "sk0cgwgsgoo8s4gw8k0ksos8",
+2026-Feb-10 07:48:14.179743 [DEBUG] "COOLIFY_URL": "https://87-248-157-4.sslip.io",
+2026-Feb-10 07:48:14.179743 [DEBUG] "NIXPACKS_METADATA": "node",
+2026-Feb-10 07:48:14.179743 [DEBUG] "NIXPACKS_NODE_VERSION": "22",
+2026-Feb-10 07:48:14.179743 [DEBUG] "NODE_ENV": "production",
+2026-Feb-10 07:48:14.179743 [DEBUG] "NPM_CONFIG_PRODUCTION": "false"
+2026-Feb-10 07:48:14.179743 [DEBUG] },
+2026-Feb-10 07:48:14.179743 [DEBUG] "phases": {
+2026-Feb-10 07:48:14.179743 [DEBUG] "build": {
+2026-Feb-10 07:48:14.179743 [DEBUG] "dependsOn": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "install"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "cmds": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "npm run build"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "cacheDirectories": [
+2026-Feb-10 07:48:14.179743 [DEBUG] ".next/cache",
+2026-Feb-10 07:48:14.179743 [DEBUG] "node_modules/.cache"
+2026-Feb-10 07:48:14.179743 [DEBUG] ]
+2026-Feb-10 07:48:14.179743 [DEBUG] },
+2026-Feb-10 07:48:14.179743 [DEBUG] "install": {
+2026-Feb-10 07:48:14.179743 [DEBUG] "dependsOn": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "setup"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "cmds": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "npm install"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "cacheDirectories": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "/root/.npm"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "paths": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "/app/node_modules/.bin"
+2026-Feb-10 07:48:14.179743 [DEBUG] ]
+2026-Feb-10 07:48:14.179743 [DEBUG] },
+2026-Feb-10 07:48:14.179743 [DEBUG] "setup": {
+2026-Feb-10 07:48:14.179743 [DEBUG] "nixPkgs": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "nodejs_22",
+2026-Feb-10 07:48:14.179743 [DEBUG] "npm-9_x",
+2026-Feb-10 07:48:14.179743 [DEBUG] "openssl"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "nixLibs": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "gcc-unwrapped"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "nixOverlays": [
+2026-Feb-10 07:48:14.179743 [DEBUG] "https://github.com/railwayapp/nix-npm-overlay/archive/main.tar.gz"
+2026-Feb-10 07:48:14.179743 [DEBUG] ],
+2026-Feb-10 07:48:14.179743 [DEBUG] "nixpkgsArchive": "ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7"
+2026-Feb-10 07:48:14.179743 [DEBUG] }
+2026-Feb-10 07:48:14.179743 [DEBUG] },
+2026-Feb-10 07:48:14.179743 [DEBUG] "start": {
+2026-Feb-10 07:48:14.179743 [DEBUG] "cmd": "npm run dev"
+2026-Feb-10 07:48:14.179743 [DEBUG] }
+2026-Feb-10 07:48:14.179743 [DEBUG] }
+2026-Feb-10 07:48:15.465567 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'nixpacks detect /artifacts/vsg00k0gcokwkwcs88gsg0cs'
+2026-Feb-10 07:48:15.465567 [DEBUG] node
+2026-Feb-10 07:48:15.502764 Found application type: node.
+2026-Feb-10 07:48:15.521996 If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/node
+2026-Feb-10 07:48:15.543082 [DEBUG] Final Nixpacks plan: {
+2026-Feb-10 07:48:15.543082 [DEBUG] "providers": [],
+2026-Feb-10 07:48:15.543082 [DEBUG] "buildImage": "ghcr.io\/railwayapp\/nixpacks:ubuntu-1745885067",
+2026-Feb-10 07:48:15.543082 [DEBUG] "phases": {
+2026-Feb-10 07:48:15.543082 [DEBUG] "build": {
+2026-Feb-10 07:48:15.543082 [DEBUG] "dependsOn": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "install"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "cmds": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "npm run build"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "cacheDirectories": [
+2026-Feb-10 07:48:15.543082 [DEBUG] ".next\/cache",
+2026-Feb-10 07:48:15.543082 [DEBUG] "node_modules\/.cache"
+2026-Feb-10 07:48:15.543082 [DEBUG] ]
+2026-Feb-10 07:48:15.543082 [DEBUG] },
+2026-Feb-10 07:48:15.543082 [DEBUG] "install": {
+2026-Feb-10 07:48:15.543082 [DEBUG] "dependsOn": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "setup"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "cmds": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "npm install"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "cacheDirectories": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "\/root\/.npm"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "paths": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "\/app\/node_modules\/.bin"
+2026-Feb-10 07:48:15.543082 [DEBUG] ]
+2026-Feb-10 07:48:15.543082 [DEBUG] },
+2026-Feb-10 07:48:15.543082 [DEBUG] "setup": {
+2026-Feb-10 07:48:15.543082 [DEBUG] "nixPkgs": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "nodejs_22",
+2026-Feb-10 07:48:15.543082 [DEBUG] "npm-9_x",
+2026-Feb-10 07:48:15.543082 [DEBUG] "openssl"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "nixLibs": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "gcc-unwrapped"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "nixOverlays": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "https:\/\/github.com\/railwayapp\/nix-npm-overlay\/archive\/main.tar.gz"
+2026-Feb-10 07:48:15.543082 [DEBUG] ],
+2026-Feb-10 07:48:15.543082 [DEBUG] "nixpkgsArchive": "ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7",
+2026-Feb-10 07:48:15.543082 [DEBUG] "aptPkgs": [
+2026-Feb-10 07:48:15.543082 [DEBUG] "curl",
+2026-Feb-10 07:48:15.543082 [DEBUG] "wget"
+2026-Feb-10 07:48:15.543082 [DEBUG] ]
+2026-Feb-10 07:48:15.543082 [DEBUG] }
+2026-Feb-10 07:48:15.543082 [DEBUG] },
+2026-Feb-10 07:48:15.543082 [DEBUG] "start": {
+2026-Feb-10 07:48:15.543082 [DEBUG] "cmd": "npm run dev"
+2026-Feb-10 07:48:15.543082 [DEBUG] }
+2026-Feb-10 07:48:15.543082 [DEBUG] }
+2026-Feb-10 07:48:18.928765 [DEBUG] Creating build-time .env file in /artifacts (outside Docker context).
+2026-Feb-10 07:48:20.021151 ----------------------------------------
+2026-Feb-10 07:48:20.034797 Building docker image started.
+2026-Feb-10 07:48:20.060291 To check the current progress, click on Show Debug Logs.
+2026-Feb-10 07:48:22.789047 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'nixpacks build -c /artifacts/thegameplan.json --cache-key 'sk0cgwgsgoo8s4gw8k0ksos8' --no-error-without-start -n sk0cgwgsgoo8s4gw8k0ksos8:2723e54caef2054559d3f109ffb693c086af4d2a /artifacts/vsg00k0gcokwkwcs88gsg0cs -o /artifacts/vsg00k0gcokwkwcs88gsg0cs'
+2026-Feb-10 07:48:22.789047 [DEBUG] 
+2026-Feb-10 07:48:22.789047 [DEBUG] ╔══════════════════ Nixpacks v1.41.0 ══════════════════╗
+2026-Feb-10 07:48:22.789047 [DEBUG] ║ setup      │ nodejs_22, npm-9_x, openssl, curl, wget ║
+2026-Feb-10 07:48:22.789047 [DEBUG] ║──────────────────────────────────────────────────────║
+2026-Feb-10 07:48:22.789047 [DEBUG] ║ install    │ npm install                             ║
+2026-Feb-10 07:48:22.789047 [DEBUG] ║──────────────────────────────────────────────────────║
+2026-Feb-10 07:48:22.789047 [DEBUG] ║ build      │ npm run build                           ║
+2026-Feb-10 07:48:22.789047 [DEBUG] ║──────────────────────────────────────────────────────║
+2026-Feb-10 07:48:22.789047 [DEBUG] ║ start      │ npm run dev                             ║
+2026-Feb-10 07:48:22.789047 [DEBUG] ╚══════════════════════════════════════════════════════╝
+2026-Feb-10 07:48:22.794449 [DEBUG] 
+2026-Feb-10 07:48:22.803356 [DEBUG] Saved output to:
+2026-Feb-10 07:48:22.803356 [DEBUG] /artifacts/vsg00k0gcokwkwcs88gsg0cs
+2026-Feb-10 07:48:23.976991 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'cat /artifacts/vsg00k0gcokwkwcs88gsg0cs/.nixpacks/Dockerfile'
+2026-Feb-10 07:48:23.976991 [DEBUG] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] ENTRYPOINT ["/bin/bash", "-l", "-c"]
+2026-Feb-10 07:48:23.976991 [DEBUG] WORKDIR /app/
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Feb-10 07:48:23.976991 [DEBUG] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Feb-10 07:48:23.976991 [DEBUG] RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] ARG CI COOLIFY_BRANCH COOLIFY_FQDN COOLIFY_RESOURCE_UUID COOLIFY_URL NIXPACKS_METADATA NIXPACKS_NODE_VERSION NODE_ENV NPM_CONFIG_PRODUCTION
+2026-Feb-10 07:48:23.976991 [DEBUG] ENV CI=$CI COOLIFY_BRANCH=$COOLIFY_BRANCH COOLIFY_FQDN=$COOLIFY_FQDN COOLIFY_RESOURCE_UUID=$COOLIFY_RESOURCE_UUID COOLIFY_URL=$COOLIFY_URL NIXPACKS_METADATA=$NIXPACKS_METADATA NIXPACKS_NODE_VERSION=$NIXPACKS_NODE_VERSION NODE_ENV=$NODE_ENV NPM_CONFIG_PRODUCTION=$NPM_CONFIG_PRODUCTION
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] # setup phase
+2026-Feb-10 07:48:23.976991 [DEBUG] # noop
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] # install phase
+2026-Feb-10 07:48:23.976991 [DEBUG] ENV NIXPACKS_PATH=/app/node_modules/.bin:$NIXPACKS_PATH
+2026-Feb-10 07:48:23.976991 [DEBUG] COPY . /app/.
+2026-Feb-10 07:48:23.976991 [DEBUG] RUN --mount=type=cache,id=sk0cgwgsgoo8s4gw8k0ksos8-/root/npm,target=/root/.npm npm install
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] # build phase
+2026-Feb-10 07:48:23.976991 [DEBUG] COPY . /app/.
+2026-Feb-10 07:48:23.976991 [DEBUG] RUN --mount=type=cache,id=sk0cgwgsgoo8s4gw8k0ksos8-next/cache,target=/app/.next/cache --mount=type=cache,id=sk0cgwgsgoo8s4gw8k0ksos8-node_modules/cache,target=/app/node_modules/.cache npm run build
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] RUN printf '\nPATH=/app/node_modules/.bin:$PATH' >> /root/.profile
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] # start
+2026-Feb-10 07:48:23.976991 [DEBUG] COPY . /app
+2026-Feb-10 07:48:23.976991 [DEBUG] 
+2026-Feb-10 07:48:23.976991 [DEBUG] CMD ["npm run dev"]
+2026-Feb-10 07:48:26.388123 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'cat /artifacts/build.sh'
+2026-Feb-10 07:48:26.388123 [DEBUG] cd /artifacts/vsg00k0gcokwkwcs88gsg0cs && set -a && source /artifacts/build-time.env && set +a && docker build --add-host cocsookk08skgsowkscsccs0:10.0.1.7 --add-host coolify:10.0.1.5 --add-host coolify-db:10.0.1.2 --add-host coolify-realtime:10.0.1.3 --add-host coolify-redis:10.0.1.4 --network host -f /artifacts/vsg00k0gcokwkwcs88gsg0cs/.nixpacks/Dockerfile --progress plain -t sk0cgwgsgoo8s4gw8k0ksos8:2723e54caef2054559d3f109ffb693c086af4d2a --build-arg CI --build-arg COOLIFY_BRANCH --build-arg COOLIFY_FQDN --build-arg COOLIFY_RESOURCE_UUID --build-arg COOLIFY_URL --build-arg NIXPACKS_METADATA --build-arg NIXPACKS_NODE_VERSION --build-arg NODE_ENV --build-arg NPM_CONFIG_PRODUCTION --build-arg COOLIFY_BUILD_SECRETS_HASH=f6de093b05bad5ca3cc2b006542af95e6794b963bb15c28cab491ea33a57e3b6 --build-arg 'COOLIFY_URL' --build-arg 'COOLIFY_FQDN' --build-arg 'COOLIFY_BRANCH' --build-arg 'COOLIFY_RESOURCE_UUID' /artifacts/vsg00k0gcokwkwcs88gsg0cs
+2026-Feb-10 07:48:28.589276 [DEBUG] [CMD]: docker exec vsg00k0gcokwkwcs88gsg0cs bash -c 'bash /artifacts/build.sh'
+2026-Feb-10 07:48:28.589276 [DEBUG] #0 building with "default" instance using docker driver
+2026-Feb-10 07:48:28.589276 [DEBUG] 
+2026-Feb-10 07:48:28.589276 [DEBUG] #1 [internal] load build definition from Dockerfile
+2026-Feb-10 07:48:28.589276 [DEBUG] #1 transferring dockerfile: 1.43kB 0.0s done
+2026-Feb-10 07:48:28.589276 [DEBUG] #1 DONE 0.0s
+2026-Feb-10 07:48:28.600087 [DEBUG] #2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Feb-10 07:48:29.073892 [DEBUG] #2 DONE 0.6s
+2026-Feb-10 07:48:29.183157 [DEBUG] #3 [internal] load .dockerignore
+2026-Feb-10 07:48:29.183157 [DEBUG] #3 transferring context: 2B done
+2026-Feb-10 07:48:29.183157 [DEBUG] #3 DONE 0.0s
+2026-Feb-10 07:48:29.183157 [DEBUG] 
+2026-Feb-10 07:48:29.183157 [DEBUG] #4 [internal] load build context
+2026-Feb-10 07:48:29.331441 [DEBUG] #4 ...
+2026-Feb-10 07:48:29.331441 [DEBUG] 
+2026-Feb-10 07:48:29.331441 [DEBUG] #5 [stage-0  1/11] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Feb-10 07:48:29.331441 [DEBUG] #5 resolve ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de 0.2s done
+2026-Feb-10 07:48:29.331441 [DEBUG] #5 DONE 0.2s
+2026-Feb-10 07:48:29.331441 [DEBUG] 
+2026-Feb-10 07:48:29.331441 [DEBUG] #4 [internal] load build context
+2026-Feb-10 07:48:30.245091 [DEBUG] #4 transferring context: 12.33MB 1.1s done
+2026-Feb-10 07:48:30.428509 [DEBUG] #4 DONE 1.1s
+2026-Feb-10 07:48:30.428509 [DEBUG] 
+2026-Feb-10 07:48:30.428509 [DEBUG] #6 [stage-0  2/11] WORKDIR /app/
+2026-Feb-10 07:48:30.428509 [DEBUG] #6 CACHED
+2026-Feb-10 07:48:30.428509 [DEBUG] 
+2026-Feb-10 07:48:30.428509 [DEBUG] #7 [stage-0  3/11] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Feb-10 07:48:30.428509 [DEBUG] #7 CACHED
+2026-Feb-10 07:48:30.428509 [DEBUG] 
+2026-Feb-10 07:48:30.428509 [DEBUG] #8 [stage-0  4/11] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Feb-10 07:48:30.902865 [DEBUG] #8 0.649 unpacking 'https://github.com/NixOS/nixpkgs/archive/ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.tar.gz' into the Git cache...
