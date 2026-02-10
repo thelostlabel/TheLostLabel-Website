@@ -18,4 +18,4 @@ rsync -avz --progress \
   ./ $SERVER_USER@$SERVER_IP:$SERVER_PATH
 
 echo "✅ Sync complete!"
-echo "Next steps: SSH into the server, run 'npm install', 'npx prisma generate', and 'npm run build'."
+echo "Next steps: SSH into the server, run 'npm install', 'npx playwright install chromium', 'npx prisma generate', and 'npm run build'."

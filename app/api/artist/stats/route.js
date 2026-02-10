@@ -13,24 +13,47 @@ export async function GET(req) {
         const userEmail = session.user.email;
         const stageName = session.user.stageName;
 
-        // Fetch fundamental artist data
-        const profile = await prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                monthlyListeners: true,
-                artist: {
-                    select: {
-                        id: true,
-                        name: true,
-                        monthlyListeners: true
+        // 1. Fetch Fundamental Data Concurrently
+        const [userProfile, artistProfile, payments, releasesCount, demosCount] = await Promise.all([
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    monthlyListeners: true,
+                    artist: {
+                        select: {
+                            id: true,
+                            name: true,
+                            monthlyListeners: true
+                        }
                     }
                 }
-            }
-        });
+            }),
+            prisma.artist.findFirst({
+                where: {
+                    OR: [
+                        { userId: userId },
+                        { email: userEmail },
+                        { name: stageName }
+                    ]
+                },
+                include: {
+                    statsHistory: {
+                        take: 30, // Last 30 snapshots
+                        orderBy: { date: 'desc' }
+                    }
+                }
+            }),
+            prisma.payment.findMany({
+                where: { userId: userId, status: 'completed' },
+                select: { amount: true }
+            }),
+            prisma.release.count({ where: { artistsJson: { contains: stageName } } }),
+            prisma.demo.count({ where: { artistId: userId } })
+        ]);
 
-        const monthlyListeners = profile?.monthlyListeners || profile?.artist?.monthlyListeners || 0;
+        const monthlyListeners = artistProfile?.monthlyListeners || userProfile?.monthlyListeners || userProfile?.artist?.monthlyListeners || 0;
 
-        // Find all splits for this user
+        // 2. Fetch All Splits for this user (with limited fields for speed)
         const splits = await prisma.royaltySplit.findMany({
             where: {
                 OR: [
@@ -39,15 +62,31 @@ export async function GET(req) {
                     { name: stageName }
                 ]
             },
-            include: { contract: { include: { earnings: true } } }
+            include: {
+                contract: {
+                    select: {
+                        earnings: {
+                            where: {
+                                createdAt: {
+                                    gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) // Last 6 months only
+                                }
+                            },
+                            select: {
+                                artistAmount: true,
+                                streams: true,
+                                createdAt: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
-        // Calculate earnings and trends
+        // 3. Process Trends and Totals
         let totalEarnings = 0;
         let totalStreams = 0;
         const monthlyTrend = {};
         const dailyTrend = {};
-
         const now = new Date();
 
         // Initialize last 6 months (monthly view)
@@ -86,24 +125,30 @@ export async function GET(req) {
             }
         });
 
-        const [releases, demos, payments] = await Promise.all([
-            prisma.release.count({ where: { artistsJson: { contains: stageName } } }),
-            prisma.demo.count({ where: { artistId: userId } }),
-            prisma.payment.findMany({ where: { userId: userId, status: 'completed' } })
-        ]);
-
         const totalWithdrawn = payments.reduce((sum, p) => sum + p.amount, 0);
 
+        // 4. Transform Listener History for Frontend Chart
+        const listenerTrend = (artistProfile?.statsHistory || [])
+            .map(h => ({
+                label: new Date(h.date).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' }),
+                value: h.monthlyListeners,
+                followers: h.followers || 0
+            }))
+            .reverse();
+
         return new Response(JSON.stringify({
+            artistId: artistProfile?.id,
+            artistName: artistProfile?.name || stageName,
             listeners: monthlyListeners,
             earnings: totalEarnings,
             streams: totalStreams,
             withdrawn: totalWithdrawn,
             balance: totalEarnings - totalWithdrawn,
-            releases: releases,
-            demos: demos,
+            releases: releasesCount,
+            demos: demosCount,
             trends: Object.values(monthlyTrend).reverse(),
-            trendsDaily: Object.values(dailyTrend).reverse()
+            trendsDaily: Object.values(dailyTrend).reverse(),
+            listenerTrend: listenerTrend // New trend data
         }), { status: 200 });
 
     } catch (e) {

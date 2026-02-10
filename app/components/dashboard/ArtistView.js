@@ -23,6 +23,8 @@ const glassStyle = {
 
 const ChartTooltip = ({ active, payload, label, color }) => {
     if (!active || !payload?.length) return null;
+    const isCurrency = payload[0].payload.value !== undefined && typeof payload[0].payload.value === 'number' && !label.includes('/'); // Simple heuristic for earnings vs listeners
+
     return (
         <div style={{
             background: 'rgba(10,10,12,0.95)',
@@ -35,7 +37,7 @@ const ChartTooltip = ({ active, payload, label, color }) => {
             <div style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
             {payload.map((p, i) => (
                 <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
-                    ${Number(p.value).toLocaleString()}
+                    {isCurrency ? `$${Number(p.value).toLocaleString()}` : Number(p.value).toLocaleString()}
                 </div>
             ))}
         </div>
@@ -587,12 +589,21 @@ function SimpleChart({ data, color = 'var(--accent)' }) {
 
 function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick }) {
     const [chartRange, setChartRange] = useState('monthly'); // monthly | daily
-    const chartData = chartRange === 'daily'
-        ? (stats.trendsDaily && stats.trendsDaily.length ? stats.trendsDaily : stats.trends)
-        : stats.trends;
-    const chartSubtitle = chartRange === 'daily'
-        ? 'ESTIMATED EARNINGS TREND BY DAY (LAST 30)'
-        : 'ESTIMATED EARNINGS TREND BY MONTH';
+    const [chartType, setChartType] = useState('earnings'); // earnings | listeners
+
+    const chartData = chartType === 'listeners'
+        ? (stats.listenerTrend || [])
+        : (chartRange === 'daily'
+            ? (stats.trendsDaily && stats.trendsDaily.length ? stats.trendsDaily : stats.trends)
+            : stats.trends);
+
+    const chartTitle = chartType === 'listeners' ? 'GROWTH FLOW' : 'PERFORMANCE FLOW';
+    const chartColor = chartType === 'listeners' ? '#00d4ff' : 'var(--accent)';
+    const chartSubtitle = chartType === 'listeners'
+        ? 'Your monthly listeners growth day by day'
+        : (chartRange === 'daily'
+            ? 'Estimated earnings trend by day (Last 30)'
+            : 'Estimated earnings trend by month');
 
     // --- Hero / Welcome Section ---
     const userFirstName = stats.artistName?.split(' ')[0] || 'Artist';
@@ -674,42 +685,69 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <div>
-                            <h3 style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: '900', color: '#fff' }}>PERFORMANCE FLOW</h3>
-                            <p style={{ fontSize: '10px', color: '#555', marginTop: '4px', fontWeight: '700' }}>Your earnings trajectory over time</p>
+                            <h3 style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: '900', color: '#fff' }}>{chartTitle}</h3>
+                            <p style={{ fontSize: '10px', color: '#555', marginTop: '4px', fontWeight: '700' }}>{chartSubtitle}</p>
                         </div>
                         {/* Toggle Buttons */}
-                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
-                            {['monthly', 'daily'].map(mode => (
-                                <button
-                                    key={mode}
-                                    onClick={() => setChartRange(mode)}
-                                    style={{
-                                        border: 'none',
-                                        background: chartRange === mode ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                        color: chartRange === mode ? '#fff' : '#666',
-                                        fontSize: '9px',
-                                        fontWeight: '800',
-                                        padding: '6px 14px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {mode.toUpperCase()}
-                                </button>
-                            ))}
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+                                {['earnings', 'listeners'].map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setChartType(type)}
+                                        style={{
+                                            border: 'none',
+                                            background: chartType === type ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                            color: chartType === type ? '#fff' : '#666',
+                                            fontSize: '9px',
+                                            fontWeight: '800',
+                                            padding: '6px 14px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {type === 'earnings' ? 'EARNINGS' : 'GROWTH'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {chartType === 'earnings' && (
+                                <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+                                    {['monthly', 'daily'].map(mode => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setChartRange(mode)}
+                                            style={{
+                                                border: 'none',
+                                                background: chartRange === mode ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                color: chartRange === mode ? '#fff' : '#666',
+                                                fontSize: '9px',
+                                                fontWeight: '800',
+                                                padding: '6px 14px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {mode.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* The Chart */}
                     <div style={{ height: '280px' }}>
                         {chartData && chartData.length > 0 ? (
-                            <RechartsAreaChart data={chartData} color="var(--accent)" height={280} />
+                            <RechartsAreaChart data={chartData} color={chartColor} height={280} />
                         ) : (
                             <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '15px' }}>
                                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <DollarSign size={16} color="#333" />
+                                    {chartType === 'earnings' ? <DollarSign size={16} color="#333" /> : <Users size={16} color="#333" />}
                                 </div>
-                                <div style={{ color: '#444', fontSize: '10px', letterSpacing: '1px', fontWeight: '800' }}>NO EARNINGS DATA YET</div>
+                                <div style={{ color: '#444', fontSize: '10px', letterSpacing: '1px', fontWeight: '800' }}>
+                                    {chartType === 'earnings' ? 'NO EARNINGS DATA YET' : 'NO GROWTH DATA YET'}
+                                </div>
                             </div>
                         )}
                     </div>
