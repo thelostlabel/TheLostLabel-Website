@@ -32,6 +32,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # Install Playwright dependencies for Chromium
 # Using debian-specific dependencies
 RUN apt-get update && apt-get install -y \
+    curl \
     libglib2.0-0 \
     libnss3 \
     libnspr4 \
