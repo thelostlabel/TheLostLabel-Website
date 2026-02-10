@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Inbox, Mic2, FileText, Users, File, Bell, Settings,
     Disc, Music, Upload, User, ClipboardList, LogOut, ExternalLink,
-    Briefcase, DollarSign, CreditCard, X
+    Briefcase, DollarSign, CreditCard, X, Mail
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }) {
@@ -60,6 +60,7 @@ function DashboardLayoutContent({ children }) {
         { name: 'RELEASES', view: 'releases', icon: <Disc size={16} />, perm: 'admin_view_releases' },
         { name: 'REQUESTS', view: 'requests', icon: <FileText size={16} />, perm: 'admin_view_requests' },
         { name: 'USERS', view: 'users', icon: <Users size={16} />, perm: 'admin_view_users' },
+        { name: 'COMMUNICATIONS', view: 'communications', icon: <Mail size={16} />, perm: 'admin_view_communications' },
         { name: 'CONTENT', view: 'content', icon: <File size={16} />, perm: 'admin_view_content' },
         { name: 'WEBHOOKS', view: 'webhooks', icon: <Bell size={16} />, perm: 'admin_view_webhooks' },
         { name: 'SETTINGS', view: 'settings', icon: <Settings size={16} />, perm: 'admin_view_settings' },
@@ -286,7 +287,7 @@ function DashboardLayoutContent({ children }) {
                 transition: 'margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}>
                 <AnimatePresence mode="popLayout">
-                <motion.div
+                    <motion.div
                         key={currentView}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

@@ -106,6 +106,22 @@ export async function POST(req) {
                     console.log(`[API Scrape] Fallback update failed:`, err.message);
                 }
             }
+
+            // 3. Save History Snapshot
+            if (updatedArtist) {
+                try {
+                    await prisma.artistStatsHistory.create({
+                        data: {
+                            artistId: updatedArtist.id,
+                            monthlyListeners: monthlyListeners,
+                            followers: followers || 0,
+                            date: new Date()
+                        }
+                    });
+                } catch (historyError) {
+                    console.error("[API Scrape] History creation failed:", historyError.message);
+                }
+            }
         }
 
         if (!updatedUser && !updatedArtist) {

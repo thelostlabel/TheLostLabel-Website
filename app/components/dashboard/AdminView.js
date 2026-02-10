@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import NextImage from 'next/image';
-import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download, Search, Music, BarChart3, TrendingUp } from 'lucide-react';
+import { Users, Mic2, Disc, FileAudio, AlertCircle, RefreshCw, Trash2, Edit3, CheckCircle, XCircle, Briefcase, DollarSign, CreditCard, Plus, HelpCircle, MessageSquare, ArrowLeft, SendHorizontal, Edit, Edit2, Download, Search, Music, BarChart3, TrendingUp, Target, FileText } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -163,6 +163,8 @@ export default function AdminView() {
     };
 
     const handleSyncStats = async (userId, existingUrl, artistId = null) => {
+        if (!userId && !existingUrl) return; // Silent return if called without arguments (e.g. from a refresh link)
+
         let spotifyUrl = existingUrl;
         if (!spotifyUrl) {
             spotifyUrl = prompt("Enter Artist Spotify Profile URL:");
@@ -262,7 +264,8 @@ export default function AdminView() {
         earnings: 'admin_view_earnings',
         payments: 'admin_view_payments',
         releases: 'admin_view_releases',
-        settings: 'admin_view_settings'
+        settings: 'admin_view_settings',
+        communications: 'admin_view_communications'
     };
 
     if (!loading && !hasAdminPermission(viewToPerm[view])) {
@@ -275,7 +278,7 @@ export default function AdminView() {
 
             {view === 'overview' && <HomeView />}
             {view === 'submissions' && <SubmissionsView demos={submissions} onUpdateStatus={handleStatusUpdate} />}
-            {view === 'artists' && <ArtistsView artists={artists} users={users} unlistedUsers={unlistedUsers} onSync={handleSyncStats} />}
+            {view === 'artists' && <ArtistsView artists={artists} users={users} unlistedUsers={unlistedUsers} onSync={handleSyncStats} onRefresh={fetchArtists} />}
             {view === 'users' && <UsersView users={users} onRoleChange={handleRoleChange} onRefresh={fetchUsers} />}
             {view === 'requests' && <RequestsView requests={requests} onUpdateStatus={handleRequestStatusUpdate} />}
             {view === 'contracts' && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
@@ -284,6 +287,7 @@ export default function AdminView() {
             {view === 'content' && <ContentView content={siteContent} onRefresh={fetchContent} />}
             {view === 'webhooks' && <WebhooksView webhooks={webhooks} onRefresh={fetchWebhooks} />}
             {view === 'releases' && <ReleasesView releases={releases} />}
+            {view === 'communications' && <CommunicationsView artists={artists} />}
             {view === 'settings' && <SettingsView />}
 
         </div>
@@ -563,7 +567,7 @@ function UserLinker({ artistId, users, artistEmail }) {
     );
 }
 
-function ArtistsView({ artists, users, onSync }) {
+function ArtistsView({ artists, users, onSync, onRefresh }) {
     const { showToast, showConfirm } = useToast();
     const { data: session } = useSession();
     const canManage = session?.user?.role === 'admin' || session?.user?.permissions?.canManageArtists;
@@ -701,7 +705,7 @@ function ArtistsView({ artists, users, onSync }) {
                                     const res = await fetch('/api/admin/scrape/refresh', { method: 'POST' });
                                     const data = await res.json();
                                     showToast(`Synced ${data.count} artists.`, "success");
-                                    onSync(); // Refresh lists
+                                    if (onRefresh) onRefresh();
                                 } catch (e) { showToast("Sync failed", "error"); }
                             }}
                             style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -1383,6 +1387,7 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                                             { key: 'admin_view_payments', label: 'PAYMENTS' },
                                             { key: 'admin_view_requests', label: 'REQUESTS' },
                                             { key: 'admin_view_users', label: 'USERS' },
+                                            { key: 'admin_view_communications', label: 'COMMUNICATIONS' },
                                             { key: 'admin_view_content', label: 'CONTENT' },
                                             { key: 'admin_view_webhooks', label: 'WEBHOOKS' },
                                             { key: 'admin_view_settings', label: 'SETTINGS' }
@@ -4663,6 +4668,162 @@ function RequestComments({ request }) {
                     {sending ? '...' : 'SEND'}
                 </button>
             </form>
+        </div>
+    );
+
+}
+
+function CommunicationsView({ artists }) {
+    const { showToast } = useToast();
+    const [subject, setSubject] = useState('');
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+    const [sendToAll, setSendToAll] = useState(true);
+    const [selectedArtistIds, setSelectedArtistIds] = useState([]);
+    const [results, setResults] = useState(null);
+
+    const handleSend = async (e) => {
+        e.preventDefault();
+        if (!subject.trim() || !message.trim()) {
+            showToast("Subject and message are required", "error");
+            return;
+        }
+
+        if (!sendToAll && selectedArtistIds.length === 0) {
+            showToast("Select at least one artist", "error");
+            return;
+        }
+
+        setSending(true);
+        setResults(null);
+        try {
+            const res = await fetch('/api/admin/communications/mail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subject,
+                    html: message.replace(/\n/g, '<br>'),
+                    recipientIds: sendToAll ? null : selectedArtistIds,
+                    sendToAll
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast(`Successfully sent ${data.successCount} emails`, "success");
+                setResults(data);
+                if (data.failureCount === 0) {
+                    setSubject('');
+                    setMessage('');
+                    setSelectedArtistIds([]);
+                }
+            } else {
+                showToast(data.error || "Failed to send emails", "error");
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("An error occurred while sending emails", "error");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const toggleArtist = (id) => {
+        setSelectedArtistIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const glassStyle = {
+        background: 'rgba(255,255,255,0.02)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.05)',
+        borderRadius: '24px',
+        overflow: 'hidden'
+    };
+
+    const inputStyle = {
+        width: '100%',
+        padding: '12px',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        color: '#fff',
+        borderRadius: '16px',
+        fontSize: '12px'
+    };
+
+    const btnStyle = {
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.05)',
+        color: '#666',
+        padding: '8px 16px',
+        fontSize: '9px',
+        cursor: 'pointer',
+        fontWeight: '900',
+        letterSpacing: '2px',
+        textDecoration: 'none',
+        borderRadius: '12px',
+        transition: 'all 0.3s'
+    };
+
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px', alignItems: 'start' }}>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={glassStyle}>
+                <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h2 style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '4px', color: '#fff' }}>COMPOSE_BROADCAST</h2>
+                </div>
+                <form onSubmit={handleSend} style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '9px', fontWeight: '900', color: '#444' }}>SUBJECT</label>
+                        <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Enter subject..." style={inputStyle} />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '9px', fontWeight: '900', color: '#444' }}>MESSAGE (PLACEHOLDER: {"{{name}}"})</label>
+                        <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Hello {{name}}..." style={{ ...inputStyle, minHeight: '250px' }} />
+                    </div>
+                    <button disabled={sending} className="glow-button" style={{ width: '100%', padding: '15px', fontWeight: '900', letterSpacing: '2px' }}>
+                        {sending ? 'SENDING...' : 'SEND COMMUNICATIONS'}
+                    </button>
+                    {results && (
+                        <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 'bold' }}>
+                            Last distribution: {results.successCount} sent, {results.failureCount} failed.
+                        </div>
+                    )}
+                </form>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={glassStyle}>
+                <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '4px', color: '#fff' }}>RECIPIENTS</h3>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <button onClick={() => setSendToAll(true)} style={{ ...btnStyle, background: sendToAll ? 'var(--accent)' : 'transparent', color: sendToAll ? '#000' : '#444' }}>ALL</button>
+                        <button onClick={() => setSendToAll(false)} style={{ ...btnStyle, background: !sendToAll ? 'var(--accent)' : 'transparent', color: !sendToAll ? '#000' : '#444' }}>SELECTIVE</button>
+                    </div>
+                </div>
+                <div style={{ padding: '20px', maxHeight: '600px', overflowY: 'auto' }}>
+                    {sendToAll ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: '10px', fontWeight: '800' }}>
+                            TARGETING ALL {artists.length} ARTISTS
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {artists.filter(a => a.email).map(a => (
+                                <div key={a.id} onClick={() => toggleArtist(a.id)} style={{
+                                    padding: '12px',
+                                    background: selectedArtistIds.includes(a.id) ? 'rgba(var(--accent-rgb), 0.1)' : 'rgba(255,255,255,0.02)',
+                                    borderRadius: '12px',
+                                    border: `1px solid ${selectedArtistIds.includes(a.id) ? 'var(--accent)' : 'transparent'}`,
+                                    cursor: 'pointer',
+                                    fontSize: '11px'
+                                }}>
+                                    <div style={{ fontWeight: '800', color: '#fff' }}>{a.name}</div>
+                                    <div style={{ fontSize: '9px', color: '#666' }}>{a.email}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </motion.div>
         </div>
     );
 }

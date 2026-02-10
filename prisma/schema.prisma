@@ -97,9 +97,21 @@ model Artist {
   lastSyncedAt     DateTime?
   monthlyListeners Int?           @default(0)
   verified         Boolean?       @default(false)
-  user             User?          @relation(fields: [userId], references: [id])
+  user             User?                @relation(fields: [userId], references: [id])
   contracts        Contract[]
   royaltySplits    RoyaltySplit[]
+  statsHistory     ArtistStatsHistory[]
+}
+
+model ArtistStatsHistory {
+  id               String   @id @default(uuid())
+  artistId         String
+  monthlyListeners Int
+  followers        Int?
+  date             DateTime @default(now())
+  artist           Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@index([artistId, date])
 }
 
 model Release {
