@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Configuration
-SERVER_USER="site1"
-SERVER_IP="87-248-157-4.sslip.io"
-SERVER_PATH="/home/site1/htdocs/87-248-157-4.sslip.io"
+SERVER_USER="thelostlabel"
+SERVER_IP="thelostlabel.com"
+SERVER_PATH="/home/thelostlabel/htdocs/thelostlabel.com"
 
 echo "🚀 Starting deployment to $SERVER_IP..."
 
