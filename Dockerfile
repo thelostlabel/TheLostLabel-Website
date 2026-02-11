@@ -35,8 +35,8 @@ ENV NEXT_TELEMETRY_DISABLED 1
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN addgroup --system --gid 1001 nodejs
-# Create user with a proper home directory
-RUN adduser --system --uid 1001 --group nextjs --home /home/nextjs
+# Create user with a proper home directory, using the existing nodejs group
+RUN adduser --system --uid 1001 --ingroup nodejs --home /home/nextjs nextjs
 
 # Copy necessary files
 COPY --from=builder /app/public ./public
