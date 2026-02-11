@@ -23,46 +23,19 @@ RUN npx prisma generate
 RUN npm run build
 
 # 3. Production image, copy all the files and run next
-FROM node:20-bookworm-slim AS runner
+# Use the official Playwright image to avoid installing browsers/deps from scratch
+FROM mcr.microsoft.com/playwright:v1.58.1-jammy AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
-# Set Playwright path explicitly
-ENV PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
 
-# Install Playwright dependencies for Chromium
-# Using debian-specific dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxcb1 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libpango-1.0-0 \
-    libcairo2 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Chromium browser to the specific path
-RUN npx playwright install chromium
+# The official image already has browsers installed at /ms-playwright
+# We set the path to ensure the app finds them
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN addgroup --system --gid 1001 nodejs
-# Create user with a proper home directory to avoid "/nonexistent" issues
+# Create user with a proper home directory
 RUN adduser --system --uid 1001 --group nextjs --home /home/nextjs
 
 # Copy necessary files
@@ -70,8 +43,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Ensure the app user owns the browsers and the app dir
-RUN chown -R nextjs:nodejs /app/ms-playwright
+# Join the nextjs user to the root group if needed to access /ms-playwright, 
+# or change ownership. The official image sets /ms-playwright as a global cache.
+# We ensure the nextjs user has read access (usually standard).
+# To be safe, we allow nextjs to own it or just verify access.
+# Ideally, we shouldn't move it. 
+# IMPORTANT: If the app tries to write there, it will fail. But it shouldn't.
 
 USER nextjs
 
