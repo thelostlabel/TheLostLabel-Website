@@ -103,12 +103,12 @@ export async function POST(req) {
                         if (scraped) {
                             if (scraped.image) finalImage = scraped.image;
                             if (scraped.releaseDate && !finalDate) {
-                                // Simple extraction and basic parsing for release date
-                                const yearMatch = scraped.releaseDate.match(/[0-9]{4}/);
-                                if (yearMatch) {
-                                    const d = new Date(scraped.releaseDate.replace(/Yayınlanma tarihi:\s*/i, '').replace(/Release date:\s*/i, ''));
-                                    if (!isNaN(d.getTime())) finalDate = d;
-                                }
+                                // Try to parse the scraped date
+                                const cleanDate = scraped.releaseDate.replace(/Yayınlanma tarihi:\s*/i, '')
+                                    .replace(/Releases on\s*/i, '')
+                                    .replace(/Release date:\s*/i, '');
+                                const d = new Date(cleanDate);
+                                if (!isNaN(d.getTime())) finalDate = d;
                             }
                         }
                     } catch (e) {
