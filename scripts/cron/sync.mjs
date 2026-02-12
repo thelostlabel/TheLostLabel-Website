@@ -69,7 +69,9 @@ async function main() {
                 if (!isNaN(d.getTime())) finalDate = d;
             }
 
-            if (!finalImage || album.release_date === '0000') {
+            // Scrape if missing image, placeholder image, or incomplete date
+            const isPlaceholder = finalImage && (finalImage.includes('ab67616d0000b273') || finalImage.includes('ab676161'));
+            if (!finalImage || isPlaceholder || album.release_date === '0000') {
                 const prereleaseUrl = `https://open.spotify.com/prerelease/${track.id}`;
                 try {
                     if (!browser) browser = await chromium.launch({ headless: true });
@@ -85,26 +87,41 @@ async function main() {
             }
 
             if (!finalDate) finalDate = item.added_at ? new Date(item.added_at) : new Date();
-
             const releaseId = album.id;
-            if (!playlistReleases.has(releaseId)) {
-                playlistReleases.set(releaseId, {
-                    id: releaseId,
-                    name: album.name,
-                    artistName: (album.artists || []).map(a => a.name).join(', '),
-                    image: finalImage,
-                    spotifyUrl: album.external_urls?.spotify,
-                    releaseDate: finalDate.toISOString(),
-                    artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
-                    type: album.album_type,
-                    popularity: track.popularity || 0,
-                    previewUrl: track.preview_url
-                });
+            if (!releaseId) continue;
+
+            const releaseData = {
+                id: releaseId,
+                name: album.name,
+                artistName: (album.artists || []).map(a => a.name).join(', '),
+                image: finalImage,
+                spotifyUrl: album.external_urls?.spotify,
+                releaseDate: finalDate.toISOString(),
+                artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
+                type: album.album_type,
+                popularity: track.popularity || 0,
+                previewUrl: track.preview_url
+            };
+
+            // FORCE IMAGE FOR MONTAGEM REMOVED - using generic scraper logic above
+            playlistReleases.set(releaseId, releaseData);
+        }
+
+        // POST-PROCESS: Fallback images for variants from main versions
+        const results = Array.from(playlistReleases.values());
+        for (const rel of results) {
+            if (!rel.image || rel.image.includes('ab676161')) {
+                const baseName = rel.name.split(' (')[0].split(' - ')[0].trim().toLowerCase();
+                const main = results.find(m => m.name.toLowerCase() === baseName && m.image && !m.image.includes('ab676161'));
+                if (main) {
+                    rel.image = main.image;
+                    if (new Date(main.releaseDate) > new Date()) rel.releaseDate = main.releaseDate;
+                }
             }
         }
 
-        console.log(`Syncing ${playlistReleases.size} releases...`);
-        for (const rel of playlistReleases.values()) {
+        console.log(`Syncing ${results.length} releases...`);
+        for (const rel of results) {
             await prisma.release.upsert({
                 where: { id: rel.id },
                 update: rel,
