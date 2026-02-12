@@ -51,31 +51,28 @@ export async function PATCH(req) {
             include: { artist: true }
         });
 
-        // Validation for linked artists
-        if (user.artist) {
-            // Check if they are actually trying to CHANGE restricted fields
-            const isNameChanging = stageName && stageName !== user.stageName;
-            const isUrlChanging = spotifyUrl && spotifyUrl !== user.spotifyUrl;
+        // Validation for linked artists: prevent changing critical fields
+        let dataToUpdate = {
+            email: email || undefined,
+            fullName: fullName || undefined,
+            notifyDemos: notifyDemos !== undefined ? notifyDemos : undefined,
+            notifyEarnings: notifyEarnings !== undefined ? notifyEarnings : undefined,
+            notifySupport: notifySupport !== undefined ? notifySupport : undefined,
+            notifyContracts: notifyContracts !== undefined ? notifyContracts : undefined
+        };
 
-            if (isNameChanging || isUrlChanging) {
-                return new Response(JSON.stringify({
-                    error: "Once your profile is linked to an artist, Stage Name and Spotify URL can only be changed by support."
-                }), { status: 403 });
-            }
+        if (user.artist) {
+            // Linked users cannot change stageName or spotifyUrl
+            // We simply ignore these fields if provided
+        } else {
+            // Unlinked users can update these
+            dataToUpdate.stageName = stageName || undefined;
+            dataToUpdate.spotifyUrl = spotifyUrl || undefined;
         }
 
         const updatedUser = await prisma.user.update({
             where: { id: session.user.id },
-            data: {
-                email: email || undefined,
-                fullName: fullName || undefined,
-                stageName: stageName || undefined,
-                spotifyUrl: spotifyUrl || undefined,
-                notifyDemos: notifyDemos !== undefined ? notifyDemos : undefined,
-                notifyEarnings: notifyEarnings !== undefined ? notifyEarnings : undefined,
-                notifySupport: notifySupport !== undefined ? notifySupport : undefined,
-                notifyContracts: notifyContracts !== undefined ? notifyContracts : undefined
-            }
+            data: dataToUpdate
         });
 
         return new Response(JSON.stringify(updatedUser), { status: 200 });

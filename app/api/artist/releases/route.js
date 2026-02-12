@@ -46,7 +46,7 @@ export async function GET(req) {
             where: {
                 OR: orConditions
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { releaseDate: 'desc' },
             include: { requests: true }
         });
 

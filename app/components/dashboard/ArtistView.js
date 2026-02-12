@@ -812,7 +812,15 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
 
                             <div style={{ position: 'relative', zIndex: 1, padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '9px', fontWeight: '900', background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: '4px', color: '#fff', letterSpacing: '1px' }}>LATEST DROP</span>
+                                    <span style={{
+                                        fontSize: '9px', fontWeight: '900',
+                                        background: new Date(recentReleases[0].releaseDate) > new Date() ? 'var(--accent)' : 'rgba(255,255,255,0.2)',
+                                        padding: '4px 8px', borderRadius: '4px',
+                                        color: new Date(recentReleases[0].releaseDate) > new Date() ? '#000' : '#fff',
+                                        letterSpacing: '1px'
+                                    }}>
+                                        {new Date(recentReleases[0].releaseDate) > new Date() ? 'UPCOMING DROP' : 'LATEST DROP'}
+                                    </span>
                                     <ExternalLink size={14} color="#fff" style={{ opacity: 0.7 }} />
                                 </div>
 
@@ -822,7 +830,9 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                     </div>
                                     <div>
                                         <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', margin: 0 }}>{recentReleases[0].name}</h4>
-                                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>{recentReleases[0].type?.toUpperCase() || 'RELEASE'}</p>
+                                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
+                                            {new Date(recentReleases[0].releaseDate).toLocaleDateString()}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1966,158 +1976,175 @@ function ProfileView({ onUpdate }) {
     }
 
     return (
-        <div style={{ maxWidth: '800px' }}>
-            <div style={{ ...glassStyle, padding: '40px' }}>
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>EMAIL</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="email@example.com"
-                        style={inputStyle}
-                    />
-                </div>
+        <div style={{ maxWidth: '1000px', margin: '0 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
+                {/* LEFT COLUMN: Profile Details */}
+                <div style={{ ...glassStyle, padding: '40px', height: 'fit-content' }}>
+                    <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '15px' }}>
+                        PROFILE_DETAILS
+                    </h3>
 
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>FULL NAME</label>
-                    <input
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="YOUR FULL NAME"
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>STAGE NAME / ARTIST NAME</label>
-                    <input
-                        type="text"
-                        value={stageName}
-                        onChange={(e) => setStageName(e.target.value)}
-                        placeholder="YOUR ARTIST NAME"
-                        disabled={!!profile?.artist}
-                        style={{ ...inputStyle, ...(profile?.artist ? { background: 'rgba(255,255,255,0.01)', color: '#666', cursor: 'not-allowed' } : {}) }}
-                    />
-                    {profile?.artist && <p style={{ fontSize: '8px', color: 'var(--accent)', marginTop: '5px', fontWeight: '800' }}>LOCKED: LINKED TO VERIFIED ARTIST</p>}
-                </div>
-
-                <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>SPOTIFY PROFILE URL</label>
-                    <input
-                        type="url"
-                        value={spotifyUrl}
-                        onChange={(e) => setSpotifyUrl(e.target.value)}
-                        placeholder="HTTPS://OPEN.SPOTIFY.COM/ARTIST/..."
-                        disabled={!!profile?.artist}
-                        style={{ ...inputStyle, ...(profile?.artist ? { background: 'rgba(255,255,255,0.01)', color: '#666', cursor: 'not-allowed' } : {}) }}
-                    />
-                </div>
-
-                <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                    <label style={{ ...labelStyle, marginBottom: '15px', color: '#fff' }}>EMAIL NOTIFICATIONS</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        {[
-                            { label: 'DEMO UPDATES', state: notifyDemos, set: setNotifyDemos, desc: 'Get notified when we receive or review your demos.' },
-                            { label: 'NEW CONTRACTS', state: notifyContracts, set: setNotifyContracts, desc: 'Receive emails when new contracts are created for you.' },
-                            { label: 'EARNINGS REPORTS', state: notifyEarnings, set: setNotifyEarnings, desc: 'Monthly updates about your royalties and payouts.' },
-                            { label: 'SUPPORT TICKETS', state: notifySupport, set: setNotifySupport, desc: 'Updates on your help requests and account status.' }
-                        ].map((item, i) => (
-                            <div key={i}
-                                onClick={() => item.set(!item.state)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '12px',
-                                    padding: '12px', borderRadius: '8px',
-                                    background: item.state ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                                    border: item.state ? '1px solid rgba(0, 255, 136, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
-                                    cursor: 'pointer', transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <div style={{
-                                    width: '16px', height: '16px', borderRadius: '4px',
-                                    border: item.state ? 'none' : '2px solid #444',
-                                    background: item.state ? 'var(--status-success)' : 'transparent',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
-                                    {item.state && <CheckCircle size={10} color="#000" />}
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '11px', fontWeight: '900', color: item.state ? '#fff' : '#888' }}>{item.label}</div>
-                                    <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>{item.desc}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="glow-button"
-                    style={{ width: '100%', padding: '15px', opacity: saving ? 0.5 : 1, fontWeight: '900', letterSpacing: '2px' }}
-                >
-                    {saving ? 'SAVING...' : 'SAVE PROFILE'}
-                </button>
-            </div>
-
-            {/* Password Change Section */}
-            <div style={{ ...glassStyle, padding: '40px', marginTop: '30px' }}>
-                <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', marginBottom: '25px' }}>CHANGE_PASSWORD</h3>
-
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={labelStyle}>CURRENT PASSWORD</label>
-                    <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        style={inputStyle}
-                        placeholder="••••••••"
-                    />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
-                    <div>
-                        <label style={labelStyle}>NEW PASSWORD</label>
+                    <div style={{ marginBottom: '25px' }}>
+                        <label style={labelStyle}>EMAIL ADDRESS</label>
                         <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="email@example.com"
                             style={inputStyle}
-                            placeholder="••••••••"
                         />
                     </div>
-                    <div>
-                        <label style={labelStyle}>CONFIRM NEW PASSWORD</label>
+
+                    <div style={{ marginBottom: '25px' }}>
+                        <label style={labelStyle}>FULL NAME (LEGAL)</label>
                         <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            type="text"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            placeholder="YOUR FULL NAME"
                             style={inputStyle}
-                            placeholder="••••••••"
                         />
                     </div>
+
+                    <div style={{ marginBottom: '25px', opacity: profile?.artist ? 0.7 : 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <label style={{ ...labelStyle, marginBottom: 0 }}>STAGE NAME</label>
+                            {profile?.artist && <Lock size={10} color="var(--accent)" />}
+                        </div>
+                        <input
+                            type="text"
+                            value={stageName}
+                            onChange={(e) => setStageName(e.target.value)}
+                            placeholder="YOUR ARTIST NAME"
+                            disabled={!!profile?.artist}
+                            style={{ ...inputStyle, cursor: profile?.artist ? 'not-allowed' : 'text', borderColor: profile?.artist ? 'rgba(255,255,255,0.05)' : inputStyle.borderColor }}
+                        />
+                        {profile?.artist && (
+                            <p style={{ fontSize: '8px', color: '#666', marginTop: '6px', fontStyle: 'italic' }}>
+                                Managed by label. Contact support to change.
+                            </p>
+                        )}
+                    </div>
+
+                    <div style={{ marginBottom: '30px', opacity: profile?.artist ? 0.7 : 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <label style={{ ...labelStyle, marginBottom: 0 }}>SPOTIFY LINK</label>
+                            {profile?.artist && <Lock size={10} color="var(--accent)" />}
+                        </div>
+                        <input
+                            type="url"
+                            value={spotifyUrl}
+                            onChange={(e) => setSpotifyUrl(e.target.value)}
+                            placeholder="HTTPS://OPEN.SPOTIFY.COM/ARTIST/..."
+                            disabled={!!profile?.artist}
+                            style={{ ...inputStyle, cursor: profile?.artist ? 'not-allowed' : 'text', borderColor: profile?.artist ? 'rgba(255,255,255,0.05)' : inputStyle.borderColor }}
+                        />
+                    </div>
+
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="glow-button"
+                        style={{ width: '100%', padding: '15px', opacity: saving ? 0.5 : 1, fontWeight: '900', letterSpacing: '2px' }}
+                    >
+                        {saving ? 'SAVING...' : 'SAVE CHANGES'}
+                    </button>
                 </div>
 
-                <button
-                    onClick={handlePasswordChange}
-                    disabled={passwordSaving}
-                    style={{
-                        width: '100%',
-                        padding: '15px',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: '#fff',
-                        borderRadius: '0px',
-                        fontSize: '11px',
-                        fontWeight: '900',
-                        letterSpacing: '2px',
-                        cursor: 'pointer',
-                        opacity: passwordSaving ? 0.5 : 1
-                    }}
-                >
-                    {passwordSaving ? 'UPDATING...' : 'UPDATE PASSWORD'}
-                </button>
+                {/* RIGHT COLUMN: Password & Notifications */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+
+                    {/* Security Section */}
+                    <div style={{ ...glassStyle, padding: '30px' }}>
+                        <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Shield size={14} color="var(--accent)" /> SECURITY
+                        </h3>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={labelStyle}>CURRENT PASSWORD</label>
+                            <input
+                                type="password"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                style={inputStyle}
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={labelStyle}>NEW PASSWORD</label>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                style={inputStyle}
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '25px' }}>
+                            <label style={labelStyle}>CONFIRM PASSWORD</label>
+                            <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                style={inputStyle}
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handlePasswordChange}
+                            disabled={passwordSaving}
+                            style={{
+                                width: '100%', padding: '12px',
+                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#fff', fontSize: '10px', fontWeight: '900', letterSpacing: '1px',
+                                cursor: passwordSaving ? 'wait' : 'pointer', opacity: passwordSaving ? 0.5 : 1
+                            }}
+                        >
+                            {passwordSaving ? 'UPDATING...' : 'UPDATE PASSWORD'}
+                        </button>
+                    </div>
+
+                    {/* Notifications Section */}
+                    <div style={{ ...glassStyle, padding: '30px' }}>
+                        <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Bell size={14} color="#fff" /> NOTIFICATIONS
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {[
+                                { label: 'DEMO UPDATES', state: notifyDemos, set: setNotifyDemos },
+                                { label: 'NEW CONTRACTS', state: notifyContracts, set: setNotifyContracts },
+                                { label: 'EARNINGS REPORTS', state: notifyEarnings, set: setNotifyEarnings },
+                                { label: 'SUPPORT TICKETS', state: notifySupport, set: setNotifySupport }
+                            ].map((item, i) => (
+                                <div key={i}
+                                    onClick={() => item.set(!item.state)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '10px 12px', borderRadius: '6px',
+                                        background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#aaa' }}>{item.label}</span>
+                                    <div style={{
+                                        width: '32px', height: '18px', borderRadius: '10px',
+                                        background: item.state ? 'var(--status-success)' : 'rgba(255,255,255,0.1)',
+                                        position: 'relative', transition: 'background 0.2s'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute', top: '2px', left: item.state ? '16px' : '2px',
+                                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
+                                            transition: 'left 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                        }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <p style={{ marginTop: '30px', fontSize: '10px', color: '#444', textAlign: 'center', letterSpacing: '1px' }}>
