@@ -1,8 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { sendMail } from "@/lib/mail";
-import { generateContractCreatedEmail } from "@/lib/mail-templates";
 
 // GET: Fetch contracts
 export async function GET(req) {
@@ -159,51 +157,7 @@ export async function POST(req) {
             });
         }
 
-        // Send Email Notification for Manual Contracts (if NOT linked to a demo)
-        if (!demoId) {
-            // Find target user
-            let targetUserId = userId;
-            if (!targetUserId && artistId) {
-                const artistProfile = await prisma.artist.findUnique({
-                    where: { id: artistId },
-                    select: { userId: true }
-                });
-                targetUserId = artistProfile?.userId;
-            }
-
-            if (targetUserId) {
-                const userPrefs = await prisma.user.findUnique({
-                    where: { id: targetUserId },
-                    select: { email: true, stageName: true, fullName: true, notifyContracts: true }
-                });
-
-                if (userPrefs?.notifyContracts) {
-                    try {
-                        await sendMail({
-                            to: userPrefs.email,
-                            subject: 'New Contract Generated | LOST.',
-                            html: generateContractCreatedEmail(
-                                userPrefs.stageName || userPrefs.fullName || "Artist",
-                                title || releaseId || "New Project"
-                            )
-                        });
-                    } catch (mailError) {
-                        console.error("Failed to send manual contract email:", mailError);
-                    }
-                }
-            } else if (primaryArtistEmail) {
-                // Legacy fallback for unlinked emails
-                try {
-                    await sendMail({
-                        to: primaryArtistEmail,
-                        subject: 'New Contract Generated | LOST.',
-                        html: generateContractCreatedEmail(primaryArtistName || "Artist", title || "New Project")
-                    });
-                } catch (mailError) {
-                    console.error("Failed to send manual contract email (legacy):", mailError);
-                }
-            }
-        }
+        // Email notification removed as per user request
 
         return new Response(JSON.stringify(contract), { status: 201 });
     } catch (error) {
