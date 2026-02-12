@@ -52,28 +52,40 @@ export default async function ArtistDetailPage({ params }) {
         );
     }
 
-    let releases = [];
-
-    // Map DB releases to the rendering format and deduplicate by name
-    const seen = new Set();
+    // Map DB releases to the rendering format and group by base name
+    const groupedReleases = {};
     if (dbReleases && Array.isArray(dbReleases)) {
         dbReleases.forEach(r => {
-            const normalizedName = r.name.toLowerCase().trim();
-            if (seen.has(normalizedName)) return;
-            seen.add(normalizedName);
+            const baseName = r.name.split('(')[0].split('-')[0].trim().toLowerCase();
 
-            releases.push({
-                id: r.id,
-                name: r.name,
-                image: r.image,
-                spotify_url: r.spotifyUrl,
-                release_date: r.releaseDate,
-                artists: JSON.parse(r.artistsJson || '[]'),
-                type: r.type || 'album',
-                is_manual: true
-            });
+            if (!groupedReleases[baseName]) {
+                groupedReleases[baseName] = {
+                    id: r.id,
+                    name: r.name,
+                    image: r.image,
+                    spotify_url: r.spotifyUrl,
+                    release_date: r.releaseDate,
+                    artists: JSON.parse(r.artistsJson || '[]'),
+                    type: r.type || 'album',
+                    is_manual: true,
+                    versionCount: 0
+                };
+            }
+            groupedReleases[baseName].versionCount++;
+
+            if (!r.name.includes('(') && !r.name.includes('-')) {
+                Object.assign(groupedReleases[baseName], {
+                    id: r.id,
+                    name: r.name,
+                    image: r.image,
+                    spotify_url: r.spotifyUrl,
+                    release_date: r.releaseDate
+                });
+            }
         });
     }
+
+    const releases = Object.values(groupedReleases);
 
     // Sort by date
     releases.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));

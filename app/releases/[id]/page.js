@@ -42,7 +42,8 @@ export default function ReleaseDetailPage() {
                             preview_url: track.preview_url
                         }
                     ],
-                    spotify_url: track.spotify_url || baseRelease?.spotify_url
+                    spotify_url: track.spotify_url || baseRelease?.spotify_url,
+                    versions: baseRelease?.versions || []
                 });
 
                 const resolveSpotifyEndpoint = (spotifyUrl) => {
@@ -99,6 +100,29 @@ export default function ReleaseDetailPage() {
                 }
                 const track = await trackRes.json();
                 setRelease(buildFromTrack(track));
+                // Post-process to merge versions into tracks if this is a single-disc style release
+                setRelease(prev => {
+                    if (!prev || !prev.versions || prev.versions.length <= 1) return prev;
+
+                    const existingTrackIds = new Set(prev.tracks?.map(t => t.id) || []);
+                    const versionTracks = prev.versions
+                        .filter(v => v.id !== prev.id && v.id !== releaseId && !existingTrackIds.has(v.id))
+                        .map(v => ({
+                            id: v.id,
+                            name: v.name,
+                            artists: v.artists || prev.artists,
+                            duration_ms: 0, // We don't have this for all versions easily
+                            preview_url: v.preview_url,
+                            is_version: true
+                        }));
+
+                    return {
+                        ...prev,
+                        tracks: [...(prev.tracks || []), ...versionTracks],
+                        total_tracks: (prev.tracks?.length || 0) + versionTracks.length
+                    };
+                });
+
             } catch (e) {
                 console.error(e);
                 setError(true);
@@ -145,6 +169,10 @@ export default function ReleaseDetailPage() {
         );
     }
 
+    const normalizedImage = release.image?.startsWith('private/')
+        ? `/api/files/release/${release.id}`
+        : release.image;
+
     return (
         <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '110px' }}>
             <BackgroundEffects />
@@ -152,7 +180,7 @@ export default function ReleaseDetailPage() {
             <section className="release-hero">
                 <div
                     className="hero-backdrop"
-                    style={release.image ? { backgroundImage: `url(${release.image})` } : undefined}
+                    style={normalizedImage ? { backgroundImage: `url(${normalizedImage})` } : undefined}
                 />
                 <div className="hero-inner">
                     <Link href="/releases" className="back-link">
@@ -168,7 +196,7 @@ export default function ReleaseDetailPage() {
                             style={{ borderRadius: '32px', overflow: 'hidden' }}
                         >
                             <NextImage
-                                src={release.image}
+                                src={normalizedImage || '/placeholder.png'}
                                 alt={release.name}
                                 width={420}
                                 height={420}
@@ -185,7 +213,7 @@ export default function ReleaseDetailPage() {
                         >
                             <div className="meta-kicker">
                                 <span className="kicker-line" />
-                                <span>RELEASE DATA</span>
+                                <span>{release?.type?.toUpperCase() || 'RELEASE'} DATA</span>
                             </div>
                             <h1 className="release-title">{release.name}</h1>
 
@@ -224,7 +252,7 @@ export default function ReleaseDetailPage() {
                                                 id: firstPreview.id,
                                                 name: firstPreview.name,
                                                 artist: formatArtists(firstPreview.artists),
-                                                image: release.image,
+                                                image: normalizedImage,
                                                 previewUrl: firstPreview.preview_url
                                             });
                                         }}
@@ -267,7 +295,7 @@ export default function ReleaseDetailPage() {
                                                 id: track.id,
                                                 name: track.name,
                                                 artist: track.artists,
-                                                image: release.image,
+                                                image: normalizedImage,
                                                 previewUrl: track.preview_url
                                             });
                                         }
@@ -313,7 +341,16 @@ export default function ReleaseDetailPage() {
                                         </div>
                                     </div>
                                     <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                        <Clock size={12} /> {formatDuration(track.duration_ms)}
+                                        {track.duration_ms > 0 && (
+                                            <>
+                                                <Clock size={12} /> {formatDuration(track.duration_ms)}
+                                            </>
+                                        )}
+                                        {track.is_version && (
+                                            <span style={{ fontSize: '9px', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                VERSION
+                                            </span>
+                                        )}
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         {track.preview_url ? (
@@ -331,6 +368,7 @@ export default function ReleaseDetailPage() {
                         })}
                     </div>
                 </motion.section>
+
             </div>
 
             <style jsx>{`

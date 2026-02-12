@@ -43,7 +43,7 @@ export async function PATCH(req) {
 
     try {
         const body = await req.json();
-        const { fullName, stageName, spotifyUrl, notifyDemos, notifyEarnings, notifySupport, notifyContracts } = body;
+        const { email, fullName, stageName, spotifyUrl, notifyDemos, notifyEarnings, notifySupport, notifyContracts } = body;
 
         // Check if user is linked to an Artist profile
         const user = await prisma.user.findUnique({
@@ -52,8 +52,8 @@ export async function PATCH(req) {
         });
 
         // Validation for linked artists
-        if (user.artist && (stageName || spotifyUrl)) {
-            // Check if they are actually trying to CHANGE it, not just sending the same value
+        if (user.artist) {
+            // Check if they are actually trying to CHANGE restricted fields
             const isNameChanging = stageName && stageName !== user.stageName;
             const isUrlChanging = spotifyUrl && spotifyUrl !== user.spotifyUrl;
 
@@ -67,6 +67,7 @@ export async function PATCH(req) {
         const updatedUser = await prisma.user.update({
             where: { id: session.user.id },
             data: {
+                email: email || undefined,
                 fullName: fullName || undefined,
                 stageName: stageName || undefined,
                 spotifyUrl: spotifyUrl || undefined,

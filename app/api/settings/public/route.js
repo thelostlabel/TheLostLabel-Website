@@ -27,6 +27,8 @@ export async function GET() {
             instagram: config.instagram || '',
             spotify: config.spotify || '',
             youtube: config.youtube || '',
+            twitter: config.twitter || '',
+            facebook: config.facebook || '',
             showStats: config.showStats ?? true,
             registrationsOpen: config.registrationsOpen ?? true,
             maintenanceMode: config.maintenanceMode ?? false,

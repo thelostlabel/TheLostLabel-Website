@@ -29,6 +29,29 @@
   --status-error: #ff4444;
   --status-info: #00aaff;
   --status-neutral: #888888;
+  color-scheme: dark;
+}
+
+/* Custom Date Input Styles */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}
+
+input[type="date"]:hover,
+input[type="date"]:focus {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 * {

@@ -23,7 +23,8 @@ export async function GET(req) {
                         id: true,
                         name: true,
                         monthlyListeners: true,
-                        spotifyUrl: true
+                        spotifyUrl: true,
+                        image: true
                     }
                 }
             }
@@ -155,6 +156,7 @@ export async function GET(req) {
         return new Response(JSON.stringify({
             artistId: artistProfile?.id || artistId,
             artistName: artistStageName,
+            artistImage: artistProfile?.image || userProfile?.artist?.image,
             listeners: monthlyListeners,
             earnings: totalEarnings,
             streams: totalStreams,
