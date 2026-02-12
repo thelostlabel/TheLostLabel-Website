@@ -2719,6 +2719,7 @@ function SettingsView({ users = [], artists = [] }) {
                     registrationsOpen: parsed.registrationsOpen ?? true,
                     maintenanceMode: parsed.maintenanceMode ?? false,
                     adminEmail: parsed.adminEmail || '',
+                    defaultPlaylistId: parsed.defaultPlaylistId || '6QHy5LPKDRHDdKZGBFxRY8',
                     // Home Page
                     heroText: parsed.heroText || 'THE NEW ORDER',
                     heroSubText: parsed.heroSubText || 'INDEPENDENT DISTRIBUTION REDEFINED.',
@@ -2774,11 +2775,12 @@ function SettingsView({ users = [], artists = [] }) {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await fetch('/api/admin/settings', {
+            const res = await fetch('/api/admin/settings', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ config })
             });
+            if (!res.ok) throw new Error('Failed to save settings');
             showToast('System settings saved successfully', "success");
         } catch (e) {
             console.error(e);

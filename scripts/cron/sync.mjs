@@ -90,14 +90,26 @@ async function main() {
             const releaseId = album.id;
             if (!releaseId) continue;
 
+            // Use track artists to capture everyone (features, etc.)
+            let allArtists = track.artists && track.artists.length > 0 ? track.artists : (album.artists || []);
+
+            // Fallback: If no artist objects, but artistName exists (e.g. from previous syncs or different source), try to reconstruct
+            // But here we are building from Spotify API, so we should always have artists.
+            // Log if empty for debugging
+            if (!allArtists || allArtists.length === 0) {
+                console.log(`[Warning] No artists found for ${album.name} (${releaseId})`);
+            } else {
+                if (album.name.includes('MONTAGEM')) console.log(`[Debug] Artists found for ${album.name}:`, allArtists.map(a => a.name));
+            }
+
             const releaseData = {
                 id: releaseId,
                 name: album.name,
-                artistName: (album.artists || []).map(a => a.name).join(', '),
+                artistName: allArtists.map(a => a.name).join(', '),
                 image: finalImage,
                 spotifyUrl: album.external_urls?.spotify,
                 releaseDate: finalDate.toISOString(),
-                artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
+                artistsJson: JSON.stringify(allArtists.map(a => ({ id: a.id, name: a.name }))),
                 type: album.album_type,
                 popularity: track.popularity || 0,
                 previewUrl: track.preview_url

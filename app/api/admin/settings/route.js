@@ -15,44 +15,47 @@ export async function GET(req) {
 
         if (!settings) {
             // Seed default settings if not exists
+            const defaultConfig = JSON.stringify({
+                maintenanceMode: false,
+                allowRegistrations: true,
+                autoApproveDemos: false,
+                featuredPlaylistId: "",
+                homepageNotice: ""
+            });
+
             const defaultSettings = await prisma.systemSettings.create({
                 data: {
                     id: "default",
-                    config: JSON.stringify({
-                        maintenanceMode: false,
-                        allowRegistrations: true,
-                        autoApproveDemos: false,
-                        featuredPlaylistId: "",
-                        homepageNotice: ""
-                    })
+                    config: defaultConfig
                 }
             });
-            return new Response(defaultSettings.config, { status: 200 });
+            return new Response(JSON.stringify({ config: defaultSettings.config }), { status: 200 });
         }
 
-        return new Response(settings.config, { status: 200 });
+        return new Response(JSON.stringify({ config: settings.config }), { status: 200 });
     } catch (error) {
         console.error("Fetch Settings Error:", error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }
 
-export async function POST(req) {
+export async function PATCH(req) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'admin') {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
     try {
-        const config = await req.json();
+        const body = await req.json();
+        const configToStore = body.config; // Extract the inner config object
 
         const settings = await prisma.systemSettings.upsert({
             where: { id: "default" },
-            update: { config: JSON.stringify(config) },
-            create: { id: "default", config: JSON.stringify(config) }
+            update: { config: JSON.stringify(configToStore) },
+            create: { id: "default", config: JSON.stringify(configToStore) }
         });
 
-        return new Response(settings.config, { status: 200 });
+        return new Response(JSON.stringify({ success: true, config: settings.config }), { status: 200 });
     } catch (error) {
         console.error("Save Settings Error:", error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
