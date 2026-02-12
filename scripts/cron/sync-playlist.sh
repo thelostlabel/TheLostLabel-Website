@@ -6,6 +6,6 @@ set -euo pipefail
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 CRON_SECRET="${CRON_SECRET:-lost_sync_secret_12345}"
 
-echo "[$(date)] Starting Playlist Sync..."
-curl -fsS "${BASE_URL}/api/cron/sync-playlist?secret=${CRON_SECRET}" -X POST
+echo "[$(date)] Starting Standalone Node Sync..."
+node --env-file=.env scripts/cron/sync.mjs
 echo "[$(date)] Sync Completed Successfully."
