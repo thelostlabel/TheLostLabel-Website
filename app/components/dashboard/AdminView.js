@@ -39,6 +39,7 @@ export default function AdminView() {
         else if (view === 'earnings') { fetchEarnings(); fetchContracts(); }
         else if (view === 'payments') { fetchPayments(); fetchUsers(); }
         else if (view === 'webhooks') fetchWebhooks();
+        else if (view === 'communications') fetchArtists();
         else if (view === 'settings') setLoading(false);
         else setLoading(false);
     }, [view]);
