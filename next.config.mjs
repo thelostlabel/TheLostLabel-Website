@@ -21,6 +21,15 @@ const nextConfig = {
     ],
   },
   output: 'standalone',
+  async redirects() {
+    return [
+      {
+        source: '/index.html',
+        destination: '/',
+        permanent: true,
+      }
+    ]
+  },
   async headers() {
     return [
       {
@@ -48,7 +57,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; img-src 'self' https://i.scdn.co https://images.unsplash.com data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://i.scdn.co;"
+            value: "default-src 'self'; img-src 'self' https://i.scdn.co https://images.unsplash.com data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://i.scdn.co; frame-ancestors 'none';"
           }
         ]
       }

@@ -21,6 +21,21 @@ export async function GET(req, { params }) {
             }
         } catch (e) { }
 
+        const getBaseTitle = (title) => {
+            if (!title) return "";
+            return title.split(' (')[0].split(' - ')[0].trim();
+        };
+        const baseTitle = getBaseTitle(release.name);
+
+        const versions = await prisma.release.findMany({
+            where: {
+                OR: [
+                    { name: { contains: baseTitle } },
+                    { name: baseTitle }
+                ]
+            }
+        });
+
         return new Response(JSON.stringify({
             id: release.id,
             name: release.name,
@@ -31,7 +46,18 @@ export async function GET(req, { params }) {
             release_date: release.releaseDate,
             popularity: release.popularity,
             stream_count_text: release.streamCountText,
-            artists: JSON.parse(release.artistsJson || '[]')
+            artists: JSON.parse(release.artistsJson || '[]'),
+            versions: versions
+                .filter(v => getBaseTitle(v.name).toLowerCase() === baseTitle.toLowerCase())
+                .map(v => ({
+                    id: v.id,
+                    name: v.name,
+                    image: v.image,
+                    spotify_url: v.spotifyUrl,
+                    release_date: v.releaseDate,
+                    preview_url: v.previewUrl,
+                    artists: JSON.parse(v.artistsJson || '[]')
+                }))
         }), { status: 200 });
     } catch (e) {
         console.error("Release Fetch Error:", e);

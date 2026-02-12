@@ -136,7 +136,7 @@ async function main() {
             releasesToUpsert.push({
                 id: track.id,
                 name: track.name,
-                artistName: track.artists[0]?.name,
+                artistName: track.artists.map(a => a.name).join(', '), // Join all artists
                 image: finalImage,
                 spotifyUrl: track.external_urls.spotify,
                 releaseDate: finalDate.toISOString(),

@@ -20,8 +20,14 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
         }
     }, [initialData]);
 
+    const getBaseTitle = (t) => {
+        if (!t) return "";
+        return t.split(' (')[0].split(' - ')[0].trim();
+    };
+
     const artist = data?.artists?.map(a => a.name).join(", ") || data?.artist || fallbackArtist;
     const title = data?.name || fallbackTitle;
+    const baseTitle = getBaseTitle(title);
     const image = data?.image;
 
     const normalizedImage = image
@@ -31,6 +37,7 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
         : null;
 
     const hasPreview = Boolean(data?.preview_url);
+    const versionCount = initialData?.versionCount || 0;
     const isCurrentTrack = currentTrack?.id === (data?.id || id);
     const isActive = isCurrentTrack && isPlaying;
 
@@ -113,6 +120,26 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                                 </div>
                             )}
 
+                            {versionCount > 1 && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '16px',
+                                    right: '16px',
+                                    background: 'rgba(0, 0, 0, 0.8)',
+                                    backdropFilter: 'blur(8px)',
+                                    color: 'var(--accent)',
+                                    padding: '6px 12px',
+                                    fontSize: '9px',
+                                    fontWeight: '900',
+                                    letterSpacing: '1px',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    zIndex: 2
+                                }}>
+                                    {versionCount} VERSIONS
+                                </div>
+                            )}
+
                             {/* Play Button Overlay - only if preview exists */}
                             {hasPreview && (
                                 <div className={`play-overlay ${isActive ? 'active' : ''}`} onClick={handlePlay}>
@@ -155,7 +182,7 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
                         height: '43px' // Fixed height for 2 lines
-                    }}>{title}</h3>
+                    }}>{baseTitle.toUpperCase()}</h3>
                     <p style={{
                         fontSize: '12px',
                         color: 'var(--accent)',

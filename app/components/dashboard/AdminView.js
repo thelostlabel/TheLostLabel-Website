@@ -289,7 +289,7 @@ export default function AdminView() {
             {view === 'webhooks' && <WebhooksView webhooks={webhooks} onRefresh={fetchWebhooks} />}
             {view === 'releases' && <ReleasesView releases={releases} />}
             {view === 'communications' && <CommunicationsView artists={artists} />}
-            {view === 'settings' && <SettingsView />}
+            {view === 'settings' && <SettingsView users={users} artists={artists} />}
 
         </div>
     );
@@ -2678,7 +2678,7 @@ function RequestsView({ requests, onUpdateStatus }) {
     );
 }
 
-function SettingsView() {
+function SettingsView({ users = [], artists = [] }) {
     const { showToast, showConfirm } = useToast();
     const [config, setConfig] = useState(null);
     const [activeTab, setActiveTab] = useState('general');

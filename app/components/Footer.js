@@ -27,12 +27,11 @@ const Footer = () => {
         explore: [
             { name: 'Home', href: '/' },
             { name: 'Artists', href: '/artists' },
-            { name: 'Careers', href: '/careers' },
+            { name: 'FAQ', href: '/faq' },
         ],
-        follow: [
-            { name: 'Twitter', href: socials.twitter || '#' },
-            { name: 'Instagram', href: socials.instagram || '#' },
-            { name: 'Facebook', href: socials.facebook || '#' },
+        legal: [
+            { name: 'Privacy Policy', href: '/privacy' },
+            { name: 'Terms of Service', href: '/terms' },
         ]
     };
 
@@ -124,7 +123,7 @@ const Footer = () => {
                         </div>
                     </div>
 
-                    {/* Follow Column */}
+                    {/* Legal Column */}
                     <div>
                         <h4 style={{
                             fontSize: '12px',
@@ -134,14 +133,45 @@ const Footer = () => {
                             marginBottom: '30px',
                             fontWeight: '600'
                         }}>
-                            Follow
+                            Legal
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            {footerLinks.follow.map((link) => (
-                                <a key={link.name} href={link.href} style={{ textDecoration: 'none' }} className="footer-link">
+                            {footerLinks.legal.map((link) => (
+                                <Link key={link.name} href={link.href} className="footer-link">
                                     {link.name}
-                                </a>
+                                </Link>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Social Column */}
+                    <div>
+                        <h4 style={{
+                            fontSize: '12px',
+                            color: '#666',
+                            textTransform: 'uppercase',
+                            letterSpacing: '2px',
+                            marginBottom: '30px',
+                            fontWeight: '600'
+                        }}>
+                            Follow Us
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {Object.entries(socials).map(([name, url]) => {
+                                if (!url) return null;
+                                return (
+                                    <a
+                                        key={name}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="footer-link"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    >
+                                        {name.toUpperCase()} <ArrowUpRight size={12} opacity={0.5} />
+                                    </a>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

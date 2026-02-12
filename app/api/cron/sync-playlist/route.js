@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getPlaylistTracks, getArtistsDetails } from "@/lib/spotify";
-import { scrapeSpotifyStats } from "@/lib/scraper";
+import { scrapeSpotifyStats, scrapePrereleaseData } from "@/lib/scraper";
 import { chromium } from 'playwright';
 import prisma from "@/lib/prisma";
 
@@ -72,19 +72,47 @@ export async function POST(req) {
 
             // Identify New Releases
             const playlistReleases = new Map();
-            items.forEach(item => {
-                if (!item.track || !item.track.album) return;
+            for (const item of items) {
+                if (!item.track || !item.track.album) continue;
                 const track = item.track;
                 const album = track.album;
 
                 // Improved Date Parsing Logic
                 let finalDate;
+                let finalImage = album.images?.[0]?.url;
 
                 // 1. Try Album Release Date
                 if (album.release_date && album.release_date !== '0000') {
                     const d = new Date(album.release_date);
                     if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
                         finalDate = d;
+                    }
+                }
+
+                // CHECK FOR PRERELEASE (No image or 0000 date)
+                if (!finalImage || album.release_date === '0000') {
+                    console.log(`[Sync] Potential prerelease detected: ${track.name}`);
+                    const prereleaseUrl = `https://open.spotify.com/prerelease/${track.id}`;
+
+                    try {
+                        if (!browser) {
+                            browser = await chromium.launch({ headless: true });
+                        }
+
+                        const scraped = await scrapePrereleaseData(prereleaseUrl, browser);
+                        if (scraped) {
+                            if (scraped.image) finalImage = scraped.image;
+                            if (scraped.releaseDate && !finalDate) {
+                                // Simple extraction and basic parsing for release date
+                                const yearMatch = scraped.releaseDate.match(/[0-9]{4}/);
+                                if (yearMatch) {
+                                    const d = new Date(scraped.releaseDate.replace(/Yayınlanma tarihi:\s*/i, '').replace(/Release date:\s*/i, ''));
+                                    if (!isNaN(d.getTime())) finalDate = d;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`[Sync] Scrape error for ${track.name}:`, e.message);
                     }
                 }
 
@@ -101,21 +129,23 @@ export async function POST(req) {
                     finalDate = new Date();
                 }
 
-                // Use TRACK ID instead of ALBUM ID to treat every song as a unique entry
-                if (!playlistReleases.has(track.id)) {
-                    playlistReleases.set(track.id, {
-                        id: track.id,
-                        name: track.name, // Track Name
-                        artistName: track.artists[0]?.name,
-                        image: album.images[0]?.url,
-                        spotifyUrl: track.external_urls.spotify, // Track URL
+                // USE ALBUM ID to treat as a proper Release
+                const releaseId = album.id;
+                if (!playlistReleases.has(releaseId)) {
+                    playlistReleases.set(releaseId, {
+                        id: releaseId,
+                        name: album.name,
+                        artistName: (album.artists || []).map(a => a.name).join(', '),
+                        image: finalImage,
+                        spotifyUrl: album.external_urls?.spotify,
                         releaseDate: finalDate.toISOString(),
-                        artistsJson: JSON.stringify(track.artists.map(a => ({ id: a.id, name: a.name }))),
+                        artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
+                        type: album.album_type, // 'album', 'single', or 'ep'
                         popularity: track.popularity || 0,
-                        previewUrl: track.preview_url // Save preview URL
+                        previewUrl: track.preview_url
                     });
                 }
-            });
+            }
 
             // Database Upsert & New Check
             const releases = Array.from(playlistReleases.values());

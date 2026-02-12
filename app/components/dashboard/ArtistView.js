@@ -21,6 +21,20 @@ const glassStyle = {
     overflow: 'hidden'
 };
 
+const getBaseTitle = (title) => {
+    if (!title) return '';
+    return title.split('(')[0]
+        .split('-')[0]
+        .replace(/\d{4}\s*REMASTER/gi, '')
+        .replace(/SLOWED\s*\+\s*REVERB/gi, '')
+        .replace(/ULTRA\s*SLOWED/gi, '')
+        .replace(/SPEED\s*UP/gi, '')
+        .replace(/ACOUSTIC/gi, '')
+        .replace(/LIVE/gi, '')
+        .replace(/REMASTERED/gi, '')
+        .trim();
+};
+
 const ChartTooltip = ({ active, payload, label, color }) => {
     if (!active || !payload?.length) return null;
     const isCurrency = payload[0].payload.value !== undefined && typeof payload[0].payload.value === 'number' && !label.includes('/'); // Simple heuristic for earnings vs listeners
@@ -424,7 +438,7 @@ export default function ArtistView() {
                     window.dispatchEvent(new Event('popstate'));
                 }} />
             ) : view === 'releases' ? (
-                <ReleasesView />
+                <ReleasesView stats={stats} />
             ) : view === 'submit' ? (
                 // ... same as before
                 <SubmitView
@@ -804,11 +818,11 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
 
                                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                                     <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
-                                        <NextImage src={recentReleases[0].image || '/default-album.jpg'} width={60} height={60} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Art" />
+                                        <NextImage src={recentReleases[0].image || stats.artistImage || '/default-album.jpg'} width={60} height={60} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Art" />
                                     </div>
                                     <div>
                                         <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', margin: 0 }}>{recentReleases[0].name}</h4>
-                                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>{recentReleases[0].type.toUpperCase()}</p>
+                                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>{recentReleases[0].type?.toUpperCase() || 'RELEASE'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -889,7 +903,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             {recentReleases.map(r => (
                                 <div key={r.id} style={{ ...glassStyle, padding: '10px' }}>
                                     <div style={{ aspectRatio: '1/1', background: '#111', borderRadius: '12px', overflow: 'hidden', marginBottom: '10px' }}>
-                                        <NextImage src={r.image} alt={r.name} width={140} height={140} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <NextImage src={r.image || stats.artistImage || '/default-album.jpg'} alt={r.name} width={140} height={140} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     </div>
                                     <div style={{ fontSize: '11px', fontWeight: '900', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name.toUpperCase()}</div>
                                     <div style={{ fontSize: '8px', color: '#444', marginTop: '4px' }}>{new Date(r.releaseDate).toLocaleDateString()}</div>
@@ -939,7 +953,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
     );
 }
 
-function ReleasesView() {
+function ReleasesView({ stats }) {
     const [releases, setReleases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [requestModal, setRequestModal] = useState(null); // { releaseId, releaseName }
@@ -1097,44 +1111,71 @@ function ReleasesView() {
             ) : (
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                    {(() => {
+                        // Group releases by base name
+                        const groups = releases.reduce((acc, r) => {
+                            const base = getBaseTitle(r.name);
+                            if (!acc[base]) acc[base] = [];
+                            acc[base].push(r);
+                            return acc;
+                        }, {});
 
-                    {/* UPCOMING RELEASES */}
-                    {releases.some(r => new Date(r.releaseDate) > new Date()) && (
-                        <div>
-                            <h3 style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '3px', color: '#fff', marginBottom: '20px', paddingLeft: '5px', borderLeft: '2px solid var(--accent)' }}>UPCOMING_RELEASES</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-                                {releases.filter(r => new Date(r.releaseDate) > new Date()).map(release => (
-                                    <ReleaseCard key={release.id} release={release} getRequestStatus={getRequestStatus} setRequestModal={setRequestModal} onNavigate={(id) => {
-                                        const params = new URLSearchParams(window.location.search);
-                                        params.set('view', 'support');
-                                        params.set('id', id);
-                                        window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-                                        window.dispatchEvent(new Event('popstate'));
-                                    }} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                        const groupEntries = Object.entries(groups).sort((a, b) => {
+                            // Sort by most recent release in each group
+                            const dateA = new Date(Math.max(...a[1].map(r => new Date(r.releaseDate))));
+                            const dateB = new Date(Math.max(...b[1].map(r => new Date(r.releaseDate))));
+                            return dateB - dateA;
+                        });
 
-                    {/* DISCOGRAPHY / PAST RELEASES */}
-                    <div>
-                        <h3 style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '3px', color: '#fff', marginBottom: '20px', paddingLeft: '5px', borderLeft: '2px solid #555' }}>DISCOGRAPHY</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-                            {releases.filter(r => new Date(r.releaseDate) <= new Date()).map(release => (
-                                <ReleaseCard key={release.id} release={release} getRequestStatus={getRequestStatus} setRequestModal={setRequestModal} onNavigate={(id) => {
-                                    const params = new URLSearchParams(window.location.search);
-                                    params.set('view', 'support');
-                                    params.set('id', id);
-                                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-                                    window.dispatchEvent(new Event('popstate'));
-                                }} />
-                            ))}
-                            {releases.filter(r => new Date(r.releaseDate) <= new Date()).length === 0 && (
-                                <div style={{ fontSize: '10px', color: '#666', fontStyle: 'italic', padding: '20px' }}>No released tracks yet.</div>
-                            )}
-                        </div>
-                    </div>
+                        const upcomingGroups = groupEntries.filter(([name, groupReleases]) =>
+                            groupReleases.some(r => new Date(r.releaseDate) > new Date())
+                        );
 
+                        const pastGroups = groupEntries.filter(([name, groupReleases]) =>
+                            groupReleases.every(r => new Date(r.releaseDate) <= new Date())
+                        );
+
+                        return (
+                            <>
+                                {upcomingGroups.length > 0 && (
+                                    <div>
+                                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', color: 'var(--accent)', fontWeight: '900', marginBottom: '20px', borderLeft: '3px solid var(--accent)', paddingLeft: '12px' }}>UPCOMING_DROPS</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
+                                            {upcomingGroups.map(([baseName, groupReleases]) => (
+                                                <ReleaseCard key={baseName} stats={stats} release={groupReleases[0]} versions={groupReleases} getRequestStatus={getRequestStatus} setRequestModal={setRequestModal} onNavigate={(id) => {
+                                                    const params = new URLSearchParams(window.location.search);
+                                                    params.set('view', 'support');
+                                                    params.set('id', id);
+                                                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                                    window.dispatchEvent(new Event('popstate'));
+                                                }} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <h3 style={{ fontSize: '11px', letterSpacing: '3px', color: '#555', fontWeight: '900', marginBottom: '20px', borderLeft: '3px solid #333', paddingLeft: '12px' }}>DISCOGRAPHY</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
+                                        {pastGroups.map(([baseName, groupReleases]) => (
+                                            <ReleaseCard key={baseName} stats={stats} release={groupReleases[0]} versions={groupReleases} getRequestStatus={getRequestStatus} setRequestModal={setRequestModal} onNavigate={(id) => {
+                                                const params = new URLSearchParams(window.location.search);
+                                                params.set('view', 'support');
+                                                params.set('id', id);
+                                                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                                window.dispatchEvent(new Event('popstate'));
+                                            }} />
+                                        ))}
+                                    </div>
+                                    {pastGroups.length === 0 && (
+                                        <div style={{ padding: '60px', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                            <p style={{ fontSize: '10px', letterSpacing: '2px', color: '#444', fontWeight: '800' }}>NO RELEASES FOUND IN DISCOGRAPHY</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        );
+                    })()}
                 </div>
             )
             }
@@ -1142,20 +1183,31 @@ function ReleasesView() {
     );
 }
 
-function ReleaseCard({ release, getRequestStatus, setRequestModal, onNavigate }) {
+function ReleaseCard({ release, versions = [], stats, getRequestStatus, setRequestModal, onNavigate }) {
     const activeRequest = getRequestStatus(release);
+    const baseTitle = getBaseTitle(release.name);
+    const hasMultiple = versions.length > 1;
 
     return (
         <div style={{ ...glassStyle, padding: '15px' }}>
-            <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden', position: 'relative' }}>
                 {release.image ? (
                     <NextImage src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>NO ART</div>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+                        <NextImage src={stats?.artistImage || '/default-album.jpg'} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />
+                    </div>
+                )}
+                {hasMultiple && (
+                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '900', color: 'var(--accent)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        {versions.length} VERSIONS
+                    </div>
                 )}
             </div>
-            <h3 style={{ fontSize: '13px', marginBottom: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.name}</h3>
-            <p style={{ fontSize: '10px', color: '#666', marginBottom: '15px' }}>{new Date(release.releaseDate || release.createdAt).toLocaleDateString()}</p>
+            <h3 style={{ fontSize: '13px', marginBottom: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{baseTitle.toUpperCase()}</h3>
+            <p style={{ fontSize: '10px', color: '#666', marginBottom: '15px' }}>
+                {release.type?.toUpperCase()} • {new Date(release.releaseDate || release.createdAt).toLocaleDateString()}
+            </p>
 
             {(() => {
                 if (activeRequest) {
@@ -1805,9 +1857,16 @@ function ProfileView({ onUpdate }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [email, setEmail] = useState('');
     const [fullName, setFullName] = useState('');
     const [stageName, setStageName] = useState('');
     const [spotifyUrl, setSpotifyUrl] = useState('');
+
+    // Password Change State
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordSaving, setPasswordSaving] = useState(false);
 
     // Notification Preferences
     const [notifyDemos, setNotifyDemos] = useState(true);
@@ -1827,6 +1886,7 @@ function ProfileView({ onUpdate }) {
             const res = await fetch('/api/profile');
             const data = await res.json();
             setProfile(data);
+            setEmail(data.email || '');
             setFullName(data.fullName || '');
             setStageName(data.stageName || '');
             setSpotifyUrl(data.spotifyUrl || '');
@@ -1846,15 +1906,13 @@ function ProfileView({ onUpdate }) {
             const res = await fetch('/api/profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    fullName, stageName, spotifyUrl,
+                    email, fullName, stageName, spotifyUrl,
                     notifyDemos, notifyEarnings, notifySupport, notifyContracts
                 })
             });
             if (res.ok) {
-                if (onUpdate) await onUpdate({ user: { fullName, stageName, spotifyUrl } });
+                if (onUpdate) await onUpdate({ user: { email, fullName, stageName, spotifyUrl } });
                 alert('Profile updated successfully!');
             } else {
                 alert('Failed to save profile');
@@ -1863,6 +1921,44 @@ function ProfileView({ onUpdate }) {
             console.error(e);
             alert('Failed to save profile');
         } finally { setSaving(false); }
+    };
+
+    const handlePasswordChange = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            alert('Please fill all password fields');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert('New passwords do not match');
+            return;
+        }
+        if (newPassword.length < 6) {
+            alert('New password must be at least 6 characters');
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            const res = await fetch('/api/profile/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Password updated successfully!');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                alert(data.error || 'Failed to update password');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to update password');
+        } finally {
+            setPasswordSaving(false);
+        }
     };
 
     if (loading) {
@@ -1875,10 +1971,11 @@ function ProfileView({ onUpdate }) {
                 <div style={{ marginBottom: '25px' }}>
                     <label style={labelStyle}>EMAIL</label>
                     <input
-                        type="text"
-                        value={profile?.email || ''}
-                        disabled
-                        style={{ ...inputStyle, background: 'rgba(255,255,255,0.01)', color: '#666', cursor: 'not-allowed' }}
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="email@example.com"
+                        style={inputStyle}
                     />
                 </div>
 
@@ -1900,8 +1997,10 @@ function ProfileView({ onUpdate }) {
                         value={stageName}
                         onChange={(e) => setStageName(e.target.value)}
                         placeholder="YOUR ARTIST NAME"
-                        style={inputStyle}
+                        disabled={!!profile?.artist}
+                        style={{ ...inputStyle, ...(profile?.artist ? { background: 'rgba(255,255,255,0.01)', color: '#666', cursor: 'not-allowed' } : {}) }}
                     />
+                    {profile?.artist && <p style={{ fontSize: '8px', color: 'var(--accent)', marginTop: '5px', fontWeight: '800' }}>LOCKED: LINKED TO VERIFIED ARTIST</p>}
                 </div>
 
                 <div style={{ marginBottom: '25px' }}>
@@ -1911,7 +2010,8 @@ function ProfileView({ onUpdate }) {
                         value={spotifyUrl}
                         onChange={(e) => setSpotifyUrl(e.target.value)}
                         placeholder="HTTPS://OPEN.SPOTIFY.COM/ARTIST/..."
-                        style={inputStyle}
+                        disabled={!!profile?.artist}
+                        style={{ ...inputStyle, ...(profile?.artist ? { background: 'rgba(255,255,255,0.01)', color: '#666', cursor: 'not-allowed' } : {}) }}
                     />
                 </div>
 
@@ -1958,6 +2058,65 @@ function ProfileView({ onUpdate }) {
                     style={{ width: '100%', padding: '15px', opacity: saving ? 0.5 : 1, fontWeight: '900', letterSpacing: '2px' }}
                 >
                     {saving ? 'SAVING...' : 'SAVE PROFILE'}
+                </button>
+            </div>
+
+            {/* Password Change Section */}
+            <div style={{ ...glassStyle, padding: '40px', marginTop: '30px' }}>
+                <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', marginBottom: '25px' }}>CHANGE_PASSWORD</h3>
+
+                <div style={{ marginBottom: '20px' }}>
+                    <label style={labelStyle}>CURRENT PASSWORD</label>
+                    <input
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        style={inputStyle}
+                        placeholder="••••••••"
+                    />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                    <div>
+                        <label style={labelStyle}>NEW PASSWORD</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            style={inputStyle}
+                            placeholder="••••••••"
+                        />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>CONFIRM NEW PASSWORD</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            style={inputStyle}
+                            placeholder="••••••••"
+                        />
+                    </div>
+                </div>
+
+                <button
+                    onClick={handlePasswordChange}
+                    disabled={passwordSaving}
+                    style={{
+                        width: '100%',
+                        padding: '15px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        borderRadius: '0px',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        letterSpacing: '2px',
+                        cursor: 'pointer',
+                        opacity: passwordSaving ? 0.5 : 1
+                    }}
+                >
+                    {passwordSaving ? 'UPDATING...' : 'UPDATE PASSWORD'}
                 </button>
             </div>
 

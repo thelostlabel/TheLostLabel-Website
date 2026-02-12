@@ -203,7 +203,10 @@ export default function Home() {
 
         if (jsonReleases?.releases) setReleases(jsonReleases.releases.slice(0, 6));
         if (jsonStats?.artistCount) setArtistCount(jsonStats.artistCount);
-        if (jsonArtists?.artists) setArtists(jsonArtists.artists.slice(0, 4));
+        if (jsonArtists?.artists) {
+          // Send all artists, randomized
+          setArtists(jsonArtists.artists.sort(() => 0.5 - Math.random()));
+        }
 
         let featured = null;
         if (settings?.featuredReleaseId && jsonReleases?.releases) {
