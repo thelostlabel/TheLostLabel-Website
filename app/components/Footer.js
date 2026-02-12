@@ -1,9 +1,28 @@
 "use client";
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Instagram, Disc, Youtube, Twitter, Facebook, ArrowUpRight } from 'lucide-react';
 
 const Footer = () => {
+    const [socials, setSocials] = useState({});
+
+    useEffect(() => {
+        fetch('/api/settings/public')
+            .then(res => res.json())
+            .then(data => {
+                setSocials({
+                    discord: data.discord,
+                    instagram: data.instagram,
+                    spotify: data.spotify,
+                    youtube: data.youtube,
+                    twitter: data.twitter,
+                    facebook: data.facebook
+                });
+            })
+            .catch(err => console.error(err));
+    }, []);
+
     const footerLinks = {
         explore: [
             { name: 'Home', href: '/' },
@@ -11,9 +30,9 @@ const Footer = () => {
             { name: 'Careers', href: '/careers' },
         ],
         follow: [
-            { name: 'Twitter', href: '#' },
-            { name: 'Instagram', href: '#' },
-            { name: 'Facebook', href: '#' },
+            { name: 'Twitter', href: socials.twitter || '#' },
+            { name: 'Instagram', href: socials.instagram || '#' },
+            { name: 'Facebook', href: socials.facebook || '#' },
         ]
     };
 

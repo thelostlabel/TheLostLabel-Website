@@ -136,8 +136,10 @@ export default function ArtistView() {
     const [actionRequiredContract, setActionRequiredContract] = useState(null);
 
     // Submit form state
+    // Submit form state
     const [title, setTitle] = useState('');
     const [genre, setGenre] = useState('');
+    const [trackLink, setTrackLink] = useState('');
     const [message, setMessage] = useState('');
     const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -266,8 +268,14 @@ export default function ArtistView() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!title.trim() || files.length === 0) {
-            showToast('Please provide a title and at least one WAV file', 'warning');
+
+        if (!title.trim()) {
+            showToast('Please provide a track title', 'warning');
+            return;
+        }
+
+        if (files.length === 0 && !trackLink.trim()) {
+            showToast('Please provide either a WAV file or a track link', 'warning');
             return;
         }
 
@@ -275,50 +283,59 @@ export default function ArtistView() {
         setUploadProgress(0);
 
         try {
-            // First upload files using XMLHttpRequest for progress tracking
-            const formData = new FormData();
-            files.forEach(f => formData.append('files', f));
+            let uploadedFiles = [];
 
-            const uploadData = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/api/upload');
+            // Only upload files if selected
+            if (files.length > 0) {
+                const formData = new FormData();
+                files.forEach(f => formData.append('files', f));
 
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        setUploadProgress(percentComplete);
-                    }
-                };
+                const uploadData = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    // ... (existing upload logic)
+                    xhr.open('POST', '/api/upload');
 
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(JSON.parse(xhr.responseText));
-                    } else {
-                        reject(new Error('Upload failed'));
-                    }
-                };
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            const percentComplete = Math.round((event.loaded / event.total) * 100);
+                            setUploadProgress(percentComplete);
+                        }
+                    };
 
-                xhr.onerror = () => reject(new Error('Upload network error'));
-                xhr.send(formData);
-            });
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(JSON.parse(xhr.responseText));
+                        } else {
+                            reject(new Error('Upload failed'));
+                        }
+                    };
 
-            // Then create demo with file references
+                    xhr.onerror = () => reject(new Error('Upload network error'));
+                    xhr.send(formData);
+                });
+                uploadedFiles = uploadData.files;
+            }
+
+            // Then create demo with file references or link
             const demoRes = await fetch('/api/demo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title,
                     genre,
+                    trackLink: trackLink.trim() || null,
                     message,
-                    files: uploadData.files
+                    files: uploadedFiles
                 })
             });
 
             if (!demoRes.ok) throw new Error('Failed to submit demo');
 
             showToast('Demo submitted successfully!', 'success');
+            showToast('Demo submitted successfully!', 'success');
             setTitle('');
             setGenre('');
+            setTrackLink('');
             setMessage('');
             setFiles([]);
 
@@ -413,6 +430,7 @@ export default function ArtistView() {
                 <SubmitView
                     title={title} setTitle={setTitle}
                     genre={genre} setGenre={setGenre}
+                    trackLink={trackLink} setTrackLink={setTrackLink}
                     message={message} setMessage={setMessage}
                     files={files}
                     dragActive={dragActive}
@@ -1228,6 +1246,7 @@ function ReleaseCard({ release, getRequestStatus, setRequestModal, onNavigate })
 
 function SupportView({ requests, selectedId, onNavigate }) {
     const selectedRequest = requests.find(r => r.id === selectedId);
+    const [isCreating, setIsCreating] = useState(false);
 
     if (selectedRequest) {
         return (
@@ -1261,8 +1280,35 @@ function SupportView({ requests, selectedId, onNavigate }) {
         );
     }
 
+    if (isCreating) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                <button
+                    onClick={() => setIsCreating(false)}
+                    style={{ ...btnStyle, alignSelf: 'flex-start', background: 'transparent' }}
+                >
+                    <ArrowLeft size={14} /> CANCEL
+                </button>
+                <div style={glassStyle}>
+                    <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                        <h3 style={{ fontSize: '12px', letterSpacing: '2px', fontWeight: '900' }}>CREATE_NEW_SUPPORT_TICKET</h3>
+                    </div>
+                    <CreateSupportForm onComplete={() => { setIsCreating(false); onNavigate(null); window.location.reload(); }} />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                <button
+                    onClick={() => setIsCreating(true)}
+                    style={{ ...btnStyle, background: '#fff', color: '#000', border: 'none' }}
+                >
+                    + NEW SUPPORT TICKET
+                </button>
+            </div>
             {requests.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px', ...glassStyle }}>
                     <p style={{ fontSize: '11px', letterSpacing: '2px', color: '#444' }}>NO ACTIVE SUPPORT REQUESTS</p>
@@ -1298,10 +1344,9 @@ function SupportView({ requests, selectedId, onNavigate }) {
                                         {req.type.toUpperCase().replace('_', ' ')}
                                     </span>
                                     <span style={{ fontSize: '10px', color: '#555' }}>•</span>
-                                    <p style={{ fontSize: '14px', color: '#888' }}>
-                                        Your profile is currently hidden from the public roster because it&apos;s missing a profile image.
-                                        Upload an image to become visible on the &quot;Artists&quot; page.
-                                    </p>
+                                    <div style={{ fontSize: '11px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>
+                                        {req.details}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1324,6 +1369,74 @@ function SupportView({ requests, selectedId, onNavigate }) {
                 .support-item:hover { background: rgba(255,255,255,0.04) !important; }
             `}</style>
         </div>
+    );
+}
+
+function CreateSupportForm({ onComplete }) {
+    const [type, setType] = useState('general_support');
+    const [details, setDetails] = useState('');
+    const [sending, setSending] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!details.trim() || sending) return;
+
+        setSending(true);
+        try {
+            const res = await fetch('/api/artist/requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, details })
+            });
+            if (res.ok) {
+                onComplete();
+            } else {
+                alert('Failed to submit ticket');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('An error occurred');
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const labelStyle = { display: 'block', fontSize: '9px', letterSpacing: '2px', color: '#555', marginBottom: '8px', fontWeight: '900' };
+    const inputStyle = { width: '100%', padding: '14px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', color: '#fff', fontSize: '13px', outline: 'none' };
+
+    return (
+        <form onSubmit={handleSubmit} style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+                <label style={labelStyle}>REQUEST_TYPE</label>
+                <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
+                    <option value="general_support">GENERAL SUPPORT</option>
+                    <option value="metadata_correction">METADATA CORRECTION</option>
+                    <option value="technical_issue">TECHNICAL ISSUE</option>
+                    <option value="earnings_billing">EARNINGS / BILLING</option>
+                    <option value="take_down">TAKE DOWN REQUEST</option>
+                    <option value="marketing_request">MARKETING REQUEST</option>
+                </select>
+            </div>
+            <div>
+                <label style={labelStyle}>DETAILS_AND_MESSAGE</label>
+                <textarea
+                    value={details}
+                    onChange={(e) => setDetails(e.target.value)}
+                    placeholder="Describe your issue in detail..."
+                    required
+                    rows={6}
+                    style={{ ...inputStyle, resize: 'none' }}
+                />
+            </div>
+            <button
+                type="submit"
+                disabled={sending || !details.trim()}
+                className="glow-button"
+                style={{ height: '50px', marginTop: '10px' }}
+            >
+                {sending ? 'SUBMITTING...' : 'OPEN TICKET'}
+            </button>
+        </form>
     );
 }
 
@@ -1504,7 +1617,15 @@ function DemosView({ demos, onNavigate }) {
     );
 }
 
-function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, files, dragActive, handleDrag, handleDrop, handleFileSelect, removeFile, fileInputRef, uploading, handleSubmit, uploadProgress }) {
+function SubmitView({
+    title, setTitle,
+    genre, setGenre,
+    trackLink, setTrackLink,
+    message, setMessage,
+    files,
+    dragActive, handleDrag, handleDrop, handleFileSelect, removeFile, fileInputRef,
+    uploading, handleSubmit
+}) {
     const [genres, setGenres] = useState(['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Other']);
 
     useEffect(() => {
@@ -1544,6 +1665,17 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                             {genres.map(g => <option key={g} value={g}>{g}</option>)}
                         </select>
                     </div>
+                </div>
+
+                <div style={{ marginBottom: '30px' }}>
+                    <label style={labelStyle}>TRACK_LINK (OPTIONAL)</label>
+                    <input
+                        type="url"
+                        value={trackLink}
+                        onChange={(e) => setTrackLink(e.target.value)}
+                        placeholder="https://soundcloud.com/..."
+                        style={inputStyle}
+                    />
                 </div>
 
                 <div style={{ marginBottom: '30px' }}>
@@ -1621,8 +1753,9 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                                 </div>
                             ))}
                         </div>
-                    )}
-                </div>
+                    )
+                    }
+                </div >
 
                 <div style={{ marginTop: '40px' }}>
                     {uploading ? (
@@ -1662,8 +1795,8 @@ function SubmitView({ title, setTitle, genre, setGenre, message, setMessage, fil
                         </button>
                     )}
                 </div>
-            </div>
-        </form>
+            </div >
+        </form >
     );
 }
 
@@ -1675,6 +1808,12 @@ function ProfileView({ onUpdate }) {
     const [fullName, setFullName] = useState('');
     const [stageName, setStageName] = useState('');
     const [spotifyUrl, setSpotifyUrl] = useState('');
+
+    // Notification Preferences
+    const [notifyDemos, setNotifyDemos] = useState(true);
+    const [notifyEarnings, setNotifyEarnings] = useState(true);
+    const [notifySupport, setNotifySupport] = useState(true);
+    const [notifyContracts, setNotifyContracts] = useState(true);
 
     const labelStyle = { display: 'block', fontSize: '10px', letterSpacing: '2px', color: '#666', marginBottom: '8px', fontWeight: '800' };
     const inputStyle = { width: '100%', padding: '12px 15px', background: '#0a0a0a', border: '1px solid #222', color: '#fff', fontSize: '13px' };
@@ -1691,6 +1830,12 @@ function ProfileView({ onUpdate }) {
             setFullName(data.fullName || '');
             setStageName(data.stageName || '');
             setSpotifyUrl(data.spotifyUrl || '');
+
+            // Set prefs (default to true if undefined, though DB default is true)
+            setNotifyDemos(data.notifyDemos !== false);
+            setNotifyEarnings(data.notifyEarnings !== false);
+            setNotifySupport(data.notifySupport !== false);
+            setNotifyContracts(data.notifyContracts !== false);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -1701,7 +1846,12 @@ function ProfileView({ onUpdate }) {
             const res = await fetch('/api/profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullName, stageName, spotifyUrl })
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName, stageName, spotifyUrl,
+                    notifyDemos, notifyEarnings, notifySupport, notifyContracts
+                })
             });
             if (res.ok) {
                 if (onUpdate) await onUpdate({ user: { fullName, stageName, spotifyUrl } });
@@ -1763,6 +1913,42 @@ function ProfileView({ onUpdate }) {
                         placeholder="HTTPS://OPEN.SPOTIFY.COM/ARTIST/..."
                         style={inputStyle}
                     />
+                </div>
+
+                <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                    <label style={{ ...labelStyle, marginBottom: '15px', color: '#fff' }}>EMAIL NOTIFICATIONS</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        {[
+                            { label: 'DEMO UPDATES', state: notifyDemos, set: setNotifyDemos, desc: 'Get notified when we receive or review your demos.' },
+                            { label: 'NEW CONTRACTS', state: notifyContracts, set: setNotifyContracts, desc: 'Receive emails when new contracts are created for you.' },
+                            { label: 'EARNINGS REPORTS', state: notifyEarnings, set: setNotifyEarnings, desc: 'Monthly updates about your royalties and payouts.' },
+                            { label: 'SUPPORT TICKETS', state: notifySupport, set: setNotifySupport, desc: 'Updates on your help requests and account status.' }
+                        ].map((item, i) => (
+                            <div key={i}
+                                onClick={() => item.set(!item.state)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                    padding: '12px', borderRadius: '8px',
+                                    background: item.state ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                    border: item.state ? '1px solid rgba(0, 255, 136, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
+                                    cursor: 'pointer', transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <div style={{
+                                    width: '16px', height: '16px', borderRadius: '4px',
+                                    border: item.state ? 'none' : '2px solid #444',
+                                    background: item.state ? 'var(--status-success)' : 'transparent',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    {item.state && <CheckCircle size={10} color="#000" />}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', fontWeight: '900', color: item.state ? '#fff' : '#888' }}>{item.label}</div>
+                                    <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>{item.desc}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 <button

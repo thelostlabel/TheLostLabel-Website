@@ -13,23 +13,37 @@ export async function GET(req) {
         const userEmail = session.user.email;
         const stageName = session.user.stageName;
 
-        // 1. Fetch Fundamental Data Concurrently
-        const [userProfile, artistProfile, payments, releasesCount, demosCount] = await Promise.all([
-            prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    monthlyListeners: true,
-                    artist: {
-                        select: {
-                            id: true,
-                            name: true,
-                            monthlyListeners: true
-                        }
+        // 1. Fetch User and Linked Artist Profile first to get the correct identifiers
+        const userProfile = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                monthlyListeners: true,
+                artist: {
+                    select: {
+                        id: true,
+                        name: true,
+                        monthlyListeners: true,
+                        spotifyUrl: true
                     }
                 }
-            }),
+            }
+        });
+
+        // Determine identifiers for data fetching
+        const artistId = userProfile?.artist?.id;
+        const artistStageName = userProfile?.artist?.name || stageName;
+
+        let spotifyId = null;
+        if (userProfile?.artist?.spotifyUrl) {
+            const parts = userProfile.artist.spotifyUrl.split('/').filter(p => p.trim() !== '');
+            const lastPart = parts.pop() || '';
+            spotifyId = lastPart.split('?')[0];
+        }
+
+        // 2. Fetch Fundamental Data Concurrently based on verified links
+        const [artistProfile, payments, releasesCount, demosCount] = await Promise.all([
             prisma.artist.findFirst({
-                where: {
+                where: artistId ? { id: artistId } : {
                     OR: [
                         { userId: userId },
                         { email: userEmail },
@@ -47,19 +61,26 @@ export async function GET(req) {
                 where: { userId: userId, status: 'completed' },
                 select: { amount: true }
             }),
-            prisma.release.count({ where: { artistsJson: { contains: stageName } } }),
+            prisma.release.count({
+                where: {
+                    OR: [
+                        { artistsJson: { contains: artistStageName } },
+                        { contracts: { some: { userId: userId } } },
+                        ...(spotifyId ? [{ artistsJson: { contains: spotifyId } }] : [])
+                    ]
+                }
+            }),
             prisma.demo.count({ where: { artistId: userId } })
         ]);
 
-        const monthlyListeners = artistProfile?.monthlyListeners || userProfile?.monthlyListeners || userProfile?.artist?.monthlyListeners || 0;
+        const monthlyListeners = artistProfile?.monthlyListeners || userProfile?.monthlyListeners || 0;
 
-        // 2. Fetch All Splits for this user (with limited fields for speed)
+        // 3. Fetch All Splits for this user
         const splits = await prisma.royaltySplit.findMany({
             where: {
                 OR: [
                     { userId: userId },
-                    { email: userEmail },
-                    { name: stageName }
+                    { email: userEmail }
                 ]
             },
             include: {
@@ -82,24 +103,23 @@ export async function GET(req) {
             }
         });
 
-        // 3. Process Trends and Totals
+        // 4. Process Trends and Totals
         let totalEarnings = 0;
         let totalStreams = 0;
         const monthlyTrend = {};
         const dailyTrend = {};
         const now = new Date();
 
-        // Initialize last 6 months (monthly view)
+        // Initialize trends
         for (let i = 0; i < 6; i++) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             monthlyTrend[key] = { label: key, value: 0 };
         }
 
-        // Initialize last 30 days (daily view)
         for (let i = 0; i < 30; i++) {
             const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-            const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+            const key = d.toISOString().slice(0, 10);
             dailyTrend[key] = { label: key, value: 0 };
         }
 
@@ -113,21 +133,17 @@ export async function GET(req) {
 
                     const d = new Date(earning.createdAt);
                     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                    if (monthlyTrend[key]) {
-                        monthlyTrend[key].value += amount;
-                    }
+                    if (monthlyTrend[key]) monthlyTrend[key].value += amount;
 
                     const dailyKey = d.toISOString().slice(0, 10);
-                    if (dailyTrend[dailyKey]) {
-                        dailyTrend[dailyKey].value += amount;
-                    }
+                    if (dailyTrend[dailyKey]) dailyTrend[dailyKey].value += amount;
                 });
             }
         });
 
         const totalWithdrawn = payments.reduce((sum, p) => sum + p.amount, 0);
 
-        // 4. Transform Listener History for Frontend Chart
+        // 5. Transform Listener History
         const listenerTrend = (artistProfile?.statsHistory || [])
             .map(h => ({
                 label: new Date(h.date).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' }),
@@ -137,8 +153,8 @@ export async function GET(req) {
             .reverse();
 
         return new Response(JSON.stringify({
-            artistId: artistProfile?.id,
-            artistName: artistProfile?.name || stageName,
+            artistId: artistProfile?.id || artistId,
+            artistName: artistStageName,
             listeners: monthlyListeners,
             earnings: totalEarnings,
             streams: totalStreams,
@@ -148,7 +164,7 @@ export async function GET(req) {
             demos: demosCount,
             trends: Object.values(monthlyTrend).reverse(),
             trendsDaily: Object.values(dailyTrend).reverse(),
-            listenerTrend: listenerTrend // New trend data
+            listenerTrend: listenerTrend
         }), { status: 200 });
 
     } catch (e) {

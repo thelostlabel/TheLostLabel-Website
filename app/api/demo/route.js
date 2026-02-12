@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { notifyDemoSubmission } from "@/lib/discord";
+import { sendMail } from "@/lib/mail";
+import { generateDemoReceivedEmail } from "@/lib/mail-templates";
 import { z } from "zod";
 import rateLimit from "@/lib/rate-limit";
 
@@ -21,6 +23,9 @@ const demoSchema = z.object({
         filepath: z.string(),
         filesize: z.number()
     })).optional()
+}).refine(data => data.trackLink || (data.files && data.files.length > 0), {
+    message: "Either a track link or at least one file must be provided.",
+    path: ["trackLink"]
 });
 
 export async function POST(req) {
@@ -70,8 +75,54 @@ export async function POST(req) {
         await notifyDemoSubmission(
             session.user.stageName || session.user.email,
             title,
-            genre
+            genre,
+            trackLink || null
         );
+
+        // Send Email notification to Artist
+        const userPrefs = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { notifyDemos: true, email: true, stageName: true, fullName: true }
+        });
+
+        const artistName = userPrefs.stageName || userPrefs.fullName || "Artist";
+
+        // 1. Send confirmation to Artist
+        if (userPrefs?.notifyDemos) {
+            try {
+                await sendMail({
+                    to: userPrefs.email,
+                    subject: 'Demo Received | LOST.',
+                    html: generateDemoReceivedEmail(artistName, title)
+                });
+            } catch (mailError) {
+                console.error("Failed to send demo confirmation email:", mailError);
+            }
+        }
+
+        // 2. Forward Demo to A&R Team
+        try {
+            const demoLinkHtml = trackLink
+                ? `<p><strong>Link:</strong> <a href="${trackLink}">${trackLink}</a></p>`
+                : `<p><strong>Files:</strong> ${files.length} file(s) attached in dashboard.</p>`;
+
+            await sendMail({
+                to: 'demo@thelostlabel.com',
+                subject: `NEW DEMO: ${artistName} - ${title}`,
+                html: `
+                    <h2>New Demo Submission</h2>
+                    <p><strong>Artist:</strong> ${artistName}</p>
+                    <p><strong>Title:</strong> ${title}</p>
+                    <p><strong>Genre:</strong> ${genre || 'N/A'}</p>
+                    ${demoLinkHtml}
+                    <p><strong>Message:</strong><br/>${message || 'No message'}</p>
+                    <hr/>
+                    <p><a href="${process.env.NEXTAUTH_URL}/dashboard?view=submissions">View in Admin Panel</a></p>
+                `
+            });
+        } catch (teamMailError) {
+            console.error("Failed to forward demo to team:", teamMailError);
+        }
 
         return new Response(JSON.stringify(demo), { status: 201 });
     } catch (error) {

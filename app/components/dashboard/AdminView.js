@@ -2718,6 +2718,8 @@ function SettingsView() {
                     instagram: parsed.instagram || '',
                     spotify: parsed.spotify || '',
                     youtube: parsed.youtube || '',
+                    twitter: parsed.twitter || '',
+                    facebook: parsed.facebook || '',
                     // Genres
                     genres: parsed.genres || ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
                     // Join Page
@@ -2732,7 +2734,7 @@ function SettingsView() {
                     heroText: 'THE NEW ORDER', heroSubText: 'INDEPENDENT DISTRIBUTION REDEFINED.', featuredReleaseId: '',
                     featuredReleaseLabel: 'FEATURED RELEASE', featuredReleaseSubLabel: 'NOW STREAMING', featuredReleaseStatus: 'Featured',
                     showStats: true,
-                    discord: '', instagram: '', spotify: '', youtube: '',
+                    discord: '', instagram: '', spotify: '', youtube: '', twitter: '', facebook: '',
                     defaultPlaylistId: '6QHy5LPKDRHDdKZGBFxRY8',
                     genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
                     joinHeroTitle: 'WORK WITH THE LOST. COMPANY',
@@ -3024,7 +3026,7 @@ function SettingsView() {
                 {/* SOCIALS SETTINGS */}
                 {activeTab === 'socials' && (
                     <div style={{ display: 'grid', gap: '20px' }}>
-                        {['discord', 'instagram', 'spotify', 'youtube'].map(social => (
+                        {['discord', 'instagram', 'spotify', 'youtube', 'twitter', 'facebook'].map(social => (
                             <div key={social}>
                                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>{social.toUpperCase()} URL</label>
                                 <input type="text" value={config[social]} onChange={(e) => handleChange(social, e.target.value)} style={inputStyle} placeholder={`https://${social}.com/...`} />
@@ -4807,15 +4809,45 @@ function CommunicationsView({ artists }) {
                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '9px', fontWeight: '900', color: '#444' }}>MESSAGE (PLACEHOLDER: {"{{name}}"})</label>
                         <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Hello {{name}}..." style={{ ...inputStyle, minHeight: '250px' }} />
                     </div>
-                    <button disabled={sending} className="glow-button" style={{ width: '100%', padding: '15px', fontWeight: '900', letterSpacing: '2px' }}>
+                    <button disabled={sending || !subject || !message} className="glow-button" style={{ width: '100%', padding: '15px', fontWeight: '900', letterSpacing: '2px' }}>
                         {sending ? 'SENDING...' : 'SEND COMMUNICATIONS'}
                     </button>
                     {results && (
-                        <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 'bold' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 'bold', textAlign: 'center' }}>
                             Last distribution: {results.successCount} sent, {results.failureCount} failed.
                         </div>
                     )}
                 </form>
+
+                <div style={{ padding: '0 25px 25px 25px' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '900', color: '#444', marginBottom: '15px' }}>PREVIEW</div>
+                    <div style={{
+                        background: '#0d0e10',
+                        border: '1px solid #1a1c1e',
+                        borderRadius: '16px',
+                        padding: '20px',
+                        fontSize: '11px',
+                        color: '#888',
+                        lineHeight: '1.6'
+                    }}>
+                        <div style={{ textAlign: 'center', marginBottom: '20px', fontSize: '18px', fontWeight: '900', letterSpacing: '4px', color: '#fff' }}>LOST.</div>
+                        <div style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', textAlign: 'center' }}>{subject || 'SUBJECT'}</div>
+                        <div style={{ marginBottom: '15px' }}>Hello Artist,</div>
+                        <div style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            padding: '15px',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            color: '#fff',
+                            whiteSpace: 'pre-wrap'
+                        }}>
+                            {message || 'Your message will appear here...'}
+                        </div>
+                        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '8px', color: '#444' }}>
+                            © {new Date().getFullYear()} THE LOST LABEL. ALL RIGHTS RESERVED.
+                        </div>
+                    </div>
+                </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={glassStyle}>
@@ -4850,6 +4882,6 @@ function CommunicationsView({ artists }) {
                     )}
                 </div>
             </motion.div>
-        </div>
+        </div >
     );
 }

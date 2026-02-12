@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendMail } from '@/lib/mail';
+import { generateVerificationEmail } from '@/lib/mail-templates';
 
 export async function POST(req) {
     try {
@@ -40,18 +41,8 @@ export async function POST(req) {
 
         await sendMail({
             to: email,
-            subject: 'Verify your LOST. Account',
-            html: `
-                <div style="font-family: Arial, sans-serif; color: #333;">
-                    <h1>Verify Your Email</h1>
-                    <p>You requested a new verification email for your LOST. account.</p>
-                    <p>Please click the button below to verify your email address.</p>
-                    <a href="${verificationLink}" style="display: inline-block; padding: 10px 20px; background-color: #000; color: #fff; text-decoration: none; border-radius: 5px;">Verify Email</a>
-                    <p>If the button doesn't work, copy and paste this link:</p>
-                    <p>${verificationLink}</p>
-                    <p>This link expires in 24 hours.</p>
-                </div>
-            `
+            subject: 'Confirm your collective identity | LOST.',
+            html: generateVerificationEmail(verificationLink)
         });
 
         return NextResponse.json({ success: true, message: "Verification email sent" });

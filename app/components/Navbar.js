@@ -104,7 +104,9 @@ export default function Navbar() {
                         <div style={{ display: 'flex', gap: '15px', marginRight: '20px', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '20px' }}>
                             {socials.discord && (
                                 <a href={socials.discord} target="_blank" title="Discord" style={{ color: '#666', transition: 'color 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#fff'} onMouseLeave={(e) => e.currentTarget.style.color = '#666'}>
-                                    <Disc size={18} strokeWidth={2.5} />
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-discord">
+                                        <path d="M14.9 6.2s-.9-1.2-1.7-1.6c.1.3.2.7.4 1 0-.1-2.4-1.1-4.7-1.1-2.3 0-4.6 1-4.7 1.1.2-.3.3-.7.4-1-.8.4-1.7 1.6-1.7 1.6C.4 11.2 0 16 0 16.1c1.9 2.3 4.9 2.3 4.9 2.3l1-1.2c-1-.3-1.9-.9-2.7-1.5.3.2.7.4 1 .6 2 .9 4.1.9 6.1 0 .4-.2.8-.3 1-.6-.8.7-1.7 1.3-2.7 1.5l1 1.2s3 0 4.9-2.3c0-.1-.4-4.9-2.5-9.9zM7.5 13.3c-1 0-1.8-1-1.8-2.2s.8-2.2 1.8-2.2c1 0 1.8 1 1.8 2.2s-.8 2.2-1.8 2.2zm7.1 0c-1 0-1.8-1-1.8-2.2s.8-2.2 1.8-2.2c1 0 1.8 1 1.8 2.2s-.8 2.2-1.8 2.2z" />
+                                    </svg>
                                 </a>
                             )}
                             {socials.instagram && (

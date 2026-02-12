@@ -49,7 +49,7 @@ export default function Register() {
             const data = await res.json();
 
             if (res.ok) {
-                setSuccess(true);
+                router.push(`/auth/verify-pending?email=${encodeURIComponent(formData.email)}`);
             } else {
                 setError(data.error || "Registration failed");
             }

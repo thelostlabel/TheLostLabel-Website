@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { generateDemoApprovalEmail, generateDemoRejectionEmail } from "@/lib/mail-templates";
 import { notifyDemoApproval } from "@/lib/discord";
 
 export async function GET(req, { params }) {
@@ -170,12 +171,49 @@ export async function PATCH(req, { params }) {
         });
 
         // If status changed to approved, we might want to notify
-        if (status === 'approved' && !body.finalizeData) { // !body.finalizeData check to allow legacy if needed, but we are removing legacy logic
+        if ((status === 'approved' || status === 'contract_sent') && updatedDemo.artist?.user?.email) {
+            try {
+                await sendMail({
+                    to: updatedDemo.artist.user.email,
+                    subject: 'GOOD NEWS: YOUR DEMO HAS BEEN APPROVED',
+                    html: generateDemoApprovalEmail(
+                        updatedDemo.artist.stageName || updatedDemo.artist.fullName || "Artist",
+                        updatedDemo.title
+                    )
+                });
+            } catch (mailError) {
+                console.error("Failed to send approval email:", mailError);
+            }
+
             await notifyDemoApproval(
                 updatedDemo.artist.stageName || updatedDemo.artist.fullName,
                 updatedDemo.title,
-                "Pending Deal Configuration"
+                status === 'contract_sent' ? "Contract Sent" : "Pending Deal Configuration"
             );
+        }
+
+        // If status changed to rejected, notify artist
+        if (status === 'rejected' && updatedDemo.artist?.user?.email) {
+            const userPrefs = await prisma.user.findUnique({
+                where: { id: updatedDemo.artistId }, // artistId in Demo is UserId
+                select: { notifyDemos: true }
+            });
+
+            if (userPrefs?.notifyDemos) {
+                try {
+                    await sendMail({
+                        to: updatedDemo.artist.user.email,
+                        subject: `Update on your demo: ${updatedDemo.title} | LOST.`,
+                        html: generateDemoRejectionEmail(
+                            updatedDemo.artist.stageName || updatedDemo.artist.fullName || "Artist",
+                            updatedDemo.title,
+                            rejectionReason
+                        )
+                    });
+                } catch (mailError) {
+                    console.error("Failed to send rejection email:", mailError);
+                }
+            }
         }
 
         return new Response(JSON.stringify(updatedDemo), { status: 200 });
