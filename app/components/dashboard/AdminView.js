@@ -1479,7 +1479,14 @@ function UsersView({ users, onRoleChange, onRefresh }) {
                         {filteredUsers.map(user => (
                             <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.3s ease' }}>
                                 <td style={tdStyle}>
-                                    <div style={{ fontWeight: '700', color: '#fff', fontSize: '11px' }}>{user.email}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {user.email}
+                                        {user.emailVerified ? (
+                                            <div title={`Verified: ${new Date(user.emailVerified).toLocaleDateString()}`} style={{ color: '#00ff88', display: 'flex' }}><CheckCircle size={12} /></div>
+                                        ) : (
+                                            <div title="Not Verified" style={{ color: 'var(--status-warning)', display: 'flex' }}><AlertCircle size={12} /></div>
+                                        )}
+                                    </div>
                                 </td>
                                 <td style={tdStyle}>
                                     <div style={{ fontWeight: '800', color: '#ccc' }}>{user.stageName || user.fullName || '---'}</div>
