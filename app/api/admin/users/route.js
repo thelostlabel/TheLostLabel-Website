@@ -25,6 +25,7 @@ export async function GET(req) {
                 role: true,
                 status: true,
                 permissions: true,
+                emailVerified: true,
                 createdAt: true
             }
         });
