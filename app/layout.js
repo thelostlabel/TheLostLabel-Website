@@ -9,11 +9,11 @@ import Player from "./components/Player";
 export const metadata = {
   metadataBase: new URL('https://thelostlabel.com'), // Using new domain for absolute image paths
   title: {
-    default: "LOST MUSIC | Independent Record Label & Artist Portal",
-    template: "%s | LOST MUSIC"
+    default: "The Lost Label | Premier Brazilian Phonk & Funk Record Label",
+    template: "%s | The Lost Label"
   },
-  description: "Official portal for LOST MUSIC. Discover the best Brazilian Phonk, Funk, and Electronic music. Submit your demos and join the collective.",
-  keywords: ["LOST MUSIC", "Phonk", "Brazilian Funk", "Funk Mandelo", "Music Label", "Artist Portal", "Demo Submission", "Independent Label", "Music Distribution"],
+  description: " The Lost Label is the leading independent record label for Brazilian Phonk, Funk, and Electronic music. We provide major label infrastructure for independent artists. Join the movement.",
+  keywords: ["The Lost Label", "Lost Label", "Brazilian Funk", "Phonk", "Phonk Label", "Funk Mandelo", "Music Distribution", "Independent Label", "Artist Portal", "Demo Submission"],
   verification: {
     google: "3ghNlS-ul1NRXkqu9LWBoAmsKORus0SUMahs332IHFY",
   },
@@ -22,10 +22,10 @@ export const metadata = {
     apple: '/logo.png',
   },
   openGraph: {
-    title: "LOST MUSIC | Next-Gen Artist Portal",
-    description: "The home of Brazilian Phonk and Funk. submit your tracks and manage your artist career.",
+    title: "The Lost Label | Premier Brazilian Phonk & Funk Label",
+    description: "The home of Brazilian Phonk and Funk. Submit your tracks and manage your artist career with The Lost Label.",
     url: "https://thelostlabel.com",
-    siteName: "LOST MUSIC",
+    siteName: "The Lost Label",
     images: [
       {
         url: "/logo.png",
@@ -38,8 +38,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "LOST MUSIC | Brazilian Phonk & Funk Label",
-    description: "Submit your demos to the LOST MUSIC collective.",
+    title: "The Lost Label | Brazilian Phonk & Funk",
+    description: "Submit your demos to The Lost Label. The premier destination for Phonk and Funk artists.",
     images: ["/logo.png"],
   },
   robots: {
@@ -52,6 +52,9 @@ export const metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
+  },
+  alternates: {
+    canonical: 'https://thelostlabel.com',
   },
 };
 

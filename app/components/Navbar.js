@@ -94,6 +94,7 @@ export default function Navbar() {
                     }}>
                         <Link href="/releases" style={{ transition: 'var(--transition)' }}>RELEASES</Link>
                         <Link href="/artists" style={{ transition: 'var(--transition)' }}>ARTISTS</Link>
+                        <Link href="/faq" style={{ transition: 'var(--transition)' }}>FAQ</Link>
                         {registrationsOpen && <Link href="/join" style={{ transition: 'var(--transition)', color: 'var(--accent)' }}>JOIN US</Link>}
                         <Link href="/#demo" style={{ transition: 'var(--transition)' }}>DEMO</Link>
                     </div>
@@ -212,6 +213,7 @@ export default function Navbar() {
                         <div className="mobile-links">
                             <Link href="/releases" onClick={() => setMobileMenuOpen(false)}>RELEASES</Link>
                             <Link href="/artists" onClick={() => setMobileMenuOpen(false)}>ARTISTS</Link>
+                            <Link href="/faq" onClick={() => setMobileMenuOpen(false)}>FAQ</Link>
                             {registrationsOpen && <Link href="/join" onClick={() => setMobileMenuOpen(false)} className="accent-link">JOIN US</Link>}
                             <Link href="/#demo" onClick={() => setMobileMenuOpen(false)}>SUBMIT DEMO</Link>
                         </div>
