@@ -13,21 +13,22 @@ async function main() {
     console.log('Scraped Data:', data);
 
     if (data) {
+        const finalName = data.name && data.name !== 'Your Library' ? data.name : 'MONTAGEM NO COMPASSO';
         const rel = await prisma.release.upsert({
             where: { id },
             update: {
-                name: data.name || 'Unknown Prerelease',
+                name: finalName,
                 image: data.image,
-                releaseDate: new Date(data.releaseDate?.replace(/Yayınlanma tarihi:\s*/i, '') || new Date()).toISOString(),
+                releaseDate: new Date(data.releaseDate?.replace(/Yayınlanma tarihi:\s*/i, '').replace(/Releases on\s*/i, '') || new Date()).toISOString(),
                 type: 'album'
             },
             create: {
                 id,
-                name: data.name || 'Unknown Prerelease',
+                name: finalName,
                 image: data.image,
                 artistName: 'LXGHTLXSS, DJ JUAN, GRXTOR',
                 spotifyUrl: `https://open.spotify.com/album/${id}`,
-                releaseDate: new Date(data.releaseDate?.replace(/Yayınlanma tarihi:\s*/i, '') || new Date()).toISOString(),
+                releaseDate: new Date(data.releaseDate?.replace(/Yayınlanma tarihi:\s*/i, '').replace(/Releases on\s*/i, '') || new Date()).toISOString(),
                 type: 'album',
                 artistsJson: '[]'
             }
