@@ -717,14 +717,18 @@ function ArtistsView({ artists, users, onSync, onRefresh }) {
                         <button
                             onClick={async () => {
                                 if (isSyncingAll) return;
-                                if (!confirm("Start bulk background sync? This will process up to 10 artists needing update.")) return;
+                                if (!confirm("Start bulk background sync? This will refresh all artists with Spotify URLs.")) return;
                                 setIsSyncingAll(true);
                                 try {
-                                    const res = await fetch('/api/admin/scrape/refresh', { method: 'POST' });
+                                    const res = await fetch('/api/admin/scrape/batch', { method: 'POST' });
                                     const data = await res.json();
-                                    showToast(`Synced ${data.count} artists.`, "success");
+                                    if (data.success) {
+                                        showToast(`Batch Sync Completed. Success: ${data.successCount}, Failed: ${data.failCount}`, "success");
+                                    } else {
+                                        showToast("Batch sync failed", "error");
+                                    }
                                     if (onRefresh) onRefresh();
-                                } catch (e) { showToast("Sync failed", "error"); }
+                                } catch (e) { showToast("Sync error", "error"); }
                                 finally { setIsSyncingAll(false); }
                             }}
                             disabled={isSyncingAll}
@@ -900,6 +904,7 @@ function ReleasesView({ releases }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [editingRelease, setEditingRelease] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [syncing, setSyncing] = useState(false);
     const [expandedReleaseId, setExpandedReleaseId] = useState(null);
     const { showToast, showConfirm } = useToast();
 
@@ -960,8 +965,9 @@ function ReleasesView({ releases }) {
         if (!name) return '';
         return name
             .toLowerCase()
-            .replace(/\s*-\s*(slowed|super slowed|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version)\s*$/i, '')
-            .replace(/\s*\((slowed|super slowed|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version)\)\s*$/i, '')
+            .replace(/\s*-\s*(slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\s*$/i, '')
+            .replace(/\s*\((slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\)\s*$/i, '')
+            .replace(/\s*\[(slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\]\s*$/i, '')
             .trim();
     };
 
