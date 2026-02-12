@@ -11,12 +11,21 @@ export async function GET(req) {
     // Always get latest user profile from DB to avoid session sync issues
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { spotifyUrl: true, email: true }
+        include: { artist: true }
     });
 
     // Extract Artist ID
     let spotifyId = null;
-    if (user && user.spotifyUrl) {
+
+    // Priority 1: Linked Artist Profile
+    if (user?.artist?.spotifyUrl) {
+        const rawUrl = user.artist.spotifyUrl;
+        const parts = rawUrl.split('/').filter(p => p.trim() !== '');
+        const lastPart = parts.pop() || '';
+        spotifyId = lastPart.split('?')[0];
+    }
+    // Priority 2: User-provided Spotify URL in settings (Legacy / Unlinked)
+    else if (user?.spotifyUrl) {
         const rawUrl = user.spotifyUrl;
         const parts = rawUrl.split('/').filter(p => p.trim() !== '');
         const lastPart = parts.pop() || '';

@@ -122,34 +122,10 @@ export default function Login() {
                                     <div style={{ marginTop: '10px' }}>
                                         <button
                                             type="button"
-                                            onClick={async () => {
-                                                if (!email) {
-                                                    alert("Please enter your email address first.");
-                                                    return;
-                                                }
-                                                try {
-                                                    setLoading(true);
-                                                    const res = await fetch('/api/auth/resend-verification', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ email })
-                                                    });
-                                                    const data = await res.json();
-                                                    if (res.ok) {
-                                                        alert("Verification email sent! Please check your inbox.");
-                                                        setError(null);
-                                                    } else {
-                                                        alert(data.error || "Failed to send email.");
-                                                    }
-                                                } catch (e) {
-                                                    alert("An error occurred.");
-                                                } finally {
-                                                    setLoading(false);
-                                                }
-                                            }}
+                                            onClick={() => router.push(`/auth/verify-pending?email=${encodeURIComponent(email)}`)}
                                             style={{ background: 'transparent', border: '1px solid currentColor', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', color: 'inherit', fontSize: '10px' }}
                                         >
-                                            RESEND VERIFICATION EMAIL
+                                            GO TO VERIFICATION CENTER
                                         </button>
                                     </div>
                                 )}
@@ -180,6 +156,9 @@ export default function Login() {
                                 required
                                 className="input-focus-glow"
                             />
+                            <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                                <Link href="/auth/forgot-password" style={{ fontSize: '10px', fontWeight: '800', color: '#666', textDecoration: 'none', letterSpacing: '1px' }}>FORGOT PASSWORD?</Link>
+                            </div>
                         </div>
 
                         <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '20px', width: '100%', borderRadius: '16px', fontSize: '13px', letterSpacing: '1px' }}>

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { generateBroadcastEmail } from "@/lib/mail-templates";
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -49,7 +50,7 @@ export async function POST(req) {
                 await sendMail({
                     to: recipient.email,
                     subject: subject,
-                    html: html.replace(/{{name}}/g, recipient.name || "Artist")
+                    html: generateBroadcastEmail(recipient.name || "Artist", subject, html.replace(/\n/g, '<br>'))
                 });
                 successCount++;
             } catch (error) {

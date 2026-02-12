@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sendMail } from "@/lib/mail";
+import { generateEarningsNotificationEmail } from "@/lib/mail-templates";
 
 // GET: Fetch earnings
 // GET: Fetch earnings with pagination
@@ -143,7 +145,11 @@ export async function POST(req) {
         // Get contract with splits to calculate shares
         const contract = await prisma.contract.findUnique({
             where: { id: contractId },
-            include: { splits: true }
+            include: {
+                splits: true,
+                user: { select: { email: true, stageName: true, fullName: true } },
+                release: { select: { name: true } }
+            }
         });
 
         if (!contract) {
@@ -177,6 +183,25 @@ export async function POST(req) {
         // NOTE: In a more complex system, we might want an 'EarningSplit' table 
         // to track exactly how much each collaborator got from THIS specific payment.
         // For now, the 'artistAmount' represents the total pool shared by splits.
+
+        // Send notification to primary artist if email exists
+        const recipientEmail = contract.user?.email || contract.primaryArtistEmail;
+        if (recipientEmail) {
+            try {
+                await sendMail({
+                    to: recipientEmail,
+                    subject: `NEW EARNINGS RECEIVED: ${contract.release?.name || earning.period}`,
+                    html: generateEarningsNotificationEmail(
+                        contract.user?.stageName || contract.user?.fullName || "Artist",
+                        contract.release?.name || "Your Release",
+                        earning.artistAmount,
+                        earning.period
+                    )
+                });
+            } catch (mailError) {
+                console.error("Failed to send earnings notification email:", mailError);
+            }
+        }
 
         return new Response(JSON.stringify(earning), { status: 201 });
     } catch (error) {

@@ -20,7 +20,11 @@ export async function GET(req) {
                 spotifyUrl: true,
                 monthlyListeners: true,
                 role: true,
-                createdAt: true
+                createdAt: true,
+                notifyDemos: true,
+                notifyEarnings: true,
+                notifySupport: true,
+                notifyContracts: true
             }
         });
 
@@ -39,14 +43,37 @@ export async function PATCH(req) {
 
     try {
         const body = await req.json();
-        const { fullName, stageName, spotifyUrl } = body;
+        const { fullName, stageName, spotifyUrl, notifyDemos, notifyEarnings, notifySupport, notifyContracts } = body;
+
+        // Check if user is linked to an Artist profile
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            include: { artist: true }
+        });
+
+        // Validation for linked artists
+        if (user.artist && (stageName || spotifyUrl)) {
+            // Check if they are actually trying to CHANGE it, not just sending the same value
+            const isNameChanging = stageName && stageName !== user.stageName;
+            const isUrlChanging = spotifyUrl && spotifyUrl !== user.spotifyUrl;
+
+            if (isNameChanging || isUrlChanging) {
+                return new Response(JSON.stringify({
+                    error: "Once your profile is linked to an artist, Stage Name and Spotify URL can only be changed by support."
+                }), { status: 403 });
+            }
+        }
 
         const updatedUser = await prisma.user.update({
             where: { id: session.user.id },
             data: {
                 fullName: fullName || undefined,
                 stageName: stageName || undefined,
-                spotifyUrl: spotifyUrl || undefined
+                spotifyUrl: spotifyUrl || undefined,
+                notifyDemos: notifyDemos !== undefined ? notifyDemos : undefined,
+                notifyEarnings: notifyEarnings !== undefined ? notifyEarnings : undefined,
+                notifySupport: notifySupport !== undefined ? notifySupport : undefined,
+                notifyContracts: notifyContracts !== undefined ? notifyContracts : undefined
             }
         });
 

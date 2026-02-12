@@ -19,6 +19,8 @@ model User {
   emailVerified    DateTime?
   verificationToken String?
   verificationTokenExpiry DateTime?
+  resetToken       String?
+  resetTokenExpiry DateTime?
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   monthlyListeners Int?
@@ -27,6 +29,10 @@ model User {
   legalName        String?
   phoneNumber      String?
   address          String?
+  notifyDemos      Boolean                @default(true)
+  notifyEarnings   Boolean                @default(true)
+  notifySupport    Boolean                @default(true)
+  notifyContracts  Boolean                @default(true)
   artist           Artist?
   assignedRequests ChangeRequest[]        @relation("AssignedRequests")
   requests         ChangeRequest[]        @relation("UserRequests")
