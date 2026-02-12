@@ -118,6 +118,41 @@ export default function Login() {
                         {error && (
                             <div style={{ padding: '15px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '12px', color: '#ff4444', fontSize: '11px', fontWeight: '800' }}>
                                 {error.toUpperCase()}
+                                {error === 'EMAIL NOT VERIFIED' && (
+                                    <div style={{ marginTop: '10px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                if (!email) {
+                                                    alert("Please enter your email address first.");
+                                                    return;
+                                                }
+                                                try {
+                                                    setLoading(true);
+                                                    const res = await fetch('/api/auth/resend-verification', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ email })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        alert("Verification email sent! Please check your inbox.");
+                                                        setError(null);
+                                                    } else {
+                                                        alert(data.error || "Failed to send email.");
+                                                    }
+                                                } catch (e) {
+                                                    alert("An error occurred.");
+                                                } finally {
+                                                    setLoading(false);
+                                                }
+                                            }}
+                                            style={{ background: 'transparent', border: '1px solid currentColor', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', color: 'inherit', fontSize: '10px' }}
+                                        >
+                                            RESEND VERIFICATION EMAIL
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
