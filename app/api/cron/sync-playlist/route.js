@@ -77,6 +77,30 @@ export async function POST(req) {
                 const track = item.track;
                 const album = track.album;
 
+                // Improved Date Parsing Logic
+                let finalDate;
+
+                // 1. Try Album Release Date
+                if (album.release_date && album.release_date !== '0000') {
+                    const d = new Date(album.release_date);
+                    if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
+                        finalDate = d;
+                    }
+                }
+
+                // 2. Fallback to 'added_at'
+                if (!finalDate && item.added_at) {
+                    const d = new Date(item.added_at);
+                    if (!isNaN(d.getTime())) {
+                        finalDate = d;
+                    }
+                }
+
+                // 3. Fallback to Now
+                if (!finalDate) {
+                    finalDate = new Date();
+                }
+
                 // Use TRACK ID instead of ALBUM ID to treat every song as a unique entry
                 if (!playlistReleases.has(track.id)) {
                     playlistReleases.set(track.id, {
@@ -85,7 +109,7 @@ export async function POST(req) {
                         artistName: track.artists[0]?.name,
                         image: album.images[0]?.url,
                         spotifyUrl: track.external_urls.spotify, // Track URL
-                        releaseDate: album.release_date,
+                        releaseDate: finalDate.toISOString(),
                         artistsJson: JSON.stringify(track.artists.map(a => ({ id: a.id, name: a.name }))),
                         popularity: track.popularity || 0,
                         previewUrl: track.preview_url // Save preview URL
