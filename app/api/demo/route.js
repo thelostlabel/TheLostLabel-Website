@@ -2,14 +2,47 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { notifyDemoSubmission } from "@/lib/discord";
+import { z } from "zod";
+import rateLimit from "@/lib/rate-limit";
+
+// Rate limiter: 5 demos per hour per user
+const limiter = rateLimit({
+    interval: 60 * 60 * 1000,
+    uniqueTokenPerInterval: 500,
+});
+
+const demoSchema = z.object({
+    title: z.string().min(1).max(100),
+    genre: z.string().min(1).max(50).optional(),
+    trackLink: z.string().url().optional().or(z.literal('')),
+    message: z.string().max(1000).optional(),
+    files: z.array(z.object({
+        filename: z.string(),
+        filepath: z.string(),
+        filesize: z.number()
+    })).optional()
+});
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session) return new Response("Unauthorized", { status: 401 });
 
     try {
+        await limiter.check(null, 10, session.user.id);
+    } catch {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), { status: 429 });
+    }
+
+    try {
         const body = await req.json();
-        const { title, genre, trackLink, message, files = [] } = body;
+
+        // Validate input
+        const result = demoSchema.safeParse(body);
+        if (!result.success) {
+            return new Response(JSON.stringify({ error: "Invalid input", details: result.error.issues }), { status: 400 });
+        }
+
+        const { title, genre, trackLink, message, files = [] } = result.data;
 
         const demo = await prisma.demo.create({
             data: {

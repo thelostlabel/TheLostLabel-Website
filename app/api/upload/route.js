@@ -2,6 +2,14 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import rateLimit from "@/lib/rate-limit";
+import { v4 as uuidv4 } from 'uuid'; // You might need to install uuid or just use crypto
+
+// Rate limiter: 20 uploads per hour
+const limiter = rateLimit({
+    interval: 60 * 60 * 1000,
+    uniqueTokenPerInterval: 500,
+});
 
 const MAX_DEMO_BYTES = 100 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -12,6 +20,12 @@ export async function POST(req) {
 
     if (!session) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
+    try {
+        await limiter.check(null, 20, session.user.id);
+    } catch {
+        return new Response(JSON.stringify({ error: "Upload rate limit exceeded." }), { status: 429 });
     }
 
     try {
@@ -33,7 +47,14 @@ export async function POST(req) {
         const uploadedFiles = [];
 
         for (const file of files) {
+            // Strict extension checking
             const ext = file.name.split('.').pop().toLowerCase();
+            const allowedExtensions = ['wav', 'jpg', 'jpeg', 'png', 'pdf'];
+
+            if (!allowedExtensions.includes(ext)) {
+                continue;
+            }
+
             let targetDir;
             let publicPath;
 
@@ -55,15 +76,12 @@ export async function POST(req) {
                 }
                 targetDir = contractDir;
                 publicPath = 'private/uploads/contracts/';
-            } else {
-                continue; // Skip unsupported
             }
 
-            // Generate unique filename
-            const timestamp = Date.now();
-            const randomStr = Math.random().toString(36).substring(7);
-            const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-            const uniqueFilename = `${timestamp}_${randomStr}_${safeFilename}`;
+            // Generate unique filename using UUID for better randomness and collision avoidance
+            const uniqueId = uuidv4();
+            const safeOriginalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const uniqueFilename = `${uniqueId}_${safeOriginalName}`;
             const filepath = join(targetDir, uniqueFilename);
 
             // Write file

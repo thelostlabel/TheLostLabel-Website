@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -578,6 +578,10 @@ function ArtistsView({ artists, users, onSync, onRefresh }) {
     const [newArtist, setNewArtist] = useState({ name: '', spotifyUrl: '', email: '' });
     const [saving, setSaving] = useState(false);
 
+    // Fix: Prevent spam clicking
+    const [syncingArtistId, setSyncingArtistId] = useState(null);
+    const [isSyncingAll, setIsSyncingAll] = useState(false);
+
     // Filter artists based on search
     const filteredArtists = artists.filter(artist =>
         artist.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -630,14 +634,25 @@ function ArtistsView({ artists, users, onSync, onRefresh }) {
                             )}
                         </div>
                         <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                                 e.stopPropagation();
-                                onSync(selectedArtist.userId, selectedArtist.spotifyUrl, selectedArtist.id);
+                                if (syncingArtistId) return;
+                                setSyncingArtistId(selectedArtist.id);
+                                await onSync(selectedArtist.userId, selectedArtist.spotifyUrl, selectedArtist.id);
+                                setSyncingArtistId(null);
                             }}
+                            disabled={syncingArtistId === selectedArtist.id}
                             className="glow-button"
-                            style={{ padding: '8px 20px', fontSize: '11px', marginTop: '10px' }}
+                            style={{
+                                padding: '8px 20px',
+                                fontSize: '11px',
+                                marginTop: '10px',
+                                opacity: syncingArtistId === selectedArtist.id ? 0.7 : 1,
+                                cursor: syncingArtistId === selectedArtist.id ? 'not-allowed' : 'pointer'
+                            }}
                         >
-                            <RefreshCw size={12} style={{ marginRight: '5px' }} /> SYNC SPOTIFY
+                            <RefreshCw size={12} style={{ marginRight: '5px', animation: syncingArtistId === selectedArtist.id ? 'spin 1s linear infinite' : 'none' }} />
+                            {syncingArtistId === selectedArtist.id ? 'SYNCING...' : 'SYNC SPOTIFY'}
                         </button>
                     </div>
                 </div>
@@ -700,17 +715,30 @@ function ArtistsView({ artists, users, onSync, onRefresh }) {
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button
                             onClick={async () => {
+                                if (isSyncingAll) return;
                                 if (!confirm("Start bulk background sync? This will process up to 10 artists needing update.")) return;
+                                setIsSyncingAll(true);
                                 try {
                                     const res = await fetch('/api/admin/scrape/refresh', { method: 'POST' });
                                     const data = await res.json();
                                     showToast(`Synced ${data.count} artists.`, "success");
                                     if (onRefresh) onRefresh();
                                 } catch (e) { showToast("Sync failed", "error"); }
+                                finally { setIsSyncingAll(false); }
                             }}
-                            style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            disabled={isSyncingAll}
+                            style={{
+                                ...btnStyle,
+                                background: 'rgba(255,255,255,0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                opacity: isSyncingAll ? 0.7 : 1,
+                                cursor: isSyncingAll ? 'not-allowed' : 'pointer'
+                            }}
                         >
-                            <RefreshCw size={14} /> SYNC ALL
+                            <RefreshCw size={14} style={{ animation: isSyncingAll ? 'spin 1s linear infinite' : 'none' }} />
+                            {isSyncingAll ? 'SYNCING...' : 'SYNC ALL'}
                         </button>
                         <button onClick={() => setIsCreating(true)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Plus size={14} /> NEW ARTIST
@@ -936,13 +964,23 @@ function ReleasesView({ releases }) {
             .trim();
     };
 
-    const getVariants = (release) => {
-        const base = getBaseTitle(release.name);
-        if (!base) return [];
-        return releases
-            .filter(r => r.id !== release.id && getBaseTitle(r.name) === base)
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    };
+    // Group releases logic
+    const groupedReleases = useMemo(() => {
+        const groups = {};
+        filteredReleases.forEach(release => {
+            const base = getBaseTitle(release.name);
+            if (!groups[base]) groups[base] = [];
+            groups[base].push(release);
+        });
+        return groups;
+    }, [filteredReleases]);
+
+    // Sort groups by latest release date
+    const sortedGroups = Object.values(groupedReleases).sort((groupA, groupB) => {
+        const latestA = groupA.reduce((max, r) => new Date(r.releaseDate) > new Date(max.releaseDate) ? r : max, groupA[0]);
+        const latestB = groupB.reduce((max, r) => new Date(r.releaseDate) > new Date(max.releaseDate) ? r : max, groupB[0]);
+        return new Date(latestB.releaseDate) - new Date(latestA.releaseDate);
+    });
 
     return (
         <div>
@@ -988,114 +1026,102 @@ function ReleasesView({ releases }) {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '25px' }}>
-                {filteredReleases.map(release => {
-                    const variants = getVariants(release);
-                    const isOpen = expandedReleaseId === release.id;
-                    const isReleased = new Date(release.releaseDate) <= new Date();
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
+                {sortedGroups.map(group => {
+                    // Use the "Main" release (e.g. Original Mix, or just the first one) as the preview
+                    const mainRelease = group.find(r => r.name.toLowerCase() === getBaseTitle(r.name).toLowerCase()) || group[0];
+                    const isExpanded = expandedReleaseId === getBaseTitle(mainRelease.name);
+                    const variants = group.filter(r => r.id !== mainRelease.id);
+                    const isReleased = new Date(mainRelease.releaseDate) <= new Date();
 
                     return (
-                        <div
-                            key={release.id}
-                            className="glass"
-                            style={{
-                                padding: '20px',
-                                cursor: variants.length ? 'pointer' : 'default',
-                                borderRadius: '20px',
-                                transition: 'transform 0.2s, background 0.2s',
-                                background: 'rgba(255,255,255,0.02)'
-                            }}
-                            onClick={() => variants.length && setExpandedReleaseId(isOpen ? null : release.id)}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                        >
-                            <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', marginBottom: '15px', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                {release.image ? (
-                                    <NextImage src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name || "Release"} width={240} height={240} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                    <Disc size={40} color="#222" />
-                                )}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '10px',
-                                    right: '10px',
-                                    padding: '4px 8px',
-                                    borderRadius: '8px',
-                                    background: isReleased ? 'rgba(0,0,0,0.6)' : 'rgba(255,170,0,0.8)',
-                                    backdropFilter: 'blur(4px)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    color: '#fff',
-                                    fontSize: '9px',
-                                    fontWeight: '900',
-                                    letterSpacing: '1px'
-                                }}>
-                                    {isReleased ? 'RELEASED' : 'UPCOMING'}
+                        <div key={mainRelease.id} className="glass" style={{ padding: '0', display: 'flex', flexDirection: 'column', borderRadius: '20px', background: 'rgba(255,255,255,0.02)', transition: 'transform 0.2s', position: 'relative' }}>
+                            {/* Main Card */}
+                            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    {mainRelease.image ? (
+                                        <NextImage src={mainRelease.image?.startsWith('private/') ? `/api/files/release/${mainRelease.id}` : (mainRelease.image || '/default-album.jpg')} alt={mainRelease.name} width={240} height={240} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <Disc size={40} color="#222" />
+                                    )}
+                                    <div style={{
+                                        position: 'absolute', top: '10px', right: '10px',
+                                        padding: '4px 8px', borderRadius: '8px',
+                                        background: isReleased ? 'rgba(0,0,0,0.6)' : 'rgba(255,170,0,0.8)',
+                                        backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.1)',
+                                        color: '#fff', fontSize: '9px', fontWeight: '900', letterSpacing: '1px'
+                                    }}>
+                                        {isReleased ? 'RELEASED' : 'UPCOMING'}
+                                    </div>
+                                    {/* Action Buttons Overlay on Image */}
+                                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', right: '10px', display: 'flex', gap: '5px' }}>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setEditingRelease(mainRelease); }}
+                                            style={{ flex: 1, padding: '8px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: 'pointer', color: '#fff', fontSize: '9px', fontWeight: '900', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                        >
+                                            <Edit3 size={10} /> EDIT
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(mainRelease.id); }}
+                                            style={{ flex: 1, padding: '8px', background: 'rgba(255,68,68,0.2)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', color: '#fff', fontSize: '9px', fontWeight: '900', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                        >
+                                            <Trash2 size={10} /> DELETE
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {getBaseTitle(mainRelease.name)}
+                                    </h3>
+                                    <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', marginBottom: '4px' }}>
+                                        {mainRelease.artistName || 'Unknown Artist'}
+                                    </p>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <p style={{ fontSize: '10px', color: '#666', fontWeight: '600' }}>
+                                            {new Date(mainRelease.releaseDate || mainRelease.createdAt).toLocaleDateString()}
+                                        </p>
+                                        {variants.length > 0 && (
+                                            <button
+                                                onClick={() => setExpandedReleaseId(isExpanded ? null : getBaseTitle(mainRelease.name))}
+                                                style={{ background: isExpanded ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                                            >
+                                                {isExpanded ? 'HIDE' : `+${variants.length} VERSIONS`}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {release.name}
-                            </h3>
-                            <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', marginBottom: '6px' }}>
-                                {release.artistName || 'Unknown Artist'}
-                            </p>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <p style={{ fontSize: '10px', color: '#666', fontWeight: '600' }}>
-                                    {new Date(release.releaseDate || release.createdAt).toLocaleDateString()}
-                                </p>
-                                {variants.length > 0 && (
-                                    <div style={{ fontSize: '9px', color: '#888', fontWeight: '800', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
-                                        {isOpen ? 'HIDE VARIANTS' : `+${variants.length} VARIANTS`}
-                                    </div>
-                                )}
-                            </div>
-
+                            {/* Variants List */}
                             <AnimatePresence>
-                                {isOpen && variants.length > 0 && (
+                                {isExpanded && variants.length > 0 && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
-                                        style={{ marginTop: '15px', overflow: 'hidden' }}
+                                        style={{ overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.2)' }}
                                     >
-                                        <div style={{ display: 'grid', gap: '8px', paddingBottom: '5px' }}>
+                                        <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {variants.map(v => (
-                                                <div key={v.id} style={{ padding: '10px', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div key={v.id} style={{ padding: '10px', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div>
                                                         <div style={{ fontSize: '11px', fontWeight: '800', color: '#ddd' }}>{v.name}</div>
                                                         <div style={{ fontSize: '9px', color: '#666' }}>{new Date(v.releaseDate).toLocaleDateString()}</div>
                                                     </div>
-                                                    <button onClick={(e) => { e.stopPropagation(); setEditingRelease(v); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <button onClick={(e) => { e.stopPropagation(); setEditingRelease(v); }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }} title="Edit"><Edit2 size={12} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(v.id); }} style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer', padding: '4px' }} title="Delete"><Trash2 size={12} /></button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-
-                            {/* Actions */}
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setEditingRelease(release); }}
-                                    style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', cursor: 'pointer', color: '#fff', fontSize: '10px', fontWeight: '900', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
-                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.08)'}
-                                    onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.03)'}
-                                >
-                                    <Edit3 size={12} /> EDIT
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(release.id); }}
-                                    style={{ padding: '10px', background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.1)', borderRadius: '12px', cursor: 'pointer', color: 'var(--status-error)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    onMouseEnter={(e) => e.target.style.background = 'rgba(255,68,68,0.15)'}
-                                    onMouseLeave={(e) => e.target.style.background = 'rgba(255,68,68,0.08)'}
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
                         </div>
                     );
                 })}
-
             </div>
 
             {editingRelease && (
