@@ -11,6 +11,7 @@ import {
     MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell, Lock
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useToast } from '@/app/components/ToastContext';
 import ProjectView from './ProjectView';
 
 const glassStyle = {
@@ -67,7 +68,7 @@ const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
 
     return (
         <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                         <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
@@ -136,6 +137,7 @@ const inputStyle = {
 
 export default function ArtistView() {
     const { data: session, update } = useSession();
+    const { showToast, showConfirm } = useToast();
     const searchParams = useSearchParams();
     const rawView = searchParams.get('view') || 'overview';
     const view = rawView.startsWith('my-') ? rawView.replace('my-', '') : rawView;
@@ -355,7 +357,6 @@ export default function ArtistView() {
             if (!demoRes.ok) throw new Error('Failed to submit demo');
 
             showToast('Demo submitted successfully!', 'success');
-            showToast('Demo submitted successfully!', 'success');
             setTitle('');
             setGenre('');
             setTrackLink('');
@@ -463,6 +464,7 @@ export default function ArtistView() {
                     removeFile={removeFile}
                     fileInputRef={fileInputRef}
                     uploading={uploading}
+                    uploadProgress={uploadProgress}
                     handleSubmit={handleSubmit}
                 />
             ) : view === 'earnings' ? (
@@ -1696,7 +1698,7 @@ function SubmitView({
     message, setMessage,
     files,
     dragActive, handleDrag, handleDrop, handleFileSelect, removeFile, fileInputRef,
-    uploading, handleSubmit
+    uploading, uploadProgress, handleSubmit
 }) {
     const [genres, setGenres] = useState(['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Other']);
 

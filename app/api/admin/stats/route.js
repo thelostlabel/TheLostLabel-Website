@@ -58,10 +58,10 @@ export async function GET(req) {
             }),
             prisma.$queryRaw`
                 SELECT TO_CHAR("createdAt", 'YYYY-MM') as label, 
-                       SUM("labelAmount") as revenue, 
-                       SUM("artistAmount") as "artistShare" 
+                       COALESCE(SUM("labelAmount"), 0) as revenue, 
+                       COALESCE(SUM("artistAmount"), 0) as "artistShare" 
                 FROM "Earning" 
-                GROUP BY label 
+                GROUP BY TO_CHAR("createdAt", 'YYYY-MM') 
                 ORDER BY label ASC 
                 LIMIT 12
             `,
@@ -79,10 +79,10 @@ export async function GET(req) {
         // Payment Trends (PostgreSQL compatible)
         const payoutTrendRows = await prisma.$queryRaw`
             SELECT TO_CHAR("createdAt", 'YYYY-MM') as label, 
-                   SUM("amount") as amount 
+                   COALESCE(SUM("amount"), 0) as amount 
             FROM "Payment" 
             WHERE "status" = 'completed'
-            GROUP BY label 
+            GROUP BY TO_CHAR("createdAt", 'YYYY-MM') 
             ORDER BY label ASC 
             LIMIT 12
         `;

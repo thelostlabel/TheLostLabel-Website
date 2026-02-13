@@ -15,15 +15,19 @@ const limiter = rateLimit({
 
 const demoSchema = z.object({
     title: z.string().min(1).max(100),
-    genre: z.string().min(1).max(50).optional(),
-    trackLink: z.string().url().optional().or(z.literal('')),
-    message: z.string().max(1000).optional(),
+    genre: z.string().max(50).optional().or(z.literal('')).or(z.null()),
+    trackLink: z.string().url().optional().or(z.literal('')).or(z.null()),
+    message: z.string().max(1000).optional().or(z.literal('')).or(z.null()),
     files: z.array(z.object({
         filename: z.string(),
         filepath: z.string(),
         filesize: z.number()
-    })).optional()
-}).refine(data => data.trackLink || (data.files && data.files.length > 0), {
+    })).optional().or(z.null())
+}).refine(data => {
+    const hasLink = data.trackLink && data.trackLink.length > 5;
+    const hasFiles = data.files && data.files.length > 0;
+    return hasLink || hasFiles;
+}, {
     message: "Either a track link or at least one file must be provided.",
     path: ["trackLink"]
 });
@@ -71,6 +75,7 @@ export async function POST(req) {
             }
         });
 
+        /* 
         // Send Discord notification
         await notifyDemoSubmission(
             session.user.stageName || session.user.email,
@@ -78,6 +83,7 @@ export async function POST(req) {
             genre,
             trackLink || null
         );
+        */
 
         // Send Email notification to Artist
         const userPrefs = await prisma.user.findUnique({
