@@ -8,7 +8,7 @@ import {
     Upload, Music, Disc, User as UserIcon, CheckCircle,
     XCircle, Clock, AlertCircle, Trash2, Send, ExternalLink,
     Briefcase, DollarSign, CreditCard, Users, ClipboardList,
-    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp
+    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ProjectView from './ProjectView';
@@ -166,6 +166,7 @@ export default function ArtistView() {
     }, [searchParams]);
 
     const [stats, setStats] = useState({ releases: 0, listeners: 0, pendingRequests: 0, earnings: 0, withdrawn: 0, balance: 0, trends: [], trendsDaily: [] });
+    const [payments, setPayments] = useState([]);
     const fetchStats = useCallback(async () => {
         setLoading(true);
         try {
@@ -205,6 +206,14 @@ export default function ArtistView() {
         finally { setLoading(false); }
     }, []);
 
+    const fetchPayments = useCallback(async () => {
+        try {
+            const res = await fetch('/api/payments');
+            const data = await res.json();
+            setPayments(data.payments || []);
+        } catch (e) { console.error(e); }
+    }, []);
+
     const fetchDemos = useCallback(async () => {
         setLoading(true);
         try {
@@ -229,10 +238,10 @@ export default function ArtistView() {
         if (view === 'overview') fetchStats();
         else if (view === 'demos') fetchDemos();
         else if (view === 'contracts') fetchContracts();
-        else if (view === 'earnings') fetchEarnings();
+        else if (view === 'earnings') { fetchEarnings(); fetchPayments(); }
         else if (view === 'support') fetchRequests();
         else setLoading(false);
-    }, [view, fetchStats, fetchDemos, fetchContracts, fetchEarnings, fetchRequests]);
+    }, [view, fetchStats, fetchDemos, fetchContracts, fetchEarnings, fetchRequests, fetchPayments]);
 
     // Check for pending contracts on load
     useEffect(() => {
@@ -457,7 +466,7 @@ export default function ArtistView() {
                     handleSubmit={handleSubmit}
                 />
             ) : view === 'earnings' ? (
-                <ArtistEarningsView earnings={earnings} session={session} pagination={earningsPagination} onPageChange={fetchEarnings} />
+                <ArtistEarningsView earnings={earnings} payments={payments} session={session} pagination={earningsPagination} onPageChange={fetchEarnings} />
             ) : view === 'contracts' ? (
                 <ArtistContractsView contracts={contracts} session={session} />
             ) : view === 'support' ? (
@@ -670,9 +679,10 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
             </motion.div>
 
             {/* 2. Key Metrics Grid (Redesigned) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '18px' }}>
                 {[
                     { label: 'MONTHLY LISTENERS', value: stats.listeners?.toLocaleString() || '0', icon: <Users size={18} />, color: '#fff' },
+                    { label: 'TOTAL SONGS', value: stats.songs || '0', icon: <Disc size={18} />, color: '#fff' },
                     { label: 'TOTAL STREAMS', value: stats.streams ? stats.streams.toLocaleString() : '0', icon: <Music size={18} />, color: '#fff' },
                     { label: 'PENDING DEMOS', value: stats.demos || '0', icon: <Clock size={18} />, color: stats.demos > 0 ? '#ffaa00' : '#666' },
                     { label: 'WALLET BALANCE', value: `$${(stats.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`, icon: <DollarSign size={18} />, color: 'var(--accent)', highlight: true }
@@ -2154,7 +2164,7 @@ function ProfileView({ onUpdate }) {
     );
 }
 
-function ArtistEarningsView({ earnings, session, pagination, onPageChange }) {
+function ArtistEarningsView({ earnings, payments, session, pagination, onPageChange }) {
     const calculateUserShare = (e) => {
         if (!e.contract?.splits || e.contract.splits.length === 0) return e.artistAmount;
 
@@ -2299,7 +2309,7 @@ function ArtistEarningsView({ earnings, session, pagination, onPageChange }) {
                                 <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                                     <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.period}</td>
                                     <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                        <div style={{ fontWeight: '800', color: '#fff' }}>{e.contract?.release?.name}</div>
+                                        <div style={{ fontWeight: '800', color: '#fff' }}>{e.contract?.release?.name || e.contract?.title || 'Unknown Release'}</div>
                                         <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>{e.source}</div>
                                     </td>
                                     <td style={{ ...tdStyle, padding: '15px 25px' }}>
@@ -2350,6 +2360,48 @@ function ArtistEarningsView({ earnings, session, pagination, onPageChange }) {
                     </button>
                 </div>
             )}
+
+            <div style={{ ...glassStyle, marginTop: '30px' }}>
+                <div style={{ padding: '20px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '12px', letterSpacing: '2px', fontWeight: '900' }}>PAYOUT_HISTORY</h3>
+                    <div style={{ fontSize: '10px', color: '#444' }}>{(payments || []).length} RECORDS FOUND</div>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                        <tr>
+                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>DATE</th>
+                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>METHOD</th>
+                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>REFERENCE</th>
+                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>STATUS</th>
+                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px', textAlign: 'right' }}>AMOUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {(payments || []).length > 0 ? (payments || []).map(p => (
+                            <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                <td style={{ ...tdStyle, padding: '15px 25px' }}>{new Date(p.createdAt || p.processedAt).toLocaleDateString()}</td>
+                                <td style={{ ...tdStyle, padding: '15px 25px', textTransform: 'uppercase' }}>{p.method || 'Bank Transfer'}</td>
+                                <td style={{ ...tdStyle, padding: '15px 25px', fontFamily: 'monospace', color: '#666' }}>{p.reference || '---'}</td>
+                                <td style={{ ...tdStyle, padding: '15px 25px' }}>
+                                    <span style={{
+                                        fontSize: '8px', padding: '4px 8px', borderRadius: '4px',
+                                        background: p.status === 'completed' ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)',
+                                        color: p.status === 'completed' ? 'var(--status-success)' : '#888',
+                                        fontWeight: '900', textTransform: 'uppercase'
+                                    }}>
+                                        {p.status}
+                                    </span>
+                                </td>
+                                <td style={{ ...tdStyle, padding: '15px 25px', textAlign: 'right', fontWeight: '900', color: '#fff' }}>
+                                    ${Number(p.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', padding: '30px', color: '#444' }}>NO PAYOUT DATA YET_</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }

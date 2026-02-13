@@ -6,8 +6,7 @@ export async function GET(req) {
             where: {
                 releaseDate: {
                     lte: new Date().toISOString()
-                },
-                type: 'album'
+                }
             },
             orderBy: [
                 { popularity: 'desc' },

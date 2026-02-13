@@ -51,7 +51,8 @@ export async function PATCH(req) {
             include: { artist: true }
         });
 
-        // Validation for linked artists: prevent changing critical fields
+        // Create update object
+        // Create update object
         let dataToUpdate = {
             email: email || undefined,
             fullName: fullName || undefined,
@@ -63,7 +64,6 @@ export async function PATCH(req) {
 
         if (user.artist) {
             // Linked users cannot change stageName or spotifyUrl
-            // We simply ignore these fields if provided
         } else {
             // Unlinked users can update these
             dataToUpdate.stageName = stageName || undefined;

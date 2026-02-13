@@ -141,6 +141,7 @@ export async function POST(req) {
                         releaseDate: finalDate.toISOString(),
                         artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
                         type: album.album_type, // 'album', 'single', or 'ep'
+                        totalTracks: album.total_tracks || 1,
                         popularity: track.popularity || 0,
                         previewUrl: track.preview_url
                     });
@@ -169,6 +170,7 @@ export async function POST(req) {
                         releaseDate: rel.releaseDate,
                         artistsJson: rel.artistsJson,
                         popularity: rel.popularity,
+                        totalTracks: rel.totalTracks,
                         previewUrl: rel.previewUrl
                     },
                     create: rel
