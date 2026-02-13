@@ -1,4 +1,6 @@
 import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 export async function GET(req) {
     try {
@@ -33,7 +35,7 @@ export async function GET(req) {
             }
         });
     } catch (error) {
-        console.error("[Artists API] Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        logger.error('Failed to fetch artists', error);
+        return new Response(JSON.stringify({ error: "Failed to fetch artists" }), { status: 500 });
     }
 }

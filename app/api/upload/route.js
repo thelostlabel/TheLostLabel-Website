@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import rateLimit from "@/lib/rate-limit";
 import { randomUUID } from 'crypto';
+import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 // Rate limiter: 20 uploads per hour
 const limiter = rateLimit({
@@ -60,28 +62,28 @@ export async function POST(req) {
 
             if (ext === 'wav') {
                 if (file.size > MAX_DEMO_BYTES) {
-                    console.warn(`Demo file too large for user ${session.user.id}: ${file.name} (${file.size} bytes)`);
+                    logger.warn('Demo file size exceeded', { userId: session.user.id, fileName: file.name, size: file.size });
                     return new Response(JSON.stringify({ error: "Demo file too large (max 100MB)." }), { status: 400 });
                 }
                 targetDir = demoDir;
                 publicPath = 'private/uploads/demos/';
             } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
                 if (file.size > MAX_IMAGE_BYTES) {
-                    console.warn(`Image file too large for user ${session.user.id}: ${file.name} (${file.size} bytes)`);
+                    logger.warn('Image file size exceeded', { userId: session.user.id, fileName: file.name, size: file.size });
                     return new Response(JSON.stringify({ error: "Image too large (max 10MB)." }), { status: 400 });
                 }
                 targetDir = releaseDir;
                 publicPath = 'private/uploads/releases/';
             } else if (ext === 'pdf') {
                 if (file.size > MAX_PDF_BYTES) {
-                    console.warn(`PDF file too large for user ${session.user.id}: ${file.name} (${file.size} bytes)`);
+                    logger.warn('PDF file size exceeded', { userId: session.user.id, fileName: file.name, size: file.size });
                     return new Response(JSON.stringify({ error: "PDF too large (max 25MB)." }), { status: 400 });
                 }
                 targetDir = contractDir;
                 publicPath = 'private/uploads/contracts/';
             } else {
                 // This case should ideally be caught by allowedExtensions check, but as a fallback
-                console.warn(`Unexpected file extension encountered for user ${session.user.id}: ${file.name}`);
+                logger.warn('Unexpected file extension', { userId: session.user.id, fileName: file.name });
                 continue;
             }
 
@@ -94,7 +96,7 @@ export async function POST(req) {
             // Write file
             const bytes = await file.arrayBuffer();
             await writeFile(filepath, Buffer.from(bytes));
-            console.log(`File uploaded by user ${session.user.id}: ${file.name} -> ${filepath}`);
+            logger.info('File uploaded', { userId: session.user.id, fileName: file.name, filePath: filepath });
 
             uploadedFiles.push({
                 filename: file.name,
@@ -115,7 +117,7 @@ export async function POST(req) {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        console.error("Upload Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        logger.error('Upload failed', error);
+        return handleApiError(error, 'POST /api/upload');
     }
 }

@@ -1,4 +1,6 @@
 import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 // GET: Fetch total artist count
 export async function GET() {
@@ -25,7 +27,7 @@ export async function GET() {
             }
         });
     } catch (error) {
-        console.error("Stats Error:", error);
+        logger.error('Failed to fetch stats', error);
         return new Response(JSON.stringify({ artistCount: 0, albumCount: 0, songCount: 0 }), { status: 200 });
     }
 }

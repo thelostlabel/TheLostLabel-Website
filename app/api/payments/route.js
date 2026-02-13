@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 // GET: Fetch payments
 export async function GET(req) {
@@ -10,9 +12,8 @@ export async function GET(req) {
     }
 
     try {
-        console.log("--- DEBUG: Fetching Payments ---");
         const { role, id: userId } = session.user;
-        console.log("User Role:", role, "ID:", userId);
+        logger.debug('Fetching payments', { userRole: role, userId });
         let payments;
 
         if (role === 'admin' || role === 'a&r') {
@@ -28,12 +29,11 @@ export async function GET(req) {
                 orderBy: { createdAt: 'desc' }
             });
         }
-        console.log(`--- DEBUG: Found ${payments.length} payments ---`);
+        logger.debug('Payments fetched', { count: payments.length });
         return new Response(JSON.stringify({ payments }), { status: 200 });
     } catch (error) {
-        console.error("--- DEBUG: GET /api/payments ERROR ---");
-        console.error(error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        logger.error('Failed to fetch payments', error);
+        return handleApiError(error, 'GET /api/payments');
     }
 }
 
@@ -75,7 +75,8 @@ export async function POST(req) {
 
         return new Response(JSON.stringify(payment), { status: 201 });
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        logger.error('Failed to create payment', error);
+        return handleApiError(error, 'POST /api/payments');
     }
 }
 // PATCH: Update a payment (Admin only)
