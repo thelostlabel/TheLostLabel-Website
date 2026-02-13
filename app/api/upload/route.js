@@ -3,7 +3,7 @@ import { join } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import rateLimit from "@/lib/rate-limit";
-import { v4 as uuidv4 } from 'uuid'; // You might need to install uuid or just use crypto
+import { randomUUID } from 'crypto';
 
 // Rate limiter: 20 uploads per hour
 const limiter = rateLimit({
@@ -60,26 +60,33 @@ export async function POST(req) {
 
             if (ext === 'wav') {
                 if (file.size > MAX_DEMO_BYTES) {
+                    console.warn(`Demo file too large for user ${session.user.id}: ${file.name} (${file.size} bytes)`);
                     return new Response(JSON.stringify({ error: "Demo file too large (max 100MB)." }), { status: 400 });
                 }
                 targetDir = demoDir;
                 publicPath = 'private/uploads/demos/';
             } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
                 if (file.size > MAX_IMAGE_BYTES) {
+                    console.warn(`Image file too large for user ${session.user.id}: ${file.name} (${file.size} bytes)`);
                     return new Response(JSON.stringify({ error: "Image too large (max 10MB)." }), { status: 400 });
                 }
                 targetDir = releaseDir;
                 publicPath = 'private/uploads/releases/';
             } else if (ext === 'pdf') {
                 if (file.size > MAX_PDF_BYTES) {
+                    console.warn(`PDF file too large for user ${session.user.id}: ${file.name} (${file.size} bytes)`);
                     return new Response(JSON.stringify({ error: "PDF too large (max 25MB)." }), { status: 400 });
                 }
                 targetDir = contractDir;
                 publicPath = 'private/uploads/contracts/';
+            } else {
+                // This case should ideally be caught by allowedExtensions check, but as a fallback
+                console.warn(`Unexpected file extension encountered for user ${session.user.id}: ${file.name}`);
+                continue;
             }
 
-            // Generate unique filename using UUID for better randomness and collision avoidance
-            const uniqueId = uuidv4();
+            // Generate unique filename using randomUUID
+            const uniqueId = randomUUID();
             const safeOriginalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const uniqueFilename = `${uniqueId}_${safeOriginalName}`;
             const filepath = join(targetDir, uniqueFilename);
@@ -87,6 +94,7 @@ export async function POST(req) {
             // Write file
             const bytes = await file.arrayBuffer();
             await writeFile(filepath, Buffer.from(bytes));
+            console.log(`File uploaded by user ${session.user.id}: ${file.name} -> ${filepath}`);
 
             uploadedFiles.push({
                 filename: file.name,

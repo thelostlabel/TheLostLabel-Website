@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sendMail } from "@/lib/mail";
+import { generateSupportUpdateEmail } from "@/lib/mail-templates";
 
 // GET: Fetch comments for a specific request
 export async function GET(req, { params }) {
@@ -118,8 +120,24 @@ export async function POST(req, { params }) {
             }
         });
 
-        // Trigger notifications if needed
-        // (Staff gets notified of artist comment, Artist gets notified of staff comment)
+        // staff gets notified of artist comment (not implemented yet, but could be added)
+        // Artist gets notified of staff comment
+        if (isAdmin && request.userId !== session.user.id) {
+            try {
+                await sendMail({
+                    to: request.user.email,
+                    subject: `Update on your ${request.type.toUpperCase().replace('_', ' ')} request`,
+                    html: generateSupportUpdateEmail(
+                        request.user.stageName || 'Artist',
+                        id,
+                        request.type,
+                        content
+                    )
+                });
+            } catch (emailError) {
+                console.error("Email Notification Error:", emailError);
+            }
+        }
 
         return new Response(JSON.stringify(comment), { status: 201 });
     } catch (error) {

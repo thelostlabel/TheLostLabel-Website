@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sendMail } from "@/lib/mail";
+import { generateSupportStatusEmail } from "@/lib/mail-templates";
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -91,34 +93,17 @@ export async function PATCH(req) {
 
         // --- EMAIL NOTIFICATION ---
         try {
-            const { sendMail } = await import('@/lib/mail');
             const releaseName = updated.release?.name || 'Unknown Release';
-            const statusColor = (status === 'approved' || status === 'completed') ? '#00ff88' :
-                (status === 'rejected') ? '#ff4444' : '#ffaa00';
 
             await sendMail({
                 to: updated.user.email,
                 subject: `Request ${status.toUpperCase()} - ${releaseName}`,
-                html: `
-                    <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #000; border-bottom: 2px solid #000; padding-bottom: 10px;">Status Update</h2>
-                        <p>Hello <strong>${updated.user.stageName || 'Artist'}</strong>,</p>
-                        <p>Your request for <strong>${updated.type.toUpperCase().replace('_', ' ')}</strong> on <strong>${releaseName}</strong> has been updated to:</p>
-                        <div style="padding: 15px; background: #f9f9f9; border-left: 4px solid ${statusColor}; margin: 20px 0;">
-                            <h3 style="margin: 0; color: ${statusColor};">${status.toUpperCase()}</h3>
-                        </div>
-                        ${adminNote ? `
-                        <div style="padding: 15px; background: #fffbe6; border: 1px solid #ffe58f; margin: 20px 0;">
-                            <p style="margin: 0; font-size: 13px; color: #856404;"><strong>Admin Note:</strong></p>
-                            <p style="margin: 5px 0 0 0; font-size: 14px;">${adminNote}</p>
-                        </div>
-                        ` : ''}
-                        <p style="font-size: 12px; color: #666; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px;">
-                            Best regards,<br>
-                            <strong>LOST. Team</strong>
-                        </p>
-                    </div>
-                `
+                html: generateSupportStatusEmail(
+                    updated.user.stageName || 'Artist',
+                    updated.type,
+                    status,
+                    adminNote
+                )
             });
         } catch (emailError) {
             console.error("Email Error:", emailError);
