@@ -19,11 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ ca-certificates openssl \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 
@@ -33,13 +28,12 @@ COPY prisma ./prisma
 COPY . .
 
 # Build environment
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
 # Generate Prisma Client and build
 RUN npx prisma generate \
-    && npm run build \
-    && npm prune --production
+    && npm run build
 
 # ============================================
 # STAGE 3: Runner (Production)
@@ -48,12 +42,12 @@ FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 # Environment variables
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-ENV LOG_LEVEL warn
-ENV PLAYWRIGHT_BROWSERS_PATH /ms-playwright
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+ENV LOG_LEVEL=warn
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -81,7 +75,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs .env* ./
 
 # Install Playwright browser binaries for runtime scraping/sync jobs
