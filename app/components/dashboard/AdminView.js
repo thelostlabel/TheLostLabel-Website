@@ -366,6 +366,12 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
     const { showToast, showConfirm } = useToast();
     const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'reviewing', 'approved', 'rejected'
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -376,12 +382,14 @@ function SubmissionsView({ demos, onStatusUpdate, onDelete }) {
         }
     };
 
-    const filteredDemos = demos.filter(demo => {
-        const matchesTab = demo.status === activeTab;
-        const matchesSearch = demo.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            demo.artist?.stageName?.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesTab && matchesSearch;
-    });
+    const filteredDemos = useMemo(() => {
+        return demos.filter(demo => {
+            const matchesTab = demo.status === activeTab;
+            const matchesSearch = demo.title?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                demo.artist?.stageName?.toLowerCase().includes(debouncedSearch.toLowerCase());
+            return matchesTab && matchesSearch;
+        });
+    }, [demos, activeTab, debouncedSearch]);
 
     return (
         <div>
@@ -574,20 +582,28 @@ function ArtistsView({ artists, users, onSync, onRefresh }) {
     const canManage = session?.user?.role === 'admin' || session?.user?.permissions?.canManageArtists;
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedArtist, setSelectedArtist] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [newArtist, setNewArtist] = useState({ name: '', spotifyUrl: '', email: '' });
     const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     // Fix: Prevent spam clicking
     const [syncingArtistId, setSyncingArtistId] = useState(null);
     const [isSyncingAll, setIsSyncingAll] = useState(false);
 
     // Filter artists based on search
-    const filteredArtists = artists.filter(artist =>
-        artist.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artist.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredArtists = useMemo(() => {
+        return artists.filter(artist =>
+            artist.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            artist.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
+        );
+    }, [artists, debouncedSearch]);
 
     const handleCreate = async () => {
         if (!newArtist.name) return showToast('Name Required', "warning");
@@ -902,11 +918,17 @@ function ArtistsView({ artists, users, onSync, onRefresh }) {
 function ReleasesView({ releases }) {
     const [activeTab, setActiveTab] = useState('all'); // 'upcoming', 'all', 'released'
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [editingRelease, setEditingRelease] = useState(null);
     const [saving, setSaving] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [expandedReleaseId, setExpandedReleaseId] = useState(null);
     const { showToast, showConfirm } = useToast();
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const handleDelete = (id) => {
         showConfirm(
@@ -946,36 +968,35 @@ function ReleasesView({ releases }) {
         finally { setSaving(false); }
     };
 
-    const filteredReleases = releases.filter(r => {
-        const matchesSearch = r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.artistName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const filteredReleases = useMemo(() => {
+        return releases.filter(r => {
+            const matchesSearch = r.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                r.artistName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                r.baseTitle?.toLowerCase().includes(debouncedSearch.toLowerCase());
 
-        const releaseDate = new Date(r.releaseDate);
-        const now = new Date();
+            const releaseDate = new Date(r.releaseDate);
+            const now = new Date();
 
-        if (activeTab === 'upcoming') {
-            return matchesSearch && releaseDate > now;
-        } else if (activeTab === 'released') {
-            return matchesSearch && releaseDate <= now;
-        }
-        return matchesSearch;
-    }).sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
-
-    const getBaseTitle = (name) => {
-        if (!name) return '';
-        return name
-            .toLowerCase()
-            .replace(/\s*-\s*(slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\s*$/i, '')
-            .replace(/\s*\((slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\)\s*$/i, '')
-            .replace(/\s*\[(slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\]\s*$/i, '')
-            .trim();
-    };
+            if (activeTab === 'upcoming') {
+                return matchesSearch && releaseDate > now;
+            } else if (activeTab === 'released') {
+                return matchesSearch && releaseDate <= now;
+            }
+            return matchesSearch;
+        }).sort((a, b) => {
+            // Sort by popularity by default, fallback to date
+            const popA = a.popularity || 0;
+            const popB = b.popularity || 0;
+            if (popA !== popB) return popB - popA;
+            return new Date(b.releaseDate) - new Date(a.releaseDate);
+        });
+    }, [releases, debouncedSearch, activeTab]);
 
     // Group releases logic
     const groupedReleases = useMemo(() => {
         const groups = {};
         filteredReleases.forEach(release => {
-            const base = getBaseTitle(release.name);
+            const base = release.baseTitle || release.name;
             if (!groups[base]) groups[base] = [];
             groups[base].push(release);
         });
@@ -1036,8 +1057,8 @@ function ReleasesView({ releases }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
                 {sortedGroups.map(group => {
                     // Use the "Main" release (e.g. Original Mix, or just the first one) as the preview
-                    const mainRelease = group.find(r => r.name.toLowerCase() === getBaseTitle(r.name).toLowerCase()) || group[0];
-                    const isExpanded = expandedReleaseId === getBaseTitle(mainRelease.name);
+                    const mainRelease = group.find(r => !r.versionName) || group[0];
+                    const isExpanded = expandedReleaseId === mainRelease.baseTitle;
                     const variants = group.filter(r => r.id !== mainRelease.id);
                     const isReleased = new Date(mainRelease.releaseDate) <= new Date();
 
@@ -1079,7 +1100,7 @@ function ReleasesView({ releases }) {
 
                                 <div>
                                     <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {getBaseTitle(mainRelease.name)}
+                                        {mainRelease.baseTitle || mainRelease.name}
                                     </h3>
                                     <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', marginBottom: '4px' }}>
                                         {mainRelease.artistName || 'Unknown Artist'}
@@ -1090,7 +1111,7 @@ function ReleasesView({ releases }) {
                                         </p>
                                         {variants.length > 0 && (
                                             <button
-                                                onClick={() => setExpandedReleaseId(isExpanded ? null : getBaseTitle(mainRelease.name))}
+                                                onClick={() => setExpandedReleaseId(isExpanded ? null : mainRelease.baseTitle)}
                                                 style={{ background: isExpanded ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
                                             >
                                                 {isExpanded ? 'HIDE' : `+${variants.length} VERSIONS`}
@@ -1113,7 +1134,9 @@ function ReleasesView({ releases }) {
                                             {variants.map(v => (
                                                 <div key={v.id} style={{ padding: '10px', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div>
-                                                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#ddd' }}>{v.name}</div>
+                                                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#ddd' }}>
+                                                            {v.versionName ? v.versionName.toUpperCase() : v.name}
+                                                        </div>
                                                         <div style={{ fontSize: '9px', color: '#666' }}>{new Date(v.releaseDate).toLocaleDateString()}</div>
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '5px' }}>
@@ -1238,12 +1261,20 @@ function UsersView({ users, onRoleChange, onRefresh }) {
     const [editForm, setEditForm] = useState({});
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
-    const filteredUsers = users.filter(user =>
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.stageName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const filteredUsers = useMemo(() => {
+        return users.filter(user =>
+            user.email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            user.stageName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            user.fullName?.toLowerCase().includes(debouncedSearch.toLowerCase())
+        );
+    }, [users, debouncedSearch]);
 
     const openEdit = (user) => {
         setEditingUser(user);
@@ -3379,11 +3410,13 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [wrapperRef]);
 
-    const filteredArtists = artists.filter(a =>
-        a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.user?.stageName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredArtists = useMemo(() => {
+        return artists.filter(a =>
+            a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            a.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            a.user?.stageName?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [artists, searchTerm]);
 
     return (
         <div ref={wrapperRef} style={{ position: 'relative' }}>

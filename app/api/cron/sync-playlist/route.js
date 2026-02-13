@@ -71,27 +71,57 @@ export async function POST(req) {
                 }
             });
 
+            // First pass: Collect album IDs
+            const albumIds = new Set();
+            for (const item of items) {
+                if (item.track?.album?.id) albumIds.add(item.track.album.id);
+            }
+
+            // Batch fetch full album details (popularity)
+            const albumDetailsMap = new Map();
+            const albumIdArray = Array.from(albumIds);
+            const tokenData = await getAccessToken();
+
+            if (tokenData?.access_token) {
+                for (let i = 0; i < albumIdArray.length; i += 20) {
+                    const chunk = albumIdArray.slice(i, i + 20);
+                    try {
+                        const res = await fetch(`https://api.spotify.com/v1/albums?ids=${chunk.join(',')}`, {
+                            headers: { Authorization: `Bearer ${tokenData.access_token}` }
+                        });
+                        const data = await res.json();
+                        if (data.albums) {
+                            data.albums.filter(Boolean).forEach(a => albumDetailsMap.set(a.id, a));
+                        }
+                    } catch (e) {
+                        console.error(`[Sync] Error fetching album details:`, e.message);
+                    }
+                }
+            }
+
             // Identify New Releases
             const playlistReleases = new Map();
             for (const item of items) {
                 if (!item.track || !item.track.album) continue;
                 const track = item.track;
-                const album = track.album;
+                const albumBrief = item.track.album;
+                const fullAlbum = albumDetailsMap.get(albumBrief.id);
 
                 // Improved Date Parsing Logic
                 let finalDate;
-                let finalImage = album.images?.[0]?.url;
+                let finalImage = fullAlbum?.images?.[0]?.url || albumBrief.images?.[0]?.url;
 
                 // 1. Try Album Release Date
-                if (album.release_date && album.release_date !== '0000') {
-                    const d = new Date(album.release_date);
+                const releaseDateStr = fullAlbum?.release_date || albumBrief.release_date;
+                if (releaseDateStr && releaseDateStr !== '0000') {
+                    const d = new Date(releaseDateStr);
                     if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
                         finalDate = d;
                     }
                 }
 
                 // CHECK FOR PRERELEASE (No image or 0000 date)
-                if (!finalImage || album.release_date === '0000') {
+                if (!finalImage || releaseDateStr === '0000') {
                     console.log(`[Sync] Potential prerelease detected: ${track.name}`);
                     const prereleaseUrl = `https://open.spotify.com/prerelease/${track.id}`;
 
@@ -130,20 +160,37 @@ export async function POST(req) {
                     finalDate = new Date();
                 }
 
+                const parseReleaseName = (name) => {
+                    if (!name) return { base: '', version: null };
+                    const versionRegex = /\s*[-\(\[]\s*(slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\s*[\)\]]?/i;
+                    const match = name.match(versionRegex);
+
+                    if (match) {
+                        const base = name.replace(versionRegex, '').trim();
+                        const version = match[1].trim();
+                        return { base, version };
+                    }
+                    return { base: name.trim(), version: null };
+                };
+
+                const { base, version } = parseReleaseName(fullAlbum?.name || albumBrief.name);
+
                 // USE ALBUM ID to treat as a proper Release
-                const releaseId = album.id;
+                const releaseId = albumBrief.id;
                 if (!playlistReleases.has(releaseId)) {
                     playlistReleases.set(releaseId, {
                         id: releaseId,
-                        name: album.name,
-                        artistName: (album.artists || []).map(a => a.name).join(', '),
+                        name: fullAlbum?.name || albumBrief.name,
+                        baseTitle: base,
+                        versionName: version,
+                        artistName: (fullAlbum?.artists || albumBrief.artists || []).map(a => a.name).join(', '),
                         image: finalImage,
-                        spotifyUrl: album.external_urls?.spotify,
+                        spotifyUrl: fullAlbum?.external_urls?.spotify || albumBrief.external_urls?.spotify,
                         releaseDate: finalDate.toISOString(),
-                        artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
-                        type: album.album_type, // 'album', 'single', or 'ep'
-                        totalTracks: album.total_tracks || 1,
-                        popularity: track.popularity || 0,
+                        artistsJson: JSON.stringify((fullAlbum?.artists || albumBrief.artists || []).map(a => ({ id: a.id, name: a.name }))),
+                        type: fullAlbum?.album_type || albumBrief.album_type, // 'album', 'single', or 'ep'
+                        totalTracks: fullAlbum?.total_tracks || albumBrief.total_tracks || 1,
+                        popularity: fullAlbum?.popularity || track.popularity || 0,
                         previewUrl: track.preview_url
                     });
                 }
@@ -165,6 +212,8 @@ export async function POST(req) {
                     where: { id: rel.id },
                     update: {
                         name: rel.name,
+                        baseTitle: rel.baseTitle,
+                        versionName: rel.versionName,
                         artistName: rel.artistName,
                         image: rel.image,
                         spotifyUrl: rel.spotifyUrl,

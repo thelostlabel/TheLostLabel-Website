@@ -26,8 +26,8 @@ export async function GET(req) {
             prisma.demo.count(),
             prisma.changeRequest.count({ where: { status: 'pending' } }),
             prisma.release.groupBy({
-                by: ['image'],
-                _count: { image: true }
+                by: ['baseTitle'],
+                _count: { baseTitle: true }
             }),
             prisma.release.aggregate({
                 _sum: { totalTracks: true }

@@ -12,7 +12,13 @@ export default function ArtistsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
     const [sortBy, setSortBy] = useState('listeners');
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, {
@@ -45,8 +51,8 @@ export default function ArtistsPage() {
 
     const filteredArtists = useMemo(() => {
         let result = [...artists];
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
+        if (debouncedQuery) {
+            const q = debouncedQuery.toLowerCase();
             result = result.filter(a => a.name.toLowerCase().includes(q));
         }
         if (sortBy === 'listeners') {
@@ -57,7 +63,7 @@ export default function ArtistsPage() {
             result.sort((a, b) => a.name.localeCompare(b.name));
         }
         return result;
-    }, [artists, searchQuery, sortBy]);
+    }, [artists, debouncedQuery, sortBy]);
 
     return (
         <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '100px' }}>
@@ -157,7 +163,7 @@ export default function ArtistsPage() {
                     <motion.div
                         initial="hidden"
                         animate="visible"
-                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                        variants={{ visible: { transition: { staggerChildren: debouncedQuery ? 0.01 : 0.03 } } }}
                         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}
                     >
                         {filteredArtists.map(artist => (

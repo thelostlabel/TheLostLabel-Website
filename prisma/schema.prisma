@@ -129,6 +129,8 @@ model ArtistStatsHistory {
 model Release {
   id              String          @id @default(uuid())
   name            String
+  baseTitle       String?
+  versionName     String?
   artistName      String?
   image           String?
   spotifyUrl      String?
@@ -143,6 +145,8 @@ model Release {
   requests        ChangeRequest[]
   previewUrl      String?
   contracts       Contract[]
+
+  @@index([baseTitle])
 }
 
 model ChangeRequest {

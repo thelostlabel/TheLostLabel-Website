@@ -55,22 +55,47 @@ async function main() {
             allItems.push(...tracks);
         }
 
+        // Batch fetch full album details (popularity)
+        const albumIds = new Set();
+        allItems.forEach(item => {
+            if (item.track?.album?.id) albumIds.add(item.track.album.id);
+        });
+
+        const albumDetailsMap = new Map();
+        const albumIdArray = Array.from(albumIds);
+        for (let i = 0; i < albumIdArray.length; i += 20) {
+            const chunk = albumIdArray.slice(i, i + 20);
+            try {
+                const res = await fetch(`https://api.spotify.com/v1/albums?ids=${chunk.join(',')}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.albums) {
+                    data.albums.filter(Boolean).forEach(a => albumDetailsMap.set(a.id, a));
+                }
+            } catch (e) {
+                console.error(`[Sync] Error fetching album details:`, e.message);
+            }
+        }
+
         const playlistReleases = new Map();
         for (const item of allItems) {
             if (!item.track || !item.track.album) continue;
             const track = item.track;
-            const album = track.album;
+            const albumBrief = track.album;
+            const fullAlbum = albumDetailsMap.get(albumBrief.id);
 
             let finalDate = null;
-            let finalImage = album.images?.[0]?.url;
+            let finalImage = fullAlbum?.images?.[0]?.url || albumBrief.images?.[0]?.url;
 
-            if (album.release_date && album.release_date !== '0000') {
-                const d = new Date(album.release_date);
+            const releaseDateStr = fullAlbum?.release_date || albumBrief.release_date;
+            if (releaseDateStr && releaseDateStr !== '0000') {
+                const d = new Date(releaseDateStr);
                 if (!isNaN(d.getTime())) finalDate = d;
             }
 
             // Prerelease check
-            if (!finalImage || album.release_date === '0000') {
+            if (!finalImage || releaseDateStr === '0000') {
                 const prereleaseUrl = `https://open.spotify.com/prerelease/${track.id}`;
                 try {
                     if (!browser) browser = await chromium.launch({ headless: true });
@@ -87,19 +112,36 @@ async function main() {
 
             if (!finalDate) finalDate = item.added_at ? new Date(item.added_at) : new Date();
 
-            const releaseId = album.id;
+            const parseReleaseName = (name) => {
+                if (!name) return { base: '', version: null };
+                const versionRegex = /\s*[-\(\[]\s*(slowed|super slowed|ultra slowed|speed up|sped up|nightcore|instrumental|edit|remix|rework|extended|radio edit|clean|explicit|version|acoustic|live)\s*[\)\]]?/i;
+                const match = name.match(versionRegex);
+
+                if (match) {
+                    const base = name.replace(versionRegex, '').trim();
+                    const version = match[1].trim();
+                    return { base, version };
+                }
+                return { base: name.trim(), version: null };
+            };
+
+            const { base, version } = parseReleaseName(fullAlbum?.name || albumBrief.name);
+
+            const releaseId = albumBrief.id;
             if (!playlistReleases.has(releaseId)) {
                 playlistReleases.set(releaseId, {
                     id: releaseId,
-                    name: album.name,
-                    artistName: (album.artists || []).map(a => a.name).join(', '),
+                    name: fullAlbum?.name || albumBrief.name,
+                    baseTitle: base,
+                    versionName: version,
+                    artistName: (fullAlbum?.artists || albumBrief.artists || []).map(a => a.name).join(', '),
                     image: finalImage,
-                    spotifyUrl: album.external_urls?.spotify,
+                    spotifyUrl: fullAlbum?.external_urls?.spotify || albumBrief.external_urls?.spotify,
                     releaseDate: finalDate.toISOString(),
-                    artistsJson: JSON.stringify((album.artists || []).map(a => ({ id: a.id, name: a.name }))),
-                    type: album.album_type,
-                    totalTracks: album.total_tracks || 1,
-                    popularity: track.popularity || 0,
+                    artistsJson: JSON.stringify((fullAlbum?.artists || albumBrief.artists || []).map(a => ({ id: a.id, name: a.name }))),
+                    type: fullAlbum?.album_type || albumBrief.album_type,
+                    totalTracks: fullAlbum?.total_tracks || albumBrief.total_tracks || 1,
+                    popularity: fullAlbum?.popularity || track.popularity || 0,
                     previewUrl: track.preview_url
                 });
             }
@@ -111,6 +153,8 @@ async function main() {
                 where: { id: rel.id },
                 update: {
                     name: rel.name,
+                    baseTitle: rel.baseTitle,
+                    versionName: rel.versionName,
                     artistName: rel.artistName,
                     image: rel.image,
                     spotifyUrl: rel.spotifyUrl,
