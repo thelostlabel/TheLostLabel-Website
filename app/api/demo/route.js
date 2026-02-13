@@ -93,8 +93,8 @@ export async function POST(req) {
 
         const artistName = userPrefs.stageName || userPrefs.fullName || "Artist";
 
-        // 1. Send confirmation to Artist
-        if (userPrefs?.notifyDemos) {
+        // 1. Send confirmation to Artist (always, if email exists)
+        if (userPrefs?.email) {
             try {
                 await sendMail({
                     to: userPrefs.email,
