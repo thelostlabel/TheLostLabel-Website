@@ -1,17 +1,38 @@
-require('dotenv').config({ path: '.env' });
-const { PrismaClient } = require('@prisma/client');
-const { scrapePrereleaseData } = require('../../lib/scraper');
-const { chromium } = require('playwright');
-const prisma = new PrismaClient();
+import fs from 'fs';
+import path from 'path';
+import { PrismaClient } from '@prisma/client';
+import { scrapePrereleaseData } from '../../lib/scraper.js';
+import { chromium } from 'playwright';
 
+// Load .env manualy to ensure it works in all environments
+try {
+    const envPath = fs.existsSync(path.resolve(process.cwd(), '.env.local'))
+        ? path.resolve(process.cwd(), '.env.local')
+        : path.resolve(process.cwd(), '.env');
+
+    const envFile = fs.readFileSync(envPath, 'utf8');
+    envFile.split('\n').forEach(line => {
+        const idx = line.indexOf('=');
+        if (idx > 0) {
+            const key = line.substring(0, idx).trim();
+            const value = line.substring(idx + 1).trim().replace(/^[\"\']|[\"\']$/g, '');
+            process.env[key] = value;
+        }
+    });
+} catch (e) {
+    console.warn("Could not load .env file", e.message);
+}
+
+const prisma = new PrismaClient();
 const DEFAULT_PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
 
 async function getAccessToken() {
+    const auth = Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString('base64');
     const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': 'Basic ' + (Buffer.from(process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET).toString('base64'))
+            'Authorization': `Basic ${auth}`
         },
         body: 'grant_type=client_credentials'
     });
@@ -24,20 +45,26 @@ async function getPlaylistTracks(playlistId, accessToken) {
     let nextUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
     while (nextUrl) {
         const response = await fetch(nextUrl, {
-            headers: { 'Authorization': 'Bearer ' + accessToken }
+            headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const data = await response.json();
-        if (data.items) items = items.concat(data.items.filter(item => item.track));
-        nextUrl = data.next;
+        if (data.items) {
+            items = items.concat(data.items.filter(item => item.track));
+            nextUrl = data.next;
+        } else {
+            nextUrl = null;
+        }
     }
     return items;
 }
 
 async function main() {
-    console.log(`[${new Date().toISOString()}] Starting Standalone Sync...`);
+    console.log(`[${new Date().toISOString()}] Starting Standalone Sync (MJS)...`);
     let browser = null;
     try {
         const token = await getAccessToken();
+        if (!token) throw new Error("Failed to get Spotify access token");
+
         const playlistIds = [DEFAULT_PLAYLIST_ID];
 
         // Also sync playlists from webhooks
@@ -51,6 +78,7 @@ async function main() {
 
         const allItems = [];
         for (const id of [...new Set(playlistIds)]) {
+            console.log(`Fetching tracks for playlist: ${id}`);
             const tracks = await getPlaylistTracks(id, token);
             allItems.push(...tracks);
         }
@@ -105,7 +133,7 @@ async function main() {
             }
         }
 
-        console.log(`Syncing ${playlistReleases.size} releases...`);
+        console.log(`Syncing ${playlistReleases.size} unique releases...`);
         for (const rel of playlistReleases.values()) {
             await prisma.release.upsert({
                 where: { id: rel.id },
@@ -124,7 +152,7 @@ async function main() {
                 create: rel
             });
         }
-        console.log("Success!");
+        console.log("Sync completed successfully!");
     } catch (e) {
         console.error("Sync Error:", e);
     } finally {

@@ -103,6 +103,7 @@ model Artist {
   updatedAt        DateTime       @updatedAt
   userId           String?        @unique
   followers        Int?           @default(0)
+  popularity       Int?           @default(0)
   genres           String?
   lastSyncedAt     DateTime?
   monthlyListeners Int?           @default(0)
@@ -118,6 +119,7 @@ model ArtistStatsHistory {
   artistId         String
   monthlyListeners Int
   followers        Int?
+  popularity       Int?
   date             DateTime @default(now())
   artist           Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
 
