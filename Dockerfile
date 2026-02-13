@@ -34,6 +34,11 @@ ENV HOSTNAME "0.0.0.0"
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nextjs
 
+# Create private directories with proper permissions
+RUN mkdir -p /app/private/uploads/contracts /app/private/uploads/demos /app/private/uploads/releases
+RUN chown -R nextjs:nodejs /app/private
+RUN chmod -R 755 /app/private
+
 # Copy essential files
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
