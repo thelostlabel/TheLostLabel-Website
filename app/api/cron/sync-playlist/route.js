@@ -4,6 +4,8 @@ import { getPlaylistTracks, getArtistsDetails } from "@/lib/spotify";
 import { scrapeSpotifyStats, scrapePrereleaseData } from "@/lib/scraper";
 import { chromium } from 'playwright';
 import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { handleApiError } from "@/lib/api-errors";
 
 const DEFAULT_PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
 
@@ -25,7 +27,7 @@ export async function POST(req) {
     const startTime = Date.now();
     let browser = null;
     try {
-        console.log(`[Sync] Starting sync process...`);
+        logger.info('Starting playlist sync process', { scrapeListeners });
 
         // Fetch all relevant active webhooks
         const allWebhooks = await prisma.webhook.findMany({
@@ -43,12 +45,12 @@ export async function POST(req) {
                     const config = wh.config ? JSON.parse(wh.config) : {};
                     if (config.playlistId) playlistIds.add(config.playlistId);
                 } catch (e) {
-                    console.error(`[Sync] Invalid config JSON for webhook ${wh.name}`);
+                    logger.warn('Invalid webhook config JSON', { webhookName: wh.name, error: e.message });
                 }
             }
         });
 
-        console.log(`[Sync] Found ${playlistIds.size} unique playlists to sync:`, Array.from(playlistIds));
+        logger.info('Playlists discovered for sync', { count: playlistIds.size, playlistIds: Array.from(playlistIds) });
 
         let totalNewReleases = 0;
         let allUniqueArtists = new Set();
@@ -56,11 +58,11 @@ export async function POST(req) {
 
         // PROCESS EACH PLAYLIST
         for (const playlistId of playlistIds) {
-            console.log(`[Sync] Processing Playlist: ${playlistId}`);
+            logger.debug('Processing playlist', { playlistId });
 
             const items = await getPlaylistTracks(playlistId);
             if (!items) {
-                console.error(`[Sync] Failed to fetch playlist ${playlistId}`);
+                logger.warn('Failed to fetch playlist', { playlistId });
                 continue;
             }
 
@@ -94,7 +96,7 @@ export async function POST(req) {
                             data.albums.filter(Boolean).forEach(a => albumDetailsMap.set(a.id, a));
                         }
                     } catch (e) {
-                        console.error(`[Sync] Error fetching album details:`, e.message);
+                        logger.error('Failed to fetch album details', e);
                     }
                 }
             }
@@ -122,7 +124,7 @@ export async function POST(req) {
 
                 // CHECK FOR PRERELEASE (No image or 0000 date)
                 if (!finalImage || releaseDateStr === '0000') {
-                    console.log(`[Sync] Potential prerelease detected: ${track.name}`);
+                    logger.debug('Potential prerelease detected', { trackName: track.name });
                     const prereleaseUrl = `https://open.spotify.com/prerelease/${track.id}`;
 
                     try {
@@ -143,7 +145,7 @@ export async function POST(req) {
                             }
                         }
                     } catch (e) {
-                        console.error(`[Sync] Scrape error for ${track.name}:`, e.message);
+                        logger.error('Scrape error for prerelease', { trackName: track.name, error: e.message });
                     }
                 }
 
@@ -229,7 +231,7 @@ export async function POST(req) {
 
             // TRIGGER NOTIFICATIONS (Scoped to this playlist)
             if (newReleases.length > 0) {
-                console.log(`[Sync] Playlist ${playlistId}: ${newReleases.length} new releases.`);
+                logger.info('Playlist synced with new releases', { playlistId, releaseCount: newReleases.length });
 
                 // Filter webhooks for THIS playlist
                 const relevantWebhooks = allWebhooks.filter(wh => {
@@ -267,7 +269,7 @@ export async function POST(req) {
                                     avatar_url: "https://i.imgur.com/AfFp7pu.png",
                                     embeds: [embed]
                                 })
-                            }).catch(err => console.error(`[Webhook] Failed to send to ${wh.name}:`, err))
+                            }).catch(err => logger.error('Failed to send webhook', { webhookName: wh.name, error: err.message }))
                         ));
                     }
                 }
@@ -290,7 +292,7 @@ export async function POST(req) {
                 const spotifyUrl = artist.external_urls?.spotify;
 
                 try {
-                    console.log(`[Sync] ${isRetry ? 'Retrying' : 'Scraping'}: ${artist.name}`);
+                    logger.debug('Processing artist', { artistName: artist.name, isRetry });
                     const data = await scrapeSpotifyStats(spotifyUrl, browser);
                     monthlyListeners = data?.monthlyListeners || null;
 
@@ -344,7 +346,7 @@ export async function POST(req) {
                     } else {
                         errorCount++;
                     }
-                    console.error(`[Sync] Error for ${artist.name}:`, e.message);
+                    logger.error('Error processing artist', { artistName: artist.name, error: e.message });
                 }
             };
 
@@ -357,7 +359,7 @@ export async function POST(req) {
 
             // RETRY LOGIC for failed scrapes
             if (failedArtists.length > 0) {
-                console.log(`[Sync] Retrying ${failedArtists.length} failed artists...`);
+                logger.info('Retrying failed artists', { count: failedArtists.length });
                 // Wait 3s before retry
                 await new Promise(r => setTimeout(r, 3000));
                 for (const artist of failedArtists) {
@@ -367,7 +369,13 @@ export async function POST(req) {
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.log(`[Sync] Complete. Duration: ${duration}s. New: ${totalNewReleases}, Scraped: ${successCount} (Retries: ${retryCount}), Errors: ${errorCount}`);
+        logger.info('Sync process completed', { 
+            duration: `${duration}s`, 
+            newReleases: totalNewReleases, 
+            artistsScraped: successCount,
+            retries: retryCount,
+            errors: errorCount
+        });
 
         return new Response(JSON.stringify({
             success: true,
@@ -383,8 +391,8 @@ export async function POST(req) {
 
     } catch (error) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.error(`[Sync] Critical Error after ${duration}s:`, error);
-        return new Response(JSON.stringify({ error: error.message, duration: `${duration}s` }), { status: 500 });
+        logger.error('Critical sync error', { error: error.message, duration: `${duration}s` });
+        return handleApiError(error, 'POST /api/cron/sync-playlist');
     } finally {
         if (browser) await browser.close();
     }
