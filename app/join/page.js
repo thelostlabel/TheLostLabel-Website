@@ -3,6 +3,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const DEFAULT_JOIN_HERO = {
+    title: 'WORK WITH THE LOST. COMPANY',
+    sub: 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
+};
+
 export default function JoinUsPage() {
     const [genres, setGenres] = useState([
         "House (Deep House / Slap House / G-House)",
@@ -26,10 +31,7 @@ export default function JoinUsPage() {
     ]);
 
     const [loading, setLoading] = useState(true);
-    const [hero, setHero] = useState({
-        title: 'WORK WITH THE LOST. COMPANY',
-        sub: 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
-    });
+    const [hero, setHero] = useState(DEFAULT_JOIN_HERO);
 
     useEffect(() => {
         const fetchContent = async () => {
@@ -58,8 +60,8 @@ export default function JoinUsPage() {
 
                 if (settingsData) {
                     setHero({
-                        title: settingsData.joinHeroTitle || hero.title,
-                        sub: settingsData.joinHeroSub || hero.sub
+                        title: settingsData.joinHeroTitle || DEFAULT_JOIN_HERO.title,
+                        sub: settingsData.joinHeroSub || DEFAULT_JOIN_HERO.sub
                     });
                 }
             } catch (e) {
@@ -189,4 +191,3 @@ const tdStyle = {
     fontWeight: '800',
     letterSpacing: '1px'
 };
-

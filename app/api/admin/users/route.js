@@ -106,6 +106,11 @@ export async function PATCH(req) {
             });
         }
 
+        // Safety net: keep approved users linked even when profile fields are edited later
+        if (updatedUser.status === 'approved') {
+            await linkUserToArtist(userId);
+        }
+
         return new Response(JSON.stringify(updatedUser), { status: 200 });
     } catch (error) {
         console.error("Update User Error:", error);

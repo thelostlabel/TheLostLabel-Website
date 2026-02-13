@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -53,12 +53,7 @@ export default function DemoReviewPage({ params }) {
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [processing, setProcessing] = useState(false);
 
-
-    useEffect(() => {
-        fetchDemo();
-    }, [id]);
-
-    const fetchDemo = async () => {
+    const fetchDemo = useCallback(async () => {
         try {
             const res = await fetch(`/api/demo/${id}`);
             const data = await res.json();
@@ -75,7 +70,11 @@ export default function DemoReviewPage({ params }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        fetchDemo();
+    }, [fetchDemo]);
 
     const handleStatusUpdate = async (status) => {
         let reason = null;

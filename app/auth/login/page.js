@@ -13,6 +13,21 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    const getFriendlyError = (rawError) => {
+        switch (rawError) {
+            case 'EMAIL NOT VERIFIED':
+                return 'E-posta adresiniz henuz dogrulanmamis. Dogrulama merkezine gidip linki tekrar gonderebilirsiniz.';
+            case 'ACCOUNT PENDING APPROVAL':
+                return 'E-posta dogrulamaniz tamam, hesabiniz su an admin onayi bekliyor.';
+            case 'INVALID EMAIL OR PASSWORD':
+                return 'E-posta veya sifre hatali.';
+            case 'REGISTRATIONS CLOSED':
+                return 'Kayitlar su an kapali.';
+            default:
+                return rawError || 'Giris yaparken bir hata olustu.';
+        }
+    };
+
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -117,7 +132,7 @@ export default function Login() {
                     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                         {error && (
                             <div style={{ padding: '15px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '12px', color: '#ff4444', fontSize: '11px', fontWeight: '800' }}>
-                                {error.toUpperCase()}
+                                {getFriendlyError(error)}
                                 {error === 'EMAIL NOT VERIFIED' && (
                                     <div style={{ marginTop: '10px' }}>
                                         <button
@@ -126,6 +141,17 @@ export default function Login() {
                                             style={{ background: 'transparent', border: '1px solid currentColor', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', color: 'inherit', fontSize: '10px' }}
                                         >
                                             GO TO VERIFICATION CENTER
+                                        </button>
+                                    </div>
+                                )}
+                                {error === 'ACCOUNT PENDING APPROVAL' && (
+                                    <div style={{ marginTop: '10px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => router.push(`/auth/verify-pending?step=approval&email=${encodeURIComponent(email)}`)}
+                                            style={{ background: 'transparent', border: '1px solid currentColor', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', color: 'inherit', fontSize: '10px' }}
+                                        >
+                                            CHECK APPROVAL STATUS
                                         </button>
                                     </div>
                                 )}

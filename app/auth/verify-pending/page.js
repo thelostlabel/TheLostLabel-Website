@@ -1,51 +1,57 @@
-
 "use client";
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import BackgroundEffects from '../../components/BackgroundEffects';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Edit2, Send, CheckCircle, ArrowRight, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import BackgroundEffects from "../../components/BackgroundEffects";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mail, Edit2, Send, CheckCircle, ArrowRight, RefreshCw } from "lucide-react";
+import Link from "next/link";
 
 function VerifyPendingContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
-    const [email, setEmail] = useState(searchParams.get('email') || '');
+    const flow = searchParams.get("step") || "verify";
+    const isApprovalFlow = flow === "approval";
+
+    const initialEmail = searchParams.get("email") || "";
+    const [email, setEmail] = useState(initialEmail);
     const [isEditing, setIsEditing] = useState(false);
-    const [newEmail, setNewEmail] = useState(email);
+    const [newEmail, setNewEmail] = useState(initialEmail);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
     const [error, setError] = useState(null);
     const [resendCooldown, setResendCooldown] = useState(0);
 
     useEffect(() => {
-        if (resendCooldown > 0) {
-            const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
-            return () => clearTimeout(timer);
-        }
+        if (resendCooldown <= 0) return;
+        const timer = setTimeout(() => setResendCooldown((v) => v - 1), 1000);
+        return () => clearTimeout(timer);
     }, [resendCooldown]);
 
     const handleResend = async () => {
+        if (!email) {
+            setError("Lutfen once e-posta adresinizi girin.");
+            return;
+        }
         if (resendCooldown > 0) return;
+
         setLoading(true);
         setError(null);
         setMessage(null);
 
         try {
-            const res = await fetch('/api/auth/resend-verification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
+            const res = await fetch("/api/auth/resend-verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
             });
             const data = await res.json();
             if (res.ok) {
-                setMessage("Professional verification link resent! Please check your inbox.");
+                setMessage("Dogrulama e-postasi tekrar gonderildi.");
                 setResendCooldown(60);
             } else {
-                setError(data.error);
+                setError(data.error || "Gonderim basarisiz oldu.");
             }
-        } catch (err) {
-            setError("Failed to resend. Check your connection.");
+        } catch {
+            setError("Gonderim basarisiz oldu. Baglantinizi kontrol edin.");
         } finally {
             setLoading(false);
         }
@@ -53,6 +59,10 @@ function VerifyPendingContent() {
 
     const handleUpdateEmail = async (e) => {
         e.preventDefault();
+        if (!email) {
+            setError("Mevcut e-posta bilgisi bulunamadi.");
+            return;
+        }
         if (newEmail === email) {
             setIsEditing(false);
             return;
@@ -63,251 +73,317 @@ function VerifyPendingContent() {
         setMessage(null);
 
         try {
-            const res = await fetch('/api/auth/update-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ currentEmail: email, newEmail })
+            const res = await fetch("/api/auth/update-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentEmail: email, newEmail }),
             });
             const data = await res.json();
             if (res.ok) {
                 setEmail(newEmail);
                 setIsEditing(false);
-                setMessage("Email updated successfully! A new link has been sent to your new address.");
-                // Update URL without refreshing
-                const url = new URL(window.location);
-                url.searchParams.set('email', newEmail);
-                window.history.pushState({}, '', url);
+                setMessage("E-posta guncellendi ve yeni dogrulama linki gonderildi.");
+
+                const url = new URL(window.location.href);
+                url.searchParams.set("email", newEmail);
+                window.history.replaceState({}, "", url);
             } else {
-                setError(data.error);
+                setError(data.error || "E-posta guncellenemedi.");
             }
-        } catch (err) {
-            setError("Failed to update email.");
+        } catch {
+            setError("E-posta guncellenemedi.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div style={{ maxWidth: '500px', width: '100%', position: 'relative', zIndex: 10 }}>
+        <div style={{ maxWidth: "520px", width: "100%", position: "relative", zIndex: 10 }}>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* Icon Header */}
-                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                    <div style={{
-                        width: '80px',
-                        height: '80px',
-                        borderRadius: '24px',
-                        background: 'rgba(158, 240, 26, 0.1)',
-                        border: '1px solid rgba(158, 240, 26, 0.2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 24px',
-                        color: '#9ef01a'
-                    }}>
-                        <Mail size={32} />
+                <div style={{ textAlign: "center", marginBottom: "34px" }}>
+                    <div
+                        style={{
+                            width: "74px",
+                            height: "74px",
+                            borderRadius: "20px",
+                            background: "rgba(158, 240, 26, 0.12)",
+                            border: "1px solid rgba(158, 240, 26, 0.22)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            margin: "0 auto 20px",
+                            color: "#9ef01a",
+                        }}
+                    >
+                        <Mail size={30} />
                     </div>
-                    <h1 style={{ fontSize: '32px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '12px' }}>
-                        VERIFY YOUR <span style={{ color: 'var(--accent)' }}>EMAIL.</span>
+
+                    <h1 style={{ fontSize: "30px", fontWeight: "900", letterSpacing: "-0.02em", marginBottom: "10px" }}>
+                        {isApprovalFlow ? "ONAY SIRASINDA" : "E-POSTA DOGRULAMA"}
                     </h1>
-                    <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.6', letterSpacing: '0.5px' }}>
-                        We&apos;ve sent a premium verification link to your inbox. Please confirm your identity to activate your artist portal.
+                    <p style={{ color: "#9098a7", fontSize: "14px", lineHeight: "1.65" }}>
+                        {isApprovalFlow
+                            ? "E-posta dogrulamaniz tamamlandi. Hesabiniz admin onayina dustu."
+                            : "Gelen kutunuza giden linke tiklayarak hesabinizi aktif edin."}
                     </p>
                 </div>
 
-                {/* Email Display / Edit Box */}
-                <div style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    borderRadius: '24px',
-                    padding: '30px',
-                    marginBottom: '30px',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}>
-                    <AnimatePresence mode="wait">
-                        {!isEditing ? (
-                            <motion.div
-                                key="display"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                            >
-                                <div style={{ overflow: 'hidden' }}>
-                                    <p style={{ fontSize: '10px', fontWeight: '900', color: 'var(--accent)', letterSpacing: '2px', marginBottom: '4px' }}>SENDING TO</p>
-                                    <p style={{ fontSize: '16px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{email}</p>
-                                </div>
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px',
-                                        padding: '10px',
-                                        color: '#fff',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.3s'
-                                    }}
-                                    title="Edit Email"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                            </motion.div>
-                        ) : (
-                            <motion.form
-                                key="edit"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                onSubmit={handleUpdateEmail}
-                                style={{ display: 'flex', gap: '12px' }}
-                            >
-                                <input
-                                    type="email"
-                                    value={newEmail}
-                                    onChange={(e) => setNewEmail(e.target.value)}
-                                    required
-                                    style={{
-                                        flex: 1,
-                                        background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid var(--accent)',
-                                        borderRadius: '12px',
-                                        padding: '12px 16px',
-                                        color: '#fff',
-                                        fontSize: '14px',
-                                        outline: 'none'
-                                    }}
-                                    placeholder="Enter new email"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    style={{
-                                        background: 'var(--accent)',
-                                        border: 'none',
-                                        borderRadius: '12px',
-                                        padding: '0 20px',
-                                        color: '#000',
-                                        fontWeight: '900',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                    }}
-                                >
-                                    SAVE
-                                </button>
-                            </motion.form>
+                {isApprovalFlow ? (
+                    <div
+                        style={{
+                            background: "rgba(255,255,255,0.02)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: "22px",
+                            padding: "26px",
+                        }}
+                    >
+                        {email && (
+                            <div style={{ marginBottom: "16px" }}>
+                                <p style={{ fontSize: "11px", color: "#95a0b1", marginBottom: "4px" }}>Hesap</p>
+                                <p style={{ fontSize: "15px", fontWeight: "700", color: "#fff" }}>{email}</p>
+                            </div>
                         )}
-                    </AnimatePresence>
-                </div>
 
-                {/* Status Messages */}
-                <AnimatePresence>
-                    {message && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            style={{ overflow: 'hidden' }}
+                        <div
+                            style={{
+                                padding: "14px 16px",
+                                borderRadius: "14px",
+                                border: "1px solid rgba(158, 240, 26, 0.28)",
+                                background: "rgba(158, 240, 26, 0.06)",
+                                color: "#cbe896",
+                                fontSize: "13px",
+                                lineHeight: "1.6",
+                            }}
                         >
-                            <div style={{
-                                padding: '16px',
-                                background: 'rgba(158, 240, 26, 0.05)',
-                                border: '1px solid rgba(158, 240, 26, 0.2)',
-                                borderRadius: '16px',
-                                color: '#9ef01a',
-                                fontSize: '13px',
-                                fontWeight: '700',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                marginBottom: '20px'
-                            }}>
-                                <CheckCircle size={18} />
-                                {message}
-                            </div>
-                        </motion.div>
-                    )}
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            style={{ overflow: 'hidden' }}
+                            Admin onayi tamamlandiginda giris yaparak dashboarda ulasabilirsiniz.
+                        </div>
+
+                        <div style={{ marginTop: "18px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                            <Link
+                                href="/auth/login"
+                                style={{
+                                    padding: "12px 16px",
+                                    borderRadius: "12px",
+                                    background: "#fff",
+                                    color: "#000",
+                                    fontWeight: "800",
+                                    textDecoration: "none",
+                                }}
+                            >
+                                Giris Sayfasi
+                            </Link>
+                            <Link
+                                href="/"
+                                style={{
+                                    padding: "12px 16px",
+                                    borderRadius: "12px",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                    color: "#fff",
+                                    fontWeight: "700",
+                                    textDecoration: "none",
+                                }}
+                            >
+                                Ana Sayfa
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div
+                            style={{
+                                background: "rgba(255,255,255,0.02)",
+                                border: "1px solid rgba(255,255,255,0.05)",
+                                borderRadius: "22px",
+                                padding: "24px",
+                                marginBottom: "22px",
+                            }}
                         >
-                            <div style={{
-                                padding: '16px',
-                                background: 'rgba(255, 68, 68, 0.05)',
-                                border: '1px solid rgba(255, 68, 68, 0.2)',
-                                borderRadius: '16px',
-                                color: '#ff4444',
-                                fontSize: '13px',
-                                fontWeight: '700',
-                                marginBottom: '20px'
-                            }}>
-                                {error.toUpperCase()}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            <AnimatePresence mode="wait">
+                                {!isEditing ? (
+                                    <motion.div
+                                        key="display"
+                                        initial={{ opacity: 0, scale: 0.97 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.97 }}
+                                        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "14px" }}
+                                    >
+                                        <div style={{ overflow: "hidden" }}>
+                                            <p style={{ fontSize: "10px", fontWeight: "900", color: "var(--accent)", letterSpacing: "2px", marginBottom: "4px" }}>
+                                                GONDERILEN ADRES
+                                            </p>
+                                            <p style={{ fontSize: "15px", fontWeight: "700", color: "#fff", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                                                {email || "E-posta girilmedi"}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setIsEditing(true)}
+                                            style={{
+                                                background: "rgba(255,255,255,0.05)",
+                                                border: "1px solid rgba(255,255,255,0.1)",
+                                                borderRadius: "12px",
+                                                padding: "10px",
+                                                color: "#fff",
+                                                cursor: "pointer",
+                                            }}
+                                            title="E-posta degistir"
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                    </motion.div>
+                                ) : (
+                                    <motion.form
+                                        key="edit"
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -8 }}
+                                        onSubmit={handleUpdateEmail}
+                                        style={{ display: "flex", gap: "10px" }}
+                                    >
+                                        <input
+                                            type="email"
+                                            value={newEmail}
+                                            onChange={(e) => setNewEmail(e.target.value)}
+                                            required
+                                            placeholder="Yeni e-posta adresi"
+                                            style={{
+                                                flex: 1,
+                                                background: "rgba(0,0,0,0.3)",
+                                                border: "1px solid var(--accent)",
+                                                borderRadius: "12px",
+                                                padding: "12px 14px",
+                                                color: "#fff",
+                                                fontSize: "14px",
+                                                outline: "none",
+                                            }}
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            style={{
+                                                background: "var(--accent)",
+                                                border: "none",
+                                                borderRadius: "12px",
+                                                padding: "0 18px",
+                                                color: "#000",
+                                                fontWeight: "900",
+                                                cursor: "pointer",
+                                                fontSize: "12px",
+                                            }}
+                                        >
+                                            KAYDET
+                                        </button>
+                                    </motion.form>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
-                {/* Main Actions */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <button
-                        onClick={handleResend}
-                        disabled={loading || resendCooldown > 0}
-                        className="glow-button"
-                        style={{
-                            padding: '20px',
-                            width: '100%',
-                            borderRadius: '18px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '12px',
-                            fontSize: '13px',
-                            letterSpacing: '1px',
-                            opacity: (loading || resendCooldown > 0) ? 0.6 : 1
-                        }}
-                    >
-                        {loading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                        {resendCooldown > 0 ? `COOLDOWN (${resendCooldown}s)` : 'RESEND VERIFICATION'}
-                    </button>
+                        <AnimatePresence>
+                            {message && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    style={{ overflow: "hidden" }}
+                                >
+                                    <div
+                                        style={{
+                                            padding: "14px",
+                                            background: "rgba(158, 240, 26, 0.08)",
+                                            border: "1px solid rgba(158, 240, 26, 0.24)",
+                                            borderRadius: "14px",
+                                            color: "#bfe97f",
+                                            fontSize: "13px",
+                                            fontWeight: "700",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "10px",
+                                            marginBottom: "14px",
+                                        }}
+                                    >
+                                        <CheckCircle size={16} />
+                                        {message}
+                                    </div>
+                                </motion.div>
+                            )}
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    style={{ overflow: "hidden" }}
+                                >
+                                    <div
+                                        style={{
+                                            padding: "14px",
+                                            background: "rgba(255, 68, 68, 0.08)",
+                                            border: "1px solid rgba(255, 68, 68, 0.24)",
+                                            borderRadius: "14px",
+                                            color: "#ff7373",
+                                            fontSize: "13px",
+                                            fontWeight: "700",
+                                            marginBottom: "14px",
+                                        }}
+                                    >
+                                        {error}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                    <Link
-                        href="/auth/login"
-                        style={{
-                            padding: '18px',
-                            width: '100%',
-                            borderRadius: '18px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '12px',
-                            fontSize: '11px',
-                            fontWeight: '900',
-                            letterSpacing: '2px',
-                            color: '#666',
-                            textDecoration: 'none',
-                            border: '1px solid rgba(255,255,255,0.03)',
-                            background: 'rgba(255,255,255,0.01)',
-                            transition: 'all 0.3s'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; e.currentTarget.style.background = 'rgba(255,255,255,0.01)'; }}
-                    >
-                        ALREADY VERIFIED? PROCEED TO LOGIN <ArrowRight size={14} />
-                    </Link>
-                </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            <button
+                                onClick={handleResend}
+                                disabled={loading || resendCooldown > 0}
+                                className="glow-button"
+                                style={{
+                                    padding: "18px",
+                                    width: "100%",
+                                    borderRadius: "16px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "10px",
+                                    fontSize: "13px",
+                                    letterSpacing: "0.8px",
+                                    opacity: loading || resendCooldown > 0 ? 0.6 : 1,
+                                }}
+                            >
+                                {loading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                {resendCooldown > 0 ? `Tekrar Gonder (${resendCooldown}s)` : "Dogrulama E-postasini Tekrar Gonder"}
+                            </button>
 
-                {/* Support Info */}
-                <p style={{ marginTop: '40px', fontSize: '11px', color: '#444', textAlign: 'center', lineHeight: '1.6' }}>
-                    Didn&apos;t receive the email? Check your junk/spam folder.<br />
-                    If you&apos;re still having trouble, contact our support collective.
-                </p>
+                            <Link
+                                href="/auth/login"
+                                style={{
+                                    padding: "16px",
+                                    width: "100%",
+                                    borderRadius: "16px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "10px",
+                                    fontSize: "11px",
+                                    fontWeight: "900",
+                                    letterSpacing: "1.5px",
+                                    color: "#99a3b5",
+                                    textDecoration: "none",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    background: "rgba(255,255,255,0.01)",
+                                }}
+                            >
+                                GIRIS SAYFASINA DON <ArrowRight size={14} />
+                            </Link>
+                        </div>
+
+                        <p style={{ marginTop: "22px", fontSize: "11px", color: "#687184", textAlign: "center", lineHeight: "1.6" }}>
+                            Mail gelmediyse spam klasorunu kontrol edin.
+                        </p>
+                    </>
+                )}
             </motion.div>
         </div>
     );
@@ -315,19 +391,27 @@ function VerifyPendingContent() {
 
 export default function VerifyPending() {
     return (
-        <div style={{
-            background: '#050607',
-            color: '#fff',
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '40px 20px',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
+        <div
+            style={{
+                background: "#050607",
+                color: "#fff",
+                minHeight: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "40px 20px",
+                position: "relative",
+                overflow: "hidden",
+            }}
+        >
             <BackgroundEffects />
-            <Suspense fallback={<div style={{ color: '#444', fontWeight: '900', letterSpacing: '4px', fontSize: '10px' }}>SYNCING_INTERFACE...</div>}>
+            <Suspense
+                fallback={
+                    <div style={{ color: "#444", fontWeight: "900", letterSpacing: "4px", fontSize: "10px" }}>
+                        SYNCING_INTERFACE...
+                    </div>
+                }
+            >
                 <VerifyPendingContent />
             </Suspense>
 
@@ -336,8 +420,12 @@ export default function VerifyPending() {
                     animation: spin 1s linear infinite;
                 }
                 @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
+                    from {
+                        transform: rotate(0deg);
+                    }
+                    to {
+                        transform: rotate(360deg);
+                    }
                 }
             `}</style>
         </div>
