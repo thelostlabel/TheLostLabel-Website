@@ -11,7 +11,13 @@ export default function ReleasesPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortBy, setSortBy] = useState('date');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
+    const [sortBy, setSortBy] = useState('popularity');
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     useEffect(() => {
         async function fetchAllReleases() {
@@ -37,21 +43,24 @@ export default function ReleasesPage() {
 
     const filteredAlbums = useMemo(() => {
         let result = [...albums];
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
+        if (debouncedQuery) {
+            const q = debouncedQuery.toLowerCase();
             result = result.filter(a =>
                 a.name.toLowerCase().includes(q) ||
+                (a.baseTitle && a.baseTitle.toLowerCase().includes(q)) ||
                 (a.artists && a.artists.some(art => art.name.toLowerCase().includes(q))) ||
                 (a.artist && a.artist.toLowerCase().includes(q))
             );
         }
-        if (sortBy === 'date') {
+        if (sortBy === 'popularity') {
+            result.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+        } else if (sortBy === 'date') {
             result.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
         } else if (sortBy === 'name') {
             result.sort((a, b) => a.name.localeCompare(b.name));
         }
         return result;
-    }, [albums, searchQuery, sortBy]);
+    }, [albums, debouncedQuery, sortBy]);
 
     return (
         <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '100px' }}>
@@ -128,6 +137,7 @@ export default function ReleasesPage() {
                             cursor: 'pointer'
                         }}
                     >
+                        <option value="popularity">MOST POPULAR</option>
                         <option value="date">NEWEST FIRST</option>
                         <option value="name">ALPHABETICAL (A-Z)</option>
                     </select>
@@ -147,7 +157,7 @@ export default function ReleasesPage() {
                     <motion.div
                         initial="hidden"
                         animate="visible"
-                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+                        variants={{ visible: { transition: { staggerChildren: debouncedQuery ? 0.01 : 0.03 } } }}
                         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '30px' }}
                     >
                         {filteredAlbums.map(album => (

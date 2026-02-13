@@ -19,25 +19,16 @@ export async function GET(req) {
             releases: (() => {
                 const uniqueAlbums = new Map();
                 releases.forEach(r => {
-                    // Try to extract Album ID from Spotify URL
-                    // URL format: https://open.spotify.com/track/TRACK_ID or album/ALBUM_ID
-                    // Wait, our spotifyUrl is usually the Track URL now. 
-                    // But we stored Album Image which is consistent for the album.
-                    // Let's deduce Album ID from the Track URL? No, track URL is unique.
-                    // Actually, we don't have a dedicated Album ID column. 
-                    // BUT, tracks from the same album share the exact same Image URL (usually).
-                    // Or we can group by (ArtistName + AlbumName).
+                    // Group by baseTitle if available, otherwise by name + artistName
+                    const groupKey = r.baseTitle || `${r.name}_${r.artistName}`;
 
-                    // BEST APPROACH: Group by IMAGE URL (since it's per-album).
-                    // This is a heuristic but works 99% for Spotify albums.
-
-                    if (!uniqueAlbums.has(r.image)) {
-                        uniqueAlbums.set(r.image, r);
+                    if (!uniqueAlbums.has(groupKey)) {
+                        uniqueAlbums.set(groupKey, r);
                     } else {
                         // If we already have this album, keep the one with higher popularity
-                        const existing = uniqueAlbums.get(r.image);
+                        const existing = uniqueAlbums.get(groupKey);
                         if ((r.popularity || 0) > (existing.popularity || 0)) {
-                            uniqueAlbums.set(r.image, r);
+                            uniqueAlbums.set(groupKey, r);
                         }
                     }
                 });
@@ -57,6 +48,8 @@ export async function GET(req) {
                     return {
                         id: r.id,
                         name: r.name,
+                        baseTitle: r.baseTitle,
+                        versionName: r.versionName,
                         artist: resolvedArtist || "Unknown Artist",
                         image: r.image,
                         spotify_url: r.spotifyUrl,
