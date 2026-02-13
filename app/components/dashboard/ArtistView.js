@@ -2016,39 +2016,38 @@ function ProfileView({ onUpdate }) {
                         />
                     </div>
 
-                    <div style={{ marginBottom: '25px', opacity: profile?.artist ? 0.7 : 1 }}>
+                    <div style={{ marginBottom: '25px', opacity: 0.7 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                             <label style={{ ...labelStyle, marginBottom: 0 }}>STAGE NAME</label>
-                            {profile?.artist && <Lock size={10} color="var(--accent)" />}
+                            <Lock size={10} color="var(--accent)" />
                         </div>
                         <input
                             type="text"
                             value={stageName}
-                            onChange={(e) => setStageName(e.target.value)}
+                            readOnly
                             placeholder="YOUR ARTIST NAME"
-                            disabled={!!profile?.artist}
-                            style={{ ...inputStyle, cursor: profile?.artist ? 'not-allowed' : 'text', borderColor: profile?.artist ? 'rgba(255,255,255,0.05)' : inputStyle.borderColor }}
+                            style={{ ...inputStyle, cursor: 'not-allowed', borderColor: 'rgba(255,255,255,0.05)' }}
                         />
-                        {profile?.artist && (
-                            <p style={{ fontSize: '8px', color: '#666', marginTop: '6px', fontStyle: 'italic' }}>
-                                Managed by label. Contact support to change.
-                            </p>
-                        )}
+                        <p style={{ fontSize: '8px', color: '#666', marginTop: '6px', fontStyle: 'italic' }}>
+                            Contact support to change your artist name.
+                        </p>
                     </div>
 
-                    <div style={{ marginBottom: '30px', opacity: profile?.artist ? 0.7 : 1 }}>
+                    <div style={{ marginBottom: '30px', opacity: 0.7 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                             <label style={{ ...labelStyle, marginBottom: 0 }}>SPOTIFY LINK</label>
-                            {profile?.artist && <Lock size={10} color="var(--accent)" />}
+                            <Lock size={10} color="var(--accent)" />
                         </div>
                         <input
                             type="url"
                             value={spotifyUrl}
-                            onChange={(e) => setSpotifyUrl(e.target.value)}
+                            readOnly
                             placeholder="HTTPS://OPEN.SPOTIFY.COM/ARTIST/..."
-                            disabled={!!profile?.artist}
-                            style={{ ...inputStyle, cursor: profile?.artist ? 'not-allowed' : 'text', borderColor: profile?.artist ? 'rgba(255,255,255,0.05)' : inputStyle.borderColor }}
+                            style={{ ...inputStyle, cursor: 'not-allowed', borderColor: 'rgba(255,255,255,0.05)' }}
                         />
+                        <p style={{ fontSize: '8px', color: '#666', marginTop: '6px', fontStyle: 'italic' }}>
+                            Contact support to update your Spotify link.
+                        </p>
                     </div>
 
                     <button
