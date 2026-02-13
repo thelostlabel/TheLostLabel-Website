@@ -52,7 +52,6 @@ export async function PATCH(req) {
         });
 
         // Create update object
-        // Create update object
         let dataToUpdate = {
             email: email || undefined,
             fullName: fullName || undefined,
@@ -62,13 +61,8 @@ export async function PATCH(req) {
             notifyContracts: notifyContracts !== undefined ? notifyContracts : undefined
         };
 
-        if (user.artist) {
-            // Linked users cannot change stageName or spotifyUrl
-        } else {
-            // Unlinked users can update these
-            dataToUpdate.stageName = stageName || undefined;
-            dataToUpdate.spotifyUrl = spotifyUrl || undefined;
-        }
+        // stageName and spotifyUrl are intentionally NOT updateable via this endpoint.
+        // Users must contact support to change these values.
 
         const updatedUser = await prisma.user.update({
             where: { id: session.user.id },

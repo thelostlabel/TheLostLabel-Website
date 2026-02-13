@@ -8,7 +8,7 @@ import {
     Upload, Music, Disc, User as UserIcon, CheckCircle,
     XCircle, Clock, AlertCircle, Trash2, Send, ExternalLink,
     Briefcase, DollarSign, CreditCard, Users, ClipboardList,
-    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell
+    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell, Lock
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import ProjectView from './ProjectView';
