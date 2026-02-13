@@ -44,7 +44,7 @@ RUN npx prisma generate \
 # ============================================
 # STAGE 3: Runner (Production)
 # ============================================
-FROM mcr.microsoft.com/playwright:v1.58.1-alpine AS runner
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 # Environment variables
@@ -53,12 +53,14 @@ ENV NEXT_TELEMETRY_DISABLED 1
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 ENV LOG_LEVEL warn
+ENV PLAYWRIGHT_BROWSERS_PATH /ms-playwright
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     tzdata \
     dumb-init \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -80,6 +82,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs .env* ./
 
+# Install Playwright browser binaries for runtime scraping/sync jobs
+RUN npx playwright install --with-deps chromium && \
+    chown -R nextjs:nodejs /ms-playwright
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
@@ -93,6 +99,4 @@ USER nextjs
 EXPOSE 3000
 
 # Start the application
-CMD ["node", "server.js"]
-
 CMD ["node", "server.js"]
