@@ -71,6 +71,7 @@ export async function POST(req, { params }) {
     const { id } = await params;
 
     try {
+        const supportEmail = process.env.SUPPORT_EMAIL || 'support@thelostlabel.com';
         const body = await req.json();
         const { content } = body;
 
@@ -120,7 +121,29 @@ export async function POST(req, { params }) {
             }
         });
 
-        // staff gets notified of artist comment (not implemented yet, but could be added)
+        // Notify support mailbox when artist/collaborator comments
+        if (!isAdmin) {
+            try {
+                await sendMail({
+                    to: supportEmail,
+                    subject: `Support Ticket Reply from ${request.user?.stageName || request.user?.email || 'Artist'}`,
+                    html: `
+                        <div style="font-family: sans-serif; color: #333;">
+                            <h2>Support Ticket Reply</h2>
+                            <p><strong>Request ID:</strong> ${id}</p>
+                            <p><strong>Artist:</strong> ${request.user?.stageName || 'Unknown'} (${request.user?.email || 'No email'})</p>
+                            <p><strong>Type:</strong> ${request.type.toUpperCase().replace('_', ' ')}</p>
+                            <p><strong>Message:</strong> ${content}</p>
+                            <br>
+                            <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests&id=${id}">View in Admin Panel</a>
+                        </div>
+                    `
+                });
+            } catch (emailError) {
+                console.error("Support Mail Notification Error:", emailError);
+            }
+        }
+
         // Artist gets notified of staff comment
         if (isAdmin && request.userId !== session.user.id) {
             try {

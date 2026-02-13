@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sendMail } from "@/lib/mail";
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -32,47 +33,41 @@ export async function POST(req) {
             }
         });
 
-        // Send Email Confirmation
-        // Send Email Confirmation
-        const { sendMail } = await import('@/lib/mail');
+        const supportEmail = process.env.SUPPORT_EMAIL || 'support@thelostlabel.com';
 
         // 1. Notify Artist (Confirmation)
         await sendMail({
             to: session.user.email,
-            subject: 'Change Request Received - LOST. A&R Portal',
+            subject: 'Support Ticket Created Successfully - LOST.',
             html: `
                 <div style="font-family: sans-serif; color: #333;">
-                    <h2>Request Received</h2>
+                    <h2>Support Ticket Created</h2>
                     <p>Hello <strong>${session.user.stageName || 'Artist'}</strong>,</p>
-                    <p>We've received your request for <strong>${type.toUpperCase().replace('_', ' ')}</strong>.</p>
+                    <p>Your support request has been created successfully.</p>
+                    <p><strong>Type:</strong> ${type.toUpperCase().replace('_', ' ')}</p>
                     <p><strong>Details:</strong> ${details}</p>
-                    <p>Our team will review this shortly. You can track the status in your dashboard.</p>
+                    <p>Our support team will review it shortly. You can track status from your dashboard.</p>
                     <br>
                     <p>Best,<br>LOST. Team</p>
                 </div>
             `
         });
 
-        // 2. Notify Admin (if configured)
-        if (settings) {
-            const config = JSON.parse(settings.config);
-            if (config.adminEmail) {
-                await sendMail({
-                    to: config.adminEmail,
-                    subject: `New Request: ${type.toUpperCase()} from ${session.user.stageName || session.user.email}`,
-                    html: `
-                        <div style="font-family: sans-serif; color: #333;">
-                            <h2>New Artist Request</h2>
-                            <p><strong>Artist:</strong> ${session.user.stageName || 'Unknown'} (${session.user.email})</p>
-                            <p><strong>Type:</strong> ${type.toUpperCase().replace('_', ' ')}</p>
-                            <p><strong>Details:</strong> ${details}</p>
-                            <br>
-                            <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
-                        </div>
-                    `
-                });
-            }
-        }
+        // 2. Notify Support mailbox
+        await sendMail({
+            to: supportEmail,
+            subject: `New Support Ticket: ${type.toUpperCase()} from ${session.user.stageName || session.user.email}`,
+            html: `
+                <div style="font-family: sans-serif; color: #333;">
+                    <h2>New Support Ticket</h2>
+                    <p><strong>Artist:</strong> ${session.user.stageName || 'Unknown'} (${session.user.email})</p>
+                    <p><strong>Type:</strong> ${type.toUpperCase().replace('_', ' ')}</p>
+                    <p><strong>Details:</strong> ${details}</p>
+                    <br>
+                    <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
+                </div>
+            `
+        });
 
         return new Response(JSON.stringify(request), { status: 201 });
     } catch (e) {
