@@ -1,25 +1,28 @@
 # ============================================
 # STAGE 1: Dependencies
 # ============================================
-FROM node:20-alpine AS deps
+FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies (Alpine with build tools)
-RUN apk add --no-cache python3 make g++ \
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ ca-certificates openssl \
     && npm ci --prefer-offline --no-audit \
-    && apk del python3 make g++
+    && rm -rf /var/lib/apt/lists/*
 
 # ============================================
 # STAGE 2: Builder
 # ============================================
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache python3 make g++ ca-certificates openssl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
@@ -52,14 +55,15 @@ ENV HOSTNAME "0.0.0.0"
 ENV LOG_LEVEL warn
 
 # Install runtime dependencies only
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     tzdata \
-    dumb-init
+    dumb-init \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create app user
-RUN addgroup -g 1001 nodejs && \
-    adduser -S nextjs -u 1001
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 nextjs
 
 # Create upload directories with proper permissions
 RUN mkdir -p /app/private/uploads/{contracts,demos,releases} && \
