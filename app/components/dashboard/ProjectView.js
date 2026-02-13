@@ -109,7 +109,7 @@ export default function ProjectView({ projectId, onBack, user }) {
     const demoFileUrl = project.files?.[0] ? `/api/files/demo/${project.files[0].id}` : null;
     const progress = (currentStageIndex / (stages.length - 1)) * 100;
 
-    const coverArtPreview = coverArt?.startsWith('private/') ? `/api/files/asset?path=${encodeURIComponent(coverArt)}` : coverArt;
+
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -378,7 +378,7 @@ function ProductionView({ project, onUpdate }) {
                             overflow: 'hidden', position: 'relative'
                         }}>
                         {coverArt ? (
-                            <NextImage src={coverArtPreview} alt="Cover" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <NextImage src={coverArt.startsWith('private/') ? `/api/files/asset?path=${encodeURIComponent(coverArt)}` : coverArt} alt="Cover" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                             <div style={{ textAlign: 'center' }}>
                                 <Upload size={24} color="#444" style={{ marginBottom: '10px' }} />
