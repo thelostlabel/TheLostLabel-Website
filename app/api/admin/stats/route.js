@@ -29,7 +29,9 @@ export async function GET(req) {
                 by: ['image'],
                 _count: { image: true }
             }),
-            prisma.release.count(),
+            prisma.release.aggregate({
+                _sum: { totalTracks: true }
+            }),
             prisma.demo.findMany({
                 take: 5,
                 orderBy: { createdAt: 'desc' },
@@ -112,7 +114,7 @@ export async function GET(req) {
                 totalDemos,
                 pendingRequests,
                 albums: albumCount,
-                songs: totalSongs,
+                songs: totalSongs._sum.totalTracks || 0,
                 revenue: totalRevenue,
                 gross: totalGross,
                 payouts: totalPayouts

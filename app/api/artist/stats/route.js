@@ -42,7 +42,7 @@ export async function GET(req) {
         }
 
         // 2. Fetch Fundamental Data Concurrently based on verified links
-        const [artistProfile, payments, releasesCount, demosCount] = await Promise.all([
+        const [artistProfile, payments, releasesAgg, demosCount] = await Promise.all([
             prisma.artist.findFirst({
                 where: artistId ? { id: artistId } : {
                     OR: [
@@ -62,7 +62,9 @@ export async function GET(req) {
                 where: { userId: userId, status: 'completed' },
                 select: { amount: true }
             }),
-            prisma.release.count({
+            prisma.release.aggregate({
+                _count: { id: true },
+                _sum: { totalTracks: true },
                 where: {
                     OR: [
                         { artistsJson: { contains: artistStageName } },
@@ -73,6 +75,9 @@ export async function GET(req) {
             }),
             prisma.demo.count({ where: { artistId: userId } })
         ]);
+
+        const releasesCount = releasesAgg._count.id || 0;
+        const totalSongs = releasesAgg._sum.totalTracks || 0;
 
         const monthlyListeners = artistProfile?.monthlyListeners || userProfile?.monthlyListeners || 0;
 
@@ -163,6 +168,7 @@ export async function GET(req) {
             withdrawn: totalWithdrawn,
             balance: totalEarnings - totalWithdrawn,
             releases: releasesCount,
+            songs: totalSongs,
             demos: demosCount,
             trends: Object.values(monthlyTrend).reverse(),
             trendsDaily: Object.values(dailyTrend).reverse(),

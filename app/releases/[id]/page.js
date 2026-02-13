@@ -26,6 +26,8 @@ export default function ReleaseDetailPage() {
                     baseRelease = await baseRes.json();
                 }
 
+                let finalRelease = null;
+
                 const buildFromTrack = (track) => ({
                     id: baseRelease?.id || releaseId,
                     name: track.name || baseRelease?.name,
@@ -38,7 +40,7 @@ export default function ReleaseDetailPage() {
                             id: track.id || releaseId,
                             name: track.name,
                             artists: track.artists || (track.artist ? [{ id: 'unknown', name: track.artist }] : []),
-                            duration_ms: track.duration_ms,
+                            duration_ms: track.duration_ms || 0,
                             preview_url: track.preview_url
                         }
                     ],
@@ -55,73 +57,89 @@ export default function ReleaseDetailPage() {
                     return null;
                 };
 
+                // Strategy 1: Smart Endpoint Resolution
                 const spotifyEndpoint = resolveSpotifyEndpoint(baseRelease?.spotify_url);
                 if (spotifyEndpoint) {
                     const res = await fetch(spotifyEndpoint);
                     if (res.ok) {
                         const data = await res.json();
                         if (data.tracks) {
-                            setRelease({
+                            finalRelease = {
                                 ...baseRelease,
                                 ...data,
                                 artists: data.artists || baseRelease?.artists
-                            });
-                            return;
+                            };
+                        } else {
+                            finalRelease = buildFromTrack(data);
                         }
-                        setRelease(buildFromTrack(data));
-                        return;
                     }
                 }
 
-                let res = await fetch(`/api/spotify/album/${releaseId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setRelease({ ...baseRelease, ...data, artists: data.artists || baseRelease?.artists });
-                    return;
-                }
-
-                const trackRes = await fetch(`/api/spotify/track/${releaseId}`);
-                if (!trackRes.ok) {
-                    if (baseRelease) {
-                        setRelease({
-                            ...baseRelease,
-                            total_tracks: baseRelease.total_tracks || 1,
-                            tracks: baseRelease.preview_url ? [{
-                                id: baseRelease.id,
-                                name: baseRelease.name,
-                                artists: baseRelease.artists,
-                                duration_ms: 0,
-                                preview_url: baseRelease.preview_url
-                            }] : []
-                        });
-                        return;
+                // Strategy 2: Explicit Album Fetch
+                if (!finalRelease) {
+                    let res = await fetch(`/api/spotify/album/${releaseId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        finalRelease = { ...baseRelease, ...data, artists: data.artists || baseRelease?.artists };
                     }
-                    throw new Error('Release not found');
                 }
-                const track = await trackRes.json();
-                setRelease(buildFromTrack(track));
-                // Post-process to merge versions into tracks if this is a single-disc style release
-                setRelease(prev => {
-                    if (!prev || !prev.versions || prev.versions.length <= 1) return prev;
 
-                    const existingTrackIds = new Set(prev.tracks?.map(t => t.id) || []);
-                    const versionTracks = prev.versions
-                        .filter(v => v.id !== prev.id && v.id !== releaseId && !existingTrackIds.has(v.id))
+                // Strategy 3: Explicit Track Fetch
+                if (!finalRelease) {
+                    const trackRes = await fetch(`/api/spotify/track/${releaseId}`);
+                    if (trackRes.ok) {
+                        const track = await trackRes.json();
+                        finalRelease = buildFromTrack(track);
+                    }
+                }
+
+                // Fallback: Use Database Data
+                if (!finalRelease && baseRelease) {
+                    // Create a track entry for the release itself so it appears in the list
+                    const mainTrack = {
+                        id: baseRelease.id,
+                        name: baseRelease.name,
+                        artists: baseRelease.artists || [],
+                        duration_ms: 0,
+                        preview_url: baseRelease.preview_url || null
+                    };
+
+                    finalRelease = {
+                        ...baseRelease,
+                        total_tracks: baseRelease.total_tracks || 1,
+                        tracks: [mainTrack]
+                    };
+                }
+
+                if (!finalRelease) throw new Error('Release not found');
+
+                // Merge Versions
+                if (finalRelease.versions && finalRelease.versions.length > 0) {
+                    const existingTrackIds = new Set(finalRelease.tracks?.map(t => t.id) || []);
+                    const existingTrackNames = new Set((finalRelease.tracks || []).map(t => t.name.trim().toLowerCase()));
+
+                    // Filter duplicates (some versions might be the release itself)
+                    const versionTracks = finalRelease.versions
+                        .filter(v =>
+                            v.id !== finalRelease.id &&
+                            v.id !== releaseId &&
+                            !existingTrackIds.has(v.id) &&
+                            !existingTrackNames.has(v.name.trim().toLowerCase())
+                        )
                         .map(v => ({
                             id: v.id,
                             name: v.name,
-                            artists: v.artists || prev.artists,
-                            duration_ms: 0, // We don't have this for all versions easily
+                            artists: v.artists || finalRelease.artists,
+                            duration_ms: 0,
                             preview_url: v.preview_url,
                             is_version: true
                         }));
 
-                    return {
-                        ...prev,
-                        tracks: [...(prev.tracks || []), ...versionTracks],
-                        total_tracks: (prev.tracks?.length || 0) + versionTracks.length
-                    };
-                });
+                    finalRelease.tracks = [...(finalRelease.tracks || []), ...versionTracks];
+                    finalRelease.total_tracks = finalRelease.tracks.length;
+                }
+
+                setRelease(finalRelease);
 
             } catch (e) {
                 console.error(e);
