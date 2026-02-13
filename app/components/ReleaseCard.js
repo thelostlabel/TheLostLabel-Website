@@ -1,24 +1,14 @@
 "use client";
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { Play, Pause, ExternalLink } from 'lucide-react';
 import { usePlayer } from './PlayerContext';
 
 export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initialData }) {
-    const [data, setData] = useState(initialData || null);
-    const [loading, setLoading] = useState(!initialData);
-    const [error, setError] = useState(false);
+    const data = initialData || null;
+    const loading = !initialData;
+    const error = false;
     const { playTrack, currentTrack, isPlaying } = usePlayer();
-
-    useEffect(() => {
-        if (initialData) {
-            setData(initialData);
-            setLoading(false);
-        } else {
-            setLoading(false);
-        }
-    }, [initialData]);
 
     const getBaseTitle = (t) => {
         if (!t) return "";

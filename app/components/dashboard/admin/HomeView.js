@@ -21,7 +21,7 @@ const ChartTooltip = ({ active, payload, label, color }) => {
             backdropFilter: 'blur(20px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
         }}>
-            <div style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
+            <div style={{ fontSize: '9px', color: '#a8b0bc', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
             {payload.map((p, i) => (
                 <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
                     ${Number(p.value).toLocaleString()}
@@ -31,46 +31,92 @@ const ChartTooltip = ({ active, payload, label, color }) => {
     );
 };
 
+function formatChartValue(v) {
+    const value = Number(v) || 0;
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
+    return `${Math.round(value)}`;
+}
+
 const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
-    if (!data || data.length === 0) return (
+    const sanitizedData = Array.isArray(data)
+        ? data.filter((point) => point && Number.isFinite(Number(point.value)))
+        : [];
+
+    if (sanitizedData.length === 0) return (
         <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
             NO DATA AVAILABLE
         </div>
     );
 
+    if (sanitizedData.length === 1) {
+        const onlyPoint = sanitizedData[0];
+        return (
+            <div style={{
+                width: '100%',
+                height: `${height}px`,
+                marginTop: '10px',
+                borderRadius: '16px',
+                border: '1px dashed rgba(255,255,255,0.16)',
+                background: 'rgba(255,255,255,0.015)',
+                display: 'grid',
+                placeItems: 'center',
+                textAlign: 'center',
+                padding: '20px'
+            }}>
+                <div>
+                    <div style={{ fontSize: '10px', letterSpacing: '1.6px', color: '#99a5b6', fontWeight: '800', marginBottom: '8px' }}>
+                        SINGLE DATA POINT
+                    </div>
+                    <div style={{ fontSize: '34px', fontWeight: '900', color }}>
+                        ${Number(onlyPoint.value).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#b2bac6', fontWeight: '800', marginTop: '8px' }}>
+                        {onlyPoint.label}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#7f8b9b', marginTop: '8px' }}>
+                        Trend chart appears automatically as more months are collected.
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                         <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                            <stop offset="8%" stopColor={color} stopOpacity={0.2} />
                             <stop offset="95%" stopColor={color} stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.11)" />
                     <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
                         tickLine={false}
-                        axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.16)' }}
                         tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
                     />
                     <YAxis
-                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
+                        width={44}
+                        tickCount={5}
+                        tickFormatter={formatChartValue}
                     />
                     <Tooltip content={<ChartTooltip color={color} />} />
                     <Area
                         type="monotone"
                         dataKey="value"
                         stroke={color}
-                        strokeWidth={2.5}
+                        strokeWidth={2.8}
                         fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 3, fill: '#0a0a0c', stroke: color, strokeWidth: 2 }}
-                        activeDot={{ r: 5, fill: color, stroke: '#0a0a0c', strokeWidth: 2 }}
+                        dot={{ r: 4, fill: '#0a0a0c', stroke: color, strokeWidth: 2.2 }}
+                        activeDot={{ r: 6, fill: color, stroke: '#0a0a0c', strokeWidth: 2.2 }}
                     />
                 </AreaChart>
             </ResponsiveContainer>
@@ -277,6 +323,9 @@ export default function HomeView() {
         color: pickPlatformColor(p.label)
     }));
 
+    const revenueChartColor = '#f5c542';
+    const payoutChartColor = '#00ff88';
+
     return (
         <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', padding: '0 10px' }}>
@@ -358,12 +407,12 @@ export default function HomeView() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '12px', flexWrap: 'wrap' }}>
                         <div>
                             <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>REVENUE_OVERVIEW</h3>
-                            <p style={{ fontSize: '9px', color: '#444', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
+                            <p style={{ fontSize: '9px', color: '#98a3b3', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--accent)' }} />
-                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#666' }}>ESTIMATED_VOLUME</span>
+                                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: revenueChartColor }} />
+                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#aab2be' }}>ESTIMATED_VOLUME</span>
                             </div>
                             <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '4px', border: '1px solid rgba(255,255,255,0.06)' }}>
                                 {['3m', '6m', '12m'].map(r => (
@@ -372,8 +421,8 @@ export default function HomeView() {
                                         onClick={() => setRange(r)}
                                         style={{
                                             border: 'none',
-                                            background: range === r ? 'var(--accent)' : 'transparent',
-                                            color: range === r ? '#000' : '#777',
+                                            background: range === r ? revenueChartColor : 'transparent',
+                                            color: range === r ? '#000' : '#afb6c1',
                                             fontSize: '9px',
                                             fontWeight: '900',
                                             letterSpacing: '1px',
@@ -390,7 +439,7 @@ export default function HomeView() {
                         </div>
                     </div>
 
-                    <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color="#f5c542" />
+                    <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color={revenueChartColor} />
                 </motion.div>
 
                 {/* Payout Trends Chart */}
@@ -404,10 +453,10 @@ export default function HomeView() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <div>
                             <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>PAYOUT_TRENDS</h3>
-                            <p style={{ fontSize: '9px', color: '#444', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
+                            <p style={{ fontSize: '9px', color: '#98a3b3', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
                         </div>
                     </div>
-                    <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color="#00ff88" />
+                    <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color={payoutChartColor} />
                 </motion.div>
 
                 <motion.div

@@ -3,32 +3,32 @@ import React, { useState, useEffect } from 'react';
 import BackgroundEffects from "../components/BackgroundEffects";
 import { motion } from "framer-motion";
 
+const STATIC_FAQS = [
+    {
+        q: "How do I submit a demo?",
+        a: "Register as an artist, access your portal, and use the 'NEW SUBMISSION' button. You can now upload multiple files (Master, Lyrics, etc.) directly."
+    },
+    {
+        q: "How can I track my distribution?",
+        a: "Once signed, our A&R team will provide updates through the portal. You can use the 'CHANGE REQUEST' system to manage revisions or metadata updates for your releases."
+    },
+    {
+        q: "How do royalties and payments work?",
+        a: "Royalties from Spotify, Apple Music, and other DSPs are calculated monthly. You can view your detailed revenue breakdown in the 'EARNINGS' tab and request withdrawals once the $50 threshold is met."
+    },
+    {
+        q: "What about legal contracts?",
+        a: "All signing contracts are generated digitally. You can view, download, and track the status of your contracts in the 'CONTRACTS' section of your Artist Dashboard."
+    },
+    {
+        q: "Do you offer Spotify sync?",
+        a: "Yes. Our system automatically syncs with your Spotify Artist profile to fetch the latest release data and update your portal metrics."
+    }
+];
+
 export default function FAQPage() {
     const [faqs, setFaqs] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const staticFaqs = [
-        {
-            q: "How do I submit a demo?",
-            a: "Register as an artist, access your portal, and use the 'NEW SUBMISSION' button. You can now upload multiple files (Master, Lyrics, etc.) directly."
-        },
-        {
-            q: "How can I track my distribution?",
-            a: "Once signed, our A&R team will provide updates through the portal. You can use the 'CHANGE REQUEST' system to manage revisions or metadata updates for your releases."
-        },
-        {
-            q: "How do royalties and payments work?",
-            a: "Royalties from Spotify, Apple Music, and other DSPs are calculated monthly. You can view your detailed revenue breakdown in the 'EARNINGS' tab and request withdrawals once the $50 threshold is met."
-        },
-        {
-            q: "What about legal contracts?",
-            a: "All signing contracts are generated digitally. You can view, download, and track the status of your contracts in the 'CONTRACTS' section of your Artist Dashboard."
-        },
-        {
-            q: "Do you offer Spotify sync?",
-            a: "Yes. Our system automatically syncs with your Spotify Artist profile to fetch the latest release data and update your portal metrics."
-        }
-    ];
 
     useEffect(() => {
         const fetchFaqs = async () => {
@@ -39,20 +39,20 @@ export default function FAQPage() {
                     if (data && data.content) {
                         try {
                             const parsed = JSON.parse(data.content);
-                            setFaqs(Array.isArray(parsed) ? parsed : staticFaqs);
+                            setFaqs(Array.isArray(parsed) ? parsed : STATIC_FAQS);
                         } catch (e) {
                             console.error("Failed to parse FAQ JSON", e);
-                            setFaqs(staticFaqs);
+                            setFaqs(STATIC_FAQS);
                         }
                     } else {
-                        setFaqs(staticFaqs);
+                        setFaqs(STATIC_FAQS);
                     }
                 } else {
-                    setFaqs(staticFaqs);
+                    setFaqs(STATIC_FAQS);
                 }
             } catch (error) {
                 console.error("Fetch FAQs Error:", error);
-                setFaqs(staticFaqs);
+                setFaqs(STATIC_FAQS);
             } finally {
                 setLoading(false);
             }

@@ -1,4 +1,6 @@
 import { getArtistsDetails } from "@/lib/spotify";
+import prisma from "@/lib/prisma";
+import { scrapeSpotifyStats } from "@/lib/scraper";
 
 /**
  * GET /api/admin/cron/sync-spotify
@@ -10,8 +12,12 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const key = searchParams.get('key');
 
+    if (!process.env.CRON_SECRET) {
+        return new Response(JSON.stringify({ error: "CRON_SECRET is not configured" }), { status: 500 });
+    }
+
     // Security check
-    if (key !== process.env.CRON_SECRET && process.env.NODE_ENV === 'production') {
+    if (key !== process.env.CRON_SECRET) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -55,10 +61,10 @@ export async function GET(req) {
                     await prisma.artist.update({
                         where: { id: artist.id },
                         data: {
-                            monthlyListeners: stats?.monthlyListeners || artist.monthlyListeners,
-                            followers: apiData?.followers?.total || stats?.followers || artist.followers,
-                            verified: stats?.verified || artist.verified,
-                            image: apiData?.images?.[0]?.url || stats?.imageUrl || artist.image,
+                            monthlyListeners: stats?.monthlyListeners ?? artist.monthlyListeners,
+                            followers: apiData?.followers?.total ?? stats?.followers ?? artist.followers,
+                            verified: stats?.verified ?? artist.verified,
+                            image: apiData?.images?.[0]?.url ?? stats?.imageUrl ?? artist.image,
                             lastSyncedAt: new Date()
                         }
                     });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { linkUserToArtist } from '@/lib/userArtistLink';
 
 export async function POST(req) {
     try {
@@ -31,7 +32,16 @@ export async function POST(req) {
             }
         });
 
-        return NextResponse.json({ success: true, message: "Email verified successfully" });
+        if (user.status === 'approved') {
+            await linkUserToArtist(user.id);
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: "Email verified successfully",
+            email: user.email,
+            accountStatus: user.status
+        });
 
     } catch (error) {
         console.error("Verification Error:", error);

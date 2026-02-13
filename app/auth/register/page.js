@@ -20,14 +20,11 @@ export default function Register() {
     const [registrationsOpen, setRegistrationsOpen] = useState(true);
 
     useEffect(() => {
-        fetch('/api/admin/settings')
+        fetch('/api/settings/public')
             .then(res => res.json())
             .then(data => {
-                if (data.config) {
-                    const parsed = JSON.parse(data.config);
-                    if (parsed.registrationsOpen === false) {
-                        setRegistrationsOpen(false);
-                    }
+                if (data.registrationsOpen === false) {
+                    setRegistrationsOpen(false);
                 }
             })
             .catch(err => console.error(err));

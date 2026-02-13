@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getPlaylistTracks, getArtistsDetails } from "@/lib/spotify";
+import { getPlaylistTracks, getArtistsDetails, getAccessToken } from "@/lib/spotify";
 import { scrapeSpotifyStats, scrapePrereleaseData } from "@/lib/scraper";
 import { chromium } from 'playwright';
 import prisma from "@/lib/prisma";
@@ -283,7 +283,7 @@ export async function POST(req) {
 
         if (scrapeListeners) {
             if (!browser) browser = await chromium.launch({ headless: true });
-            const detailedArtists = (await getArtistsDetails(artistIds)).filter(Boolean);
+            const detailedArtists = ((await getArtistsDetails(artistIds)) || []).filter(Boolean);
 
             const failedArtists = [];
 
@@ -294,7 +294,7 @@ export async function POST(req) {
                 try {
                     logger.debug('Processing artist', { artistName: artist.name, isRetry });
                     const data = await scrapeSpotifyStats(spotifyUrl, browser);
-                    monthlyListeners = data?.monthlyListeners || null;
+                    monthlyListeners = data?.monthlyListeners ?? null;
 
                     await prisma.artist.upsert({
                         where: { id: artist.id },
@@ -303,7 +303,7 @@ export async function POST(req) {
                             image: artist.images?.[0]?.url || null,
                             followers: artist.followers?.total || null,
                             popularity: artist.popularity || 0,
-                            monthlyListeners: monthlyListeners || undefined,
+                            monthlyListeners: monthlyListeners ?? undefined,
                             lastSyncedAt: new Date(),
                             genres: artist.genres?.join(',') || null
                         },
@@ -320,7 +320,7 @@ export async function POST(req) {
                     });
 
                     // Record history
-                    if (monthlyListeners) {
+                    if (monthlyListeners !== null) {
                         await prisma.artistStatsHistory.create({
                             data: {
                                 artistId: artist.id,

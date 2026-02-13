@@ -255,7 +255,7 @@ export default function ContentView({ content, onRefresh }) {
                                 </div>
                             ) : (
                                 <div style={{ fontSize: '11px', color: '#444' }}>
-                                    <p style={{ marginBottom: '10px' }}>Site using system defaults. Use "CUSTOMIZE" to override with your own content.</p>
+                                    <p style={{ marginBottom: '10px' }}>Site using system defaults. Use &quot;CUSTOMIZE&quot; to override with your own content.</p>
                                     <div style={{
                                         padding: '15px',
                                         background: 'rgba(255,255,255,0.01)',

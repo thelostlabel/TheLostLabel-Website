@@ -1,22 +1,21 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const token = searchParams.get('token');
-    const [status, setStatus] = useState('verifying'); // verifying, success, error
-    const [message, setMessage] = useState('Verifying your email...');
+    const [status, setStatus] = useState(token ? 'verifying' : 'error'); // verifying, success, error
+    const [message, setMessage] = useState(
+        token ? 'Email adresiniz dogrulaniyor...' : 'Dogrulama baglantisi gecersiz veya eksik.'
+    );
+    const [verifiedEmail, setVerifiedEmail] = useState('');
 
     useEffect(() => {
-        if (!token) {
-            setStatus('error');
-            setMessage('No verification token found.');
-            return;
-        }
+        if (!token) return;
+        let isCancelled = false;
 
         const verify = async () => {
             try {
@@ -29,23 +28,27 @@ function VerifyEmailContent() {
                 const data = await res.json();
 
                 if (res.ok) {
+                    if (isCancelled) return;
                     setStatus('success');
-                    setMessage('Email verified successfully! You can now log in.');
-                    setTimeout(() => {
-                        router.push('/auth/login');
-                    }, 3000);
+                    setVerifiedEmail(data?.email || '');
+                    setMessage('E-posta adresiniz dogrulandi. Hesabiniz su an admin onayi bekliyor.');
                 } else {
+                    if (isCancelled) return;
                     setStatus('error');
-                    setMessage(data.error || 'Verification failed.');
+                    setMessage(data.error || 'Dogrulama islemi basarisiz oldu.');
                 }
-            } catch (error) {
+            } catch {
+                if (isCancelled) return;
                 setStatus('error');
-                setMessage('An error occurred. Please try again.');
+                setMessage('Bir hata olustu. Lutfen tekrar deneyin.');
             }
         };
 
         verify();
-    }, [token, router]);
+        return () => {
+            isCancelled = true;
+        };
+    }, [token]);
 
     return (
         <div style={{
@@ -59,7 +62,10 @@ function VerifyEmailContent() {
             padding: '20px'
         }}>
             <div className="glass" style={{ padding: '40px', maxWidth: '400px', width: '100%', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <h1 style={{ marginBottom: '20px', fontSize: '24px', fontWeight: 'bold' }}>Email Verification</h1>
+                <h1 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 'bold' }}>E-Posta Dogrulama</h1>
+                <p style={{ color: '#888', fontSize: '14px', marginBottom: '22px' }}>
+                    Hesabinizin guvenligi icin e-posta baglantisini kontrol ediyoruz.
+                </p>
 
                 {status === 'verifying' && (
                     <div style={{ color: '#888' }}>
@@ -70,18 +76,28 @@ function VerifyEmailContent() {
 
                 {status === 'success' && (
                     <div style={{ color: '#4ade80' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '20px' }}>✅</div>
+                        <div style={{ fontSize: '40px', marginBottom: '14px' }}>OK</div>
                         <p>{message}</p>
-                        <p style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>Redirecting to login...</p>
+                        <div style={{ marginTop: '22px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <Link href="/auth/login" style={{ padding: '10px 16px', borderRadius: '10px', background: '#fff', color: '#000', fontWeight: '700', textDecoration: 'none' }}>
+                                Giris Ekrani
+                            </Link>
+                            <Link
+                                href={`/auth/verify-pending?step=approval${verifiedEmail ? `&email=${encodeURIComponent(verifiedEmail)}` : ''}`}
+                                style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontWeight: '700', textDecoration: 'none' }}
+                            >
+                                Onay Durumu
+                            </Link>
+                        </div>
                     </div>
                 )}
 
                 {status === 'error' && (
                     <div style={{ color: '#ef4444' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '20px' }}>❌</div>
+                        <div style={{ fontSize: '40px', marginBottom: '14px' }}>X</div>
                         <p>{message}</p>
                         <Link href="/auth/login" style={{ display: 'inline-block', marginTop: '20px', color: '#fff', textDecoration: 'underline' }}>
-                            Back to Login
+                            Giris Sayfasina Don
                         </Link>
                     </div>
                 )}

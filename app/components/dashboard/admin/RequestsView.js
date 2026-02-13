@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
@@ -14,24 +14,24 @@ function RequestComments({ request }) {
     const [sending, setSending] = useState(false);
     const scrollRef = useRef(null);
 
-    useEffect(() => {
-        fetchComments();
-    }, [requestId]);
-
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [comments]);
-
-    const fetchComments = async () => {
+    const fetchComments = useCallback(async () => {
         try {
             const res = await fetch(`/api/requests/${requestId}/comments`);
             const data = await res.json();
             setComments(Array.isArray(data) ? data : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, [requestId]);
+
+    useEffect(() => {
+        fetchComments();
+    }, [fetchComments]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [comments]);
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -46,7 +46,7 @@ function RequestComments({ request }) {
             });
             const data = await res.json();
             if (res.ok) {
-                setComments([...comments, data]);
+                setComments((prev) => [...prev, data]);
                 setNewComment('');
             }
         } catch (e) { console.error(e); }

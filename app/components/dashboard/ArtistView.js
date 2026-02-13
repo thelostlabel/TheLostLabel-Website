@@ -49,7 +49,7 @@ const ChartTooltip = ({ active, payload, label, color }) => {
             backdropFilter: 'blur(20px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
         }}>
-            <div style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
+            <div style={{ fontSize: '9px', color: '#a8b0bc', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
             {payload.map((p, i) => (
                 <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
                     {isCurrency ? `$${Number(p.value).toLocaleString()}` : Number(p.value).toLocaleString()}
@@ -59,46 +59,90 @@ const ChartTooltip = ({ active, payload, label, color }) => {
     );
 };
 
+function formatChartValue(v) {
+    const value = Number(v) || 0;
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
+    return `${Math.round(value)}`;
+}
+
 const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
-    if (!data || data.length === 0) return (
+    const sanitizedData = Array.isArray(data)
+        ? data.filter((point) => point && Number.isFinite(Number(point.value)))
+        : [];
+    const hasSignal = sanitizedData.some((point) => Number(point.value) > 0);
+
+    if (sanitizedData.length === 0 || !hasSignal) return (
         <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
-            NO DATA AVAILABLE
+            NO ACTIVITY IN SELECTED RANGE
         </div>
     );
+
+    if (sanitizedData.length === 1) {
+        const onlyPoint = sanitizedData[0];
+        return (
+            <div style={{
+                width: '100%',
+                height: `${height}px`,
+                marginTop: '10px',
+                borderRadius: '16px',
+                border: '1px dashed rgba(255,255,255,0.16)',
+                background: 'rgba(255,255,255,0.015)',
+                display: 'grid',
+                placeItems: 'center',
+                textAlign: 'center',
+                padding: '20px'
+            }}>
+                <div>
+                    <div style={{ fontSize: '10px', letterSpacing: '1.6px', color: '#99a5b6', fontWeight: '800', marginBottom: '8px' }}>
+                        SINGLE DATA POINT
+                    </div>
+                    <div style={{ fontSize: '34px', fontWeight: '900', color }}>
+                        {Number(onlyPoint.value).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#b2bac6', fontWeight: '800', marginTop: '8px' }}>
+                        {onlyPoint.label}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                         <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                            <stop offset="8%" stopColor={color} stopOpacity={0.2} />
                             <stop offset="95%" stopColor={color} stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.11)" />
                     <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
                         tickLine={false}
-                        axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.16)' }}
                         tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
                     />
                     <YAxis
-                        tick={{ fontSize: 9, fill: '#555', fontWeight: 700 }}
+                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
+                        width={44}
+                        tickCount={5}
+                        tickFormatter={formatChartValue}
                     />
                     <Tooltip content={<ChartTooltip color={color} />} />
                     <Area
                         type="monotone"
                         dataKey="value"
                         stroke={color}
-                        strokeWidth={2.5}
+                        strokeWidth={2.8}
                         fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 3, fill: '#0a0a0c', stroke: color, strokeWidth: 2 }}
-                        activeDot={{ r: 5, fill: color, stroke: '#0a0a0c', strokeWidth: 2 }}
+                        dot={{ r: 4, fill: '#0a0a0c', stroke: color, strokeWidth: 2.2 }}
+                        activeDot={{ r: 6, fill: color, stroke: '#0a0a0c', strokeWidth: 2.2 }}
                     />
                 </AreaChart>
             </ResponsiveContainer>
@@ -183,7 +227,7 @@ export default function ArtistView() {
             setReleases(Array.isArray(relData) ? relData : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    }, [view]);
+    }, []);
 
     const fetchContracts = useCallback(async () => {
         setLoading(true);
@@ -647,12 +691,14 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
         : (chartRange === 'daily'
             ? 'Estimated earnings trend by day (Last 30)'
             : 'Estimated earnings trend by month');
+    const chartTypeButtonActive = chartType === 'listeners' ? '#00d4ff' : 'var(--accent)';
+    const chartRangeButtonActive = 'var(--accent)';
 
     // --- Hero / Welcome Section ---
     const userFirstName = stats.artistName?.split(' ')[0] || 'Artist';
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
             {/* 1. Hero Welcome Area with Blurred Glow */}
             <motion.div
@@ -660,7 +706,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                 animate={{ opacity: 1, y: 0 }}
                 style={{
                     position: 'relative',
-                    padding: '40px 0',
+                    padding: '24px 0',
                     textAlign: 'center',
                     marginBottom: '10px'
                 }}
@@ -672,11 +718,11 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     filter: 'blur(40px)', zIndex: -1
                 }} />
 
-                <h1 style={{ fontSize: '42px', fontWeight: '900', letterSpacing: '-1px', color: '#fff', marginBottom: '10px' }}>
+                <h1 style={{ fontSize: '34px', fontWeight: '900', letterSpacing: '-0.8px', color: '#fff', marginBottom: '8px' }}>
                     Welcome back, <span style={{ color: 'var(--accent)' }}>{userFirstName}</span>
                 </h1>
                 <p style={{ fontSize: '13px', color: '#888', letterSpacing: '1px', fontWeight: '500' }}>
-                    Here's what's happening with your music today.
+                    Here&apos;s what&apos;s happening with your music today.
                 </p>
             </motion.div>
 
@@ -697,20 +743,20 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         whileHover={{ y: -4, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}
                         style={{
                             ...glassStyle,
-                            padding: '24px',
+                            padding: '18px',
                             background: card.highlight ? 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)' : 'rgba(255,255,255,0.02)',
                             border: card.highlight ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.04)',
                             display: 'flex', flexDirection: 'column', gap: '12px'
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', color: card.color }}>
+                            <div style={{ padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', color: card.color }}>
                                 {card.icon}
                             </div>
                             {card.trend && <span style={{ fontSize: '9px', fontWeight: '800', color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '4px 8px', borderRadius: '8px' }}>{card.trend}</span>}
                         </div>
                         <div>
-                            <div style={{ fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '-0.5px' }}>{card.value}</div>
+                            <div style={{ fontSize: '22px', fontWeight: '900', color: '#fff', letterSpacing: '-0.4px' }}>{card.value}</div>
                             <div style={{ fontSize: '9px', fontWeight: '800', color: '#555', letterSpacing: '1px', marginTop: '4px' }}>{card.label}</div>
                         </div>
                     </motion.div>
@@ -725,12 +771,12 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
-                    style={{ ...glassStyle, padding: '30px', minHeight: '350px' }}
+                    style={{ ...glassStyle, padding: '22px', minHeight: '330px' }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <div>
                             <h3 style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: '900', color: '#fff' }}>{chartTitle}</h3>
-                            <p style={{ fontSize: '10px', color: '#555', marginTop: '4px', fontWeight: '700' }}>{chartSubtitle}</p>
+                            <p style={{ fontSize: '10px', color: '#98a3b3', marginTop: '4px', fontWeight: '700' }}>{chartSubtitle}</p>
                         </div>
                         {/* Toggle Buttons */}
                         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
@@ -741,8 +787,8 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                         onClick={() => setChartType(type)}
                                         style={{
                                             border: 'none',
-                                            background: chartType === type ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                            color: chartType === type ? '#fff' : '#666',
+                                            background: chartType === type ? chartTypeButtonActive : 'transparent',
+                                            color: chartType === type ? '#000' : '#9ca8ba',
                                             fontSize: '9px',
                                             fontWeight: '800',
                                             padding: '6px 14px',
@@ -763,8 +809,8 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                             onClick={() => setChartRange(mode)}
                                             style={{
                                                 border: 'none',
-                                                background: chartRange === mode ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                                color: chartRange === mode ? '#fff' : '#666',
+                                                background: chartRange === mode ? chartRangeButtonActive : 'transparent',
+                                                color: chartRange === mode ? '#000' : '#9ca8ba',
                                                 fontSize: '9px',
                                                 fontWeight: '800',
                                                 padding: '6px 14px',
@@ -892,7 +938,9 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         </div>
                         <div>
                             <h4 style={{ color: '#eab308', fontSize: '13px', fontWeight: '800', margin: 0 }}>ACTION REQUIRED</h4>
-                            <p style={{ color: '#aaa', fontSize: '11px', margin: '4px 0 0' }}>You have a pending contract for "{actionRequiredContract.title}" waiting for signature.</p>
+                            <p style={{ color: '#aaa', fontSize: '11px', margin: '4px 0 0' }}>
+                                You have a pending contract for &quot;{actionRequiredContract.title}&quot; waiting for signature.
+                            </p>
                         </div>
                     </div>
                     <button
@@ -1523,24 +1571,24 @@ function RequestComments({ request, isArtist }) {
     const [sending, setSending] = useState(false);
     const scrollRef = useRef(null);
 
-    useEffect(() => {
-        fetchComments();
-    }, [requestId]);
-
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [comments]);
-
-    const fetchComments = async () => {
+    const fetchComments = useCallback(async () => {
         try {
             const res = await fetch(`/api/requests/${requestId}/comments`);
             const data = await res.json();
             setComments(Array.isArray(data) ? data : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, [requestId]);
+
+    useEffect(() => {
+        fetchComments();
+    }, [fetchComments]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [comments]);
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -1759,7 +1807,7 @@ function SubmitView({
                         onChange={(e) => setMessage(e.target.value)}
                         placeholder="Tell us about this record..."
                         rows={3}
-                        style={{ ...inputStyle, resize: 'none' }}
+                        style={{ ...inputStyle, resize: 'none', lineHeight: '1.45', paddingTop: '12px', paddingBottom: '12px' }}
                     />
                 </div>
 
@@ -1784,7 +1832,7 @@ function SubmitView({
                         <div style={{ marginBottom: '15px' }}>
                             <Upload size={32} style={{ color: dragActive ? 'var(--accent)' : '#333' }} />
                         </div>
-                        <p style={{ color: '#888', fontSize: '12px', fontWeight: '500' }}>
+                        <p style={{ color: '#888', fontSize: '12px', fontWeight: '500', margin: 0, lineHeight: 1.35 }}>
                             {dragActive ? 'DROP_FILE_NOW' : 'DRAG & DROP WAV OR CLICK_TO_BROWSE'}
                         </p>
                         <input
@@ -1860,7 +1908,11 @@ function SubmitView({
                                 fontWeight: '900',
                                 letterSpacing: '4px',
                                 cursor: 'pointer',
-                                transition: '0.3s'
+                                transition: '0.3s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                lineHeight: 1
                             }}
                             onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
                             onMouseLeave={e => e.target.style.transform = 'translateY(0)'}

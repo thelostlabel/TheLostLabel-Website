@@ -1,21 +1,42 @@
 "use client";
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Inbox, Mic2, FileText, Users, File, Bell, Settings,
     Disc, Music, Upload, User, ClipboardList, LogOut, ExternalLink,
-    Briefcase, DollarSign, CreditCard, X, Mail
+    Briefcase, DollarSign, CreditCard, Mail, Moon, Sun, Minimize2, Maximize2,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 function DashboardLayoutContent({ children }) {
     const { data: session, status } = useSession();
-    const pathname = usePathname();
     const searchParams = useSearchParams();
     const currentView = searchParams.get('view') || 'overview';
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.innerWidth <= 768;
+    });
+    const [themeMode, setThemeMode] = useState(() => {
+        if (typeof window === 'undefined') return 'dark';
+        const storedTheme = localStorage.getItem('dashboard_theme_mode');
+        return storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'dark';
+    });
+    const [densityMode, setDensityMode] = useState(() => {
+        if (typeof window === 'undefined') return 'comfortable';
+        const storedDensity = localStorage.getItem('dashboard_density_mode');
+        return storedDensity === 'compact' || storedDensity === 'comfortable' ? storedDensity : 'comfortable';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('dashboard_theme_mode', themeMode);
+    }, [themeMode]);
+
+    useEffect(() => {
+        localStorage.setItem('dashboard_density_mode', densityMode);
+    }, [densityMode]);
     if (status === 'loading') {
         return (
             <div style={{ background: '#0d0d0d', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -89,29 +110,46 @@ function DashboardLayoutContent({ children }) {
         ];
     }
 
+    const isLight = themeMode === 'light';
+    const isCompact = densityMode === 'compact';
+
+    const sidebarExpandedWidth = isCompact ? 212 : 228;
+    const sidebarCollapsedWidth = isCompact ? 64 : 72;
+    const contentScale = isCompact ? 0.92 : 1;
+
+    const shellBackground = isLight
+        ? 'linear-gradient(180deg, #eef4fc 0%, #e8f0fb 52%, #dde9f7 100%)'
+        : 'linear-gradient(180deg, #111214 0%, #0f1012 52%, #0c0d0f 100%)';
+    const shellColor = isLight ? '#223041' : '#eceef1';
+    const shellAccent = isLight ? '#2d63b3' : '#b9bec8';
+    const shellAccent2 = isLight ? '#2f8f85' : '#969da8';
+    const shellSurface = isLight ? 'rgba(255,255,255,0.78)' : 'rgba(26,27,31,0.78)';
+    const shellSurfaceHover = isLight ? 'rgba(255,255,255,0.95)' : 'rgba(36,38,43,0.9)';
+    const shellBorder = isLight ? 'rgba(54,91,140,0.18)' : 'rgba(212,216,224,0.15)';
+
     return (
-        <div style={{
+        <div className={`dashboard-shell dashboard-theme-${themeMode} dashboard-density-${densityMode}`} style={{
             display: 'flex',
             minHeight: '100vh',
-            background: 'var(--background)',
-            color: '#fff',
+            background: shellBackground,
+            color: shellColor,
             position: 'relative',
             overflowX: 'hidden',
-            '--accent': '#9fb6b0',
-            '--accent-2': '#6f8d88',
-            '--surface': 'rgba(16,18,20,0.82)',
-            '--surface-hover': 'rgba(22,25,28,0.9)',
-            '--border': 'rgba(255,255,255,0.07)'
+            '--accent': shellAccent,
+            '--accent-2': shellAccent2,
+            '--surface': shellSurface,
+            '--surface-hover': shellSurfaceHover,
+            '--border': shellBorder
         }}>
-            {/* Ultra-Premium Background Mesh - Brighter */}
+            {/* Ambient Background Mesh */}
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
-                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 10%, rgba(120,150,145,0.10) 0%, transparent 45%), radial-gradient(circle at 80% 0%, rgba(80,105,120,0.08) 0%, transparent 50%), radial-gradient(circle at 50% 60%, rgba(255,255,255,0.02) 0%, transparent 60%)', opacity: 0.9 }} />
+                <div style={{ position: 'absolute', inset: 0, background: isLight ? 'radial-gradient(circle at 20% 10%, rgba(120,162,226,0.24) 0%, transparent 42%), radial-gradient(circle at 80% 0%, rgba(132,198,208,0.18) 0%, transparent 45%), radial-gradient(circle at 50% 60%, rgba(255,255,255,0.5) 0%, transparent 70%)' : 'radial-gradient(circle at 20% 10%, rgba(108,112,122,0.12) 0%, transparent 46%), radial-gradient(circle at 80% 0%, rgba(92,96,105,0.08) 0%, transparent 48%), radial-gradient(circle at 50% 60%, rgba(170,174,182,0.03) 0%, transparent 65%)', opacity: 1 }} />
                 <div style={{
                     position: 'absolute',
                     inset: 0,
                     backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.04\'/%3E%3C/svg%3E")',
                     mixBlendMode: 'overlay',
-                    opacity: 0.4
+                    opacity: isLight ? 0.36 : 0.2
                 }} />
             </div>
 
@@ -121,33 +159,38 @@ function DashboardLayoutContent({ children }) {
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 style={{
                     position: 'fixed',
-                    top: '20px',
-                    left: '20px',
+                    top: '22px',
+                    left: isCollapsed ? '12px' : `${sidebarExpandedWidth - 10}px`,
                     zIndex: 10000,
-                    background: '#0a0a0b',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#fff',
-                    padding: '12px',
-                    borderRadius: '50%',
+                    background: isLight ? 'rgba(255,255,255,0.96)' : 'rgba(20, 21, 24, 0.94)',
+                    border: `1px solid ${isLight ? 'rgba(54,91,140,0.24)' : 'rgba(188,213,255,0.24)'}`,
+                    color: isLight ? '#24467c' : '#e8f0ff',
+                    padding: isCompact ? '7px 9px' : '8px 10px',
+                    borderRadius: '999px',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                    boxShadow: '0 8px 18px rgba(0,0,0,0.2)',
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    gap: '5px',
+                    minWidth: isCollapsed ? '38px' : '78px'
                 }}
             >
-                {isCollapsed ? <LayoutDashboard size={20} /> : <X size={20} />}
+                {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                <span style={{ fontSize: '10px', letterSpacing: '0.6px', fontWeight: '900' }}>
+                    {isCollapsed ? '' : 'MENU'}
+                </span>
             </button>
 
             {/* Sidebar */}
             <motion.aside
                 className={`dashboard-sidebar ${isCollapsed ? 'collapsed' : ''}`}
                 style={{
-                    width: isCollapsed ? '80px' : '280px',
-                    background: 'rgba(12, 12, 14, 0.9)',
-                    backdropFilter: 'blur(40px) saturate(180%)',
-                    borderRight: '1px solid rgba(255,255,255,0.08)',
+                    width: isCollapsed ? `${sidebarCollapsedWidth}px` : `${sidebarExpandedWidth}px`,
+                    background: isLight ? 'rgba(242,248,255,0.92)' : 'rgba(18, 19, 22, 0.92)',
+                    backdropFilter: 'blur(28px) saturate(165%)',
+                    borderRight: `1px solid ${isLight ? 'rgba(54,91,140,0.2)' : 'rgba(197,217,245,0.16)'}`,
                     display: 'flex',
                     flexDirection: 'column',
                     position: 'fixed',
@@ -161,37 +204,37 @@ function DashboardLayoutContent({ children }) {
                 }}
             >
                 <div style={{
-                    padding: isCollapsed ? '40px 0' : '50px 30px',
-                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    padding: isCollapsed ? (isCompact ? '22px 0' : '30px 0') : (isCompact ? '24px 16px' : '32px 22px'),
+                    borderBottom: `1px solid ${isLight ? 'rgba(54,91,140,0.16)' : 'rgba(197,217,245,0.14)'}`,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    minHeight: '140px'
+                    minHeight: isCompact ? '84px' : '96px'
                 }}>
                     <Link href="/" style={{
-                        fontSize: isCollapsed ? '12px' : '28px',
+                        fontSize: isCollapsed ? (isCompact ? '10px' : '11px') : (isCompact ? '19px' : '21px'),
                         fontWeight: '900',
-                        letterSpacing: isCollapsed ? '2px' : '6px',
-                        color: '#fff',
+                        letterSpacing: isCollapsed ? '1.3px' : (isCompact ? '3.2px' : '4px'),
+                        color: isLight ? '#1f3963' : '#fff',
                         textDecoration: 'none',
                         transition: 'all 0.3s',
-                        filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.1))'
+                        filter: isLight ? 'drop-shadow(0 0 14px rgba(45,99,179,0.24))' : 'drop-shadow(0 0 18px rgba(139,183,255,0.28))'
                     }}>
                         {isCollapsed ? 'LOST' : 'LOST.'}
                     </Link>
                     {!isCollapsed && (
-                        <p style={{ fontSize: '9px', letterSpacing: '4px', color: '#666', marginTop: '12px', fontWeight: '900', opacity: 0.8 }}>
+                        <p style={{ fontSize: '8px', letterSpacing: isCompact ? '2px' : '2.6px', color: isLight ? '#48628a' : '#9aa7bc', marginTop: '8px', fontWeight: '800', opacity: 0.92 }}>
                             {isAdmin ? 'SYSTEM_ADMIN' : isAR ? 'A&R_PORTAL' : 'ARTIST_GATEWAY'}
                         </p>
                     )}
                 </div>
 
-                <nav className="sidebar-nav" style={{ flex: 1, padding: isCollapsed ? '30px 10px' : '40px 20px', overflowY: 'auto', overflowX: 'hidden' }}>
+                <nav className="sidebar-nav" style={{ flex: 1, padding: isCollapsed ? (isCompact ? '14px 6px' : '18px 8px') : (isCompact ? '16px 10px' : '20px 12px'), overflowY: 'auto', overflowX: 'hidden' }}>
                     {sections.map((section, sIdx) => (
-                        <div key={section.label} style={{ marginBottom: '40px' }}>
+                        <div key={section.label} style={{ marginBottom: isCompact ? '16px' : '22px' }}>
                             {!isCollapsed && (
-                                <div style={{ fontSize: '9px', color: '#888', fontWeight: '900', letterSpacing: '4px', marginBottom: '25px', paddingLeft: '15px', opacity: 0.8 }}>
+                                <div style={{ fontSize: '8px', color: isLight ? '#5c7296' : '#a7b4c8', fontWeight: '800', letterSpacing: isCompact ? '1.6px' : '2px', marginBottom: isCompact ? '8px' : '12px', paddingLeft: '10px', opacity: 0.95 }}>
                                     {section.label}
                                 </div>
                             )}
@@ -205,24 +248,24 @@ function DashboardLayoutContent({ children }) {
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: isCollapsed ? 'center' : 'flex-start',
-                                            gap: isCollapsed ? '0' : '15px',
-                                            padding: '14px 18px',
-                                            marginBottom: '8px',
-                                            borderRadius: '14px',
-                                            fontSize: '11px',
+                                            gap: isCollapsed ? '0' : '10px',
+                                            padding: isCompact ? '8px 10px' : '11px 13px',
+                                            marginBottom: isCompact ? '4px' : '7px',
+                                            borderRadius: '11px',
+                                            fontSize: isCompact ? '9px' : '10px',
                                             fontWeight: '800',
-                                            letterSpacing: '1.5px',
-                                            color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-                                            background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
+                                            letterSpacing: '1px',
+                                            color: isActive ? (isLight ? '#19345e' : '#f4f5f7') : (isLight ? 'rgba(29,55,92,0.78)' : 'rgba(226,229,234,0.72)'),
+                                            background: isActive ? (isLight ? 'rgba(74,126,214,0.18)' : 'rgba(171,177,188,0.14)') : 'transparent',
                                             transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                                             textDecoration: 'none',
-                                            border: isActive ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+                                            border: isActive ? (isLight ? '1px solid rgba(57,103,180,0.28)' : '1px solid rgba(209,214,223,0.22)') : '1px solid transparent',
                                             whiteSpace: 'nowrap',
-                                            boxShadow: isActive ? '0 10px 30px rgba(255,255,255,0.02)' : 'none'
+                                            boxShadow: isActive ? '0 8px 18px rgba(34,56,89,0.35)' : 'none'
                                         }}
                                         title={isCollapsed ? item.name : ''}
                                     >
-                                        <span style={{ color: isActive ? 'var(--accent)' : 'inherit', minWidth: '20px', display: 'flex', justifyContent: 'center', filter: isActive ? 'drop-shadow(0 0 10px var(--accent))' : 'none', opacity: isActive ? 1 : 0.4 }}>
+                                        <span style={{ color: isActive ? 'var(--accent)' : 'inherit', minWidth: '18px', display: 'flex', justifyContent: 'center', filter: isActive ? 'drop-shadow(0 0 8px var(--accent))' : 'none', opacity: isActive ? 1 : 0.55 }}>
                                             {item.icon}
                                         </span>
                                         {!isCollapsed && <span>{item.name}</span>}
@@ -233,36 +276,114 @@ function DashboardLayoutContent({ children }) {
                     ))}
                 </nav>
 
-                <div style={{ padding: isCollapsed ? '25px 10px' : '35px 25px', background: 'rgba(255,255,255,0.01)', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                <div style={{ padding: isCollapsed ? (isCompact ? '12px 6px' : '14px 8px') : (isCompact ? '12px 12px' : '16px 14px'), background: isLight ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.015)', borderTop: `1px solid ${isLight ? 'rgba(54,91,140,0.14)' : 'rgba(197,217,245,0.16)'}` }}>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: isCollapsed ? 'column' : 'row',
+                        gap: '8px',
+                        marginBottom: isCompact ? '10px' : '12px'
+                    }}>
+                        <button
+                            onClick={() => setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+                            title="Toggle light mode"
+                            style={{
+                                flex: 1,
+                                background: isLight ? 'rgba(255,255,255,0.94)' : 'rgba(26, 27, 31, 0.92)',
+                                border: `1px solid ${isLight ? 'rgba(54,91,140,0.24)' : 'rgba(188,213,255,0.24)'}`,
+                                color: isLight ? '#24467c' : '#e8f0ff',
+                                padding: isCompact ? '7px 9px' : '8px 10px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                fontSize: '10px',
+                                fontWeight: '700'
+                            }}
+                        >
+                            {isLight ? <Moon size={13} /> : <Sun size={13} />}
+                            {!isCollapsed && (isLight ? 'Dark' : 'Light')}
+                        </button>
+                        <button
+                            onClick={() => setDensityMode((prev) => (prev === 'comfortable' ? 'compact' : 'comfortable'))}
+                            title="Toggle compact mode"
+                            style={{
+                                flex: 1,
+                                background: isLight ? 'rgba(255,255,255,0.94)' : 'rgba(26, 27, 31, 0.92)',
+                                border: `1px solid ${isLight ? 'rgba(54,91,140,0.24)' : 'rgba(188,213,255,0.24)'}`,
+                                color: isLight ? '#24467c' : '#e8f0ff',
+                                padding: isCompact ? '7px 9px' : '8px 10px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                fontSize: '10px',
+                                fontWeight: '700'
+                            }}
+                        >
+                            {isCompact ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
+                            {!isCollapsed && (isCompact ? 'Comfort' : 'Compact')}
+                        </button>
+                    </div>
+
                     {!isCollapsed && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px', paddingLeft: '5px' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '900', border: '1px solid var(--border)', color: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: isCompact ? '10px' : '14px', paddingLeft: '4px' }}>
+                            <div style={{ width: isCompact ? '28px' : '31px', height: isCompact ? '28px' : '31px', borderRadius: '10px', background: 'var(--surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900', border: '1px solid var(--border)', color: isLight ? '#1f3e6b' : '#fff' }}>
                                 {session.user.stageName?.[0] || 'U'}
                             </div>
                             <div style={{ overflow: 'hidden' }}>
-                                <p style={{ fontSize: '12px', fontWeight: '900', color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', letterSpacing: '0.5px' }}>{session.user.stageName || (isAdmin ? 'Administrator' : 'User')}</p>
-                                <p style={{ fontSize: '9px', color: '#aaa', letterSpacing: '0.5px' }}>{session.user.email}</p>
+                                <p style={{ fontSize: isCompact ? '10px' : '11px', fontWeight: '800', color: isLight ? '#24436f' : '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', letterSpacing: '0.2px' }}>{session.user.stageName || (isAdmin ? 'Administrator' : 'User')}</p>
+                                <p style={{ fontSize: '8px', color: isLight ? '#607ca7' : '#b3bfd1', letterSpacing: '0.2px' }}>{session.user.email}</p>
                             </div>
                         </div>
                     )}
 
                     <button
-                        onClick={() => signOut({ callbackUrl: '/' })}
+                        onClick={() => window.location.href = '/dashboard/settings'}
                         style={{
                             width: '100%',
-                            padding: '16px',
-                            fontSize: '11px',
+                            padding: isCompact ? '10px' : '13px',
+                            fontSize: isCompact ? '9px' : '10px',
                             fontWeight: '900',
-                            letterSpacing: '3px',
+                            letterSpacing: '1.6px',
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.04)',
-                            borderRadius: '14px',
-                            color: '#444',
+                            border: `1px solid ${isLight ? 'rgba(54,91,140,0.18)' : 'rgba(197,217,245,0.16)'}`,
+                            borderRadius: '11px',
+                            color: isLight ? '#44648e' : '#b7c4da',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '12px',
+                            gap: '8px',
+                            transition: 'all 0.4s',
+                            marginBottom: isCompact ? '8px' : '10px'
+                        }}
+                        className="settings-btn"
+                    >
+                        <Settings size={isCollapsed ? 20 : 16} />
+                        {!isCollapsed && 'SETTINGS'}
+                    </button>
+
+                    <button
+                        onClick={() => signOut({ callbackUrl: '/' })}
+                        style={{
+                            width: '100%',
+                            padding: isCompact ? '10px' : '13px',
+                            fontSize: isCompact ? '9px' : '10px',
+                            fontWeight: '900',
+                            letterSpacing: '1.8px',
+                            background: 'transparent',
+                            border: `1px solid ${isLight ? 'rgba(54,91,140,0.18)' : 'rgba(197,217,245,0.16)'}`,
+                            borderRadius: '11px',
+                            color: isLight ? '#44648e' : '#b7c4da',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
                             transition: 'all 0.4s'
                         }}
                         className="logout-btn"
@@ -276,7 +397,7 @@ function DashboardLayoutContent({ children }) {
             {/* Main Content Area */}
             <main className="dashboard-main" style={{
                 flex: 1,
-                marginLeft: isCollapsed ? '80px' : '280px',
+                marginLeft: isCollapsed ? `${sidebarCollapsedWidth}px` : `${sidebarExpandedWidth}px`,
                 position: 'relative',
                 zIndex: 2,
                 minHeight: '100vh',
@@ -293,7 +414,13 @@ function DashboardLayoutContent({ children }) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2, ease: 'easeOut' }}
-                        style={{ flex: 1, padding: '40px 5vw', width: '100%' }}
+                        style={{
+                            flex: 1,
+                            padding: isCompact ? '16px 1.8vw' : '24px 2.4vw',
+                            width: `${100 / contentScale}%`,
+                            transform: `scale(${contentScale})`,
+                            transformOrigin: 'top left'
+                        }}
                         className="dashboard-content-container"
                     >
                         {children}
@@ -304,22 +431,29 @@ function DashboardLayoutContent({ children }) {
             <style jsx global>{`
                 nav.glass { display: none !important; }
                 .nav-item:hover {
-                    color: #fff !important;
+                    color: inherit !important;
                     background: rgba(255,255,255,0.05) !important;
                 }
                 .logout-btn:hover {
-                    border-color: rgba(255,68,68,0.2) !important;
+                    border-color: rgba(255,68,68,0.35) !important;
                     color: #ff4444 !important;
-                    background: rgba(255,68,68,0.02) !important;
+                    background: rgba(255,68,68,0.06) !important;
+                }
+                .settings-btn:hover {
+                    border-color: rgba(139,183,255,0.32) !important;
+                    color: var(--accent) !important;
+                    background: rgba(139,183,255,0.06) !important;
                 }
                 
-                .dashboard-menu-toggle { display: none !important; }
+                .dashboard-menu-toggle {
+                    display: flex !important;
+                }
                 
                 @media (max-width: 768px) {
                     .dashboard-sidebar {
-                        width: ${isCollapsed ? '0' : '280px'} !important;
-                        background: rgba(12, 12, 14, 0.95) !important;
-                        backdrop-filter: blur(40px) saturate(150%);
+                        width: ${isCollapsed ? '0' : (isCompact ? '228px' : '248px')} !important;
+                        background: ${isLight ? 'rgba(242,248,255,0.96)' : 'rgba(22, 30, 41, 0.95)'} !important;
+                        backdrop-filter: blur(24px) saturate(150%);
                         transform: ${isCollapsed ? 'translateX(-100%)' : 'translateX(0)'};
                         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                     }
@@ -329,7 +463,9 @@ function DashboardLayoutContent({ children }) {
                         width: 100vw;
                     }
                     .dashboard-content-container {
-                        padding: 20px 16px !important;
+                        padding: ${isCompact ? '14px 12px' : '20px 16px'} !important;
+                        width: 100% !important;
+                        transform: none !important;
                     }
                     .dashboard-content-container {
                         max-width: 100%;
@@ -374,8 +510,18 @@ function DashboardLayoutContent({ children }) {
                     background: transparent;
                 }
                 ::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.05);
+                        background: ${isLight ? 'rgba(67,108,166,0.28)' : 'rgba(187,191,198,0.24)'};
                     border-radius: 10px;
+                }
+
+                .dashboard-theme-light .dashboard-content-container {
+                    filter: invert(1) hue-rotate(180deg);
+                }
+                .dashboard-theme-light .dashboard-content-container img,
+                .dashboard-theme-light .dashboard-content-container video,
+                .dashboard-theme-light .dashboard-content-container canvas,
+                .dashboard-theme-light .dashboard-content-container iframe {
+                    filter: invert(1) hue-rotate(180deg);
                 }
             `}</style>
         </div>

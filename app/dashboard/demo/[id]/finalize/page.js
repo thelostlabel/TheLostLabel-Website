@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -67,12 +67,7 @@ export default function FinalizeReleasePage({ params }) {
         featuredArtists: [] // Added for multiple artists support
     });
 
-    useEffect(() => {
-        fetchDemo();
-        fetchArtists();
-    }, [id]);
-
-    const fetchDemo = async () => {
+    const fetchDemo = useCallback(async () => {
         try {
             const res = await fetch(`/api/demo/${id}`);
             const data = await res.json();
@@ -101,15 +96,20 @@ export default function FinalizeReleasePage({ params }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
-    const fetchArtists = async () => {
+    const fetchArtists = useCallback(async () => {
         try {
             const res = await fetch('/api/admin/artists');
             const data = await res.json();
             if (res.ok) setArtists(data.artists || []);
         } catch (e) { console.error("Error fetching artists", e); }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchDemo();
+        fetchArtists();
+    }, [fetchDemo, fetchArtists]);
 
     if (loading) return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d' }}>

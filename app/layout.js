@@ -12,8 +12,9 @@ export const metadata = {
     default: "The Lost Label | Premier Brazilian Phonk & Funk Record Label",
     template: "%s | The Lost Label"
   },
-  description: " The Lost Label is the leading independent record label for Brazilian Phonk, Funk, and Electronic music. We provide major label infrastructure for independent artists. Join the movement.",
+  description: "The Lost Label is the leading independent record label for Brazilian Phonk, Funk, and Electronic music. We provide major label infrastructure for independent artists. Join the movement.",
   keywords: ["The Lost Label", "Lost Label", "Brazilian Funk", "Phonk", "Phonk Label", "Funk Mandelo", "Music Distribution", "Independent Label", "Artist Portal", "Demo Submission"],
+  category: "music",
   verification: {
     google: "3ghNlS-ul1NRXkqu9LWBoAmsKORus0SUMahs332IHFY",
   },
@@ -54,7 +55,7 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://thelostlabel.com',
+    canonical: '/',
   },
 };
 

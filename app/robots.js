@@ -4,9 +4,18 @@ export default function robots() {
             {
                 userAgent: '*',
                 allow: '/',
-                disallow: ['/dashboard/', '/api/admin/'],
+                disallow: [
+                    '/dashboard/',
+                    '/auth/',
+                    '/api/',
+                    '/api/admin/',
+                    '/api/auth/',
+                    '/api/cron/',
+                    '/api/webhook/'
+                ],
             },
         ],
+        host: 'https://thelostlabel.com',
         sitemap: 'https://thelostlabel.com/sitemap.xml',
     };
 }
