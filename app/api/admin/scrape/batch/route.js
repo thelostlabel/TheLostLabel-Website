@@ -12,14 +12,35 @@ export async function POST(req) {
     }
 
     try {
+        const { searchParams } = new URL(req.url);
+        const requestedLimit = parseInt(searchParams.get('limit') || '20', 10);
+        const requestedOffset = parseInt(searchParams.get('offset') || '0', 10);
+
+        const limit = Number.isFinite(requestedLimit)
+            ? Math.max(1, Math.min(requestedLimit, 50))
+            : 20;
+        const offset = Number.isFinite(requestedOffset)
+            ? Math.max(0, requestedOffset)
+            : 0;
+
         // Fetch ALL artists (or just those needing update)
         // For now, let's process all artists with a Spotify URL
-        const artists = await prisma.artist.findMany({
-            where: {
-                spotifyUrl: { not: null }
-            },
-            select: { id: true, name: true, spotifyUrl: true }
-        });
+        const [artists, totalArtists] = await Promise.all([
+            prisma.artist.findMany({
+                where: {
+                    spotifyUrl: { not: null }
+                },
+                select: { id: true, name: true, spotifyUrl: true },
+                orderBy: { updatedAt: 'asc' },
+                skip: offset,
+                take: limit
+            }),
+            prisma.artist.count({
+                where: {
+                    spotifyUrl: { not: null }
+                }
+            })
+        ]);
 
         // We will return immediately and process in background to avoid timeout
         // But since Vercel serverless has limits, this might be tricky.
@@ -27,7 +48,7 @@ export async function POST(req) {
         // Given the use case, let's try to process them one by one and return the results.
         // If it times out, we might need a different strategy (e.g. task queue).
 
-        console.log(`[Batch Scrape] Starting sync for ${artists.length} artists...`);
+        console.log(`[Batch Scrape] Starting sync for ${artists.length} artists (offset=${offset}, limit=${limit}, total=${totalArtists})...`);
 
         let successCount = 0;
         let failCount = 0;
@@ -67,11 +88,21 @@ export async function POST(req) {
             }
         }
 
+        const nextOffset = offset + artists.length;
+        const hasMore = nextOffset < totalArtists;
+
         return new Response(JSON.stringify({
             success: true,
             total: artists.length,
             successCount,
             failCount,
+            pagination: {
+                totalArtists,
+                limit,
+                offset,
+                nextOffset,
+                hasMore
+            },
             results
         }), { status: 200 });
 

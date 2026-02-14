@@ -376,7 +376,7 @@ export async function POST(req) {
             };
 
             // Chunk process
-            const CHUNK_SIZE = 5;
+            const CHUNK_SIZE = 2;
             for (let i = 0; i < detailedArtists.length; i += CHUNK_SIZE) {
                 const chunk = detailedArtists.slice(i, i + CHUNK_SIZE);
                 await Promise.all(chunk.map(artist => processArtist(artist)));
