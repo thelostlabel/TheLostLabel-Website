@@ -3,6 +3,7 @@
 # ============================================
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Copy package files
 COPY package.json package-lock.json* ./
@@ -10,7 +11,9 @@ COPY package.json package-lock.json* ./
 # Install dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ ca-certificates openssl \
-    && npm ci --prefer-offline --no-audit \
+    && npm ci --prefer-offline --no-audit --no-fund \
+    # Browser download is pinned by lockfile and cacheable across app-code changes.
+    && npx playwright install chromium \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================
@@ -76,10 +79,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
 COPY --chown=nextjs:nodejs .env* ./
-
-# Install Playwright browser binaries for runtime scraping/sync jobs
-RUN npx playwright install --with-deps chromium && \
-    chown -R nextjs:nodejs /ms-playwright
+COPY --from=deps --chown=nextjs:nodejs /ms-playwright /ms-playwright
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

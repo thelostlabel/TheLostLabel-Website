@@ -26,6 +26,8 @@ export async function POST(req) {
 
     const startTime = Date.now();
     let browser = null;
+    let scrapeEnabled = scrapeListeners;
+    let scrapeDisabledReason = null;
     try {
         logger.info('Starting playlist sync process', { scrapeListeners });
 
@@ -123,25 +125,35 @@ export async function POST(req) {
                 }
 
                 // CHECK FOR PRERELEASE (No image or 0000 date)
-                if (!finalImage || releaseDateStr === '0000') {
+                if ((!finalImage || releaseDateStr === '0000') && scrapeEnabled) {
                     logger.debug('Potential prerelease detected', { trackName: track.name });
                     const prereleaseUrl = `https://open.spotify.com/prerelease/${track.id}`;
 
                     try {
                         if (!browser) {
-                            browser = await chromium.launch({ headless: true });
+                            try {
+                                browser = await chromium.launch({ headless: true });
+                            } catch (launchError) {
+                                scrapeEnabled = false;
+                                scrapeDisabledReason = `Chromium launch failed: ${launchError.message}`;
+                                logger.warn('Disabling scraping because Chromium could not start', {
+                                    error: launchError.message
+                                });
+                            }
                         }
 
-                        const scraped = await scrapePrereleaseData(prereleaseUrl, browser);
-                        if (scraped) {
-                            if (scraped.image) finalImage = scraped.image;
-                            if (scraped.releaseDate && !finalDate) {
-                                // Try to parse the scraped date
-                                const cleanDate = scraped.releaseDate.replace(/Yayınlanma tarihi:\s*/i, '')
-                                    .replace(/Releases on\s*/i, '')
-                                    .replace(/Release date:\s*/i, '');
-                                const d = new Date(cleanDate);
-                                if (!isNaN(d.getTime())) finalDate = d;
+                        if (browser) {
+                            const scraped = await scrapePrereleaseData(prereleaseUrl, browser);
+                            if (scraped) {
+                                if (scraped.image) finalImage = scraped.image;
+                                if (scraped.releaseDate && !finalDate) {
+                                    // Try to parse the scraped date
+                                    const cleanDate = scraped.releaseDate.replace(/Yayınlanma tarihi:\s*/i, '')
+                                        .replace(/Releases on\s*/i, '')
+                                        .replace(/Release date:\s*/i, '');
+                                    const d = new Date(cleanDate);
+                                    if (!isNaN(d.getTime())) finalDate = d;
+                                }
                             }
                         }
                     } catch (e) {
@@ -281,8 +293,21 @@ export async function POST(req) {
         let errorCount = 0;
         let retryCount = 0;
 
-        if (scrapeListeners) {
-            if (!browser) browser = await chromium.launch({ headless: true });
+        if (scrapeEnabled) {
+            if (!browser) {
+                try {
+                    browser = await chromium.launch({ headless: true });
+                } catch (launchError) {
+                    scrapeEnabled = false;
+                    scrapeDisabledReason = `Chromium launch failed: ${launchError.message}`;
+                    logger.warn('Skipping listener scrape because Chromium could not start', {
+                        error: launchError.message
+                    });
+                }
+            }
+        }
+
+        if (scrapeEnabled && browser) {
             const detailedArtists = ((await getArtistsDetails(artistIds)) || []).filter(Boolean);
 
             const failedArtists = [];
@@ -374,7 +399,9 @@ export async function POST(req) {
             newReleases: totalNewReleases, 
             artistsScraped: successCount,
             retries: retryCount,
-            errors: errorCount
+            errors: errorCount,
+            scrapeEnabled,
+            scrapeDisabledReason
         });
 
         return new Response(JSON.stringify({
@@ -386,6 +413,8 @@ export async function POST(req) {
             artistsScraped: successCount,
             artistRetries: retryCount,
             artistScrapeErrors: errorCount,
+            scrapeEnabled,
+            ...(scrapeDisabledReason ? { scrapeDisabledReason } : {}),
             results: results.slice(0, 20)
         }), { status: 200 });
 
