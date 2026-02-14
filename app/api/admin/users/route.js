@@ -88,18 +88,18 @@ export async function PATCH(req) {
             // 2. Send Email
             await sendMail({
                 to: updatedUser.email,
-                subject: "✨ Hesabın Onaylandı! | LOST.",
+                subject: "Your Account Has Been Approved | LOST.",
                 html: `
-                    <div style="font-family: sans-serif; background: #000; color: #fff; padding: 40px; border-radius: 10px;">
-                        <h1 style="color: #00ff88; letter-spacing: 2px;">HOŞ GELDİN GÜLÜM!</h1>
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0d10; color: #fff; padding: 32px; border-radius: 12px; border: 1px solid #1b1f24;">
+                        <h1 style="color: #9ef01a; letter-spacing: 1px; margin: 0 0 16px 0;">Your Account Has Been Approved</h1>
                         <p style="font-size: 16px; line-height: 1.6;">
-                            LOST. ailesine katılım isteğin onaylandı. Artık paneline giriş yapabilir ve dünyanı bizimle paylaşmaya başlayabilirsin.
+                            Your application to join LOST. has been approved. You can now sign in and start using your dashboard.
                         </p>
-                        <div style="margin-top: 30px;">
-                            <a href="${process.env.NEXTAUTH_URL}/auth/login" style="background: #fff; color: #000; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px;">PANELI AÇ</a>
+                        <div style="margin-top: 24px;">
+                            <a href="${process.env.NEXTAUTH_URL}/auth/login" style="background: #ffffff; color: #111; padding: 12px 20px; text-decoration: none; font-weight: 700; border-radius: 8px; display: inline-block;">Sign In to Dashboard</a>
                         </div>
-                        <p style="margin-top: 40px; color: #444; font-size: 12px;">
-                            Eğer bu işlemi sen yapmadıysan lütfen bizimle iletişime geç.
+                        <p style="margin-top: 28px; color: #97a0ab; font-size: 12px;">
+                            If this was not you, please contact our support team immediately.
                         </p>
                     </div>
                 `
