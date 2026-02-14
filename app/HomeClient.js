@@ -406,8 +406,8 @@ export default function Home() {
       <section style={{ padding: "60px 0", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "40px" }}>
           <StatItem label="Active Artists" value={artistCount ? `${artistCount}+` : "100+"} icon={Users} delay={0.2} />
-          <StatItem label="Total Streams" value="15M+" icon={Music} delay={0.4} />
-          <StatItem label="Payouts Processed" value="$250K+" icon={DollarSign} delay={0.6} />
+          <StatItem label="Total Streams" value="1 Billion" icon={Music} delay={0.4} />
+          <StatItem label="Payouts Processed" value="2 Million" icon={DollarSign} delay={0.6} />
         </div>
       </section>
 
