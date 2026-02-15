@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { stat } from "fs/promises";
 import { createReadStream } from "fs";
-import { extname, isAbsolute, join } from "path";
+import { extname, join } from "path";
 import { Readable } from "stream";
 
 const MIME_BY_EXT = {
@@ -16,13 +16,19 @@ const MIME_BY_EXT = {
 };
 
 const resolvePath = (filepath) => {
-  if (!filepath) return null;
+  if (!filepath || typeof filepath !== "string") return [];
+  const normalized = filepath.replace(/^\/+/, "");
+  if (normalized.includes("..")) return [];
+  if (!normalized.startsWith("private/uploads/")) return [];
+
   const root = process.cwd();
-  const candidate = isAbsolute(filepath)
-    ? filepath
-    : join(root, filepath.replace(/^\/+/, ""));
-  if (!candidate.startsWith(join(root, "private"))) return null;
-  return candidate;
+  const appRoot = "/app";
+  const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
+  return [
+    join(root, normalized),
+    join(appRoot, normalized),
+    join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
+  ];
 };
 
 export async function GET(req) {
@@ -33,11 +39,23 @@ export async function GET(req) {
   const pathParam = searchParams.get("path");
   if (!pathParam) return new Response("Missing path", { status: 400 });
 
-  const filePath = resolvePath(pathParam);
-  if (!filePath) return new Response("Not found", { status: 404 });
-
   try {
-    const info = await stat(filePath);
+    const candidates = resolvePath(pathParam);
+    let filePath = null;
+    let info = null;
+    for (const candidate of candidates) {
+      try {
+        const s = await stat(candidate);
+        filePath = candidate;
+        info = s;
+        break;
+      } catch {
+        // Try next candidate path.
+      }
+    }
+
+    if (!filePath || !info) return new Response("Not found", { status: 404 });
+
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
     const stream = Readable.toWeb(createReadStream(filePath));

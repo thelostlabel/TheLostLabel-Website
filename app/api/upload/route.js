@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import rateLimit from "@/lib/rate-limit";
@@ -16,6 +16,26 @@ const limiter = rateLimit({
 const MAX_DEMO_BYTES = 100 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
+const MAX_FILES_PER_REQUEST = 10;
+const MAX_TOTAL_BYTES = 250 * 1024 * 1024;
+
+const isAllowedSignature = (ext, buffer) => {
+    if (!buffer || buffer.length < 12) return false;
+
+    if (ext === 'wav') {
+        return buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WAVE';
+    }
+    if (ext === 'pdf') {
+        return buffer.toString('ascii', 0, 4) === '%PDF';
+    }
+    if (ext === 'png') {
+        return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+    }
+    if (ext === 'jpg' || ext === 'jpeg') {
+        return buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+    }
+    return false;
+};
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -37,11 +57,21 @@ export async function POST(req) {
         if (!files || files.length === 0) {
             return new Response(JSON.stringify({ error: "No files provided" }), { status: 400 });
         }
+        if (files.length > MAX_FILES_PER_REQUEST) {
+            return new Response(JSON.stringify({ error: `Too many files. Max ${MAX_FILES_PER_REQUEST} files per upload.` }), { status: 400 });
+        }
+        const totalBytes = files.reduce((sum, f) => sum + (f?.size || 0), 0);
+        if (totalBytes > MAX_TOTAL_BYTES) {
+            return new Response(JSON.stringify({ error: "Total upload size too large (max 250MB)." }), { status: 400 });
+        }
 
         // Create uploads directories
-        const demoDir = join(process.cwd(), 'private', 'uploads', 'demos');
-        const contractDir = join(process.cwd(), 'private', 'uploads', 'contracts');
-        const releaseDir = join(process.cwd(), 'private', 'uploads', 'releases');
+        const storageRoot = process.env.PRIVATE_STORAGE_ROOT
+            ? resolve(process.env.PRIVATE_STORAGE_ROOT)
+            : join(process.cwd(), 'private');
+        const demoDir = join(storageRoot, 'uploads', 'demos');
+        const contractDir = join(storageRoot, 'uploads', 'contracts');
+        const releaseDir = join(storageRoot, 'uploads', 'releases');
         await mkdir(demoDir, { recursive: true });
         await mkdir(contractDir, { recursive: true });
         await mkdir(releaseDir, { recursive: true });
@@ -95,7 +125,12 @@ export async function POST(req) {
 
             // Write file
             const bytes = await file.arrayBuffer();
-            await writeFile(filepath, Buffer.from(bytes));
+            const fileBuffer = Buffer.from(bytes);
+            if (!isAllowedSignature(ext, fileBuffer)) {
+                logger.warn('File signature mismatch', { userId: session.user.id, fileName: file.name, ext });
+                continue;
+            }
+            await writeFile(filepath, fileBuffer);
             logger.info('File uploaded', { userId: session.user.id, fileName: file.name, filePath: filepath });
 
             uploadedFiles.push({
