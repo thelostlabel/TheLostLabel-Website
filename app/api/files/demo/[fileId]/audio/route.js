@@ -11,14 +11,30 @@ const MIME_BY_EXT = {
     ".ogg": "audio/ogg",
 };
 
-const resolvePath = (filepath) => {
-    if (!filepath) return null;
+const getCandidatePaths = (filepath) => {
+    if (!filepath) return [];
+    const normalized = filepath.replace(/^\/+/, "");
     const root = process.cwd();
-    const normalized = isAbsolute(filepath)
-        ? filepath
-        : join(root, filepath.replace(/^\/+/, ""));
-    if (!normalized.startsWith(root)) return null;
-    return normalized;
+    const appRoot = "/app";
+    const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
+
+    if (isAbsolute(filepath)) {
+        return [filepath];
+    }
+
+    if (normalized.startsWith("private/")) {
+        return [
+            join(root, normalized),
+            join(appRoot, normalized),
+            join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
+        ];
+    }
+
+    return [
+        join(root, normalized),
+        join(appRoot, normalized),
+        join(configuredPrivateRoot, normalized),
+    ];
 };
 
 export async function GET(req, { params }) {
@@ -41,10 +57,21 @@ export async function GET(req, { params }) {
 
         if (!audioFile) return new Response("Audio file not found", { status: 404 });
 
-        const filePath = resolvePath(audioFile.filepath);
-        if (!filePath) return new Response("File path invalid", { status: 404 });
+        const candidates = getCandidatePaths(audioFile.filepath);
+        let filePath = null;
+        let info = null;
+        for (const candidate of candidates) {
+            try {
+                const s = await stat(candidate);
+                filePath = candidate;
+                info = s;
+                break;
+            } catch {
+                // Try next candidate.
+            }
+        }
+        if (!filePath || !info) return new Response("File not found", { status: 404 });
 
-        const info = await stat(filePath);
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
         const stream = Readable.toWeb(createReadStream(filePath));
