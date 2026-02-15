@@ -7,11 +7,7 @@ import { notifyDemoApproval } from "@/lib/discord";
 
 export async function GET(req, { params }) {
     const session = await getServerSession(authOptions);
-    const isAdminOrAR = session?.user?.role === 'admin' || session?.user?.role === 'a&r';
-
-    if (!session || !isAdminOrAR) {
-        return new Response("Unauthorized", { status: 401 });
-    }
+    if (!session) return new Response("Unauthorized", { status: 401 });
 
     const { id } = await params;
 
@@ -19,7 +15,15 @@ export async function GET(req, { params }) {
         const demo = await prisma.demo.findUnique({
             where: { id },
             include: {
-                artist: true,
+                artist: {
+                    select: {
+                        id: true,
+                        email: true,
+                        stageName: true,
+                        fullName: true,
+                        role: true
+                    }
+                },
                 files: true,
                 contract: {
                     include: {
@@ -32,6 +36,12 @@ export async function GET(req, { params }) {
 
         if (!demo) {
             return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
+        }
+
+        const isAdminOrAR = session.user.role === 'admin' || session.user.role === 'a&r';
+        const isOwner = demo.artistId === session.user.id;
+        if (!isAdminOrAR && !isOwner) {
+            return new Response("Forbidden", { status: 403 });
         }
 
         return new Response(JSON.stringify(demo), { status: 200 });
@@ -55,14 +65,23 @@ export async function PATCH(req, { params }) {
     // Fetch existing demo to check ownership
     const existingDemo = await prisma.demo.findUnique({
         where: { id },
-        include: { artist: true }
+        include: {
+            artist: {
+                select: {
+                    id: true,
+                    email: true,
+                    stageName: true,
+                    fullName: true
+                }
+            }
+        }
     });
 
     if (!existingDemo) {
         return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
     }
 
-    const isOwner = existingDemo.artist?.userId === session.user.id;
+    const isOwner = existingDemo.artistId === session.user.id;
 
     if (!isAdminOrAR && !isOwner) {
         return new Response("Unauthorized", { status: 401 });
@@ -171,10 +190,10 @@ export async function PATCH(req, { params }) {
         });
 
         // If status changed to approved, we might want to notify
-        if ((status === 'approved' || status === 'contract_sent') && updatedDemo.artist?.user?.email) {
+        if ((status === 'approved' || status === 'contract_sent') && updatedDemo.artist?.email) {
             try {
                 await sendMail({
-                    to: updatedDemo.artist.user.email,
+                    to: updatedDemo.artist.email,
                     subject: 'GOOD NEWS: YOUR DEMO HAS BEEN APPROVED',
                     html: generateDemoApprovalEmail(
                         updatedDemo.artist.stageName || updatedDemo.artist.fullName || "Artist",
@@ -193,7 +212,7 @@ export async function PATCH(req, { params }) {
         }
 
         // If status changed to rejected, notify artist
-        if (status === 'rejected' && updatedDemo.artist?.user?.email) {
+        if (status === 'rejected' && updatedDemo.artist?.email) {
             const userPrefs = await prisma.user.findUnique({
                 where: { id: updatedDemo.artistId }, // artistId in Demo is UserId
                 select: { notifyDemos: true }
@@ -202,7 +221,7 @@ export async function PATCH(req, { params }) {
             if (userPrefs?.notifyDemos) {
                 try {
                     await sendMail({
-                        to: updatedDemo.artist.user.email,
+                        to: updatedDemo.artist.email,
                         subject: `Update on your demo: ${updatedDemo.title} | LOST.`,
                         html: generateDemoRejectionEmail(
                             updatedDemo.artist.stageName || updatedDemo.artist.fullName || "Artist",

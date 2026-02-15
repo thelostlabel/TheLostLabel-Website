@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
-import { extname, isAbsolute, join } from "path";
+import { extname, join } from "path";
 import { Readable } from "stream";
 
 const MIME_BY_EXT = {
@@ -22,24 +22,14 @@ const getCandidatePaths = (filepath) => {
   const appRoot = "/app";
   const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
 
-  if (isAbsolute(filepath)) {
-    return [filepath];
-  }
+  // Security: never allow arbitrary absolute/parent traversal paths from DB.
+  if (normalized.includes("..")) return [];
+  if (!normalized.startsWith("private/uploads/demos/")) return [];
 
-  // Legacy DB paths are stored as "private/uploads/..."
-  if (normalized.startsWith("private/")) {
-    return [
-      join(root, normalized),
-      join(appRoot, normalized),
-      join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
-    ];
-  }
-
-  // Support plain relative storage paths as well.
   return [
     join(root, normalized),
     join(appRoot, normalized),
-    join(configuredPrivateRoot, normalized),
+    join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
   ];
 };
 

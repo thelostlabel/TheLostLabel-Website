@@ -1,6 +1,8 @@
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { stat } from "fs/promises";
 import { createReadStream } from "fs";
-import { extname, isAbsolute, join } from "path";
+import { extname, join } from "path";
 import { Readable } from "stream";
 import prisma from "@/lib/prisma";
 
@@ -18,46 +20,42 @@ const getCandidatePaths = (filepath) => {
     const appRoot = "/app";
     const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
 
-    if (isAbsolute(filepath)) {
-        return [filepath];
-    }
-
-    if (normalized.startsWith("private/")) {
-        return [
-            join(root, normalized),
-            join(appRoot, normalized),
-            join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
-        ];
-    }
+    if (normalized.includes("..")) return [];
+    if (!normalized.startsWith("private/uploads/demos/")) return [];
 
     return [
         join(root, normalized),
         join(appRoot, normalized),
-        join(configuredPrivateRoot, normalized),
+        join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
     ];
 };
 
 export async function GET(req, { params }) {
+    const session = await getServerSession(authOptions);
+    if (!session) return new Response("Unauthorized", { status: 401 });
+
     const { fileId } = await params;
-    if (!fileId) return new Response("Missing demo id", { status: 400 });
+    if (!fileId) return new Response("Missing file id", { status: 400 });
 
     try {
-        const demo = await prisma.demo.findUnique({
+        const demoFile = await prisma.demoFile.findUnique({
             where: { id: fileId },
-            include: { files: true }
+            include: { demo: { select: { artistId: true } } },
         });
 
-        if (!demo || !demo.files) return new Response("Not found", { status: 404 });
+        if (!demoFile) return new Response("Not found", { status: 404 });
 
-        const audioFile = demo.files.find(f =>
-            f.filename.endsWith('.mp3') ||
-            f.filename.endsWith('.wav') ||
-            f.filename.endsWith('.m4a')
-        );
+        const isAdminOrAR = session.user.role === "admin" || session.user.role === "a&r";
+        if (!isAdminOrAR && demoFile.demo?.artistId !== session.user.id) {
+            return new Response("Forbidden", { status: 403 });
+        }
 
-        if (!audioFile) return new Response("Audio file not found", { status: 404 });
+        const extFromName = extname(demoFile.filename || "").toLowerCase();
+        if (!MIME_BY_EXT[extFromName]) {
+            return new Response("Audio file not found", { status: 404 });
+        }
 
-        const candidates = getCandidatePaths(audioFile.filepath);
+        const candidates = getCandidatePaths(demoFile.filepath);
         let filePath = null;
         let info = null;
         for (const candidate of candidates) {

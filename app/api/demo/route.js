@@ -7,7 +7,7 @@ import { generateDemoReceivedEmail } from "@/lib/mail-templates";
 import { z } from "zod";
 import rateLimit from "@/lib/rate-limit";
 
-// Rate limiter: 5 demos per hour per user
+// Rate limiter: 10 demos per hour per user
 const limiter = rateLimit({
     interval: 60 * 60 * 1000,
     uniqueTokenPerInterval: 500,
@@ -16,7 +16,8 @@ const limiter = rateLimit({
 const demoSchema = z.object({
     title: z.string().min(1).max(100),
     genre: z.string().max(50).optional().or(z.literal('')).or(z.null()),
-    trackLink: z.string().url().optional().or(z.literal('')).or(z.null()),
+    // URL is optional; users can submit only a link or only files.
+    trackLink: z.string().trim().max(500).optional().or(z.literal('')).or(z.null()),
     message: z.string().max(1000).optional().or(z.literal('')).or(z.null()),
     files: z.array(z.object({
         filename: z.string(),
@@ -51,7 +52,17 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Invalid input", details: result.error.issues }), { status: 400 });
         }
 
-        const { title, genre, trackLink, message, files = [] } = result.data;
+    const { title, genre, trackLink, message, files = [] } = result.data;
+        const sanitizedFiles = (files || []).filter((f) => {
+            if (!f?.filepath || typeof f.filepath !== "string") return false;
+            if (f.filepath.includes("..")) return false;
+            // Only allow demo files that were written by /api/upload
+            return /^private\/uploads\/demos\/[a-f0-9-]+_[A-Za-z0-9._-]+$/i.test(f.filepath);
+        });
+
+        if ((files || []).length > 0 && sanitizedFiles.length === 0 && !trackLink) {
+            return new Response(JSON.stringify({ error: "Invalid uploaded file references." }), { status: 400 });
+        }
 
         const demo = await prisma.demo.create({
             data: {
@@ -62,8 +73,8 @@ export async function POST(req) {
                 artist: {
                     connect: { id: session.user.id }
                 },
-                files: files.length > 0 ? {
-                    create: files.map(f => ({
+                files: sanitizedFiles.length > 0 ? {
+                    create: sanitizedFiles.map(f => ({
                         filename: f.filename,
                         filepath: f.filepath,
                         filesize: f.filesize
@@ -106,14 +117,15 @@ export async function POST(req) {
             }
         }
 
-        // 2. Forward Demo to A&R Team
+        // 2. Forward demo to A&R team mailbox
         try {
+            const demoMailbox = process.env.DEMO_EMAIL || 'demo@thelostlabel.com';
             const demoLinkHtml = trackLink
                 ? `<p><strong>Link:</strong> <a href="${trackLink}">${trackLink}</a></p>`
                 : `<p><strong>Files:</strong> ${files.length} file(s) attached in dashboard.</p>`;
 
             await sendMail({
-                to: 'demo@thelostlabel.com',
+                to: demoMailbox,
                 subject: `NEW DEMO: ${artistName} - ${title}`,
                 html: `
                     <h2>New Demo Submission</h2>

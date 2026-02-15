@@ -1,26 +1,37 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import { sendMail } from '@/lib/mail';
 import { generateVerificationEmail } from '@/lib/mail-templates';
 
 export async function POST(req) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { currentEmail, newEmail } = await req.json();
 
-        if (!currentEmail || !newEmail) {
+        if (!newEmail) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // 1. Find the user
+        // 1. Find current session user
         const user = await prisma.user.findUnique({
-            where: { email: currentEmail }
+            where: { id: session.user.id }
         });
 
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        // Optional cross-check if client sent currentEmail
+        if (currentEmail && user.email.toLowerCase() !== String(currentEmail).toLowerCase()) {
+            return NextResponse.json({ error: "Current email does not match authenticated user" }, { status: 403 });
         }
 
         // 2. Security Check: Only allow if not yet verified

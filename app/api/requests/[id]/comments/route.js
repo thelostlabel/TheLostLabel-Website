@@ -17,7 +17,12 @@ export async function GET(req, { params }) {
         // First check if the user has access to this request
         const request = await prisma.changeRequest.findUnique({
             where: { id },
-            select: { userId: true }
+            select: {
+                userId: true,
+                release: {
+                    select: { artistsJson: true }
+                }
+            }
         });
 
         if (!request) {
