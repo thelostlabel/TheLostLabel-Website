@@ -57,6 +57,7 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Invalid amount" }), { status: 400 });
         }
 
+        const resolvedStatus = status || 'completed';
         const payment = await prisma.payment.create({
             data: {
                 userId,
@@ -65,8 +66,8 @@ export async function POST(req) {
                 method,
                 reference,
                 notes,
-                status: status || 'completed',
-                processedAt: status === 'completed' ? new Date() : null
+                status: resolvedStatus,
+                processedAt: resolvedStatus === 'completed' ? new Date() : null
             }
         });
 

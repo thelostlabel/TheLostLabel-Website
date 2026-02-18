@@ -2,6 +2,22 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+function parseArtistsJson(artistsJson) {
+    try {
+        const parsed = JSON.parse(artistsJson || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function normalizeReleaseDate(value) {
+    if (!value) return undefined;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return undefined;
+    return parsed.toISOString();
+}
+
 export async function GET(req, { params }) {
     const { id } = await params;
     try {
@@ -13,27 +29,30 @@ export async function GET(req, { params }) {
             return new Response(JSON.stringify({ error: "Release not found" }), { status: 404 });
         }
 
-        let resolvedArtist = release.artistName;
-        try {
-            const parsedArtists = JSON.parse(release.artistsJson || '[]');
-            if (parsedArtists.length > 0) {
-                resolvedArtist = parsedArtists.map(a => a.name).join(", ");
-            }
-        } catch (e) { }
+        const parsedArtists = parseArtistsJson(release.artistsJson);
+        const resolvedArtist = parsedArtists.length > 0
+            ? parsedArtists.map((artist) => artist.name).join(", ")
+            : release.artistName;
 
         const getBaseTitle = (title) => {
             if (!title) return "";
             return title.split(' (')[0].split(' - ')[0].trim();
         };
-        const baseTitle = getBaseTitle(release.name);
+        const baseTitle = release.baseTitle || getBaseTitle(release.name);
 
         const versions = await prisma.release.findMany({
             where: {
-                OR: [
-                    { name: { contains: baseTitle } },
-                    { name: baseTitle }
-                ]
-            }
+                ...(baseTitle ? { baseTitle } : { id: release.id })
+            },
+            orderBy: [
+                { popularity: "desc" },
+                { releaseDate: "desc" }
+            ]
+        });
+
+        const filteredVersions = versions.filter((version) => {
+            if (baseTitle && version.baseTitle) return version.baseTitle === baseTitle;
+            return getBaseTitle(version.name).toLowerCase() === baseTitle.toLowerCase();
         });
 
         return new Response(JSON.stringify({
@@ -46,18 +65,16 @@ export async function GET(req, { params }) {
             release_date: release.releaseDate,
             popularity: release.popularity,
             stream_count_text: release.streamCountText,
-            artists: JSON.parse(release.artistsJson || '[]'),
-            versions: versions
-                .filter(v => getBaseTitle(v.name).toLowerCase() === baseTitle.toLowerCase())
-                .map(v => ({
-                    id: v.id,
-                    name: v.name,
-                    image: v.image,
-                    spotify_url: v.spotifyUrl,
-                    release_date: v.releaseDate,
-                    preview_url: v.previewUrl,
-                    artists: JSON.parse(v.artistsJson || '[]')
-                }))
+            artists: parsedArtists,
+            versions: filteredVersions.map(v => ({
+                id: v.id,
+                name: v.name,
+                image: v.image,
+                spotify_url: v.spotifyUrl,
+                release_date: v.releaseDate,
+                preview_url: v.previewUrl,
+                artists: parseArtistsJson(v.artistsJson)
+            }))
         }), { status: 200 });
     } catch (e) {
         console.error("Release Fetch Error:", e);
@@ -80,7 +97,7 @@ export async function PATCH(req, { params }) {
             data: {
                 name: data.name,
                 artistName: data.artistName,
-                releaseDate: data.releaseDate ? new Date(data.releaseDate).toISOString() : undefined,
+                releaseDate: normalizeReleaseDate(data.releaseDate),
                 image: data.image,
                 spotifyUrl: data.spotifyUrl,
                 type: data.type

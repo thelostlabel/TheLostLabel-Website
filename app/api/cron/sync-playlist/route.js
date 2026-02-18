@@ -17,6 +17,10 @@ export async function POST(req) {
     const { searchParams } = new URL(req.url);
     const cronSecret = searchParams.get('secret');
     const scrapeListeners = searchParams.get('scrape') !== 'false';
+    const requestedResultsLimit = Number.parseInt(searchParams.get('resultsLimit') || '20', 10);
+    const resultsLimit = Number.isFinite(requestedResultsLimit)
+        ? Math.max(1, Math.min(requestedResultsLimit, 500))
+        : 20;
     const isValidCron = cronSecret === process.env.CRON_SECRET;
     const isAdmin = session?.user?.role === 'admin';
 
@@ -415,7 +419,8 @@ export async function POST(req) {
             artistScrapeErrors: errorCount,
             scrapeEnabled,
             ...(scrapeDisabledReason ? { scrapeDisabledReason } : {}),
-            results: results.slice(0, 20)
+            resultsCount: results.length,
+            results: results.slice(0, resultsLimit)
         }), { status: 200 });
 
     } catch (error) {

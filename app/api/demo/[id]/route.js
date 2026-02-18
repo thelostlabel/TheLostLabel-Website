@@ -4,6 +4,14 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateDemoApprovalEmail, generateDemoRejectionEmail } from "@/lib/mail-templates";
 import { notifyDemoApproval } from "@/lib/discord";
+import { randomUUID } from "crypto";
+
+function normalizeReleaseDate(value) {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toISOString();
+}
 
 export async function GET(req, { params }) {
     const session = await getServerSession(authOptions);
@@ -148,7 +156,7 @@ export async function PATCH(req, { params }) {
             });
 
             // 2. RELEASE CREATION LOGIC
-            const releaseDateToUse = body.scheduledReleaseDate || (finalizeData && finalizeData.releaseDate);
+            const releaseDateToUse = normalizeReleaseDate(body.scheduledReleaseDate || (finalizeData && finalizeData.releaseDate));
 
             // If we just finalized (created a contract) OR we are scheduling, ensure Release exists
             if (finalizeData || (body.scheduledReleaseDate && d.contract)) {
@@ -160,7 +168,7 @@ export async function PATCH(req, { params }) {
                     if (!d.contract.releaseId) {
                         const release = await tx.release.create({
                             data: {
-                                id: `REL_${d.id.substring(0, 8)}_${Date.now().toString().substring(10)}`,
+                                id: `rel_${randomUUID()}`,
                                 name: finalizeData?.releaseName || d.title, // Use explicit release name if provided
                                 artistName: d.artist.stageName || d.artist.fullName,
                                 image: body.coverArtUrl || null,

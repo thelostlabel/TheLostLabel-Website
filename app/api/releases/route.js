@@ -2,10 +2,11 @@ import prisma from "@/lib/prisma";
 
 export async function GET(req) {
     try {
+        const nowIso = new Date().toISOString();
         const releases = await prisma.release.findMany({
             where: {
                 releaseDate: {
-                    lte: new Date().toISOString()
+                    lte: nowIso
                 }
             },
             orderBy: [
