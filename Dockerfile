@@ -97,10 +97,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
+# Keep playwright CLI available at runtime for one-time browser install on empty volume.
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/playwright ./node_modules/playwright
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/playwright-core ./node_modules/playwright-core
 COPY --chown=nextjs:nodejs .env* ./
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod +x /app/docker-entrypoint.sh
+
+# Browser cache path used by Playwright.
+RUN mkdir -p /ms-playwright && chown -R nextjs:nodejs /ms-playwright
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
