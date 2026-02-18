@@ -3,6 +3,19 @@ import { motion } from 'framer-motion';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, tdStyle, thStyle, glassStyle, inputStyle } from './styles';
+import { extractContractMetaAndNotes } from '@/lib/contract-template';
+
+const createEmptySplit = () => ({
+    name: '',
+    percentage: 0,
+    userId: '',
+    artistId: '',
+    legalName: '',
+    phoneNumber: '',
+    address: '',
+    email: '',
+    role: 'featured'
+});
 
 const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist...", onClear }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -97,74 +110,146 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
     );
 };
 
-function SplitRow({ split, index, onUpdate, onRemove, artists, effectiveShare }) {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [showDropdown, setShowDropdown] = useState(false);
-    const wrapperRef = useRef(null);
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setShowDropdown(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
-
+function SplitRow({ split, index, onUpdate, onRemove, onMakePrimary, artists, effectiveShare, canRemove = true }) {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr 1fr 40px', gap: '10px', alignItems: 'center', position: 'relative' }}>
-            <input
-                placeholder="Name (e.g. LXGHTLXSS)"
-                value={split.name}
-                onChange={e => {
-                    const newName = e.target.value;
-                    const match = artists.find(a => a.name.toLowerCase() === newName.toLowerCase());
-                    const update = { ...split, name: newName };
-
-                    if (match) {
-                        update.artistId = match.id;
-                        update.userId = match.userId || '';
-                    }
-
-                    onUpdate(update);
-                }}
-                style={{ ...inputStyle, padding: '8px' }}
-            />
-            <div style={{ position: 'relative' }}>
+        <div style={{
+            display: 'grid',
+            gap: '10px',
+            alignItems: 'center',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '14px',
+            padding: '12px',
+            background: 'rgba(255,255,255,0.01)'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#9a9a9a', fontWeight: 800, letterSpacing: '0.04em' }}>
+                    CONTRIBUTOR #{index + 1}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{
+                        fontSize: '9px',
+                        fontWeight: 900,
+                        padding: '4px 8px',
+                        borderRadius: '999px',
+                        background: split.role === 'primary' ? 'rgba(57,255,20,0.18)' : 'rgba(255,255,255,0.08)',
+                        color: split.role === 'primary' ? 'var(--accent)' : '#cfcfcf'
+                    }}>
+                        {(split.role || 'featured').toUpperCase()}
+                    </span>
+                    {split.role !== 'primary' && (
+                        <button
+                            type="button"
+                            onClick={onMakePrimary}
+                            style={{ ...btnStyle, padding: '4px 10px', fontSize: '9px' }}
+                        >
+                            SET PRIMARY
+                        </button>
+                    )}
+                </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr 1fr 40px', gap: '10px', alignItems: 'center' }}>
                 <input
-                    type="number"
-                    placeholder="Share"
-                    value={split.percentage}
-                    onChange={e => onUpdate({ ...split, percentage: e.target.value })}
-                    style={{ ...inputStyle, padding: '8px', paddingRight: '20px' }}
+                    placeholder="Artist Name"
+                    value={split.name}
+                    onChange={e => {
+                        const newName = e.target.value;
+                        const match = artists.find(a => a.name.toLowerCase() === newName.toLowerCase());
+                        const update = { ...split, name: newName };
+
+                        if (match) {
+                            update.artistId = match.id;
+                            update.userId = match.userId || '';
+                            update.legalName = match.user?.legalName || match.user?.fullName || split.legalName || '';
+                            update.phoneNumber = match.user?.phoneNumber || split.phoneNumber || '';
+                            update.address = match.user?.address || split.address || '';
+                            update.email = match.user?.email || split.email || '';
+                        }
+
+                        onUpdate(update);
+                    }}
+                    style={{ ...inputStyle, padding: '8px' }}
                 />
-                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: '#444' }}>%</span>
+                <div style={{ position: 'relative' }}>
+                    <input
+                        type="number"
+                        placeholder="Share"
+                        value={split.percentage}
+                        onChange={e => onUpdate({ ...split, percentage: e.target.value })}
+                        style={{ ...inputStyle, padding: '8px', paddingRight: '20px' }}
+                    />
+                    <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: '#444' }}>%</span>
+                </div>
+
+                {effectiveShare && (
+                    <div style={{ fontSize: '9px', color: '#666', textAlign: 'center', lineHeight: '1' }}>
+                        <div style={{ fontWeight: '900', color: 'var(--accent)' }}>{effectiveShare}%</div>
+                        <div style={{ fontSize: '7px' }}>OF TOTAL</div>
+                    </div>
+                )}
+
+                <ArtistPicker
+                    artists={artists}
+                    value={split.artistId}
+                    placeholder="Link Existing Artist"
+                    onChange={(a) => onUpdate({
+                        ...split,
+                        artistId: a.id,
+                        userId: a.user?.id || '',
+                        name: a.name,
+                        legalName: a.user?.legalName || a.user?.fullName || split.legalName || '',
+                        phoneNumber: a.user?.phoneNumber || split.phoneNumber || '',
+                        address: a.user?.address || split.address || '',
+                        email: a.user?.email || split.email || ''
+                    })}
+                    onClear={() => onUpdate({ ...split, artistId: '', userId: '' })}
+                />
+
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    style={{ background: 'none', border: 'none', color: canRemove ? 'var(--status-error)' : '#555', cursor: canRemove ? 'pointer' : 'not-allowed' }}
+                    disabled={!canRemove}
+                >
+                    <Trash2 size={14} />
+                </button>
             </div>
 
-            {effectiveShare && (
-                <div style={{ fontSize: '9px', color: '#666', textAlign: 'center', lineHeight: '1' }}>
-                    <div style={{ fontWeight: '900', color: 'var(--accent)' }}>{effectiveShare}%</div>
-                    <div style={{ fontSize: '7px' }}>OF TOTAL</div>
-                </div>
-            )}
-
-            <ArtistPicker
-                artists={artists}
-                value={split.artistId}
-                placeholder="Select Artist..."
-                onChange={(a) => onUpdate({ ...split, artistId: a.id, userId: a.user?.id || '', name: a.name })}
-                onClear={() => onUpdate({ ...split, artistId: '', userId: '' })}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input
+                    placeholder="Legal Name"
+                    value={split.legalName || ''}
+                    onChange={e => onUpdate({ ...split, legalName: e.target.value })}
+                    style={{ ...inputStyle, padding: '8px' }}
+                />
+                <input
+                    placeholder="Phone Number"
+                    value={split.phoneNumber || ''}
+                    onChange={e => onUpdate({ ...split, phoneNumber: e.target.value })}
+                    style={{ ...inputStyle, padding: '8px' }}
+                />
+                <input
+                    placeholder="Email (Optional)"
+                    value={split.email || ''}
+                    onChange={e => onUpdate({ ...split, email: e.target.value })}
+                    style={{ ...inputStyle, padding: '8px' }}
+                />
+                <select
+                    value={split.role || 'featured'}
+                    onChange={e => onUpdate({ ...split, role: e.target.value })}
+                    style={{ ...inputStyle, padding: '8px' }}
+                >
+                    <option value="primary">Primary</option>
+                    <option value="featured">Featured</option>
+                    <option value="producer">Producer</option>
+                    <option value="writer">Writer</option>
+                </select>
+            </div>
+            <textarea
+                placeholder="Full Address"
+                value={split.address || ''}
+                onChange={e => onUpdate({ ...split, address: e.target.value })}
+                style={{ ...inputStyle, padding: '8px', minHeight: '62px', resize: 'vertical' }}
             />
-
-            <button
-                type="button"
-                onClick={onRemove}
-                style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer' }}
-            >
-                <Trash2 size={14} />
-            </button>
         </div>
     );
 }
@@ -185,8 +270,18 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
         labelShare: 0.30,
         notes: '',
         pdfUrl: '',
+        contractDetails: {
+            agreementReferenceNo: '',
+            effectiveDate: '',
+            deliveryDate: '',
+            isrc: '',
+            songTitles: '',
+            artistLegalName: '',
+            artistPhone: '',
+            artistAddress: ''
+        },
         isValid: true,
-        splits: [{ name: '', percentage: 100, userId: '', artistId: '' }]
+        splits: [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
     });
     const [uploadingPdf, setUploadingPdf] = useState(false);
     const pdfInputRef = useRef(null);
@@ -221,9 +316,34 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
         try {
             const url = '/api/contracts';
             const method = editingContract ? 'PATCH' : 'POST';
+            const validSplits = form.splits.filter(s => s.name.trim() !== '');
+            const primaryContributor = validSplits.find((s) => (s.role || '').toLowerCase() === 'primary') || validSplits[0] || null;
             const body = {
                 ...form,
-                splits: form.splits.filter(s => s.name.trim() !== '')
+                contractDetails: {
+                    ...form.contractDetails,
+                    artistLegalName: primaryContributor?.legalName || form.contractDetails.artistLegalName || '',
+                    artistPhone: primaryContributor?.phoneNumber || form.contractDetails.artistPhone || '',
+                    artistAddress: primaryContributor?.address || form.contractDetails.artistAddress || ''
+                },
+                splits: validSplits.map((s) => ({
+                    name: s.name,
+                    percentage: Number(s.percentage || 0),
+                    userId: s.userId || '',
+                    artistId: s.artistId || '',
+                    email: s.email || ''
+                })),
+                featuredArtists: validSplits.map((s, idx) => ({
+                    name: s.name,
+                    percentage: Number(s.percentage || 0),
+                    userId: s.userId || null,
+                    artistId: s.artistId || null,
+                    email: s.email || null,
+                    legalName: s.legalName || null,
+                    phoneNumber: s.phoneNumber || null,
+                    address: s.address || null,
+                    role: s.role || (idx === 0 ? 'primary' : 'featured')
+                }))
             };
             if (editingContract) body.id = editingContract.id;
 
@@ -266,6 +386,72 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
     };
 
     const totalSplit = form.splits.reduce((s, a) => s + parseFloat(a.percentage || 0), 0);
+    const contributorCount = form.splits.length;
+    const hasAtLeastOneNamedContributor = form.splits.some(s => s.name?.trim());
+    const isSplitValid = totalSplit > 99.9 && totalSplit < 100.1;
+    const canSubmit = hasAtLeastOneNamedContributor && isSplitValid && (form.releaseId || form.demoId || form.title?.trim());
+    const summaryChipStyle = {
+        padding: '6px 10px',
+        borderRadius: '999px',
+        fontSize: '10px',
+        fontWeight: 800,
+        letterSpacing: '0.04em',
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(255,255,255,0.03)',
+        color: '#cfcfcf'
+    };
+    const sectionCardStyle = {
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '14px',
+        padding: '14px',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.008))'
+    };
+
+    const setPrimaryContributor = (targetIndex) => {
+        setForm(prev => {
+            const newSplits = prev.splits.map((s, idx) => ({
+                ...s,
+                role: idx === targetIndex ? 'primary' : (s.role === 'primary' ? 'featured' : (s.role || 'featured'))
+            }));
+            const primary = newSplits[targetIndex];
+            return {
+                ...prev,
+                artistId: primary?.artistId || prev.artistId,
+                userId: primary?.userId || prev.userId,
+                primaryArtistName: primary?.name || prev.primaryArtistName,
+                splits: newSplits
+            };
+        });
+    };
+
+    const addContributor = () => {
+        setForm(prev => ({
+            ...prev,
+            splits: [...prev.splits, createEmptySplit()]
+        }));
+    };
+
+    const removeContributor = (removeIndex) => {
+        setForm(prev => {
+            if (prev.splits.length <= 1) return prev;
+            const wasPrimary = prev.splits[removeIndex]?.role === 'primary';
+            let newSplits = prev.splits.filter((_, idx) => idx !== removeIndex);
+            if (wasPrimary && newSplits.length > 0) {
+                newSplits = newSplits.map((s, idx) => ({
+                    ...s,
+                    role: idx === 0 ? 'primary' : (s.role === 'primary' ? 'featured' : (s.role || 'featured'))
+                }));
+            }
+            const primary = newSplits.find(s => s.role === 'primary') || newSplits[0];
+            return {
+                ...prev,
+                artistId: primary?.artistId || '',
+                userId: primary?.userId || '',
+                primaryArtistName: primary?.name || '',
+                splits: newSplits
+            };
+        });
+    };
 
     return (
         <div>
@@ -284,8 +470,18 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 labelShare: 0.30,
                                 notes: '',
                                 pdfUrl: '',
+                                contractDetails: {
+                                    agreementReferenceNo: '',
+                                    effectiveDate: '',
+                                    deliveryDate: '',
+                                    isrc: '',
+                                    songTitles: '',
+                                    artistLegalName: '',
+                                    artistPhone: '',
+                                    artistAddress: ''
+                                },
                                 isValid: true,
-                                splits: [{ name: '', percentage: 100, userId: '', artistId: '' }]
+                                splits: [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
                             });
                         }
                         setShowAdd(!showAdd);
@@ -302,14 +498,25 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     animate={{ opacity: 1, y: 0 }}
                     style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid var(--accent)' }}
                 >
-                    <form onSubmit={handleSubmitContract} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        <div>
+                    <form onSubmit={handleSubmitContract} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 900, color: '#f1f1f1', letterSpacing: '0.04em' }}>
+                                    CONTRACT BUILDER
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={summaryChipStyle}>Contributors: {contributorCount}</span>
+                                    <span style={{ ...summaryChipStyle, color: isSplitValid ? 'var(--accent)' : 'var(--status-error)' }}>Split: {totalSplit.toFixed(2)}%</span>
+                                    <span style={{ ...summaryChipStyle, color: canSubmit ? 'var(--accent)' : '#cfcfcf' }}>{canSubmit ? 'READY' : 'INCOMPLETE'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={sectionCardStyle}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>PRIMARY ARTIST</label>
-                                <button type="button" onClick={() => {
-                                    setForm({ ...form, splits: [...form.splits, { name: '', percentage: 0, userId: '', artistId: '' }] });
-                                }} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '10px', cursor: 'pointer' }}>
-                                    + ADD FEATURED ARTIST
+                                <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>MAIN ARTIST PROFILE (PRIMARY)</label>
+                                <button type="button" onClick={addContributor} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '10px', cursor: 'pointer' }}>
+                                    + ADD ARTIST
                                 </button>
                             </div>
                             <ArtistPicker
@@ -319,12 +526,29 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                     const update = {
                                         artistId: artist.id,
                                         userId: artist.userId || '',
-                                        primaryArtistName: artist.name
+                                        primaryArtistName: artist.name,
+                                        contractDetails: {
+                                            ...form.contractDetails,
+                                            artistLegalName: artist.user?.legalName || artist.user?.fullName || '',
+                                            artistPhone: artist.user?.phoneNumber || '',
+                                            artistAddress: artist.user?.address || ''
+                                        }
                                     };
 
                                     let newSplits = [...form.splits];
                                     if (newSplits.length === 1 && (newSplits[0].name === '' || newSplits[0].name === form.primaryArtistName)) {
-                                        newSplits[0] = { name: artist.name, percentage: 100, userId: artist.userId || '', artistId: artist.id };
+                                        newSplits[0] = {
+                                            ...createEmptySplit(),
+                                            name: artist.name,
+                                            percentage: 100,
+                                            userId: artist.userId || '',
+                                            artistId: artist.id,
+                                            legalName: artist.user?.legalName || artist.user?.fullName || '',
+                                            phoneNumber: artist.user?.phoneNumber || '',
+                                            address: artist.user?.address || '',
+                                            email: artist.user?.email || '',
+                                            role: 'primary'
+                                        };
                                     }
 
                                     setForm({ ...form, ...update, splits: newSplits });
@@ -334,8 +558,11 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                             <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
                                 Don&apos;t see the artist? <button onClick={() => showToast('Please go to the Artists tab to create a new profile first.', "info")} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Create Profile</button>
                             </div>
+                            <div style={{ fontSize: '10px', color: '#888', marginTop: '6px' }}>
+                                Contributors in contract: <span style={{ color: 'var(--accent)', fontWeight: 800 }}>{contributorCount}</span>
+                            </div>
                         </div>
-                        <div>
+                        <div style={sectionCardStyle}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>RELEASE / APPROVED DEMO</label>
                             <select
                                 value={form.releaseId || form.demoId || ''}
@@ -351,21 +578,33 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                         update.releaseId = release.id;
                                         update.demoId = '';
                                         update.title = '';
+                                        update.contractDetails = {
+                                            ...form.contractDetails,
+                                            songTitles: form.contractDetails.songTitles || release.name || ''
+                                        };
 
                                         if (release.artistsJson) {
                                             try {
-                                                const artists = JSON.parse(release.artistsJson);
-                                                if (artists.length > 0) {
-                                                    newSplits = artists.map(a => {
-                                                        const regArtist = artists.find(reg => reg.name === a.name || reg.stageName === a.name);
+                                                const parsedArtists = JSON.parse(release.artistsJson);
+                                                if (Array.isArray(parsedArtists) && parsedArtists.length > 0) {
+                                                    newSplits = parsedArtists.map(a => {
+                                                        const regArtist = artists.find(reg => reg.name === a.name || reg.user?.stageName === a.name);
                                                         return {
+                                                            ...createEmptySplit(),
                                                             name: a.name,
-                                                            percentage: Math.floor(100 / artists.length),
-                                                            userId: regArtist ? regArtist.id : '',
-                                                            artistId: regArtist ? regArtist.id : ''
+                                                            percentage: Math.floor(100 / parsedArtists.length),
+                                                            userId: regArtist?.user?.id || regArtist?.userId || '',
+                                                            artistId: regArtist?.id || '',
+                                                            legalName: regArtist?.user?.legalName || regArtist?.user?.fullName || '',
+                                                            phoneNumber: regArtist?.user?.phoneNumber || '',
+                                                            address: regArtist?.user?.address || '',
+                                                            email: regArtist?.user?.email || ''
                                                         };
                                                     });
-                                                    if (artists[0]) update.primaryArtistName = artists[0].name;
+                                                    if (newSplits[0]) {
+                                                        newSplits[0].role = 'primary';
+                                                    }
+                                                    if (parsedArtists[0]) update.primaryArtistName = parsedArtists[0].name;
                                                 }
                                             } catch (e) { console.error("Parse splits error", e); }
                                         }
@@ -373,6 +612,10 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                         update.releaseId = '';
                                         update.demoId = demo.id;
                                         update.title = demo.title;
+                                        update.contractDetails = {
+                                            ...form.contractDetails,
+                                            songTitles: form.contractDetails.songTitles || demo.title || ''
+                                        };
                                     } else {
                                         update.releaseId = '';
                                         update.demoId = '';
@@ -381,10 +624,9 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                     update.splits = newSplits;
                                     setForm(update);
                                 }}
-                                required
                                 style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             >
-                                <option value="">Select Release or Approved Demo...</option>
+                                <option value="">Optional: Select Release or Approved Demo...</option>
                                 <optgroup label="Approved Demos (Not Released)">
                                     {demos.map(d => (
                                         <option key={d.id} value={d.id}>DEMO: {d.title} ({new Date(d.createdAt).toLocaleDateString()})</option>
@@ -405,26 +647,74 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                     })}
                                 </optgroup>
                             </select>
+                            <div style={{ marginTop: '10px' }}>
+                                <input
+                                    placeholder="Or type custom demo/release title (system will auto-match if exists)"
+                                    value={form.title || ''}
+                                    onChange={e => {
+                                        const rawTitle = e.target.value;
+                                        const typedTitle = rawTitle.trim();
+
+                                        const matchedRelease = releases.find((r) => (r.name || '').toLowerCase() === typedTitle.toLowerCase());
+                                        const matchedDemo = demos.find((d) => (d.title || '').toLowerCase() === typedTitle.toLowerCase());
+
+                                        if (typedTitle && matchedRelease) {
+                                            setForm({
+                                                ...form,
+                                                title: matchedRelease.name,
+                                                releaseId: matchedRelease.id,
+                                                demoId: '',
+                                                isDemo: false
+                                            });
+                                            return;
+                                        }
+
+                                        if (typedTitle && matchedDemo) {
+                                            setForm({
+                                                ...form,
+                                                title: matchedDemo.title,
+                                                releaseId: '',
+                                                demoId: matchedDemo.id,
+                                                isDemo: true
+                                            });
+                                            return;
+                                        }
+
+                                        setForm({
+                                            ...form,
+                                            title: rawTitle,
+                                            releaseId: '',
+                                            demoId: '',
+                                            isDemo: true
+                                        });
+                                    }}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                />
+                            </div>
                         </div>
-                        <div>
+                        <div style={sectionCardStyle}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ARTIST SHARE (0.0 - 1.0)</label>
                             <input
                                 type="number" step="0.01" min="0" max="1"
                                 value={form.artistShare}
                                 onChange={e => {
-                                    const val = parseFloat(e.target.value);
-                                    setForm({ ...form, artistShare: val, labelShare: Math.max(0, 1 - val) });
+                                    const raw = String(e.target.value).replace(',', '.');
+                                    const val = parseFloat(raw);
+                                    if (!isNaN(val) && val >= 0 && val <= 1) {
+                                        setForm({ ...form, artistShare: val, labelShare: parseFloat((1 - val).toFixed(2)) });
+                                    }
                                 }}
                                 style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
-                        <div>
+                        <div style={sectionCardStyle}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>LABEL SHARE (Calculated)</label>
                             <input
                                 type="number" step="0.01" min="0" max="1"
                                 value={form.labelShare}
                                 onChange={e => {
-                                    const val = parseFloat(e.target.value);
+                                    const raw = String(e.target.value).replace(',', '.');
+                                    const val = parseFloat(raw);
                                     if (!isNaN(val) && val >= 0 && val <= 1) {
                                         setForm({ ...form, labelShare: val, artistShare: parseFloat((1 - val).toFixed(2)) });
                                     }
@@ -432,19 +722,64 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
                             />
                         </div>
-                        <div style={{ padding: '20px', borderTop: '1px solid #333' }}>
+                        <div style={sectionCardStyle}>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>AGREEMENT REF NO</label>
+                            <input
+                                value={form.contractDetails.agreementReferenceNo}
+                                onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, agreementReferenceNo: e.target.value } })}
+                                placeholder="LL-2026-0001"
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                            />
+                        </div>
+                        <div style={sectionCardStyle}>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>EFFECTIVE DATE</label>
+                            <input
+                                type="date"
+                                value={form.contractDetails.effectiveDate}
+                                onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, effectiveDate: e.target.value } })}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                            />
+                        </div>
+                        <div style={sectionCardStyle}>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>DELIVERY DATE</label>
+                            <input
+                                type="date"
+                                value={form.contractDetails.deliveryDate}
+                                onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, deliveryDate: e.target.value } })}
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                            />
+                        </div>
+                        <div style={sectionCardStyle}>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ISRC (OPTIONAL)</label>
+                            <input
+                                value={form.contractDetails.isrc}
+                                onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, isrc: e.target.value } })}
+                                placeholder="TR-XXX-26-00001"
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                            />
+                        </div>
+                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle }}>
+                            <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SONG TITLE(S)</label>
+                            <input
+                                value={form.contractDetails.songTitles}
+                                onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, songTitles: e.target.value } })}
+                                placeholder="Track A, Track B"
+                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                            />
+                        </div>
+                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '20px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>ADDITIONAL ARTISTS & SPLITS</label>
+                                <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>ALL CONTRIBUTORS & SPLITS</label>
                                 <button
                                     type="button"
-                                    onClick={() => setForm({
-                                        ...form,
-                                        splits: [...form.splits, { name: '', percentage: 0, userId: '', artistId: '' }]
-                                    })}
+                                    onClick={addContributor}
                                     style={{ ...btnStyle, fontSize: '10px', padding: '5px 10px' }}
                                 >
                                     + ADD ARTIST / CONTRIBUTOR
                                 </button>
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#777', marginBottom: '12px' }}>
+                                Tip: first row should be your primary artist. Add unlimited featured artists/producers/writers with the + button.
                             </div>
 
                             <div style={{ display: 'grid', gap: '10px' }}>
@@ -456,21 +791,30 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                         artists={artists}
                                         effectiveShare={((parseFloat(split.percentage || 0) / 100) * form.artistShare * 100).toFixed(1)}
                                         onUpdate={(updated) => {
-                                            const newSplits = [...form.splits];
-                                            newSplits[index] = updated;
+                                            const newSplits = form.splits.map((row, rowIndex) => {
+                                                if (rowIndex !== index) {
+                                                    if (updated.role === 'primary' && row.role === 'primary') {
+                                                        return { ...row, role: 'featured' };
+                                                    }
+                                                    return row;
+                                                }
+                                                return updated;
+                                            });
                                             setForm({ ...form, splits: newSplits });
                                         }}
-                                        onRemove={() => setForm({ ...form, splits: form.splits.filter((_, i) => i !== index) })}
+                                        onRemove={() => removeContributor(index)}
+                                        onMakePrimary={() => setPrimaryContributor(index)}
+                                        canRemove={form.splits.length > 1}
                                     />
                                 ))}
                             </div>
 
-                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: totalSplit !== 100 ? 'var(--status-error)' : 'var(--accent)' }}>
-                                TOTAL SPLIT: {totalSplit}% (SHOULD BE 100%)
+                            <div style={{ marginTop: '10px', textAlign: 'right', fontSize: '10px', color: isSplitValid ? 'var(--accent)' : 'var(--status-error)' }}>
+                                TOTAL SPLIT: {totalSplit.toFixed(2)}% {isSplitValid ? '(READY)' : '(MUST BE 100%)'}
                             </div>
                         </div>
 
-                        <div style={{ gridColumn: 'span 2' }}>
+                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SIGNED CONTRACT PDF (OPTIONAL)</label>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <input
@@ -493,7 +837,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 )}
                             </div>
                         </div>
-                        <div style={{ gridColumn: 'span 2' }}>
+                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>NOTES</label>
                             <textarea
                                 value={form.notes}
@@ -501,11 +845,16 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px', minHeight: '60px' }}
                             />
                         </div>
-                        <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                        <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '10px', color: canSubmit ? '#888' : 'var(--status-error)' }}>
+                                {canSubmit ? 'Form is ready to save.' : 'To save: add at least one artist, provide a selected item or custom title, and make total split exactly 100%.'}
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
-                            <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000' }}>
+                            <button type="submit" disabled={saving || !canSubmit} style={{ ...btnStyle, background: '#fff', color: '#000', opacity: (saving || !canSubmit) ? 0.6 : 1 }}>
                                 {saving ? 'SAVING...' : editingContract ? 'SAVE CHANGES' : 'CREATE CONTRACT'}
                             </button>
+                            </div>
                         </div>
                     </form>
                 </motion.div>
@@ -571,17 +920,42 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                     </span>
                                 </td>
                                 <td style={tdStyle}>
-                                    {c.pdfUrl ? (
-                                        <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 10px', fontSize: '8px' }}>
-                                            VIEW PDF
-                                        </a>
-                                    ) : (
-                                        <span style={{ fontSize: '8px', color: '#333' }}>MISSING</span>
-                                    )}
+                                    <a href={`/api/files/contract/${c.id}?download=1`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 10px', fontSize: '8px' }}>
+                                        {c.pdfUrl ? 'VIEW PDF' : 'DOWNLOAD PDF'}
+                                    </a>
                                 </td>
                                 <td style={tdStyle}>
                                     <button onClick={() => {
+                                        const { details, userNotes } = extractContractMetaAndNotes(c.notes || '');
+                                        let featuredArtists = [];
+                                        try {
+                                            featuredArtists = c.featuredArtists ? JSON.parse(c.featuredArtists) : [];
+                                        } catch {
+                                            featuredArtists = [];
+                                        }
+                                        const featuredByKey = new Map(
+                                            featuredArtists.map((f) => [
+                                                `${f.artistId || ''}:${f.userId || ''}:${(f.name || '').toLowerCase()}`,
+                                                f
+                                            ])
+                                        );
                                         setEditingContract(c);
+                                        const hydratedSplits = (c.splits || []).map((s, idx) => {
+                                            const match = featuredByKey.get(`${s.artistId || ''}:${s.userId || ''}:${(s.name || '').toLowerCase()}`);
+                                            return {
+                                                ...createEmptySplit(),
+                                                name: s.name,
+                                                percentage: s.percentage,
+                                                userId: s.userId || '',
+                                                artistId: s.artistId || '',
+                                                email: s.email || match?.email || '',
+                                                legalName: match?.legalName || s.user?.legalName || s.user?.fullName || s.artist?.user?.legalName || s.artist?.user?.fullName || '',
+                                                phoneNumber: match?.phoneNumber || s.user?.phoneNumber || s.artist?.user?.phoneNumber || '',
+                                                address: match?.address || s.user?.address || s.artist?.user?.address || '',
+                                                role: match?.role || (idx === 0 ? 'primary' : 'featured')
+                                            };
+                                        });
+
                                         setForm({
                                             userId: c.userId || '',
                                             artistId: c.artistId || '',
@@ -590,15 +964,22 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                             isDemo: !c.releaseId,
                                             artistShare: c.artistShare,
                                             labelShare: c.labelShare,
-                                            notes: c.notes || '',
+                                            notes: userNotes || '',
                                             pdfUrl: c.pdfUrl || '',
+                                            contractDetails: {
+                                                agreementReferenceNo: details.agreementReferenceNo || '',
+                                                effectiveDate: details.effectiveDate || '',
+                                                deliveryDate: details.deliveryDate || '',
+                                                isrc: details.isrc || '',
+                                                songTitles: details.songTitles || '',
+                                                artistLegalName: details.artistLegalName || '',
+                                                artistPhone: details.artistPhone || '',
+                                                artistAddress: details.artistAddress || ''
+                                            },
                                             isValid: true,
-                                            splits: c.splits.map(s => ({
-                                                name: s.name,
-                                                percentage: s.percentage,
-                                                userId: s.userId || '',
-                                                artistId: s.artistId || ''
-                                            }))
+                                            splits: hydratedSplits.length > 0
+                                                ? hydratedSplits
+                                                : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
                                         });
                                         setShowAdd(true);
                                     }} style={{ ...btnStyle, marginRight: '5px' }}>

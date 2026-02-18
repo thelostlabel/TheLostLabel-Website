@@ -13,7 +13,15 @@ export async function GET(req) {
         const artists = await prisma.artist.findMany({
             include: {
                 user: {
-                    select: { id: true, email: true, stageName: true, fullName: true }
+                    select: {
+                        id: true,
+                        email: true,
+                        stageName: true,
+                        fullName: true,
+                        legalName: true,
+                        phoneNumber: true,
+                        address: true
+                    }
                 },
                 _count: {
                     select: { contracts: true }

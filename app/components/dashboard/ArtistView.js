@@ -13,6 +13,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '@/app/components/ToastContext';
 import ProjectView from './ProjectView';
+import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
 const glassStyle = {
     background: 'rgba(255,255,255,0.02)',
@@ -1933,6 +1934,9 @@ function ProfileView({ onUpdate }) {
     const [saving, setSaving] = useState(false);
     const [email, setEmail] = useState('');
     const [fullName, setFullName] = useState('');
+    const [legalName, setLegalName] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [address, setAddress] = useState('');
     const [stageName, setStageName] = useState('');
     const [spotifyUrl, setSpotifyUrl] = useState('');
 
@@ -1962,6 +1966,9 @@ function ProfileView({ onUpdate }) {
             setProfile(data);
             setEmail(data.email || '');
             setFullName(data.fullName || '');
+            setLegalName(data.legalName || '');
+            setPhoneNumber(data.phoneNumber || '');
+            setAddress(data.address || '');
             setStageName(data.stageName || '');
             setSpotifyUrl(data.spotifyUrl || '');
 
@@ -1981,12 +1988,22 @@ function ProfileView({ onUpdate }) {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email, fullName, stageName, spotifyUrl,
+                    email,
+                    fullName,
+                    legalName,
+                    phoneNumber,
+                    address,
+                    stageName,
+                    spotifyUrl,
                     notifyDemos, notifyEarnings, notifySupport, notifyContracts
                 })
             });
             if (res.ok) {
-                if (onUpdate) await onUpdate({ user: { email, fullName, stageName, spotifyUrl } });
+                if (onUpdate) {
+                    await onUpdate({
+                        user: { email, fullName, legalName, phoneNumber, address, stageName, spotifyUrl }
+                    });
+                }
                 alert('Profile updated successfully!');
             } else {
                 alert('Failed to save profile');
@@ -2067,6 +2084,38 @@ function ProfileView({ onUpdate }) {
                             onChange={(e) => setFullName(e.target.value)}
                             placeholder="YOUR FULL NAME"
                             style={inputStyle}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '25px' }}>
+                        <label style={labelStyle}>LEGAL NAME (CONTRACT)</label>
+                        <input
+                            type="text"
+                            value={legalName}
+                            onChange={(e) => setLegalName(e.target.value)}
+                            placeholder="YOUR LEGAL NAME FOR CONTRACTS"
+                            style={inputStyle}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '25px' }}>
+                        <label style={labelStyle}>PHONE NUMBER</label>
+                        <input
+                            type="text"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            placeholder="+90 5XX XXX XX XX"
+                            style={inputStyle}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '25px' }}>
+                        <label style={labelStyle}>ADDRESS</label>
+                        <textarea
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            placeholder="FULL ADDRESS FOR CONTRACT DOCUMENTS"
+                            style={{ ...inputStyle, minHeight: '90px', resize: 'vertical' }}
                         />
                     </div>
 
@@ -2476,6 +2525,7 @@ function ArtistContractsView({ contracts, session }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                 {contracts.map(c => {
+                    const { userNotes } = extractContractMetaAndNotes(c.notes || '');
                     const isOwner = c.userId === session?.user?.id ||
                         c.primaryArtistEmail === session?.user?.email ||
                         c.artist?.userId === session?.user?.id;
@@ -2544,9 +2594,9 @@ function ArtistContractsView({ contracts, session }) {
                                 </div>
                             </div>
 
-                            {c.notes && (
+                            {userNotes && (
                                 <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.5', fontStyle: 'italic' }}>
-                                    &quot;{c.notes}&quot;
+                                    &quot;{userNotes}&quot;
                                 </div>
                             )}
 

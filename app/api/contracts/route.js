@@ -1,6 +1,54 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { embedContractMetaInNotes, extractContractMetaAndNotes } from "@/lib/contract-template";
+
+function normalizeShare(value, defaultValue) {
+    if (value === undefined || value === null || value === "") return defaultValue;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return null;
+
+    // Accept both 0.7 and 70 style inputs.
+    const normalized = parsed > 1 && parsed <= 100 ? parsed / 100 : parsed;
+    if (normalized < 0 || normalized > 1) return null;
+    return normalized;
+}
+
+function normalizeSplitPercentage(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return null;
+
+    // Accept both 25 and 0.25 style inputs.
+    const normalized = parsed <= 1 ? parsed * 100 : parsed;
+    if (normalized < 0 || normalized > 100) return null;
+    return normalized;
+}
+
+function validateAndNormalizeSplits(splits) {
+    if (!splits) return { normalized: null };
+    if (!Array.isArray(splits)) return { error: "Splits must be an array." };
+
+    const normalized = [];
+    for (const split of splits) {
+        const percentage = normalizeSplitPercentage(split.percentage);
+        if (!split?.name || percentage === null) {
+            return { error: "Each split requires a valid name and percentage (0-100)." };
+        }
+        normalized.push({
+            name: split.name,
+            email: split.email || null,
+            percentage,
+            userId: split.userId || null,
+            artistId: split.artistId || null
+        });
+    }
+
+    const totalSplit = normalized.reduce((sum, split) => sum + split.percentage, 0);
+    if (totalSplit > 100.0001) {
+        return { error: "Split percentages cannot exceed 100%." };
+    }
+    return { normalized };
+}
 
 // GET: Fetch contracts
 export async function GET(req) {
@@ -72,7 +120,23 @@ export async function POST(req) {
 
     try {
         const body = await req.json();
-        const { releaseId, title, demoId, artistId, userId, primaryArtistName, primaryArtistEmail, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists } = body;
+        const { releaseId, title, demoId, artistId, userId, primaryArtistName, primaryArtistEmail, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists, contractDetails } = body;
+
+        const normalizedArtistShare = normalizeShare(artistShare, 0.7);
+        const normalizedLabelShare = normalizeShare(labelShare, 0.3);
+        if (normalizedArtistShare === null || normalizedLabelShare === null) {
+            return new Response(JSON.stringify({ error: "artistShare/labelShare must be between 0-1 or 0-100." }), { status: 400 });
+        }
+        if (Math.abs((normalizedArtistShare + normalizedLabelShare) - 1) > 0.0001) {
+            return new Response(JSON.stringify({ error: "artistShare + labelShare must equal 1 (or 100%)." }), { status: 400 });
+        }
+
+        const splitValidation = validateAndNormalizeSplits(splits);
+        if (splitValidation.error) {
+            return new Response(JSON.stringify({ error: splitValidation.error }), { status: 400 });
+        }
+
+        const storedNotes = embedContractMetaInNotes(notes, contractDetails);
 
         // Validation: Needs (Artist ID OR PrimaryName) AND (ReleaseID OR Title OR DemoID)
         if ((!artistId && !primaryArtistName && !userId) || (!releaseId && !title && !demoId)) {
@@ -125,20 +189,14 @@ export async function POST(req) {
                 primaryArtistName: primaryArtistName || null,
                 primaryArtistEmail: primaryArtistEmail || null,
 
-                artistShare: !isNaN(parseFloat(artistShare)) ? parseFloat(artistShare) : 0.7,
-                labelShare: !isNaN(parseFloat(labelShare)) ? parseFloat(labelShare) : 0.3,
-                notes,
+                artistShare: normalizedArtistShare,
+                labelShare: normalizedLabelShare,
+                notes: storedNotes,
                 status: status || 'active',
                 pdfUrl,
                 featuredArtists: featuredArtists ? JSON.stringify(featuredArtists) : null,
-                splits: splits ? {
-                    create: splits.map(s => ({
-                        name: s.name,
-                        email: s.email || null,
-                        percentage: !isNaN(parseFloat(s.percentage)) ? parseFloat(s.percentage) : 0,
-                        userId: s.userId || null,
-                        artistId: s.artistId || null
-                    }))
+                splits: splitValidation.normalized ? {
+                    create: splitValidation.normalized
                 } : undefined
             },
             include: {
@@ -178,18 +236,46 @@ export async function PATCH(req) {
 
     try {
         const body = await req.json();
-        const { id, title, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists } = body;
+        const { id, title, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists, contractDetails } = body;
 
         if (!id) {
             return new Response(JSON.stringify({ error: "Missing contract ID" }), { status: 400 });
         }
 
+        const existingContract = await prisma.contract.findUnique({
+            where: { id },
+            select: { artistShare: true, labelShare: true, notes: true }
+        });
+        if (!existingContract) {
+            return new Response(JSON.stringify({ error: "Contract not found" }), { status: 404 });
+        }
+
+        const normalizedArtistShare = normalizeShare(artistShare, existingContract.artistShare);
+        const normalizedLabelShare = normalizeShare(labelShare, existingContract.labelShare);
+        if (normalizedArtistShare === null || normalizedLabelShare === null) {
+            return new Response(JSON.stringify({ error: "artistShare/labelShare must be between 0-1 or 0-100." }), { status: 400 });
+        }
+        if (Math.abs((normalizedArtistShare + normalizedLabelShare) - 1) > 0.0001) {
+            return new Response(JSON.stringify({ error: "artistShare + labelShare must equal 1 (or 100%)." }), { status: 400 });
+        }
+
+        const splitValidation = validateAndNormalizeSplits(splits);
+        if (splitValidation.error) {
+            return new Response(JSON.stringify({ error: splitValidation.error }), { status: 400 });
+        }
+
         // We only allow updating specific fields to avoid breaking relations easily
         const updateData = {};
         if (title !== undefined) updateData.title = title;
-        if (artistShare !== undefined) updateData.artistShare = parseFloat(artistShare);
-        if (labelShare !== undefined) updateData.labelShare = parseFloat(labelShare);
-        if (notes !== undefined) updateData.notes = notes;
+        if (artistShare !== undefined) updateData.artistShare = normalizedArtistShare;
+        if (labelShare !== undefined) updateData.labelShare = normalizedLabelShare;
+        if (notes !== undefined || contractDetails !== undefined) {
+            const { details: existingDetails } = extractContractMetaAndNotes(existingContract.notes || "");
+            updateData.notes = embedContractMetaInNotes(
+                notes !== undefined ? notes : extractContractMetaAndNotes(existingContract.notes || "").userNotes,
+                contractDetails !== undefined ? { ...existingDetails, ...contractDetails } : existingDetails
+            );
+        }
         if (status !== undefined) updateData.status = status;
         if (pdfUrl !== undefined) updateData.pdfUrl = pdfUrl;
         if (featuredArtists !== undefined) updateData.featuredArtists = featuredArtists ? JSON.stringify(featuredArtists) : null;
@@ -198,13 +284,7 @@ export async function PATCH(req) {
         if (splits && Array.isArray(splits)) {
             updateData.splits = {
                 deleteMany: {}, // Remove old splits
-                create: splits.map(s => ({
-                    name: s.name,
-                    email: s.email || null,
-                    percentage: parsePercentage(s.percentage),
-                    userId: s.userId || null,
-                    artistId: s.artistId || null
-                }))
+                create: splitValidation.normalized
             };
         }
 
@@ -223,12 +303,6 @@ export async function PATCH(req) {
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
-}
-
-// Helper for safe percentage parsing
-function parsePercentage(val) {
-    const p = parseFloat(val);
-    return isNaN(p) ? 0 : p;
 }
 
 // DELETE: Remove a contract (Admin only)

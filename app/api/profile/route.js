@@ -16,6 +16,9 @@ export async function GET(req) {
                 id: true,
                 email: true,
                 fullName: true,
+                legalName: true,
+                phoneNumber: true,
+                address: true,
                 stageName: true,
                 spotifyUrl: true,
                 monthlyListeners: true,
@@ -43,7 +46,19 @@ export async function PATCH(req) {
 
     try {
         const body = await req.json();
-        const { email, fullName, stageName, spotifyUrl, notifyDemos, notifyEarnings, notifySupport, notifyContracts } = body;
+        const {
+            email,
+            fullName,
+            legalName,
+            phoneNumber,
+            address,
+            stageName,
+            spotifyUrl,
+            notifyDemos,
+            notifyEarnings,
+            notifySupport,
+            notifyContracts
+        } = body;
 
         // Check if user is linked to an Artist profile
         const user = await prisma.user.findUnique({
@@ -55,6 +70,9 @@ export async function PATCH(req) {
         let dataToUpdate = {
             email: email || undefined,
             fullName: fullName || undefined,
+            legalName: legalName !== undefined ? legalName : undefined,
+            phoneNumber: phoneNumber !== undefined ? phoneNumber : undefined,
+            address: address !== undefined ? address : undefined,
             notifyDemos: notifyDemos !== undefined ? notifyDemos : undefined,
             notifyEarnings: notifyEarnings !== undefined ? notifyEarnings : undefined,
             notifySupport: notifySupport !== undefined ? notifySupport : undefined,
