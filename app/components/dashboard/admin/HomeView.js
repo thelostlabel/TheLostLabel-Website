@@ -13,7 +13,7 @@ import { useSession } from 'next-auth/react';
 
 const DASHBOARD_THEME = {
     bg: '#0B0D13',
-    surface: '#12161F',
+    surface: '#11141D', // Solid matte slate
     surfaceElevated: '#171D27',
     surfaceSoft: '#1D2533',
     border: 'rgba(255,255,255,0.06)',
@@ -70,10 +70,31 @@ const CircularProgress = ({ label, subtitle, value, size = 80 }) => {
     );
 };
 
+const Sparkline = ({ data, color }) => {
+    if (!data || data.length < 2) return null;
+    return (
+        <div style={{ width: '60px', height: '30px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data}>
+                    <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={color}
+                        strokeWidth={2}
+                        fill="transparent"
+                        dot={false}
+                        isAnimationActive={true}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+};
+
 const RechartsAreaChart = ({ data, color, height = 150 }) => {
     return (
         <ResponsiveContainer width="100%" height={height}>
-            <AreaChart data={data}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                     <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={color} stopOpacity={0.3} />
@@ -81,8 +102,25 @@ const RechartsAreaChart = ({ data, color, height = 150 }) => {
                     </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
+                    dy={10}
+                />
+                <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
+                    tickFormatter={(val) => {
+                        if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+                        if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
+                        return val;
+                    }}
+                />
                 <Tooltip
-                    contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
+                    contentStyle={{ background: '#000', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '2px', fontSize: '11px', fontWeight: '800' }}
                     itemStyle={{ color: '#fff' }}
                 />
                 <Area
@@ -92,8 +130,8 @@ const RechartsAreaChart = ({ data, color, height = 150 }) => {
                     strokeWidth={3}
                     fillOpacity={1}
                     fill="url(#colorArea)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: color, stroke: '#fff', strokeWidth: 2 }}
+                    dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: color, stroke: '#000', strokeWidth: 2 }}
                 />
             </AreaChart>
         </ResponsiveContainer>
@@ -137,17 +175,20 @@ export default function HomeView() {
     ];
 
     return (
-        <div className="beatclap-shell">
-            <div className="beatclap-main-grid">
+        <div className="lost-shell">
+            <div className="lost-main-grid">
                 {/* LEFT COLUMN */}
-                <div className="beatclap-left-col">
+                <div className="lost-left-col">
 
                     {/* Top Stats */}
                     <div className="bc-top-stats">
                         {topStats.map((stat, i) => (
-                            <div key={i} className="bc-stat-card">
-                                <span className="bc-stat-label">{stat.label}</span>
-                                <span className="bc-stat-val text-accent">{stat.value}</span>
+                            <div key={i} className="bc-stat-card glow-cyan">
+                                <div style={{ flex: 1 }}>
+                                    <span className="bc-stat-label">{stat.label}</span>
+                                    <span className="bc-stat-val text-accent">{stat.value}</span>
+                                </div>
+                                <Sparkline data={stats.monthlyTrend || []} color={DASHBOARD_THEME.accent} />
                             </div>
                         ))}
                     </div>
@@ -161,6 +202,9 @@ export default function HomeView() {
                             <div>
                                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                                 <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome back, Admin!</h1>
+                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
+                                    You have full access to management and <a href="/dashboard?view=my-overview" style={{ color: DASHBOARD_THEME.accent, fontWeight: '700', textDecoration: 'none' }}>your personal artist portal</a>.
+                                </p>
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -169,19 +213,69 @@ export default function HomeView() {
                         </div>
                     </div>
 
-                    {/* Quick Actions / System Health */}
-                    <div className="bc-quick-actions">
-                        <div className="bc-action-card">
-                            <div className="bc-action-icon"><AlertCircle size={20} /></div>
-                            <h3 className="bc-action-title">Pending Submissions</h3>
-                            <p className="bc-action-desc">{stats.counts.pendingDemos} demos waiting for review</p>
-                            <ChevronRight size={18} className="bc-action-arrow" />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+                        <div className="bc-analytics-card" style={{ marginBottom: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <div>
+                                    <h3 className="bc-card-title">Consumer Growth</h3>
+                                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Aggregate Monthly Listeners</p>
+                                </div>
+                                <TrendingUp size={16} color={DASHBOARD_THEME.accent} />
+                            </div>
+                            <div style={{ height: '160px', width: '100%' }}>
+                                <RechartsAreaChart data={stats.listenerTrends || []} color={DASHBOARD_THEME.accent} height={160} />
+                            </div>
                         </div>
-                        <div className="bc-action-card">
-                            <div className="bc-action-icon"><BarChart3 size={20} /></div>
-                            <h3 className="bc-action-title">Open Requests</h3>
-                            <p className="bc-action-desc">{stats.counts.pendingRequests} support tickets active</p>
-                            <ChevronRight size={18} className="bc-action-arrow" />
+
+                        <div className="bc-analytics-card" style={{ marginBottom: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <div>
+                                    <h3 className="bc-card-title">Revenue Trends</h3>
+                                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Last 6 months revenue</p>
+                                </div>
+                                <DollarSign size={16} color={DASHBOARD_THEME.success} />
+                            </div>
+                            <div style={{ height: '160px', width: '100%' }}>
+                                <RechartsAreaChart data={stats.trends?.map(t => ({ label: t.label, value: t.revenue })) || []} color={DASHBOARD_THEME.success} height={160} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions / System Health */}
+                    <div style={{ marginBottom: '32px' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: DASHBOARD_THEME.muted, letterSpacing: '2px', marginBottom: '20px' }}>SYSTEM_MONITORING</h3>
+                        <div className="bc-quick-actions">
+                            <div className="bc-action-card">
+                                <div className="bc-action-icon"><AlertCircle size={20} /></div>
+                                <h3 className="bc-action-title">Pending Submissions</h3>
+                                <p className="bc-action-desc">{stats.counts.pendingDemos} demos waiting for review</p>
+                                <ChevronRight size={18} className="bc-action-arrow" />
+                            </div>
+                            <div className="bc-action-card">
+                                <div className="bc-action-icon"><BarChart3 size={20} /></div>
+                                <h3 className="bc-action-title">Open Requests</h3>
+                                <p className="bc-action-desc">{stats.counts.pendingRequests} support tickets active</p>
+                                <ChevronRight size={18} className="bc-action-arrow" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Artist Workspace Quick Links */}
+                    <div style={{ marginBottom: '32px' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: DASHBOARD_THEME.muted, letterSpacing: '2px', marginBottom: '20px' }}>ARTIST_WORKSPACE</h3>
+                        <div className="bc-quick-actions">
+                            <a href="/dashboard?view=my-releases" style={{ textDecoration: 'none' }} className="bc-action-card">
+                                <div className="bc-action-icon"><Disc size={20} /></div>
+                                <h3 className="bc-action-title">My Releases</h3>
+                                <p className="bc-action-desc">View and manage your catalog</p>
+                                <ChevronRight size={18} className="bc-action-arrow" />
+                            </a>
+                            <a href="/dashboard?view=my-submit" style={{ textDecoration: 'none' }} className="bc-action-card">
+                                <div className="bc-action-icon"><Music2 size={20} /></div>
+                                <h3 className="bc-action-title">New Submission</h3>
+                                <p className="bc-action-desc">Upload your latest tracks</p>
+                                <ChevronRight size={18} className="bc-action-arrow" />
+                            </a>
                         </div>
                     </div>
 
@@ -257,12 +351,12 @@ export default function HomeView() {
             </div>
 
             <style jsx>{`
-                .beatclap-shell {
+                .lost-shell {
                     color: #fff;
                     font-family: 'Space Grotesk', sans-serif;
                 }
 
-                .beatclap-main-grid {
+                .lost-main-grid {
                     display: grid;
                     grid-template-columns: 1fr 340px;
                     gap: 24px;
@@ -278,27 +372,40 @@ export default function HomeView() {
                 }
 
                 .bc-stat-card {
-                    background: #11141D;
-                    border: 1px solid rgba(255, 255, 255, 0.05);
-                    border-radius: 16px;
+                    background: ${DASHBOARD_THEME.surface};
+                    border-radius: 14px;
+                    border: 1px solid ${DASHBOARD_THEME.border};
                     padding: 24px;
                     display: flex;
-                    flex-direction: column;
+                    align-items: center;
                     gap: 10px;
-                    box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 }
-
+                .bc-stat-card:hover {
+                    transform: translateY(-2px);
+                    background: ${DASHBOARD_THEME.surfaceElevated};
+                }
+                .glow-cyan {
+                    border-color: rgba(24, 212, 199, 0.08) !important;
+                }
+                .glow-cyan:hover {
+                    border-color: rgba(24, 212, 199, 0.25) !important;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(24, 212, 199, 0.05);
+                }
                 .bc-stat-label {
                     font-size: 11px;
                     font-weight: 800;
-                    color: rgba(255, 255, 255, 0.4);
+                    color: ${DASHBOARD_THEME.muted};
+                    letter-spacing: 1.2px;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
+                    margin-bottom: 4px;
+                    display: block;
                 }
-
                 .bc-stat-val {
-                    font-size: 24px;
+                    font-size: 28px;
                     font-weight: 900;
+                    letter-spacing: -0.5px;
                 }
 
                 .text-accent {
@@ -315,7 +422,7 @@ export default function HomeView() {
                     margin-bottom: 24px;
                     position: relative;
                     overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
                 }
 
                 .bc-welcome-banner::after {
@@ -325,7 +432,7 @@ export default function HomeView() {
                     right: -25%;
                     width: 75%;
                     height: 200%;
-                    background: radial-gradient(circle, rgba(107, 76, 246, 0.12) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(107, 76, 246, 0.1) 0%, transparent 70%);
                     transform: rotate(-15deg);
                     pointer-events: none;
                 }
@@ -465,7 +572,7 @@ export default function HomeView() {
                     border-radius: 20px;
                     padding: 24px;
                     margin-bottom: 24px;
-                    box-shadow: 0 14px 40px rgba(0,0,0,0.2);
+                    box-shadow: 0 14px 40px rgba(0,0,0,0.3);
                 }
 
                 .bc-card-title {
@@ -478,7 +585,7 @@ export default function HomeView() {
                 }
 
                 @media (max-width: 1100px) {
-                    .beatclap-main-grid {
+                    .lost-main-grid {
                         grid-template-columns: 1fr;
                     }
                 }

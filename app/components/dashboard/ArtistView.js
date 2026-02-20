@@ -18,7 +18,7 @@ import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
 const DASHBOARD_THEME = {
     bg: '#0B0D13',
-    surface: '#12161F',
+    surface: '#11141D', // Solid matte slate
     surfaceElevated: '#171D27',
     surfaceSoft: '#1D2533',
     border: 'rgba(255,255,255,0.06)',
@@ -35,11 +35,11 @@ const DASHBOARD_THEME = {
 };
 
 const glassStyle = {
-    background: `linear-gradient(160deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
+    background: '#11141D', // Solid matte, no gradient
     border: `1px solid ${DASHBOARD_THEME.border}`,
     borderRadius: '14px',
     overflow: 'hidden',
-    boxShadow: '0 16px 38px rgba(2, 7, 16, 0.34)'
+    boxShadow: '0 16px 38px rgba(0, 0, 0, 0.4)' // Pure black shadow
 };
 
 const getBaseTitle = (title) => {
@@ -75,6 +75,27 @@ const ChartTooltip = ({ active, payload, label, color }) => {
                     {isCurrency ? `$${Number(p.value).toLocaleString()}` : Number(p.value).toLocaleString()}
                 </div>
             ))}
+        </div>
+    );
+};
+
+const Sparkline = ({ data, color }) => {
+    if (!data || data.length < 2) return null;
+    return (
+        <div style={{ width: '60px', height: '30px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data}>
+                    <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={color}
+                        strokeWidth={2}
+                        fill="transparent"
+                        dot={false}
+                        isAnimationActive={true}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
         </div>
     );
 };
@@ -131,19 +152,30 @@ const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
     return (
         <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                         <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor={color} stopOpacity={0.3} />
                             <stop offset="95%" stopColor={color} stopOpacity={0} />
                         </linearGradient>
                     </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                     <XAxis
                         dataKey="label"
-                        hide
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
+                        dy={10}
                     />
                     <YAxis
-                        hide
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
+                        tickFormatter={(val) => {
+                            if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+                            if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
+                            return val;
+                        }}
                     />
                     <Tooltip content={<ChartTooltip color={color} />} />
                     <Area
@@ -152,8 +184,8 @@ const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
                         stroke={color}
                         strokeWidth={3}
                         fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={false}
-                        activeDot={{ r: 4, fill: color, stroke: '#000', strokeWidth: 2 }}
+                        dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                        activeDot={{ r: 5, fill: color, stroke: '#000', strokeWidth: 2 }}
                     />
                 </AreaChart>
             </ResponsiveContainer>
@@ -880,7 +912,7 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
 
     const cardStyle = {
         padding: '16px',
-        background: `linear-gradient(165deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
+        background: DASHBOARD_THEME.surface,
         border: `1px solid ${DASHBOARD_THEME.border}`,
         borderRadius: '8px',
         minHeight: '92px',
@@ -913,7 +945,6 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
                 onClick={() => onNavigate('earnings')}
                 style={cardStyle}
             >
-                <div style={{ position: 'absolute', top: '-50px', right: '-40px', width: '130px', height: '130px', background: `radial-gradient(circle, ${DASHBOARD_THEME.accent}55 0%, transparent 72%)`, pointerEvents: 'none', zIndex: 1 }} />
                 <div style={labelStyle}>AVAILABLE</div>
                 <div style={{ ...valueStyle, color: DASHBOARD_THEME.accentHover }}>${Number(available).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
             </motion.button>
@@ -1036,21 +1067,30 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
     };
 
     return (
-        <div className="beatclap-shell">
-            <div className="beatclap-main-grid">
-                <div className="beatclap-left-col">
+        <div className="lost-shell">
+            <div className="lost-main-grid">
+                <div className="lost-left-col">
                     <div className="bc-top-stats">
-                        <div className="bc-stat-card">
-                            <span className="bc-stat-label">Total Releases</span>
-                            <span className="bc-stat-val text-accent">{totalReleases.toLocaleString()}</span>
+                        <div className="bc-stat-card glow-cyan">
+                            <div style={{ flex: 1 }}>
+                                <span className="bc-stat-label">Total Releases</span>
+                                <span className="bc-stat-val text-accent">{totalReleases.toLocaleString()}</span>
+                            </div>
+                            <Sparkline data={stats.trends || []} color={DASHBOARD_THEME.accent} />
                         </div>
-                        <div className="bc-stat-card">
-                            <span className="bc-stat-label">Total Tracks</span>
-                            <span className="bc-stat-val text-accent">{totalTracks.toLocaleString()}</span>
+                        <div className="bc-stat-card glow-cyan">
+                            <div style={{ flex: 1 }}>
+                                <span className="bc-stat-label">Total Tracks</span>
+                                <span className="bc-stat-val text-accent">{totalTracks.toLocaleString()}</span>
+                            </div>
+                            <Sparkline data={stats.trends || []} color={DASHBOARD_THEME.accent} />
                         </div>
-                        <div className="bc-stat-card">
-                            <span className="bc-stat-label">Total Videos</span>
-                            <span className="bc-stat-val text-accent">{totalVideos.toLocaleString()}</span>
+                        <div className="bc-stat-card glow-cyan">
+                            <div style={{ flex: 1 }}>
+                                <span className="bc-stat-label">Total Videos</span>
+                                <span className="bc-stat-val text-accent">{totalVideos.toLocaleString()}</span>
+                            </div>
+                            <Sparkline data={stats.trendsDaily || []} color={DASHBOARD_THEME.accent} />
                         </div>
                     </div>
 
@@ -1112,23 +1152,17 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     </div>
                 </div>
 
-                <div className="beatclap-right-col">
+                <div className="lost-right-col">
                     <div className="bc-sidebar-card">
-                        <CircularProgress label="Top Retailer" subtitle="Spotify" value={38} />
-                        <CircularProgress label="Top Territory" subtitle="Brazil" value={63} />
-
-                        <div style={{ paddingTop: '16px' }}>
-                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: DASHBOARD_THEME.text, marginBottom: '16px' }}>Listener Behaviour</h4>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted }}>ACTIVE</p>
-                                    <p style={{ fontSize: '16px', fontWeight: '800', color: DASHBOARD_THEME.accent }}>77%</p>
-                                </div>
-                                <div>
-                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, textAlign: 'right' }}>PASSIVE</p>
-                                    <p style={{ fontSize: '16px', fontWeight: '800', color: '#fff', textAlign: 'right' }}>23%</p>
-                                </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <div>
+                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h3>
+                                <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Historical Trend</p>
                             </div>
+                            <TrendingUp size={16} color={DASHBOARD_THEME.accent} />
+                        </div>
+                        <div style={{ height: '160px', width: '100%', position: 'relative' }}>
+                            <RechartsAreaChart data={stats.listenerTrend || []} color={DASHBOARD_THEME.accent} height={160} />
                         </div>
                     </div>
 
@@ -1158,22 +1192,22 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
             </div>
 
             <style jsx>{`
-                .beatclap-shell {
+                .lost-shell {
                     display: flex;
                     flex-direction: column;
                     width: 100%;
                 }
-                .beatclap-main-grid {
+                .lost-main-grid {
                     display: grid;
                     grid-template-columns: 2.2fr 1fr;
                     gap: 18px;
                 }
-                .beatclap-left-col {
+                .lost-left-col {
                     display: flex;
                     flex-direction: column;
                     gap: 18px;
                 }
-                .beatclap-right-col {
+                .lost-right-col {
                     display: flex;
                     flex-direction: column;
                     gap: 18px;
@@ -1187,23 +1221,40 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     gap: 14px;
                 }
                 .bc-stat-card {
-                    background: linear-gradient(160deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface});
+                    background: ${DASHBOARD_THEME.surface};
                     border-radius: 14px;
                     border: 1px solid ${DASHBOARD_THEME.border};
-                    padding: 20px;
+                    padding: 24px;
                     display: flex;
-                    flex-direction: column;
+                    align-items: center;
                     gap: 10px;
-                    box-shadow: 0 14px 32px rgba(3, 8, 18, 0.32);
+                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .bc-stat-card:hover {
+                    transform: translateY(-2px);
+                    background: ${DASHBOARD_THEME.surfaceElevated};
+                }
+                .glow-cyan {
+                    border-color: rgba(24, 212, 199, 0.08) !important;
+                }
+                .glow-cyan:hover {
+                    border-color: rgba(24, 212, 199, 0.25) !important;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(24, 212, 199, 0.05);
                 }
                 .bc-stat-label {
                     font-size: 11px;
-                    font-weight: 700;
-                    color: ${DASHBOARD_THEME.text};
+                    font-weight: 800;
+                    color: ${DASHBOARD_THEME.muted};
+                    letter-spacing: 1.2px;
+                    text-transform: uppercase;
+                    margin-bottom: 4px;
+                    display: block;
                 }
                 .bc-stat-val {
-                    font-size: 26px;
+                    font-size: 28px;
                     font-weight: 900;
+                    letter-spacing: -0.5px;
                 }
                 .bc-welcome-banner {
                     background: linear-gradient(110deg, #3A2396 0%, #1A114D 100%);
@@ -1215,7 +1266,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     margin-bottom: 24px;
                     position: relative;
                     overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
                 }
 
                 .bc-welcome-banner::after {
@@ -1225,7 +1276,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     right: -25%;
                     width: 75%;
                     height: 200%;
-                    background: radial-gradient(circle, rgba(107, 76, 246, 0.12) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(107, 76, 246, 0.1) 0%, transparent 70%);
                     transform: rotate(-15deg);
                     pointer-events: none;
                 }
@@ -1233,8 +1284,8 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     width: 80px;
                     height: 80px;
                     border-radius: 50%;
-                    background: rgba(0,0,0,0.2);
-                    border: 2px solid rgba(255,255,255,0.32);
+                    background: rgba(0,0,0,0.3);
+                    border: 2px solid rgba(255,255,255,0.25);
                     overflow: hidden;
                 }
                 .bc-quick-actions {
@@ -1250,6 +1301,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     position: relative;
                     cursor: pointer;
                     transition: all 0.25s ease;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
                 }
                 .bc-action-card:hover {
                     background: #171D27;
@@ -1260,7 +1312,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     width: 36px;
                     height: 36px;
                     border-radius: 8px;
-                    background: rgba(255,255,255,0.05);
+                    background: rgba(255,255,255,0.03);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -1283,12 +1335,13 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     top: 50%;
                     right: 20px;
                     transform: translateY(-50%);
+                    opacity: 0.4;
                 }
                 .bc-recent-releases {
                     margin-top: 10px;
                 }
                 .bc-btn-outline {
-                    background: rgba(255,255,255,0.05);
+                    background: rgba(255,255,255,0.03);
                     border: 1px solid ${DASHBOARD_THEME.border};
                     color: #fff;
                     padding: 8px 16px;
@@ -1310,7 +1363,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     aspect-ratio: 1/1;
                     border-radius: 10px;
                     overflow: hidden;
-                    background: rgba(255,255,255,0.05);
+                    background: #11141D;
                     margin-bottom: 12px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                 }
@@ -1335,7 +1388,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
                 }
                 @media (max-width: 1100px) {
-                    .beatclap-main-grid {
+                    .lost-main-grid {
                         grid-template-columns: 1fr;
                     }
                 }
@@ -1353,7 +1406,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     }
                 }
             `}</style>
-        </div>
+        </div >
     );
 }
 

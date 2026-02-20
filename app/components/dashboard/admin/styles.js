@@ -1,6 +1,5 @@
 export const glassStyle = {
-    background: 'var(--glass)',
-    backdropFilter: 'blur(10px)',
+    background: '#11141D',
     border: '1px solid var(--border)',
     borderRadius: '4px',
     overflow: 'hidden'
@@ -9,8 +8,6 @@ export const glassStyle = {
 export const statCardStyle = {
     ...glassStyle,
     padding: '20px',
-    background: 'var(--glass)',
-    border: '1px solid var(--border)',
 };
 
 export const thStyle = {
@@ -20,7 +17,7 @@ export const thStyle = {
     color: '#555',
     fontWeight: '900',
     borderBottom: '1px solid rgba(255,255,255,0.1)',
-    background: 'var(--glass)',
+    background: '#11141D',
     textTransform: 'uppercase'
 };
 
@@ -33,7 +30,7 @@ export const tdStyle = {
 };
 
 export const btnStyle = {
-    background: 'var(--glass)',
+    background: 'rgba(255,255,255,0.03)',
     border: '1px solid var(--border)',
     color: '#fff',
     padding: '8px 14px',
@@ -50,7 +47,7 @@ export const btnStyle = {
 };
 
 export const inputStyle = {
-    background: 'var(--glass)',
+    background: 'rgba(255,255,255,0.03)',
     border: '1px solid var(--border)',
     color: '#fff',
     padding: '10px 14px',

@@ -1,6 +1,7 @@
 "use client";
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -141,8 +142,8 @@ function DashboardLayoutContent({ children }) {
 
     const shellBackground = isLight ? '#F0F2F5' : '#0B0D13';
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
-    const shellAccent = '#18D4C7'; // Beatclap Cyan
-    const shellAccent2 = '#4422A5'; // Beatclap Purple
+    const shellAccent = '#18D4C7'; // LOST Cyan
+    const shellAccent2 = '#4422A5'; // LOST Purple
     const shellSurface = isLight ? '#FFFFFF' : '#11141D';
     const shellSurface2 = isLight ? '#F9FAFB' : '#171D27';
     const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
@@ -172,9 +173,7 @@ function DashboardLayoutContent({ children }) {
                     position: 'fixed',
                     inset: 0,
                     pointerEvents: 'none',
-                    background: isLight
-                        ? 'radial-gradient(1000px 600px at 10% -5%, rgba(24, 212, 199, 0.08), transparent 60%), radial-gradient(800px 500px at 90% -10%, rgba(68, 34, 165, 0.06), transparent 50%)'
-                        : 'radial-gradient(1000px 600px at 10% -5%, rgba(24, 212, 199, 0.12), transparent 60%), radial-gradient(800px 500px at 90% -10%, rgba(68, 34, 165, 0.1), transparent 50%)'
+                    background: 'transparent'
                 }}
             />
 
@@ -235,8 +234,8 @@ function DashboardLayoutContent({ children }) {
                     <header className="window-toolbar">
                         <div className="window-toolbar-left">
                             <div className="bc-logo">
-                                <Disc className="bc-logo-icon" size={24} />
-                                <span className="bc-logo-text">beatclap</span>
+                                <Image src="/logo.png" alt="LOST" width={32} height={32} className="bc-logo-img" />
+                                <span className="bc-logo-text" style={{ textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '950' }}>LOST</span>
                             </div>
                         </div>
 
@@ -305,7 +304,7 @@ function DashboardLayoutContent({ children }) {
                     background: #0B0D13;
                     border: 1px solid var(--border);
                     border-radius: 20px;
-                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(20px);
                     overflow: hidden;
                     transition: width 0.28s ease;
