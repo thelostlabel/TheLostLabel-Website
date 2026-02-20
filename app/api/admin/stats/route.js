@@ -87,6 +87,16 @@ export async function GET(req) {
             LIMIT 12
         `;
 
+        // Monthly Listener Trends (Aggregate across all artists)
+        const listenerTrendRows = await prisma.$queryRaw`
+            SELECT TO_CHAR(date, 'YYYY-MM-DD') as label, 
+                   SUM("monthlyListeners") as value
+            FROM "ArtistStatsHistory"
+            GROUP BY TO_CHAR(date, 'YYYY-MM-DD')
+            ORDER BY label ASC
+            LIMIT 30
+        `;
+
         const totalRevenue = earningAgg._sum.labelAmount || 0;
         const totalGross = earningAgg._sum.grossAmount || 0;
         const totalPayouts = paymentAgg._sum.amount || 0;
@@ -100,6 +110,11 @@ export async function GET(req) {
         const payoutTrends = (payoutTrendRows || []).map(r => ({
             label: r.label,
             amount: Number(r.amount) || 0
+        }));
+
+        const listenerTrends = (listenerTrendRows || []).map(r => ({
+            label: r.label,
+            value: Number(r.value) || 0
         }));
 
         const platforms = (platformRows || [])
@@ -125,6 +140,7 @@ export async function GET(req) {
             },
             trends: trendData,
             payoutTrends,
+            listenerTrends,
             platforms,
             topArtists
         }), { status: 200 });

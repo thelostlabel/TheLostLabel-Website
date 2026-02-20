@@ -1,247 +1,161 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
     DollarSign, Briefcase, CreditCard, Users, Mic2, Disc, Music,
-    FileAudio, BarChart3, AlertCircle
+    FileAudio, BarChart3, AlertCircle, ChevronRight, TrendingUp, Music2, RefreshCw
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
-    Tooltip, Area, PieChart, Pie, Cell
+    Tooltip, Area
 } from 'recharts';
-import { glassStyle } from './styles';
+import NextImage from 'next/image';
+import { useSession } from 'next-auth/react';
 
-const ChartTooltip = ({ active, payload, label, color }) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div style={{
-            background: '#000',
-            border: '1px solid var(--border)',
-            borderRadius: '2px',
-            padding: '12px 16px',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-        }}>
-            <div style={{ fontSize: '9px', color: '#555', fontWeight: '900', letterSpacing: '2px', marginBottom: '6px' }}>{label}</div>
-            {payload.map((p, i) => (
-                <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
-                    ${Number(p.value).toLocaleString()}
-                </div>
-            ))}
-        </div>
-    );
+const DASHBOARD_THEME = {
+    bg: '#0a0a0a',
+    surface: '#141414',
+    surfaceElevated: '#1c1c1c',
+    surfaceSoft: '#2a2a2a',
+    border: '#2a2a2a',
+    text: '#FFFFFF',
+    muted: '#888888',
+    accent: '#00e5a0', // v0-ref Emerald/Mint
+    accentCyan: '#00b8d4',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444'
 };
 
-function formatChartValue(v) {
-    const value = Number(v) || 0;
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
-    return `${Math.round(value)}`;
-}
+const compactNumber = (val) => {
+    const num = Number(val) || 0;
+    if (num >= 1000000) return `${(num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
+    return num.toLocaleString();
+};
 
-const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
-    const sanitizedData = Array.isArray(data)
-        ? data.filter((point) => point && Number.isFinite(Number(point.value)))
-        : [];
+const FALLBACK_IMAGE = '/default-album.jpg';
 
-    if (sanitizedData.length === 0) return (
-        <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
-            NO DATA AVAILABLE
-        </div>
-    );
+const normalizeImageSrc = (src) => {
+    if (typeof src !== 'string') return FALLBACK_IMAGE;
+    const trimmed = src.trim();
+    if (!trimmed) return FALLBACK_IMAGE;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    return FALLBACK_IMAGE;
+};
 
-    if (sanitizedData.length === 1) {
-        const onlyPoint = sanitizedData[0];
-        return (
-            <div style={{
-                width: '100%',
-                height: `${height}px`,
-                marginTop: '10px',
-                borderRadius: '2px',
-                border: '1px dashed rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.01)',
-                display: 'grid',
-                placeItems: 'center',
-                textAlign: 'center',
-                padding: '20px'
-            }}>
+const handleImageError = (event) => {
+    const img = event.currentTarget;
+    if (img.dataset.fallbackApplied === '1') return;
+    img.dataset.fallbackApplied = '1';
+    img.src = FALLBACK_IMAGE;
+};
+
+const CircularProgress = ({ value, label, subtitle, size = 60 }) => {
+    const strokeWidth = 5;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (value / 100) * circumference;
+
+    return (
+        <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                    <div style={{ fontSize: '10px', letterSpacing: '1.6px', color: '#99a5b6', fontWeight: '800', marginBottom: '8px' }}>
-                        SINGLE DATA POINT
-                    </div>
-                    <div style={{ fontSize: '34px', fontWeight: '900', color }}>
-                        ${Number(onlyPoint.value).toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#b2bac6', fontWeight: '800', marginTop: '8px' }}>
-                        {onlyPoint.label}
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#7f8b9b', marginTop: '8px' }}>
-                        Trend chart appears automatically as more months are collected.
-                    </div>
+                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>{label}</h4>
+                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, marginTop: '4px' }}>{subtitle}</p>
                 </div>
-            </div>
-        );
-    }
-
-    return (
-        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="8%" stopColor={color} stopOpacity={0.2} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.11)" />
-                    <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
-                        tickLine={false}
-                        axisLine={{ stroke: 'rgba(255,255,255,0.16)' }}
-                        tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
-                    />
-                    <YAxis
-                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={44}
-                        tickCount={5}
-                        tickFormatter={formatChartValue}
-                    />
-                    <Tooltip content={<ChartTooltip color={color} />} />
-                    <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke={color}
-                        strokeWidth={2.8}
-                        fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 4, fill: '#000', stroke: color, strokeWidth: 2.2 }}
-                        activeDot={{ r: 6, fill: color, stroke: '#000', strokeWidth: 2.2 }}
-                    />
-                </AreaChart>
-            </ResponsiveContainer>
-        </div>
-    );
-};
-
-const DonutChart = ({ data }) => {
-    const total = data.reduce((acc, curr) => acc + curr.value, 0);
-    const topItem = data.reduce((best, item) => (item.value > best.value ? item : best), data[0] || { label: 'TOTAL', value: 0, color: '#666' });
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '200px', height: '200px' }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={85}
-                            paddingAngle={3}
-                            dataKey="value"
-                            nameKey="label"
-                            strokeWidth={0}
-                        >
-                            {data.map((entry, i) => (
-                                <Cell key={i} fill={entry.color} style={{ filter: `drop-shadow(0 0 6px ${entry.color}55)` }} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            content={({ active, payload }) => {
-                                if (!active || !payload?.length) return null;
-                                return (
-                                    <div style={{
-                                        background: '#000',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '2px',
-                                        padding: '10px 14px',
-                                        backdropFilter: 'blur(10px)'
-                                    }}>
-                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#555', letterSpacing: '1px' }}>{payload[0].name}</div>
-                                        <div style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>
-                                            ${Number(payload[0].value).toLocaleString()} ({total ? Math.round((payload[0].value / total) * 100) : 0}%)
-                                        </div>
-                                    </div>
-                                );
-                            }}
+                <div style={{ position: 'relative', width: size, height: size }}>
+                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            fill="none"
+                            stroke={DASHBOARD_THEME.accent}
+                            strokeWidth={strokeWidth}
+                            strokeDasharray={circumference}
+                            strokeDashoffset={offset}
+                            strokeLinecap="round"
                         />
-                    </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '22px', fontWeight: '900', color: '#fff' }}>
-                        {total ? `${Math.round((topItem.value / total) * 100)}%` : '0%'}
-                    </div>
-                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1px' }}>{topItem.label}</div>
+                    </svg>
                 </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minWidth: '150px' }}>
-                {data.map((item, i) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr 36px', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}66` }} />
-                        <div style={{ fontSize: '10px', fontWeight: '800', color: '#fff', letterSpacing: '0.5px' }}>{item.label}</div>
-                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#777', textAlign: 'right' }}>
-                            {total ? Math.round((item.value / total) * 100) : 0}%
-                        </div>
-                        <div style={{ gridColumn: '2 / 4', height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
-                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, boxShadow: `0 0 10px ${item.color}55`, transition: 'width 1s ease' }} />
-                        </div>
-                    </div>
-                ))}
+            <div>
+                <p style={{ fontSize: '10px', fontWeight: '600', color: DASHBOARD_THEME.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>CURRENT</p>
+                <p style={{ fontSize: '18px', fontWeight: '800', color: DASHBOARD_THEME.accent, margin: '2px 0 0 0' }}>{compactNumber(value)} <span style={{ fontSize: '12px', fontWeight: '500', color: `${DASHBOARD_THEME.accent}b2` }}>8% <TrendingUp size={12} /></span></p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '10px', fontWeight: '600', color: DASHBOARD_THEME.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>% OF GLOBAL</p>
+                <p style={{ fontSize: '18px', fontWeight: '900', color: '#fff', margin: '2px 0 0 0' }}>{Math.round(value / 20)}%</p>
             </div>
         </div>
+
     );
 };
 
-const GoalProgress = ({ label, current, target, color }) => {
-    const percentage = Math.min(Math.round((current / target) * 100), 100);
+const GlowChart = ({ data, color, height = 140 }) => {
+    const containerRef = useRef(null);
+    const [canRenderChart, setCanRenderChart] = useState(false);
+
+    useEffect(() => {
+        const node = containerRef.current;
+        if (!node) return;
+
+        const updateReady = () => {
+            const rect = node.getBoundingClientRect();
+            setCanRenderChart(rect.width > 0 && rect.height > 0);
+        };
+
+        updateReady();
+
+        if (typeof ResizeObserver === 'undefined') {
+            const raf = requestAnimationFrame(updateReady);
+            return () => cancelAnimationFrame(raf);
+        }
+
+        const observer = new ResizeObserver(() => updateReady());
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <div style={{ marginBottom: '22px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>{label}</span>
-                <span style={{ fontSize: '13px', fontWeight: '950', color: '#fff' }}>{percentage}%</span>
-            </div>
-            <div style={{ height: '4px', background: 'var(--glass)', borderRadius: '0px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percentage}%` }}
-                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ height: '100%', background: color, boxShadow: `0 0 10px ${color}33` }}
-                />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                <span style={{ fontSize: '8px', color: '#333', fontWeight: '800' }}>CUR: {current.toLocaleString()}</span>
-                <span style={{ fontSize: '8px', color: '#333', fontWeight: '800' }}>TGT: {target.toLocaleString()}</span>
-            </div>
+        <div ref={containerRef} style={{ width: '100%', height: `${height}px`, minWidth: 0, minHeight: `${height}px` }}>
+            {canRenderChart && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
+                    <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="glowGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.2} />
+                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                        <XAxis hide />
+                        <YAxis hide />
+                        <Area
+                            type="monotone"
+                            dataKey="value"
+                            stroke={color}
+                            strokeWidth={3}
+                            fill="url(#glowGradient)"
+                            isAnimationActive={true}
+                            dot={false}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            )}
         </div>
     );
 };
 
-function pickPlatformColor(label) {
-    const upper = (label || '').toUpperCase();
-    if (upper.includes('SPOT')) return '#1DB954';
-    if (upper.includes('APPLE')) return '#FA243C';
-    if (upper.includes('YT') || upper.includes('YOU')) return '#FF0000';
-    if (upper.includes('AMAZON')) return '#FF9900';
-    if (upper.includes('TIDAL')) return '#00A0FF';
-    if (upper.includes('DEEZER')) return '#A238FF';
-    if (upper.includes('TIKTOK')) return '#FE2C55';
-    return '#777';
-}
-
-// Local style removed to use shared style from ./styles.js
-
-export default function HomeView() {
+export default function HomeView({ onNavigate }) {
+    const { data: session } = useSession();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [range, setRange] = useState('12m'); // 3m, 6m, 12m
-    const [miniEarnings, setMiniEarnings] = useState([]);
-    const [miniPayments, setMiniPayments] = useState([]);
 
     useEffect(() => {
         fetchStats();
-        fetchMiniData();
     }, []);
 
     const fetchStats = async () => {
@@ -255,273 +169,145 @@ export default function HomeView() {
         finally { setLoading(false); }
     };
 
-    const fetchMiniData = async () => {
-        try {
-            const [earnRes, payRes] = await Promise.all([
-                fetch('/api/earnings'),
-                fetch('/api/payments')
-            ]);
-            if (earnRes.ok) {
-                const data = await earnRes.json();
-                const sorted = (data.earnings || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                setMiniEarnings(sorted.slice(0, 5));
-            }
-            if (payRes.ok) {
-                const data = await payRes.json();
-                const sorted = (data.payments || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                setMiniPayments(sorted.slice(0, 5));
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div style={{ padding: '100px', textAlign: 'center' }}>
-                <motion.p
-                    animate={{ opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#444' }}
-                >
-                    REFRESHING_ANALYTICS
-                </motion.p>
-            </div>
-        );
-    }
+    if (loading) return null;
     if (!stats) return null;
 
-    const cards = [
-        { label: 'GROSS_VOLUME', value: `$${(stats.counts.gross || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <DollarSign size={20} />, trend: '+12.5%' },
-        { label: 'NET_REVENUE', value: `$${(stats.counts.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <Briefcase size={20} />, trend: '+8.2%' },
-        { label: 'TOTAL_PAYOUTS', value: `$${(stats.counts.payouts || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#00ff88', icon: <CreditCard size={20} /> },
-        { label: 'TOTAL_USERS', value: stats.counts.users || 0, color: '#fff', icon: <Users size={20} /> },
-        { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: '#fff', icon: <Mic2 size={20} /> },
-        { label: 'TOTAL_RELEASES', value: stats.counts.albums || 0, color: '#fff', icon: <Disc size={20} /> },
-        { label: 'TOTAL_SONGS', value: stats.counts.songs || 0, color: '#fff', icon: <Music size={20} /> },
-        { label: 'TOTAL_DEMOS', value: stats.counts.totalDemos || 0, color: '#fff', icon: <FileAudio size={20} /> },
-        { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: stats.counts.pendingDemos > 0 ? 'var(--accent)' : '#fff', icon: <BarChart3 size={20} /> },
-        { label: 'OPEN_REQUESTS', value: stats.counts.pendingRequests, color: stats.counts.pendingRequests > 0 ? 'var(--status-warning)' : '#fff', icon: <AlertCircle size={20} /> }
-    ];
-
-    const chartData = (() => {
-        if (!stats?.trends) return [];
-        const arr = [...stats.trends];
-        if (range === '3m') return arr.slice(-3);
-        if (range === '6m') return arr.slice(-6);
-        return arr.slice(-12);
-    })();
-
-    const platformData = (stats?.platforms?.length ? stats.platforms : []).map(p => ({
-        label: p.label,
-        value: p.value,
-        color: pickPlatformColor(p.label)
-    }));
-
-    const revenueChartColor = '#8b5cf6';
-    const payoutChartColor = '#00ff88';
-
     return (
-        <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', padding: '0 10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <motion.div
-                        animate={{ opacity: [1, 0.4, 1] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        style={{ width: '8px', height: '8px', borderRadius: '0px', background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }}
-                    />
-                    <span style={{ fontSize: '10px', color: '#555', fontWeight: '900', letterSpacing: '4px' }}>SYSTEM_LIVE // ANALYTICS_REALTIME</span>
-                </div>
-                <div style={{ fontSize: '9px', color: '#333', fontWeight: '900', letterSpacing: '1px' }}>
-                    DATA_FETCHED: {new Date().toLocaleTimeString()}
-                </div>
-            </div>
-
-            {/* Stats Cards Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px', marginBottom: '36px' }}>
-                {cards.map((card, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        whileHover={{ y: -2, scale: 1.01 }}
-                        transition={{ duration: 0.4, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                        style={{
-                            padding: '32px 24px',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '16px',
-                            display: 'flex', flexDirection: 'column', gap: '16px',
-                            position: 'relative', overflow: 'hidden'
-                        }}
-                    >
-                        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', background: `radial-gradient(circle, ${card.color} 0%, transparent 70%)`, opacity: 0.1, pointerEvents: 'none', zIndex: 1 }} />
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 2 }}>
-                            <div style={{ color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                                {card.icon}
-                            </div>
-                            {card.trend && (
-                                <div style={{ fontSize: '10px', fontWeight: '900', color: card.trend.startsWith('+') ? '#00ff88' : '#ff4444', background: card.trend.startsWith('+') ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '6px 10px', borderRadius: '6px' }}>
-                                    {card.trend}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ position: 'relative', zIndex: 2 }}>
-                            <div style={{ fontSize: '9px', fontWeight: '950', color: '#888', letterSpacing: '1.5px', marginBottom: '8px' }}>{card.label}</div>
-                            <div style={{ fontSize: '32px', fontWeight: '950', color: '#fff', letterSpacing: '-1px' }}>{card.value}</div>
-                        </div>
-                    </motion.div>
+        <div style={{ padding: '0 0 40px 0', fontFamily: 'Space Grotesk, sans-serif' }}>
+            {/* Header Mini Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '12px' }}>
+                {[
+                    { label: 'Total Releases', value: stats.counts.releases },
+                    { label: 'Total Tracks', value: stats.counts.songs },
+                    { label: 'Total Videos', value: stats.counts.pendingDemos },
+                ].map((s, i) => (
+                    <div key={i} style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px' }}>
+                        <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, marginBottom: '4px' }}>{s.label}</p>
+                        <p style={{ fontSize: '20px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>{compactNumber(s.value)}</p>
+                    </div>
                 ))}
             </div>
 
-            {/* Main Content Area: Charts */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '22px', marginBottom: '36px' }}>
-                {/* Revenue Chart */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', background: `radial-gradient(circle, ${revenueChartColor} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
-                        <div>
-                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>REVENUE_OVERVIEW</h3>
-                            <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: revenueChartColor }} />
-                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#888' }}>ESTIMATED_VOLUME</span>
-                            </div>
-                            <div style={{ display: 'inline-flex', background: 'var(--glass)', borderRadius: '6px', padding: '4px', border: '1px solid var(--border)' }}>
-                                {['3m', '6m', '12m'].map(r => (
-                                    <button
-                                        key={r}
-                                        onClick={() => setRange(r)}
-                                        style={{
-                                            border: 'none',
-                                            background: range === r ? revenueChartColor : 'transparent',
-                                            color: range === r ? '#000' : '#888',
-                                            fontSize: '9px',
-                                            fontWeight: '950',
-                                            letterSpacing: '1px',
-                                            padding: '6px 14px',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {r.toUpperCase()}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'start' }}>
+                {/* LEFT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                    <div style={{ position: 'relative', zIndex: 2 }}>
-                        <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color={revenueChartColor} />
-                    </div>
-                </motion.div>
-
-                {/* Payout Trends Chart */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', background: `radial-gradient(circle, ${payoutChartColor} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 2 }}>
-                        <div>
-                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>PAYOUT_TRENDS</h3>
-                            <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: payoutChartColor }} />
-                            <span style={{ fontSize: '9px', fontWeight: '900', color: '#888' }}>FULFILLED_PAYMENTS</span>
-                        </div>
-                    </div>
-
-                    <div style={{ position: 'relative', zIndex: 2 }}>
-                        <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color={payoutChartColor} />
-                    </div>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.03, pointerEvents: 'none', zIndex: 1 }} />
-                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0, position: 'relative', zIndex: 2 }}>DISTRIBUTION</h3>
-                    <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', marginBottom: '25px', fontWeight: '800', position: 'relative', zIndex: 2 }}>REVENUE BY PLATFORM</p>
-                    <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <DonutChart data={platformData.length ? platformData : [
-                            { label: 'NO_DATA', value: 1, color: '#444' }
-                        ]} />
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Bottom Section: Goals, Top Performers, Recent Submit */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-                {/* Goals */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '200px', height: '200px', background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
-                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '950', color: '#fff', marginBottom: '30px', position: 'relative', zIndex: 2 }}>OPERATIONAL_GOALS</h3>
-                    <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <GoalProgress label="REVENUE_TARGET" current={stats.counts.gross} target={100000} color="var(--accent)" />
-                        <GoalProgress label="ARTIST_RETENTION" current={stats.counts.artists} target={1000} color="#fff" />
-                        <GoalProgress label="SUBMISSION_KPI" current={200 - stats.counts.pendingDemos} target={200} color="#888" />
-                    </div>
-                </motion.div>
-
-                {/* Top Performers */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}
-                >
+                    {/* Welcome Banner */}
                     <div style={{
-                        padding: '28px 32px',
-                        borderBottom: '1px solid rgba(255,255,255,0.04)',
-                        background: 'rgba(255,255,255,0.01)',
+                        background: 'linear-gradient(110deg, #064e3b 0%, #134e4a 50%, #164e63 100%)',
+                        borderRadius: '20px',
+                        padding: '40px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        position: 'relative', zIndex: 2
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minHeight: '220px',
+                        border: `1px solid ${DASHBOARD_THEME.border}`
                     }}>
-                        <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '950', color: '#fff', margin: 0 }}>TOP_PERFORMERS</h3>
-                        <Users size={18} color="#666" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
+                            <div style={{ width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${DASHBOARD_THEME.accent}4c` }}>
+                                <NextImage
+                                    src={normalizeImageSrc(session?.user?.image)}
+                                    width={90}
+                                    height={90}
+                                    alt="Avatar"
+                                    unoptimized
+                                    onError={handleImageError}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            </div>
+                            <div>
+                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome to LOST, {session?.user?.stageName || 'Admin'}!</h1>
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'right', zIndex: 1 }}>
+                            <p style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats.counts.gross || 0).toLocaleString()}</p>
+                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>Credit Available</p>
+                        </div>
+                        {/* Decorative background glow */}
+                        <div style={{ position: 'absolute', top: '-50%', right: '-30%', width: '100%', height: '200%', background: `radial-gradient(circle, ${DASHBOARD_THEME.accent}19 0%, transparent 60%)`, transform: 'rotate(-20deg)' }} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
-                        {stats.topArtists?.slice(0, 5).map((artist, i) => (
-                            <motion.div whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }} key={artist.id} style={{ padding: '20px 32px', borderBottom: i === 4 ? 'none' : '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background-color 0.2s', cursor: 'default' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: '950', color: i === 0 ? 'var(--accent)' : '#666', width: '25px' }}>#{i + 1}</div>
-                                    <div style={{ fontSize: '14px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{artist.name.toUpperCase()}</div>
+
+                    {/* Action Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        {[
+                            { title: 'Create Release', desc: 'Add a release to your catalog', icon: <RefreshCw size={20} />, target: 'submissions' },
+                            { title: 'Invite Team', desc: 'Invite users to use your account', icon: <Users size={20} />, target: 'users' },
+                        ].map((a, i) => (
+                            <div key={i} onClick={() => onNavigate(a.target)} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
+                                    {a.icon}
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: '950', color: i === 0 ? 'var(--accent)' : '#ccc' }}>{artist.monthlyListeners?.toLocaleString() || 0}</div>
-                                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1.5px', marginTop: '4px' }}>LISTENERS</div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>{a.title}</h4>
+                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
                                 </div>
-                            </motion.div>
+                                <ChevronRight size={18} color={DASHBOARD_THEME.accent} />
+                            </div>
                         ))}
                     </div>
-                </motion.div>
+
+                    {/* Recent Releases */}
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Recent Releases</h3>
+                            <button onClick={() => onNavigate('releases')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                            {stats.topArtists?.slice(0, 4).map((a, i) => (
+                                <div key={i} style={{ cursor: 'pointer' }}>
+                                    <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', background: '#000', marginBottom: '8px' }}>
+                                        <div style={{ width: '100%', height: '100%', background: `linear-gradient(45deg, #111, #222)`, position: 'relative' }}>
+                                            {/* Placeholder for real images */}
+                                        </div>
+                                    </div>
+                                    <p style={{ fontSize: '12px', fontWeight: '800', color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
+                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.monthlyListeners?.toLocaleString()} streams</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* RIGHT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <CircularProgress label="Top Retailer" subtitle="Spotify" value={88} />
+                    <CircularProgress label="Top Territory" subtitle="Brazil" value={63} />
+                    <CircularProgress label="Listener Behaviour" subtitle="Active" value={77} />
+
+                    {/* Total Streams Chart */}
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                            <div>
+                                <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h4>
+                                <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Last 6 months</p>
+                            </div>
+                            <button style={{ background: 'none', border: 'none', color: DASHBOARD_THEME.accent, fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>See Trends &gt;</button>
+                        </div>
+
+                        <div style={{ height: '140px', width: '100%', position: 'relative', margin: '16px 0' }}>
+                            <GlowChart data={stats.listenerTrends || []} color={DASHBOARD_THEME.accent} />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {[
+                                { name: 'Spotify', value: '124,422', color: '#1DB954' },
+                                { name: 'Apple Music', value: '231,332', color: '#FA2D48' }
+                            ].map((s, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: s.color }} />
+                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>{s.name}</span>
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>{s.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
-        </>
+        </div>
     );
 }

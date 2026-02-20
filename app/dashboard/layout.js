@@ -1,6 +1,7 @@
 "use client";
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -139,14 +140,14 @@ function DashboardLayoutContent({ children }) {
     const railWidth = isRailExpanded ? (isCompact ? 188 : 206) : (isCompact ? 72 : 82);
     const showRailLabels = isRailExpanded || isMobileNavOpen;
 
-    const shellBackground = isLight ? '#eff3f8' : '#04050A';
-    const shellColor = isLight ? '#192233' : '#E8EDF7';
-    const shellAccent = '#7C8DFF';
-    const shellAccent2 = '#7756FF';
-    const shellSurface = isLight ? '#ffffff' : '#080B12';
-    const shellSurface2 = isLight ? '#f4f7fb' : '#0D111B';
-    const shellBorder = isLight ? 'rgba(17,26,43,0.12)' : 'rgba(148,160,190,0.2)';
-    const shellMuted = isLight ? '#5f6f86' : '#8F9AB3';
+    const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
+    const shellColor = isLight ? '#1F2937' : '#FFFFFF';
+    const shellAccent = '#00e5a0'; // v0-ref Emerald/Mint
+    const shellAccent2 = '#00b8d4'; // v0-ref Cyan/Blue
+    const shellSurface = isLight ? '#FFFFFF' : '#141414'; // v0-ref Card Surface
+    const shellSurface2 = isLight ? '#F9FAFB' : '#1c1c1c'; // v0-ref Muted Surface
+    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : '#2a2a2a'; // v0-ref Border
+    const shellMuted = isLight ? '#6B7280' : '#888888'; // v0-ref Muted Foreground
 
     return (
         <div
@@ -172,9 +173,7 @@ function DashboardLayoutContent({ children }) {
                     position: 'fixed',
                     inset: 0,
                     pointerEvents: 'none',
-                    background: isLight
-                        ? 'radial-gradient(1200px 680px at 16% -10%, rgba(119,86,255,0.14), transparent 60%), radial-gradient(900px 520px at 96% -12%, rgba(124,141,255,0.12), transparent 58%)'
-                        : 'radial-gradient(1200px 680px at 16% -10%, rgba(119,86,255,0.22), transparent 58%), radial-gradient(900px 520px at 96% -12%, rgba(124,141,255,0.18), transparent 56%)'
+                    background: 'transparent'
                 }}
             />
 
@@ -235,8 +234,8 @@ function DashboardLayoutContent({ children }) {
                     <header className="window-toolbar">
                         <div className="window-toolbar-left">
                             <div className="bc-logo">
-                                <Disc className="bc-logo-icon" size={24} />
-                                <span className="bc-logo-text">beatclap</span>
+                                <Image src="/logo.png" alt="LOST" width={32} height={32} className="bc-logo-img" />
+                                <span className="bc-logo-text" style={{ textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '950' }}>LOST</span>
                             </div>
                         </div>
 
@@ -302,11 +301,11 @@ function DashboardLayoutContent({ children }) {
                     z-index: 100;
                     display: flex;
                     flex-direction: column;
-                    background: linear-gradient(180deg, color-mix(in srgb, var(--surface), #000 8%), color-mix(in srgb, var(--surface-2), #000 10%));
+                    background: #0a0a0a;
                     border: 1px solid var(--border);
                     border-radius: 20px;
-                    box-shadow: 0 24px 80px rgba(5, 8, 14, 0.45);
-                    backdrop-filter: blur(16px);
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(20px);
                     overflow: hidden;
                     transition: width 0.28s ease;
                 }
@@ -485,8 +484,8 @@ function DashboardLayoutContent({ children }) {
                     min-height: calc(100vh - 32px);
                     border-radius: 24px;
                     border: 1px solid var(--border);
-                    background: linear-gradient(180deg, color-mix(in srgb, var(--surface), #fff 2%), color-mix(in srgb, var(--surface-2), #000 8%));
-                    box-shadow: 0 30px 80px rgba(2, 6, 14, 0.48);
+                    background: #0a0a0a;
+                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
