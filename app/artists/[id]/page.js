@@ -45,7 +45,7 @@ export default async function ArtistDetailPage({ params }) {
         return (
             <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <h1 style={{ fontSize: 'clamp(30px, 5vw, 60px)', fontWeight: '900', letterSpacing: '-0.04em' }}>ARTIST_NOT_FOUND</h1>
-                <Link href="/artists" style={{ color: 'var(--accent)', fontSize: '11px', marginTop: '30px', fontWeight: '900', letterSpacing: '2px', textDecoration: 'none' }}>
+                <Link href="/artists" style={{ color: 'rgba(229,231,235,0.9)', fontSize: '11px', marginTop: '30px', fontWeight: '900', letterSpacing: '2px', textDecoration: 'none' }}>
                     ← RETURN_TO_ROSTER
                 </Link>
             </div>

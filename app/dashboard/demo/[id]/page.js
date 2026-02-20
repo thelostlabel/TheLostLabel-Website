@@ -120,241 +120,156 @@ export default function DemoReviewPage({ params }) {
     const activeFileUrl = activeFile ? `/api/files/demo/${activeFile.id}` : null;
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            {/* Header / Nav */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-                <Link href="/dashboard?view=submissions" style={{
-                    fontSize: '10px',
-                    fontWeight: '800',
-                    letterSpacing: '2px',
-                    color: '#8b92a7',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px'
-                }}>
+        <div className="demo-review-shell">
+            <div className="demo-review-head">
+                <Link href="/dashboard?view=submissions" className="subtle-link">
                     ← BACK TO SUBMISSIONS
                 </Link>
-                <div style={{ display: 'flex', gap: '15px' }}>
-                    <span style={{ fontSize: '10px', color: '#333', fontWeight: '800', letterSpacing: '1px' }}>ID: {demo.id.substring(0, 8)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className="chip">ID: {demo.id.substring(0, 8)}</span>
+                    <span className="chip" style={{ color: getStatusColor(demo.status), borderColor: `${getStatusColor(demo.status)}55` }}>
+                        {demo.status.toUpperCase()}
+                    </span>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '50px', alignItems: 'start' }}>
-
-                {/* Left Side: Detail & Player */}
+            <div className="demo-review-grid">
                 <div>
-                    <div style={{ marginBottom: '50px' }}>
-                        <p style={{ fontSize: '10px', color: 'var(--accent)', letterSpacing: '4px', fontWeight: '800', marginBottom: '15px' }}>
-                            {demo.status.toUpperCase()} SUBMISSION
-                        </p>
-                        <h1 style={{ fontSize: '48px', marginBottom: '15px', fontWeight: '900', letterSpacing: '-1px' }}>{demo.title}</h1>
-                        <div style={{ display: 'flex', gap: '30px', color: '#8b92a7', fontSize: '13px', fontWeight: '600' }}>
-                            <span style={{ color: '#cdd3e1' }}>{demo.genre}</span>
+                    <div className="panel hero-panel">
+                        <p className="kicker">DEMO REVIEW</p>
+                        <h1 className="title">{demo.title}</h1>
+                        <div className="meta-row">
+                            <span>{demo.genre || 'Unknown Genre'}</span>
                             <span>•</span>
-                            <span>Submitted {new Date(demo.createdAt).toLocaleDateString()} at {new Date(demo.createdAt).toLocaleTimeString()}</span>
+                            <span>{new Date(demo.createdAt).toLocaleDateString()} {new Date(demo.createdAt).toLocaleTimeString()}</span>
                         </div>
                     </div>
 
-                    {/* Artist Box */}
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '30px', borderRadius: '12px', marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 12px 40px rgba(0,0,0,0.35)' }}>
+                    <div className="panel artist-panel">
                         <div>
-                            <p style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '8px' }}>ARTIST PROFILE</p>
-                            <h2 style={{ fontSize: '24px' }}>{demo.artist?.stageName || 'Anonymous'}</h2>
-                            <p style={{ color: '#666', fontSize: '13px' }}>{demo.artist?.email}</p>
+                            <p className="kicker">ARTIST PROFILE</p>
+                            <h2 style={{ fontSize: '22px', margin: '6px 0 4px 0', fontWeight: 900 }}>{demo.artist?.stageName || 'Anonymous'}</h2>
+                            <p style={{ color: '#777', fontSize: '13px', margin: 0 }}>{demo.artist?.email}</p>
                         </div>
                         {demo.artist?.spotifyUrl && (
-                            <a href={demo.artist.spotifyUrl} target="_blank" className="glow-button" style={{ padding: '10px 20px', fontSize: '10px' }}>
+                            <a href={demo.artist.spotifyUrl} target="_blank" rel="noreferrer" className="primary-btn" style={{ padding: '10px 16px', width: 'auto' }}>
                                 SPOTIFY PROFILE
                             </a>
                         )}
                     </div>
 
-                    {/* Message */}
-                    <div style={{ marginBottom: '40px' }}>
-                        <h4 style={{ fontSize: '11px', color: '#444', letterSpacing: '2px', fontWeight: '800', marginBottom: '15px' }}>MESSAGE FROM ARTIST</h4>
-                        <div style={{
-                            background: 'var(--surface)',
-                            padding: '30px',
-                            borderRadius: '8px',
-                            fontSize: '15px',
-                            lineHeight: '1.8',
-                            color: '#ccc',
-                            border: '1px solid var(--border)',
-                            whiteSpace: 'pre-wrap'
-                        }}>
+                    <div className="panel" style={{ marginTop: '14px' }}>
+                        <h4 className="kicker" style={{ marginBottom: '12px' }}>MESSAGE FROM ARTIST</h4>
+                        <div className="message-box">
                             {demo.message || "The artist did not include a message with this submission."}
                         </div>
                     </div>
 
-                    {/* Audio Player Section */}
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '40px', borderRadius: '12px' }}>
-                        <h4 style={{ fontSize: '10px', color: 'var(--accent)', letterSpacing: '2px', fontWeight: '800', marginBottom: '20px' }}>STUDIO PLAYER</h4>
+                    <div className="panel" style={{ marginTop: '14px' }}>
+                        <h4 className="kicker" style={{ marginBottom: '16px' }}>STUDIO PLAYER</h4>
 
                         {activeFile ? (
                             <div>
-                                <div style={{
-                                    background: 'var(--surface-hover)',
-                                    padding: '30px',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--border)',
-                                    marginBottom: '20px',
-                                    textAlign: 'center'
-                                }}>
-                                    <p style={{ fontSize: '12px', color: '#555', marginBottom: '20px' }}>
-                                        NOW MONITORING: <span style={{ color: '#fff', fontWeight: '800' }}>{activeFile.filename.toUpperCase()}</span>
+                                <div className="player-box">
+                                    <p style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
+                                        NOW PLAYING: <span style={{ color: '#fff', fontWeight: 800 }}>{activeFile.filename.toUpperCase()}</span>
                                     </p>
-                                    <audio controls key={activeFileUrl} style={{ width: '100%', height: '54px' }}>
+                                    <audio controls key={activeFileUrl} style={{ width: '100%', height: '52px' }}>
                                         <source src={activeFileUrl} type="audio/wav" />
                                         <source src={activeFileUrl} type="audio/mpeg" />
                                         Your browser does not support the audio element.
                                     </audio>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-                                    <a href={`${activeFileUrl}?download=1`} download className="btn-secondary" style={{ padding: '12px 25px', fontSize: '11px', letterSpacing: '1px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+                                    <a href={`${activeFileUrl}?download=1`} download className="secondary-btn" style={{ padding: '10px 16px', fontSize: '10px' }}>
                                         DOWNLOAD SOURCE FILE
                                     </a>
                                 </div>
                             </div>
                         ) : demo.trackLink ? (
-                            <div style={{ textAlign: 'center', padding: '40px', border: '2px dashed var(--border)', borderRadius: '8px' }}>
-                                <p style={{ fontSize: '13px', color: '#666', marginBottom: '25px' }}>This submission is hosted on an external platform.</p>
-                                <a href={demo.trackLink} target="_blank" className="glow-button" style={{ padding: '15px 40px' }}>
+                            <div className="player-box" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
+                                <p style={{ fontSize: '13px', color: '#666', marginBottom: '18px' }}>This submission is hosted on an external platform.</p>
+                                <a href={demo.trackLink} target="_blank" rel="noreferrer" className="primary-btn" style={{ width: 'auto', padding: '11px 20px' }}>
                                     OPEN EXTERNAL LINK
                                 </a>
                             </div>
                         ) : (
-                            <div style={{ textAlign: 'center', padding: '40px', color: '#444' }}>No audio data provided.</div>
+                            <div style={{ textAlign: 'center', padding: '36px', color: '#555' }}>No audio data provided.</div>
                         )}
                     </div>
                 </div>
 
-                {/* Right Side: Files & Actions */}
-                <div style={{ position: 'sticky', top: '40px' }}>
-
-                    {/* File List */}
-                    <div style={{ marginBottom: '40px' }}>
-                        <h4 style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '15px' }}>SUBMITTED FILES ({demo.files?.length || 0})</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <aside className="sidebar">
+                    <div className="panel">
+                        <h4 className="kicker" style={{ marginBottom: '12px' }}>SUBMITTED FILES ({demo.files?.length || 0})</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {demo.files?.map((file, idx) => (
-                                <div
+                                <button
                                     key={idx}
                                     onClick={() => setActiveFile(file)}
-                                    style={{
-                                        padding: '15px',
-                                        background: activeFile?.id === file.id ? 'var(--surface-hover)' : 'var(--surface)',
-                                        border: '1px solid',
-                                        borderColor: activeFile?.id === file.id ? 'var(--accent)' : 'var(--border)',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '15px'
-                                    }}
+                                    className={`file-item ${activeFile?.id === file.id ? 'active' : ''}`}
                                 >
-                                    <div style={{ fontSize: '20px' }}>{activeFile?.id === file.id ? '🔊' : '📁'}</div>
-                                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                                        <p style={{ fontSize: '12px', fontWeight: '800', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', color: activeFile?.id === file.id ? '#fff' : '#aaa' }}>
-                                            {file.filename}
-                                        </p>
-                                        <p style={{ fontSize: '10px', color: '#444' }}>{(file.filesize / (1024 * 1024)).toFixed(2)} MB</p>
-                                    </div>
-                                </div>
+                                    <span style={{ fontSize: '18px' }}>{activeFile?.id === file.id ? '🔊' : '📁'}</span>
+                                    <span style={{ flex: 1, overflow: 'hidden', textAlign: 'left' }}>
+                                        <span style={{ display: 'block', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{file.filename}</span>
+                                        <span style={{ display: 'block', fontSize: '10px', color: '#666' }}>{(file.filesize / (1024 * 1024)).toFixed(2)} MB</span>
+                                    </span>
+                                </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Action Panel */}
-                    <div className="glass" style={{ padding: '30px', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.35)' }}>
-                        <h4 style={{ fontSize: '10px', color: '#555', letterSpacing: '2px', fontWeight: '800', marginBottom: '20px' }}>A&R DECISION</h4>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                <button
-                                    onClick={() => handleStatusUpdate('reviewing')}
-                                    disabled={processing}
-                                    style={{
-                                        ...btnStyle,
-                                        background: demo.status === 'reviewing' ? 'rgba(255, 170, 0, 0.2)' : 'transparent',
-                                        color: '#ffaa00',
-                                        borderColor: '#ffaa0040',
-                                        opacity: processing ? 0.5 : 1
-                                    }}
-                                >
-                                    REVIEWING
-                                </button>
-                                <button
-                                    onClick={() => handleStatusUpdate('pending')}
-                                    disabled={processing}
-                                    style={{
-                                        ...btnStyle,
-                                        background: demo.status === 'pending' ? 'rgba(255,255,255,0.05)' : 'transparent',
-                                        color: '#fff',
-                                        borderColor: 'rgba(255,255,255,0.1)',
-                                        opacity: processing ? 0.5 : 1
-                                    }}
-                                >
-                                    PENDING
-                                </button>
-                            </div>
+                    <div className="panel" style={{ marginTop: '14px' }}>
+                        <h4 className="kicker" style={{ marginBottom: '14px' }}>A&R DECISION</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
                             <button
-                                onClick={() => handleStatusUpdate('approved')}
+                                onClick={() => handleStatusUpdate('reviewing')}
                                 disabled={processing}
-                                style={{
-                                    ...btnStyle,
-                                    background: demo.status === 'approved' ? 'rgba(245, 197, 66, 0.22)' : 'transparent',
-                                    color: 'var(--accent)',
-                                    borderColor: 'rgba(245, 197, 66, 0.4)',
-                                    opacity: processing ? 0.5 : 1
-                                }}
+                                style={{ ...btnStyle, background: demo.status === 'reviewing' ? 'rgba(245,158,11,0.14)' : 'transparent', color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)', opacity: processing ? 0.5 : 1 }}
                             >
-                                {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
+                                REVIEWING
                             </button>
                             <button
-                                onClick={() => handleStatusUpdate('rejected')}
+                                onClick={() => handleStatusUpdate('pending')}
                                 disabled={processing}
-                                style={{
-                                    ...btnStyle,
-                                    background: demo.status === 'rejected' ? 'rgba(255, 68, 68, 0.2)' : 'transparent',
-                                    color: '#ff4444',
-                                    borderColor: '#ff444440',
-                                    opacity: processing ? 0.5 : 1
-                                }}
+                                style={{ ...btnStyle, background: demo.status === 'pending' ? 'rgba(255,255,255,0.06)' : 'transparent', color: '#ddd', borderColor: 'rgba(255,255,255,0.12)', opacity: processing ? 0.5 : 1 }}
                             >
-                                {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
+                                PENDING
                             </button>
                         </div>
+                        <button
+                            onClick={() => handleStatusUpdate('approved')}
+                            disabled={processing}
+                            style={{ ...btnStyle, background: demo.status === 'approved' ? 'rgba(209,213,219,0.18)' : 'transparent', color: '#d1d5db', borderColor: 'rgba(209,213,219,0.35)', marginBottom: '8px', opacity: processing ? 0.5 : 1 }}
+                        >
+                            {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
+                        </button>
+                        <button
+                            onClick={() => handleStatusUpdate('rejected')}
+                            disabled={processing}
+                            style={{ ...btnStyle, background: demo.status === 'rejected' ? 'rgba(239,68,68,0.18)' : 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)', opacity: processing ? 0.5 : 1 }}
+                        >
+                            {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
+                        </button>
 
                         {demo.status === 'approved' && (
-                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-                                <Link
-                                    href={`/dashboard/demo/${id}/finalize`}
-                                    className="glow-button"
-                                    style={{
-                                        width: '100%',
-                                        padding: '15px',
-                                        fontSize: '12px',
-                                        display: 'block',
-                                        textAlign: 'center',
-                                        textDecoration: 'none'
-                                    }}
-                                >
-                                    PROCEED TO FINALIZATION & CONTRACT
+                            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                                <Link href={`/dashboard/demo/${id}/finalize`} className="primary-btn" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: '12px 14px' }}>
+                                    PROCEED TO FINALIZATION
                                 </Link>
-                                <p style={{ fontSize: '9px', color: '#444', textAlign: 'center', marginTop: '10px', letterSpacing: '1px' }}>
-                                    You will be guided through identity, financials, and assets.
+                                <p style={{ fontSize: '9px', color: '#555', textAlign: 'center', marginTop: '8px', letterSpacing: '0.8px' }}>
+                                    Identity, financials and contract setup.
                                 </p>
                             </div>
                         )}
 
-                        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '11px', color: '#666' }}>
-                            {demo.reviewedBy && (
-                                <p>Last handle by <strong>{demo.reviewedBy}</strong></p>
-                            )}
-                        </div>
+                        {demo.reviewedBy && (
+                            <p style={{ marginTop: '12px', fontSize: '10px', color: '#666', textAlign: 'center' }}>
+                                Last handled by <strong style={{ color: '#bbb' }}>{demo.reviewedBy}</strong>
+                            </p>
+                        )}
 
-                        <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
                             <button
                                 onClick={() => {
                                     showConfirm(
@@ -366,25 +281,172 @@ export default function DemoReviewPage({ params }) {
                                                     showToast("Demo deleted successfully", "success");
                                                     router.push('/dashboard?view=submissions');
                                                 })
-                                                .catch(err => showToast("Failed to delete demo", "error"));
+                                                .catch(() => showToast("Failed to delete demo", "error"));
                                         }
                                     );
                                 }}
-                                style={{ background: 'none', border: 'none', color: '#333', fontSize: '10px', fontWeight: '800', cursor: 'pointer', width: '100%' }}
+                                style={{ background: 'none', border: 'none', color: '#555', fontSize: '10px', fontWeight: 800, cursor: 'pointer', width: '100%' }}
                             >
                                 DELETE RECORD
                             </button>
                         </div>
                     </div>
-
-                </div>
+                </aside>
             </div>
 
-
             <style jsx>{`
-                .glow-button { background: #fff; color: #000; border: none; box-shadow: 0 4px 20px rgba(255,255,255,0.1); }
-                .glow-button:hover { background: var(--accent); box-shadow: 0 4px 25px rgba(245,197,66,0.35); transform: translateY(-2px); }
-                .glow-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+                .demo-review-shell {
+                    max-width: 1240px;
+                    margin: 0 auto;
+                }
+                .demo-review-head {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 22px;
+                    gap: 12px;
+                }
+                .demo-review-grid {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) 360px;
+                    gap: 18px;
+                    align-items: start;
+                }
+                .sidebar {
+                    position: sticky;
+                    top: 24px;
+                }
+                .subtle-link {
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 1.6px;
+                    color: #8b8b8b;
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .chip {
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 1px;
+                    color: #777;
+                    border: 1px solid var(--border);
+                    border-radius: 999px;
+                    padding: 6px 10px;
+                    background: rgba(255,255,255,0.02);
+                }
+                .panel {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 14px;
+                    padding: 22px;
+                    box-shadow: 0 14px 36px rgba(0,0,0,0.32);
+                }
+                .hero-panel {
+                    margin-bottom: 14px;
+                }
+                .artist-panel {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 14px;
+                }
+                .kicker {
+                    margin: 0;
+                    font-size: 10px;
+                    letter-spacing: 2px;
+                    font-weight: 800;
+                    color: #666;
+                }
+                .title {
+                    font-size: clamp(30px, 4vw, 46px);
+                    margin: 10px 0 10px 0;
+                    font-weight: 900;
+                    letter-spacing: -0.8px;
+                }
+                .meta-row {
+                    display: flex;
+                    gap: 14px;
+                    align-items: center;
+                    color: #8b8b8b;
+                    font-size: 12px;
+                    font-weight: 600;
+                    flex-wrap: wrap;
+                }
+                .message-box {
+                    background: #101010;
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    padding: 18px;
+                    white-space: pre-wrap;
+                    color: #c9c9c9;
+                    line-height: 1.7;
+                    font-size: 14px;
+                }
+                .player-box {
+                    background: #101010;
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    padding: 16px;
+                }
+                .file-item {
+                    width: 100%;
+                    padding: 12px;
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                    background: #101010;
+                    color: #bbb;
+                    cursor: pointer;
+                    transition: all 0.18s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .file-item:hover {
+                    border-color: #3a3a3a;
+                }
+                .file-item.active {
+                    border-color: #9ca3af;
+                    background: #151515;
+                    color: #fff;
+                }
+                .primary-btn {
+                    background: #fff;
+                    color: #000;
+                    border: none;
+                    border-radius: 10px;
+                    font-size: 10px;
+                    font-weight: 900;
+                    letter-spacing: 1px;
+                    cursor: pointer;
+                    transition: transform .16s ease, opacity .16s ease;
+                }
+                .primary-btn:hover {
+                    transform: translateY(-1px);
+                    opacity: .92;
+                }
+                .secondary-btn {
+                    border: 1px solid var(--border);
+                    background: transparent;
+                    color: #d1d5db;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    font-weight: 800;
+                    letter-spacing: 1px;
+                }
+                @media (max-width: 980px) {
+                    .demo-review-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .sidebar {
+                        position: static;
+                    }
+                    .artist-panel {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                }
             `}</style>
         </div>
     );

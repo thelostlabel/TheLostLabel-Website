@@ -123,7 +123,7 @@ export default function ArtistsPage() {
                             initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
                             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
                             transition={{ duration: 0.8, ease: "easeOut" }}
-                            style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "var(--accent)" }}
+                            style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "#FFFFFF" }}
                         >
                             LOST.
                         </motion.div>
@@ -131,7 +131,7 @@ export default function ArtistsPage() {
                             initial={{ width: 0 }}
                             animate={{ width: "200px" }}
                             transition={{ duration: 1.5, ease: "easeInOut" }}
-                            style={{ height: "2px", background: "rgba(158,240,26,0.5)", marginTop: "24px", borderRadius: "2px" }}
+                            style={{ height: "2px", background: "rgba(255,255,255,0.45)", marginTop: "24px", borderRadius: "2px" }}
                         />
                     </motion.div>
                 )}
@@ -144,7 +144,7 @@ export default function ArtistsPage() {
                 <motion.div
                     style={{
                         position: 'fixed', top: 0, left: 0, right: 0, height: '2px',
-                        background: 'var(--accent)', transformOrigin: '0%', zIndex: 2000, scaleX
+                        background: 'rgba(229,231,235,0.9)', transformOrigin: '0%', zIndex: 2000, scaleX
                     }}
                 />
 
@@ -160,9 +160,9 @@ export default function ArtistsPage() {
                                     initial={{ width: 0 }}
                                     animate={{ width: 40 }}
                                     transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                                    style={{ height: '1px', background: 'var(--accent)' }}
+                                    style={{ height: '1px', background: 'rgba(229,231,235,0.8)' }}
                                 ></motion.div>
-                                <span style={{ fontSize: '10px', letterSpacing: '4px', color: 'var(--accent)', fontWeight: '900' }}>DISCOVER</span>
+                                <span style={{ fontSize: '10px', letterSpacing: '4px', color: 'rgba(229,231,235,0.9)', fontWeight: '900' }}>DISCOVER</span>
                             </div>
                             <h1 style={{
                                 fontSize: 'clamp(40px, 8vw, 80px)',
@@ -296,7 +296,7 @@ export default function ArtistsPage() {
                                                 {artist.name}
                                             </h3>
                                             <div style={{ marginBottom: '20px' }}>
-                                                <p style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                                                <p style={{ fontSize: '10px', color: 'rgba(229,231,235,0.9)', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
                                                     {artist.monthlyListeners?.toLocaleString() || 0} Listeners
                                                 </p>
                                                 <p style={{ fontSize: '9px', color: '#444', fontWeight: '800', marginTop: '5px', letterSpacing: '1px' }}>

@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ArtistView from '@/app/components/dashboard/ArtistView';
 import AdminView from '@/app/components/dashboard/AdminView';
+import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 
 function DashboardContent() {
     const { data: session, status, update } = useSession();
@@ -36,7 +37,7 @@ function DashboardContent() {
     }, [session, update]);
 
     if (status === 'loading') {
-        return <div style={{ padding: '80px', textAlign: 'center', color: '#444', letterSpacing: '2px' }}>AUTHENTICATING...</div>;
+        return <DashboardLoader label="AUTHENTICATING" subLabel="Checking your dashboard access..." />;
     }
 
     if (!session) {
@@ -104,7 +105,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
     return (
-        <Suspense fallback={<div style={{ padding: '80px', textAlign: 'center', color: '#444' }}>Loading...</div>}>
+        <Suspense fallback={<DashboardLoader label="LOADING DASHBOARD" subLabel="Preparing workspace..." />}>
             <DashboardContent />
         </Suspense>
     );

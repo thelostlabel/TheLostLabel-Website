@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,13 +22,13 @@ const DASHBOARD_THEME = {
     surfaceElevated: '#1c1c1c',
     surfaceSoft: '#2a2a2a',
     border: '#2a2a2a',
-    borderStrong: 'rgba(0,229,160,0.25)',
+    borderStrong: 'rgba(209,213,219,0.3)',
     text: '#FFFFFF',
     muted: '#888888',
-    accent: '#00e5a0', // v0-ref Emerald/Mint
-    accentHover: '#7DEEE6', // Keeping existing as not specified in change
-    accentDark: '#0E746C', // Keeping existing as not specified in change
-    accentAlt: '#4422A5', // Keeping existing as not specified in change
+    accent: '#D1D5DB',
+    accentHover: '#E5E7EB',
+    accentDark: '#9CA3AF',
+    accentAlt: '#6B7280',
     success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444'
@@ -1076,87 +1076,83 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
     const availableCredit = stats.available ?? stats.balance ?? 0;
     const totalReleases = stats.releases || 0;
     const totalTracks = stats.songs || 0;
-    const totalVideos = 0;
+    const totalStreams = stats.streams || (Array.isArray(stats.trends) ? stats.trends.reduce((acc, point) => acc + (Number(point?.value) || 0), 0) : 0);
+    const [chartRange, setChartRange] = useState('90D');
 
-    const CircularProgress = ({ value, label, subtitle, size = 60 }) => {
-        const strokeWidth = 5;
-        const radius = (size - strokeWidth) / 2;
-        const circumference = 2 * Math.PI * radius;
-        const offset = circumference - (value / 100) * circumference;
+    const rangeSize = useMemo(() => {
+        const map = { '7D': 7, '30D': 30, '90D': 90, '180D': 180 };
+        return map[chartRange] || 90;
+    }, [chartRange]);
 
-        return (
-            <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>{label}</h4>
-                        <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, marginTop: '4px' }}>{subtitle}</p>
-                    </div>
-                    <div style={{ position: 'relative', width: size, height: size }}>
-                        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
-                            <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
-                            <circle
-                                cx={size / 2}
-                                cy={size / 2}
-                                r={radius}
-                                fill="none"
-                                stroke={DASHBOARD_THEME.accent}
-                                strokeWidth={strokeWidth}
-                                strokeDasharray={circumference}
-                                strokeDashoffset={offset}
-                                strokeLinecap="round"
-                            />
-                        </svg>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <div>
-                        <p style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '1px' }}>CURRENT</p>
-                        <p style={{ fontSize: '18px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: '2px 0 0 0' }}>{value.toLocaleString()} <span style={{ fontSize: '10px', fontWeight: '500', color: 'rgba(24,212,199,0.5)' }}>8% <TrendingUp size={10} /></span></p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '1px' }}>% OF GLOBAL</p>
-                        <p style={{ fontSize: '18px', fontWeight: '900', color: '#fff', margin: '2px 0 0 0' }}>{Math.round(value / 20)}%</p>
-                    </div>
-                </div>
-            </div >
-        );
-    };
+    const listenerTrend = useMemo(() => {
+        const data = Array.isArray(stats.listenerTrend) ? stats.listenerTrend : [];
+        return data.slice(-rangeSize);
+    }, [stats.listenerTrend, rangeSize]);
+
+    const streamTrend = useMemo(() => {
+        const data = Array.isArray(stats.trends) ? stats.trends : [];
+        return data.slice(-rangeSize);
+    }, [stats.trends, rangeSize]);
+
+    const platformBreakdown = useMemo(() => {
+        const spotifyStreams = Number(stats.spotifyStreams || stats.streams || 0);
+        const appleStreams = Number(stats.appleStreams || Math.floor((stats.streams || 0) * 0.45));
+        const total = spotifyStreams + appleStreams;
+        return [
+            {
+                name: 'Spotify',
+                value: spotifyStreams,
+                color: '#1DB954',
+                percent: total > 0 ? (spotifyStreams / total) * 100 : 0
+            },
+            {
+                name: 'Apple Music',
+                value: appleStreams,
+                color: '#FA2D48',
+                percent: total > 0 ? (appleStreams / total) * 100 : 0
+            }
+        ];
+    }, [stats.spotifyStreams, stats.appleStreams, stats.streams]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Header Mini Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div className="overview-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
                 {[
                     { label: 'Total Releases', value: totalReleases },
                     { label: 'Total Tracks', value: totalTracks },
-                    { label: 'Total Videos', value: totalVideos },
+                    { label: 'Total Streams', value: totalStreams },
                 ].map((s, i) => (
-                    <div key={i} style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px' }}>
-                        <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, marginBottom: '4px' }}>{s.label}</p>
-                        <p style={{ fontSize: '20px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>{(s.value || 0).toLocaleString()}</p>
+                    <div key={i} style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, margin: 0 }}>{s.label}</p>
+                        <p style={{ fontSize: '22px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: 0 }}>{(s.value || 0).toLocaleString()}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>Updated now</span>
+                            <TrendingUp size={13} color="#9ca3af" />
+                        </div>
                     </div>
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'start' }}>
+            <div className="overview-main-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'start' }}>
                 {/* LEFT COLUMN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
                     {/* Welcome Banner */}
                     <div style={{
-                        background: 'linear-gradient(110deg, #064e3b 0%, #134e4a 50%, #164e63 100%)',
+                        background: 'linear-gradient(130deg, #111111 0%, #171717 60%, #101010 100%)',
                         borderRadius: '20px',
-                        padding: '40px',
+                        padding: '30px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         position: 'relative',
                         overflow: 'hidden',
-                        minHeight: '220px',
+                        minHeight: '180px',
                         border: `1px solid ${DASHBOARD_THEME.border}`
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
-                            <div style={{ width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${DASHBOARD_THEME.accent}4c` }}>
+                            <div style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
                                 <NextImage
                                     src={resolveImageSrc(session?.user?.image)}
                                     width={90}
@@ -1169,19 +1165,20 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             </div>
                             <div>
                                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome, {session?.user?.stageName || 'Artist'}!</h1>
+                                <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: 0 }}>WELCOME, {session?.user?.stageName || 'Artist'}!</h1>
+                                <p style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af', fontWeight: '700' }}>Artist Dashboard Overview</p>
                             </div>
                         </div>
                         <div style={{ textAlign: 'right', zIndex: 1 }}>
-                            <p style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString()}</p>
-                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>Balance Available</p>
+                            <p style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>BALANCE AVAILABLE</p>
+                            <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '700', marginTop: '10px' }}>Monthly listeners: {Number(stats.listeners || 0).toLocaleString()}</p>
                         </div>
-                        {/* Decorative background glow */}
-                        <div style={{ position: 'absolute', top: '-50%', right: '-30%', width: '100%', height: '200%', background: `radial-gradient(circle, ${DASHBOARD_THEME.accent}19 0%, transparent 60%)`, transform: 'rotate(-20deg)' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(255,255,255,0.09), transparent 42%)' }} />
                     </div>
 
                     {/* Action Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="overview-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         {[
                             { title: 'Create Release', desc: 'Add a release to your catalog', icon: <Disc size={20} />, action: () => onNavigate('submit') },
                             { title: 'Support', desc: 'Open a request and talk with admin', icon: <Users size={20} />, action: () => onNavigate('support') },
@@ -1205,7 +1202,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             <h3 style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '1px' }}>RECENT_RELEASES</h3>
                             <button onClick={() => onNavigate('releases')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                        <div className="overview-release-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                             {recentReleases.length === 0 ? (
                                 <p style={{ color: DASHBOARD_THEME.muted, fontSize: '11px' }}>No releases found.</p>
                             ) : (
@@ -1235,11 +1232,33 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h4>
-                            <TrendingUp size={16} color={DASHBOARD_THEME.accent} />
+                            <div>
+                                <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h4>
+                                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0 0' }}>{Number(stats.listeners || 0).toLocaleString()} current</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                {['7D', '30D', '90D', '180D'].map((range) => (
+                                    <button
+                                        key={range}
+                                        onClick={() => setChartRange(range)}
+                                        style={{
+                                            border: `1px solid ${range === chartRange ? '#d1d5db' : DASHBOARD_THEME.border}`,
+                                            background: range === chartRange ? '#d1d5db' : 'rgba(255,255,255,0.03)',
+                                            color: range === chartRange ? '#0b0b0b' : '#d1d5db',
+                                            fontSize: '10px',
+                                            fontWeight: '800',
+                                            borderRadius: '999px',
+                                            padding: '4px 8px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {range}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div style={{ height: '120px', width: '100%' }}>
-                            <RechartsAreaChart data={stats.listenerTrend || []} color={DASHBOARD_THEME.accent} height={120} />
+                        <div style={{ height: '170px', width: '100%' }}>
+                            <RechartsAreaChart data={listenerTrend} color={DASHBOARD_THEME.accent} height={170} />
                         </div>
                     </div>
 
@@ -1249,30 +1268,53 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                 <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h4>
                                 <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Last 6 months</p>
                             </div>
-                            <button style={{ background: 'none', border: 'none', color: DASHBOARD_THEME.accent, fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>See Trends &gt;</button>
+                            <button onClick={() => onNavigate('earnings')} style={{ background: 'none', border: 'none', color: DASHBOARD_THEME.accent, fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>See Details &gt;</button>
                         </div>
 
                         <div style={{ height: '140px', width: '100%', position: 'relative', margin: '16px 0' }}>
-                            <RechartsAreaChart data={stats.trends || []} color={DASHBOARD_THEME.accent} height={140} />
+                            <RechartsAreaChart data={streamTrend} color={DASHBOARD_THEME.accent} height={140} />
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {[
-                                { name: 'Spotify', value: (stats.streams || 0).toLocaleString(), color: '#1DB954' },
-                                { name: 'Apple Music', value: Math.floor((stats.streams || 0) * 0.45).toLocaleString(), color: '#FA2D48' }
-                            ].map((s, i) => (
+                            {platformBreakdown.map((s, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: s.color }} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: s.color }} />
                                         <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>{s.name}</span>
+                                        <div style={{ height: '6px', flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${Math.max(4, Math.round(s.percent))}%`, background: s.color, height: '100%' }} />
+                                        </div>
                                     </div>
-                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>{s.value}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>{Number(s.value || 0).toLocaleString()}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
             </div>
+            <style jsx>{`
+                @media (max-width: 1180px) {
+                    .overview-main-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+                @media (max-width: 900px) {
+                    .overview-release-grid {
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+                }
+                @media (max-width: 640px) {
+                    .overview-action-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .overview-kpi-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .overview-release-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 }
@@ -2595,13 +2637,13 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
     }, {})).sort((a, b) => b.spend - a.spend).slice(0, 5);
 
     const earningsTone = {
-        shellGlowA: 'rgba(0,229,160,0.11)',
-        shellGlowB: 'rgba(0,184,212,0.11)',
+        shellGlowA: 'rgba(209,213,219,0.1)',
+        shellGlowB: 'rgba(156,163,175,0.1)',
         panel: '#141414',
         panelSoft: '#1c1c1c',
         panelBorder: '#2a2a2a',
         muted: '#888888',
-        accent: '#00e5a0',
+        accent: '#D1D5DB',
         info: '#60A5FA'
     };
 

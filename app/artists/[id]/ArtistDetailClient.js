@@ -11,7 +11,7 @@ export default function ArtistDetailClient({ artist, releases }) {
         return (
             <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 5vw' }}>
                 <h1 style={{ fontSize: 'clamp(30px, 5vw, 60px)', fontWeight: '900', letterSpacing: '-0.04em' }}>ARTIST_NOT_FOUND</h1>
-                <Link href="/artists" style={{ color: 'var(--accent)', fontSize: '11px', marginTop: '30px', fontWeight: '900', letterSpacing: '2px', textDecoration: 'none' }}>
+                <Link href="/artists" style={{ color: 'rgba(229,231,235,0.9)', fontSize: '11px', marginTop: '30px', fontWeight: '900', letterSpacing: '2px', textDecoration: 'none' }}>
                     ← RETURN_TO_ROSTER
                 </Link>
             </div>
@@ -65,8 +65,8 @@ export default function ArtistDetailClient({ artist, releases }) {
                             style={{ flex: 1, minWidth: '300px' }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
-                                <div style={{ width: '40px', height: '1px', background: 'var(--accent)' }}></div>
-                                <span style={{ fontSize: '10px', letterSpacing: '4px', color: 'var(--accent)', fontWeight: '900' }}>BRAND_ARTIST</span>
+                                <div style={{ width: '40px', height: '1px', background: 'rgba(229,231,235,0.8)' }}></div>
+                                <span style={{ fontSize: '10px', letterSpacing: '4px', color: 'rgba(229,231,235,0.9)', fontWeight: '900' }}>BRAND_ARTIST</span>
                             </div>
                             <h1 style={{
                                 fontSize: 'clamp(42px, 8vw, 100px)',
@@ -86,7 +86,7 @@ export default function ArtistDetailClient({ artist, releases }) {
                                 {artist.monthlyListeners && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                         <span style={{ fontSize: '9px', color: '#444' }}>MONTHLY_LISTENERS</span>
-                                        <span style={{ color: 'var(--accent)' }}>{artist.monthlyListeners.toLocaleString('en-US')}</span>
+                                        <span style={{ color: 'rgba(229,231,235,0.9)' }}>{artist.monthlyListeners.toLocaleString('en-US')}</span>
                                     </div>
                                 )}
                                 {artist.genres?.[0] && (
@@ -150,7 +150,7 @@ export default function ArtistDetailClient({ artist, releases }) {
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
                         <h2 style={{ fontSize: '12px', letterSpacing: '5px', fontWeight: '900', color: '#444' }}>
-                            PROJECTS <span style={{ color: 'var(--accent)' }}>({releases.length})</span>
+                            PROJECTS <span style={{ color: 'rgba(229,231,235,0.9)' }}>({releases.length})</span>
                         </h2>
                         <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
                     </div>

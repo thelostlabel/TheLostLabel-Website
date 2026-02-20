@@ -18,6 +18,7 @@ import ContentView from './admin/ContentView';
 import WebhooksView from './admin/WebhooksView';
 import CommunicationsView from './admin/CommunicationsView';
 import SettingsView from './admin/SettingsView';
+import DashboardLoader from './DashboardLoader';
 
 export default function AdminView() {
     const { data: session } = useSession();
@@ -236,11 +237,7 @@ export default function AdminView() {
     }
 
     if (loading) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-                <div className="loader"></div>
-            </div>
-        );
+        return <DashboardLoader label="LOADING ADMIN PANEL" subLabel={`Fetching ${view.toUpperCase()} data...`} />;
     }
 
     return (

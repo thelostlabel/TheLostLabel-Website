@@ -33,6 +33,7 @@ import {
     HelpCircle,
     Book
 } from 'lucide-react';
+import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 
 function DashboardLayoutContent({ children }) {
     const { data: session, status } = useSession();
@@ -51,6 +52,7 @@ function DashboardLayoutContent({ children }) {
         const storedDensity = localStorage.getItem('dashboard_density_mode');
         return storedDensity === 'compact' || storedDensity === 'comfortable' ? storedDensity : 'comfortable';
     });
+    const [isViewTransitioning, setIsViewTransitioning] = useState(false);
 
     useEffect(() => {
         localStorage.setItem('dashboard_theme_mode', themeMode);
@@ -64,18 +66,14 @@ function DashboardLayoutContent({ children }) {
         setIsMobileNavOpen(false);
     }, [currentView]);
 
+    useEffect(() => {
+        setIsViewTransitioning(true);
+        const timer = setTimeout(() => setIsViewTransitioning(false), 360);
+        return () => clearTimeout(timer);
+    }, [currentView]);
+
     if (status === 'loading') {
-        return (
-            <div style={{ background: '#05020a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <motion.p
-                    animate={{ opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#4a5363' }}
-                >
-                    AUTHENTICATING_USER
-                </motion.p>
-            </div>
-        );
+        return <DashboardLoader fullScreen label="AUTHENTICATING" subLabel="Verifying access permissions..." />;
     }
 
     if (!session) {
@@ -142,8 +140,8 @@ function DashboardLayoutContent({ children }) {
 
     const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
-    const shellAccent = '#00e5a0'; // v0-ref Emerald/Mint
-    const shellAccent2 = '#00b8d4'; // v0-ref Cyan/Blue
+    const shellAccent = '#D1D5DB'; // Soft silver accent
+    const shellAccent2 = '#9CA3AF'; // Cool gray secondary accent
     const shellSurface = isLight ? '#FFFFFF' : '#141414'; // v0-ref Card Surface
     const shellSurface2 = isLight ? '#F9FAFB' : '#1c1c1c'; // v0-ref Muted Surface
     const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : '#2a2a2a'; // v0-ref Border
@@ -255,18 +253,32 @@ function DashboardLayoutContent({ children }) {
                         </div>
                     </header>
 
-                    <AnimatePresence mode="popLayout">
-                        <motion.section
-                            key={currentView}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.18, ease: 'easeOut' }}
-                            className="dashboard-content-container"
-                        >
-                            {children}
-                        </motion.section>
-                    </AnimatePresence>
+                    <div style={{ position: 'relative' }}>
+                        <AnimatePresence mode="popLayout">
+                            <motion.section
+                                key={currentView}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                                className="dashboard-content-container"
+                            >
+                                {children}
+                            </motion.section>
+                        </AnimatePresence>
+                        <AnimatePresence>
+                            {isViewTransitioning && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.15 }}
+                                >
+                                    <DashboardLoader overlay label="LOADING MODULE" subLabel={`Opening ${activeItem?.name || 'Dashboard'}...`} />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </main>
 

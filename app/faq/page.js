@@ -73,7 +73,7 @@ export default function FAQPage() {
                         transition={{ duration: 0.8 }}
                     >
                         <h1 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: '900', letterSpacing: '8px', marginBottom: '20px' }}>
-                            FREQUENTLY ASKED <span style={{ color: 'var(--accent)' }}>QUESTIONS</span>
+                            FREQUENTLY ASKED <span style={{ color: 'rgba(229,231,235,0.9)' }}>QUESTIONS</span>
                         </h1>
                         <p style={{ color: '#444', fontSize: '12px', fontWeight: '800', letterSpacing: '3px' }}>LOST MUSIC GROUP // ARTIST SUPPORT</p>
                     </motion.div>
