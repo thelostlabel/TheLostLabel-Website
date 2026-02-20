@@ -1,5 +1,5 @@
 export const glassStyle = {
-    background: '#11141D',
+    background: '#0E0E0E', // Neutral Deep Grey
     border: '1px solid var(--border)',
     borderRadius: '4px',
     overflow: 'hidden'
@@ -14,10 +14,10 @@ export const thStyle = {
     padding: '16px',
     fontSize: '9px',
     letterSpacing: '2px',
-    color: '#555',
+    color: '#444',
     fontWeight: '900',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    background: '#11141D',
+    borderBottom: '1px solid rgba(255,255,255,0.05)',
+    background: '#0E0E0E',
     textTransform: 'uppercase'
 };
 

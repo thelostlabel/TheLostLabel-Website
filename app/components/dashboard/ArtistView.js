@@ -17,11 +17,11 @@ import ProjectView from './ProjectView';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
 const DASHBOARD_THEME = {
-    bg: '#0B0D13',
-    surface: '#11141D', // Solid matte slate
-    surfaceElevated: '#171D27',
-    surfaceSoft: '#1D2533',
-    border: 'rgba(255,255,255,0.06)',
+    bg: '#080808',
+    surface: '#0E0E0E', // Neutral Deep Grey
+    surfaceElevated: '#121212',
+    surfaceSoft: '#181818',
+    border: 'rgba(255,255,255,0.04)',
     borderStrong: 'rgba(24,212,199,0.25)',
     text: '#FFFFFF',
     muted: '#8C98AC',
@@ -35,7 +35,7 @@ const DASHBOARD_THEME = {
 };
 
 const glassStyle = {
-    background: '#11141D', // Solid matte, no gradient
+    background: '#0E0E0E', // Solid matte, no gradient
     border: `1px solid ${DASHBOARD_THEME.border}`,
     borderRadius: '14px',
     overflow: 'hidden',
@@ -1294,7 +1294,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     gap: 14px;
                 }
                 .bc-action-card {
-                    background: #11141D;
+                    background: #0E0E0E;
                     border-radius: 14px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                     padding: 24px;
@@ -1304,7 +1304,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
                 }
                 .bc-action-card:hover {
-                    background: #171D27;
+                    background: #121212;
                     transform: translateY(-2px);
                     border-color: ${DASHBOARD_THEME.accent};
                 }
@@ -1363,7 +1363,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     aspect-ratio: 1/1;
                     border-radius: 10px;
                     overflow: hidden;
-                    background: #11141D;
+                    background: #0E0E0E;
                     margin-bottom: 12px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                 }
@@ -1381,7 +1381,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     margin-top: 4px;
                 }
                 .bc-sidebar-card {
-                    background: #11141D;
+                    background: #0E0E0E;
                     border-radius: 14px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                     padding: 24px;

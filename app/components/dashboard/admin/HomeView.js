@@ -12,11 +12,11 @@ import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
 
 const DASHBOARD_THEME = {
-    bg: '#0B0D13',
-    surface: '#11141D', // Solid matte slate
-    surfaceElevated: '#171D27',
-    surfaceSoft: '#1D2533',
-    border: 'rgba(255,255,255,0.06)',
+    bg: '#080808',
+    surface: '#0E0E0E', // Neutral Deep Grey
+    surfaceElevated: '#121212',
+    surfaceSoft: '#181818',
+    border: 'rgba(255,255,255,0.04)',
     borderStrong: 'rgba(24,212,199,0.25)',
     text: '#FFFFFF',
     muted: '#8C98AC',
@@ -372,7 +372,7 @@ export default function HomeView() {
                 }
 
                 .bc-stat-card {
-                    background: ${DASHBOARD_THEME.surface};
+                    background: #0E0E0E;
                     border-radius: 14px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                     padding: 24px;
@@ -384,7 +384,7 @@ export default function HomeView() {
                 }
                 .bc-stat-card:hover {
                     transform: translateY(-2px);
-                    background: ${DASHBOARD_THEME.surfaceElevated};
+                    background: #121212;
                 }
                 .glow-cyan {
                     border-color: rgba(24, 212, 199, 0.08) !important;
@@ -454,7 +454,7 @@ export default function HomeView() {
                 }
 
                 .bc-action-card {
-                    background: #11141D;
+                    background: #0E0E0E;
                     border-radius: 16px;
                     border: 1px solid rgba(255, 255, 255, 0.05);
                     padding: 24px;
@@ -465,7 +465,7 @@ export default function HomeView() {
                 }
 
                 .bc-action-card:hover {
-                    background: #171D27;
+                    background: #121212;
                     transform: translateY(-2px);
                     border-color: ${DASHBOARD_THEME.accent};
                 }
@@ -510,7 +510,7 @@ export default function HomeView() {
                 }
 
                 .admin-artist-mini-card {
-                    background: #11141D;
+                    background: #0E0E0E;
                     border: 1px solid rgba(255,255,255,0.04);
                     border-radius: 12px;
                     padding: 16px 20px;
@@ -521,7 +521,7 @@ export default function HomeView() {
                 }
 
                 .admin-artist-mini-card:hover {
-                    background: #171D27;
+                    background: #121212;
                     border-color: rgba(255,255,255,0.1);
                 }
 
@@ -567,7 +567,7 @@ export default function HomeView() {
 
                 /* RIGHT COLUMN */
                 .bc-analytics-card {
-                    background: #11141D;
+                    background: #0E0E0E;
                     border: 1px solid rgba(255, 255, 255, 0.05);
                     border-radius: 20px;
                     padding: 24px;

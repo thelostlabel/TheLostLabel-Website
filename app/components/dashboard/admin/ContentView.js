@@ -127,7 +127,7 @@ export default function ContentView({ content, onRefresh }) {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     style={{
-                                        background: 'rgba(255,255,255,0.01)',
+                                        background: '#0E0E0E', // Neutral Deep Grey
                                         padding: '30px',
                                         borderRadius: '20px',
                                         border: '1px solid var(--border)',
@@ -149,7 +149,7 @@ export default function ContentView({ content, onRefresh }) {
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                             <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>FAQ BUILDER</label>
                                             {faqItems.map((item, index) => (
-                                                <div key={index} style={{ background: 'var(--glass)', padding: '20px', borderRadius: '15px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                <div key={index} style={{ background: '#0E0E0E', padding: '20px', borderRadius: '15px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '900' }}>QUESTION {index + 1}</span>
                                                         <button onClick={() => removeFaqItem(index)} style={{ background: 'rgba(255,0,0,0.1)', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '9px', padding: '5px 10px', borderRadius: '6px' }}>REMOVE</button>
@@ -232,7 +232,7 @@ export default function ContentView({ content, onRefresh }) {
                                     </div>
                                 </motion.div>
                             ) : item ? (
-                                <div style={{ background: 'rgba(255,255,255,0.01)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                <div style={{ background: '#0E0E0E', padding: '20px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.03)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ fontSize: '11px', color: '#888' }}>
                                             <span style={{ color: 'var(--accent)', fontWeight: '900', marginRight: '10px' }}>LIVE:</span> {item.title}

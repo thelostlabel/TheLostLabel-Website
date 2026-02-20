@@ -163,8 +163,7 @@ export default function SettingsView({ users = [], artists = [] }) {
                 ))}
             </div>
 
-            <div style={{ background: 'var(--surface)', padding: '40px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '-150px', right: '-150px', width: '300px', height: '300px', background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.03, pointerEvents: 'none', zIndex: 0 }} />
+            <div style={{ background: '#080808', padding: '40px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.8)', position: 'relative', overflow: 'hidden' }}>
 
                 {/* GENERAL SETTINGS */}
                 {activeTab === 'general' && (
@@ -207,8 +206,8 @@ export default function SettingsView({ users = [], artists = [] }) {
                             { label: 'TOTAL RELEASES', value: artists.reduce((acc, a) => acc + (a._count?.releases || 0), 0), icon: <Disc size={18} /> },
                             { label: 'TOTAL CONTRACTS', value: artists.reduce((acc, a) => acc + (a._count?.contracts || 0), 0), icon: <FileText size={18} /> },
                         ].map((stat, i) => (
-                            <div key={i} style={{ padding: '32px 24px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
-                                <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
+                            <div key={i} style={{ padding: '32px 24px', background: '#0E0E0E', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
+                                <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px', background: 'radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%)', borderRadius: '50%' }} />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent)' }}>
                                     {stat.icon}
                                     <span style={{ fontSize: '10px', fontWeight: '950', letterSpacing: '1.5px', color: '#888' }}>{stat.label}</span>

@@ -140,14 +140,14 @@ function DashboardLayoutContent({ children }) {
     const railWidth = isRailExpanded ? (isCompact ? 188 : 206) : (isCompact ? 72 : 82);
     const showRailLabels = isRailExpanded || isMobileNavOpen;
 
-    const shellBackground = isLight ? '#F0F2F5' : '#0B0D13';
+    const shellBackground = isLight ? '#F0F2F5' : '#080808'; // Neutral Matte Black
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
     const shellAccent = '#18D4C7'; // LOST Cyan
     const shellAccent2 = '#4422A5'; // LOST Purple
-    const shellSurface = isLight ? '#FFFFFF' : '#11141D';
-    const shellSurface2 = isLight ? '#F9FAFB' : '#171D27';
-    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
-    const shellMuted = isLight ? '#6B7280' : '#8C98AC';
+    const shellSurface = isLight ? '#FFFFFF' : '#0E0E0E'; // Neutral Deep Grey
+    const shellSurface2 = isLight ? '#F9FAFB' : '#121212'; // Neutral Grey
+    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.04)'; // 4% Pure White (Neutral)
+    const shellMuted = isLight ? '#6B7280' : '#888888'; // Neutral Muted Grey
 
     return (
         <div
@@ -301,10 +301,10 @@ function DashboardLayoutContent({ children }) {
                     z-index: 100;
                     display: flex;
                     flex-direction: column;
-                    background: #0B0D13;
+                    background: #080808;
                     border: 1px solid var(--border);
                     border-radius: 20px;
-                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
                     backdrop-filter: blur(20px);
                     overflow: hidden;
                     transition: width 0.28s ease;
@@ -484,8 +484,8 @@ function DashboardLayoutContent({ children }) {
                     min-height: calc(100vh - 32px);
                     border-radius: 24px;
                     border: 1px solid var(--border);
-                    background: #0B0D13;
-                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+                    background: #080808;
+                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
