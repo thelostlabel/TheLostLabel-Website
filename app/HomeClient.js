@@ -114,7 +114,7 @@ const FeatureCard = ({ icon: Icon, title, body, badge, index }) => {
     >
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <motion.div
-          animate={isHovered ? { backgroundColor: "var(--accent)" } : { backgroundColor: "transparent" }}
+          animate={isHovered ? { backgroundColor: "rgba(229,231,235,0.95)" } : { backgroundColor: "transparent" }}
           transition={{ duration: 0.2 }}
           style={{
             padding: "16px",
@@ -128,7 +128,7 @@ const FeatureCard = ({ icon: Icon, title, body, badge, index }) => {
         </motion.div>
         <span style={{
           fontSize: "10px", letterSpacing: "4px", fontWeight: "900",
-          color: "var(--accent)", border: "1px solid var(--accent)",
+          color: "rgba(229,231,235,0.95)", border: "1px solid rgba(229,231,235,0.9)",
           padding: "6px 12px", borderRadius: "0", textTransform: "uppercase"
         }}>
           {badge}
@@ -221,7 +221,7 @@ const StatItem = ({ label, value, delay }) => (
       fontSize: "12px",
       fontWeight: "900",
       letterSpacing: "4px",
-      color: "var(--accent)",
+      color: "rgba(229,231,235,0.9)",
       textTransform: "uppercase"
     }}>
       {label}
@@ -293,7 +293,7 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
             <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "800", marginTop: "4px" }}>{heroRelease?.artist || "LOST HQ"}</div>
           </div>
           <motion.div
-            whileHover={{ scale: 1.1, backgroundColor: "var(--accent)" }}
+            whileHover={{ scale: 1.1, backgroundColor: "#E5E7EB" }}
             whileTap={{ scale: 0.95 }}
             style={{ width: "48px", height: "48px", background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", transition: "background 0.2s" }}
             onClick={(e) => {
@@ -430,7 +430,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
               animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "var(--accent)" }}
+              style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "#FFFFFF" }}
             >
               LOST.
             </motion.div>
@@ -438,7 +438,7 @@ export default function Home() {
               initial={{ width: 0 }}
               animate={{ width: "200px" }}
               transition={{ duration: 1.5, ease: "easeInOut" }}
-              style={{ height: "2px", background: "rgba(158,240,26,0.5)", marginTop: "24px", borderRadius: "2px" }}
+              style={{ height: "2px", background: "rgba(255,255,255,0.45)", marginTop: "24px", borderRadius: "2px" }}
             />
           </motion.div>
         )}
@@ -464,7 +464,7 @@ export default function Home() {
                 transition={{ delay: 0.2 }}
                 style={{ display: "inline-flex", alignItems: "center", gap: "10px", padding: "8px 16px", borderRadius: "50px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "30px" }}
               >
-                <span style={{ width: "8px", height: "8px", background: "var(--accent)", borderRadius: "50%", boxShadow: "0 0 10px var(--accent)" }} />
+                <span style={{ width: "8px", height: "8px", background: "#E5E7EB", borderRadius: "50%", boxShadow: "0 0 10px rgba(229,231,235,0.5)" }} />
                 <span style={{ fontSize: "11px", fontWeight: "800", letterSpacing: "2px" }}>ACCEPTING NEW ARTISTS</span>
               </motion.div>
 
@@ -574,11 +574,11 @@ export default function Home() {
           <div style={{ width: "100%", maxWidth: "1200px", margin: "0 auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", marginBottom: "50px" }}>
               <div>
-                <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} style={{ fontSize: "11px", fontWeight: "900", letterSpacing: "2px", color: "var(--accent)", marginBottom: "8px" }}>CURATED PICKS</motion.div>
+                <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} style={{ fontSize: "11px", fontWeight: "900", letterSpacing: "2px", color: "rgba(229,231,235,0.9)", marginBottom: "8px" }}>CURATED PICKS</motion.div>
                 <KineticText as="h2" text="LATEST DROPS" style={{ fontSize: "42px", fontWeight: "900" }} />
               </div>
               <motion.div initial={{ opacity: 0, filter: "blur(10px)" }} whileInView={{ opacity: 1, filter: "blur(0px)" }} viewport={{ once: true }} transition={{ delay: 0.5 }}>
-                <Link href="/releases" style={{ fontSize: "13px", fontWeight: "800", letterSpacing: "1px", borderBottom: "1px solid var(--accent)", paddingBottom: "4px" }}>VIEW ALL RELEASES</Link>
+                <Link href="/releases" style={{ fontSize: "13px", fontWeight: "800", letterSpacing: "1px", borderBottom: "1px solid rgba(229,231,235,0.75)", paddingBottom: "4px" }}>VIEW ALL RELEASES</Link>
               </motion.div>
             </div>
 

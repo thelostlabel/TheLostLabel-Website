@@ -12,6 +12,7 @@ export async function GET(req) {
         const [
             totalUsers,
             totalArtists,
+            totalReleases,
             pendingDemos,
             totalDemos,
             pendingRequests,
@@ -22,6 +23,7 @@ export async function GET(req) {
         ] = await Promise.all([
             prisma.user.count(),
             prisma.artist.count(),
+            prisma.release.count(),
             prisma.demo.count({ where: { status: 'pending' } }),
             prisma.demo.count(),
             prisma.changeRequest.count({ where: { status: 'pending' } }),
@@ -72,9 +74,13 @@ export async function GET(req) {
             prisma.artist.findMany({
                 take: 5,
                 orderBy: { monthlyListeners: 'desc' },
-                select: { name: true, monthlyListeners: true, id: true }
+                select: { name: true, monthlyListeners: true, id: true, image: true }
             })
         ]);
+
+        const listenerTotals = await prisma.artist.aggregate({
+            _sum: { monthlyListeners: true }
+        });
 
         // Payment Trends (PostgreSQL compatible)
         const payoutTrendRows = await prisma.$queryRaw`
@@ -125,10 +131,12 @@ export async function GET(req) {
             counts: {
                 users: totalUsers,
                 artists: totalArtists,
+                listenersTotal: listenerTotals._sum.monthlyListeners || 0,
                 pendingDemos,
                 totalDemos,
                 pendingRequests,
                 albums: albumCount,
+                releases: totalReleases,
                 songs: totalSongs._sum.totalTracks || 0,
                 revenue: totalRevenue,
                 gross: totalGross,

@@ -173,7 +173,7 @@ export default function ReleaseDetailPage() {
         return (
             <div style={{ background: '#080808', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <h1 style={{ fontSize: 'clamp(30px, 5vw, 60px)', fontWeight: '900', color: '#ff4444' }}>LOST_IN_VOID</h1>
-                <Link href="/releases" style={{ color: 'var(--accent)', marginTop: '20px', textDecoration: 'none', fontSize: '12px', fontWeight: '900', letterSpacing: '2px' }}>
+                <Link href="/releases" style={{ color: 'rgba(229,231,235,0.9)', marginTop: '20px', textDecoration: 'none', fontSize: '12px', fontWeight: '900', letterSpacing: '2px' }}>
                     ← RETURN_TO_CATALOG
                 </Link>
             </div>
@@ -203,7 +203,7 @@ export default function ReleaseDetailPage() {
                             initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
                             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
                             transition={{ duration: 0.8, ease: "easeOut" }}
-                            style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "var(--accent)" }}
+                            style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "#FFFFFF" }}
                         >
                             LOST.
                         </motion.div>
@@ -211,7 +211,7 @@ export default function ReleaseDetailPage() {
                             initial={{ width: 0 }}
                             animate={{ width: "200px" }}
                             transition={{ duration: 1.5, ease: "easeInOut" }}
-                            style={{ height: "2px", background: "rgba(158,240,26,0.5)", marginTop: "24px", borderRadius: "2px" }}
+                            style={{ height: "2px", background: "rgba(255,255,255,0.45)", marginTop: "24px", borderRadius: "2px" }}
                         />
                     </motion.div>
                 )}
@@ -358,7 +358,7 @@ export default function ReleaseDetailPage() {
                                                         <motion.div
                                                             animate={{ height: [4, 12, 4] }}
                                                             transition={{ repeat: Infinity, duration: 0.5 }}
-                                                            style={{ width: '2px', background: 'var(--accent)', marginLeft: '8px' }}
+                                                            style={{ width: '2px', background: 'rgba(229,231,235,0.9)', marginLeft: '8px' }}
                                                         />
                                                     )}
                                                 </div>
@@ -479,14 +479,14 @@ export default function ReleaseDetailPage() {
                     gap: 12px;
                     font-size: 10px;
                     letter-spacing: 4px;
-                    color: var(--accent);
+                    color: rgba(229,231,235,0.9);
                     font-weight: 900;
                     margin-bottom: 24px;
                 }
                 .kicker-line {
                     width: 30px;
                     height: 1px;
-                    background: var(--accent);
+                    background: rgba(229,231,235,0.9);
                 }
                 .release-title {
                     font-size: clamp(36px, 5.5vw, 84px);
@@ -521,7 +521,7 @@ export default function ReleaseDetailPage() {
                     transition: opacity 0.2s ease;
                 }
                 .artist-pill a:hover {
-                    color: var(--accent);
+                    color: rgba(229,231,235,0.9);
                 }
                 .artist-sep {
                     color: rgba(255,255,255,0.3);
@@ -632,7 +632,7 @@ export default function ReleaseDetailPage() {
                     color: #fff;
                 }
                 .track-row.active .track-name {
-                    color: var(--accent);
+                    color: rgba(229,231,235,0.9);
                 }
                 .track-number {
                     position: relative;
@@ -653,7 +653,7 @@ export default function ReleaseDetailPage() {
                     transition: opacity 0.2s ease;
                 }
                 .active-icon {
-                    color: var(--accent);
+                    color: rgba(229,231,235,0.9);
                 }
                 .track-row.playable:hover .number-text {
                     opacity: 0;
@@ -700,8 +700,8 @@ export default function ReleaseDetailPage() {
                 }
                 .version-badge {
                     font-size: 9px;
-                    color: var(--accent);
-                    border: 1px solid var(--accent);
+                    color: rgba(229,231,235,0.9);
+                    border: 1px solid rgba(229,231,235,0.9);
                     padding: 4px 8px;
                     border-radius: 0;
                     font-weight: 700;

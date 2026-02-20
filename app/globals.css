@@ -8,9 +8,9 @@
   --surface: #0a0a0c;
   --surface-hover: #11111a;
   --primary: #ffffff;
-  --primary-glow: rgba(0, 229, 160, 0.2);
-  --accent: #00e5a0;
-  --accent-2: #00b8d4;
+  --primary-glow: rgba(229, 231, 235, 0.22);
+  --accent: #E5E7EB;
+  --accent-2: #9CA3AF;
   --text-secondary: #9EA6B8;
   --border: rgba(255, 255, 255, 0.08);
   /* Premium Glass Variables */
@@ -152,7 +152,7 @@ a {
   }
 
   50% {
-    border-color: rgba(158, 240, 26, 0.9);
+    border-color: rgba(229, 231, 235, 0.9);
   }
 }
 

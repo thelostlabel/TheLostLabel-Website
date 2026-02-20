@@ -96,7 +96,7 @@ export default function Navbar() {
                         <Link href="/releases" style={{ transition: 'var(--transition)' }}>RELEASES</Link>
                         <Link href="/artists" style={{ transition: 'var(--transition)' }}>ARTISTS</Link>
                         <Link href="/faq" style={{ transition: 'var(--transition)' }}>FAQ</Link>
-                        <Link href="/join" style={{ transition: 'var(--transition)', color: 'var(--accent)' }}>JOIN US</Link>
+                        <Link href="/join" style={{ transition: 'var(--transition)', color: '#fff' }}>JOIN US</Link>
                     </div>
 
                     {/* Right Side Actions */}
@@ -342,7 +342,7 @@ export default function Navbar() {
 
                 .accent-link {
                     color: #000 !important;
-                    background: var(--accent) !important;
+                    background: #fff !important;
                     border-color: rgba(0,0,0,0.2) !important;
                 }
 
