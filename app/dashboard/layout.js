@@ -140,14 +140,14 @@ function DashboardLayoutContent({ children }) {
     const railWidth = isRailExpanded ? (isCompact ? 188 : 206) : (isCompact ? 72 : 82);
     const showRailLabels = isRailExpanded || isMobileNavOpen;
 
-    const shellBackground = isLight ? '#F0F2F5' : '#080808'; // Neutral Matte Black
+    const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
-    const shellAccent = '#18D4C7'; // LOST Cyan
-    const shellAccent2 = '#4422A5'; // LOST Purple
-    const shellSurface = isLight ? '#FFFFFF' : '#0E0E0E'; // Neutral Deep Grey
-    const shellSurface2 = isLight ? '#F9FAFB' : '#121212'; // Neutral Grey
-    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.04)'; // 4% Pure White (Neutral)
-    const shellMuted = isLight ? '#6B7280' : '#888888'; // Neutral Muted Grey
+    const shellAccent = '#00e5a0'; // v0-ref Emerald/Mint
+    const shellAccent2 = '#00b8d4'; // v0-ref Cyan/Blue
+    const shellSurface = isLight ? '#FFFFFF' : '#141414'; // v0-ref Card Surface
+    const shellSurface2 = isLight ? '#F9FAFB' : '#1c1c1c'; // v0-ref Muted Surface
+    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : '#2a2a2a'; // v0-ref Border
+    const shellMuted = isLight ? '#6B7280' : '#888888'; // v0-ref Muted Foreground
 
     return (
         <div
@@ -301,7 +301,7 @@ function DashboardLayoutContent({ children }) {
                     z-index: 100;
                     display: flex;
                     flex-direction: column;
-                    background: #080808;
+                    background: #0a0a0a;
                     border: 1px solid var(--border);
                     border-radius: 20px;
                     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
@@ -484,7 +484,7 @@ function DashboardLayoutContent({ children }) {
                     min-height: calc(100vh - 32px);
                     border-radius: 24px;
                     border: 1px solid var(--border);
-                    background: #080808;
+                    background: #0a0a0a;
                     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
                     display: flex;
                     flex-direction: column;

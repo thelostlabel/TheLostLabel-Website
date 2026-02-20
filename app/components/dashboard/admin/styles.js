@@ -1,5 +1,5 @@
 export const glassStyle = {
-    background: '#0E0E0E', // Neutral Deep Grey
+    background: '#141414', // v0-ref Card Surface
     border: '1px solid var(--border)',
     borderRadius: '4px',
     overflow: 'hidden'
@@ -14,10 +14,10 @@ export const thStyle = {
     padding: '16px',
     fontSize: '9px',
     letterSpacing: '2px',
-    color: '#444',
+    color: '#666',
     fontWeight: '900',
-    borderBottom: '1px solid rgba(255,255,255,0.05)',
-    background: '#0E0E0E',
+    borderBottom: '1px solid var(--border)',
+    background: '#141414',
     textTransform: 'uppercase'
 };
 

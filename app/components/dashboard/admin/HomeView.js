@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
     DollarSign, Briefcase, CreditCard, Users, Mic2, Disc, Music,
-    FileAudio, BarChart3, AlertCircle, ChevronRight, TrendingUp, Music2
+    FileAudio, BarChart3, AlertCircle, ChevronRight, TrendingUp, Music2, RefreshCw
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
@@ -12,133 +12,144 @@ import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
 
 const DASHBOARD_THEME = {
-    bg: '#080808',
-    surface: '#0E0E0E', // Neutral Deep Grey
-    surfaceElevated: '#121212',
-    surfaceSoft: '#181818',
-    border: 'rgba(255,255,255,0.04)',
-    borderStrong: 'rgba(24,212,199,0.25)',
+    bg: '#0a0a0a',
+    surface: '#141414',
+    surfaceElevated: '#1c1c1c',
+    surfaceSoft: '#2a2a2a',
+    border: '#2a2a2a',
     text: '#FFFFFF',
-    muted: '#8C98AC',
-    accent: '#18D4C7',
-    accentHover: '#7DEEE6',
-    accentDark: '#0E746C',
-    accentAlt: '#4422A5',
+    muted: '#888888',
+    accent: '#00e5a0', // v0-ref Emerald/Mint
+    accentCyan: '#00b8d4',
     success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444'
 };
 
-const CircularProgress = ({ label, subtitle, value, size = 80 }) => {
-    const radius = (size - 8) / 2;
+const compactNumber = (val) => {
+    const num = Number(val) || 0;
+    if (num >= 1000000) return `${(num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
+    return num.toLocaleString();
+};
+
+const FALLBACK_IMAGE = '/default-album.jpg';
+
+const normalizeImageSrc = (src) => {
+    if (typeof src !== 'string') return FALLBACK_IMAGE;
+    const trimmed = src.trim();
+    if (!trimmed) return FALLBACK_IMAGE;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    return FALLBACK_IMAGE;
+};
+
+const handleImageError = (event) => {
+    const img = event.currentTarget;
+    if (img.dataset.fallbackApplied === '1') return;
+    img.dataset.fallbackApplied = '1';
+    img.src = FALLBACK_IMAGE;
+};
+
+const CircularProgress = ({ value, label, subtitle, size = 60 }) => {
+    const strokeWidth = 5;
+    const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (value / 100) * circumference;
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '16px 0', borderBottom: `1px solid ${DASHBOARD_THEME.border}` }}>
-            <div style={{ position: 'relative', width: size, height: size }}>
-                <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-                    <circle
-                        cx={size / 2}
-                        cy={size / 2}
-                        r={radius}
-                        fill="none"
-                        stroke="rgba(255,255,255,0.05)"
-                        strokeWidth="6"
-                    />
-                    <circle
-                        cx={size / 2}
-                        cy={size / 2}
-                        r={radius}
-                        fill="none"
-                        stroke={DASHBOARD_THEME.accent}
-                        strokeWidth="6"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={offset}
-                        strokeLinecap="round"
-                    />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '13px', fontWeight: '900', color: '#fff' }}>
-                    {value}%
+        <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>{label}</h4>
+                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, marginTop: '4px' }}>{subtitle}</p>
+                </div>
+                <div style={{ position: 'relative', width: size, height: size }}>
+                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            fill="none"
+                            stroke={DASHBOARD_THEME.accent}
+                            strokeWidth={strokeWidth}
+                            strokeDasharray={circumference}
+                            strokeDashoffset={offset}
+                            strokeLinecap="round"
+                        />
+                    </svg>
                 </div>
             </div>
             <div>
-                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>{label}</p>
-                <p style={{ fontSize: '16px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>{subtitle}</p>
+                <p style={{ fontSize: '10px', fontWeight: '600', color: DASHBOARD_THEME.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>CURRENT</p>
+                <p style={{ fontSize: '18px', fontWeight: '800', color: DASHBOARD_THEME.accent, margin: '2px 0 0 0' }}>{compactNumber(value)} <span style={{ fontSize: '12px', fontWeight: '500', color: `${DASHBOARD_THEME.accent}b2` }}>8% <TrendingUp size={12} /></span></p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '10px', fontWeight: '600', color: DASHBOARD_THEME.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>% OF GLOBAL</p>
+                <p style={{ fontSize: '18px', fontWeight: '900', color: '#fff', margin: '2px 0 0 0' }}>{Math.round(value / 20)}%</p>
             </div>
         </div>
+
     );
 };
 
-const Sparkline = ({ data, color }) => {
-    if (!data || data.length < 2) return null;
+const GlowChart = ({ data, color, height = 140 }) => {
+    const containerRef = useRef(null);
+    const [canRenderChart, setCanRenderChart] = useState(false);
+
+    useEffect(() => {
+        const node = containerRef.current;
+        if (!node) return;
+
+        const updateReady = () => {
+            const rect = node.getBoundingClientRect();
+            setCanRenderChart(rect.width > 0 && rect.height > 0);
+        };
+
+        updateReady();
+
+        if (typeof ResizeObserver === 'undefined') {
+            const raf = requestAnimationFrame(updateReady);
+            return () => cancelAnimationFrame(raf);
+        }
+
+        const observer = new ResizeObserver(() => updateReady());
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <div style={{ width: '60px', height: '30px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
-                    <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke={color}
-                        strokeWidth={2}
-                        fill="transparent"
-                        dot={false}
-                        isAnimationActive={true}
-                    />
-                </AreaChart>
-            </ResponsiveContainer>
+        <div ref={containerRef} style={{ width: '100%', height: `${height}px`, minWidth: 0, minHeight: `${height}px` }}>
+            {canRenderChart && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
+                    <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="glowGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.2} />
+                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                        <XAxis hide />
+                        <YAxis hide />
+                        <Area
+                            type="monotone"
+                            dataKey="value"
+                            stroke={color}
+                            strokeWidth={3}
+                            fill="url(#glowGradient)"
+                            isAnimationActive={true}
+                            dot={false}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            )}
         </div>
     );
 };
 
-const RechartsAreaChart = ({ data, color, height = 150 }) => {
-    return (
-        <ResponsiveContainer width="100%" height={height}>
-            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                    <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                        <stop offset="95%" stopColor={color} stopOpacity={0} />
-                    </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
-                    dy={10}
-                />
-                <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
-                    tickFormatter={(val) => {
-                        if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
-                        if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
-                        return val;
-                    }}
-                />
-                <Tooltip
-                    contentStyle={{ background: '#000', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '2px', fontSize: '11px', fontWeight: '800' }}
-                    itemStyle={{ color: '#fff' }}
-                />
-                <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke={color}
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorArea)"
-                    dot={{ r: 2, fill: color, strokeWidth: 0 }}
-                    activeDot={{ r: 5, fill: color, stroke: '#000', strokeWidth: 2 }}
-                />
-            </AreaChart>
-        </ResponsiveContainer>
-    );
-};
-
-export default function HomeView() {
+export default function HomeView({ onNavigate }) {
     const { data: session } = useSession();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -158,447 +169,145 @@ export default function HomeView() {
         finally { setLoading(false); }
     };
 
-    if (loading) {
-        return (
-            <div style={{ padding: '100px', textAlign: 'center' }}>
-                <p style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#444' }}>SYNCING_SYSTEM_DATA...</p>
-            </div>
-        );
-    }
-
+    if (loading) return null;
     if (!stats) return null;
 
-    const topStats = [
-        { label: 'Total Volume', value: `$${(stats.counts.gross || 0).toLocaleString()}`, icon: <DollarSign size={18} /> },
-        { label: 'Net Revenue', value: `$${(stats.counts.revenue || 0).toLocaleString()}`, icon: <Briefcase size={18} /> },
-        { label: 'Total Users', value: (stats.counts.users || 0).toLocaleString(), icon: <Users size={18} /> },
-    ];
-
     return (
-        <div className="lost-shell">
-            <div className="lost-main-grid">
-                {/* LEFT COLUMN */}
-                <div className="lost-left-col">
+        <div style={{ padding: '0 0 40px 0', fontFamily: 'Space Grotesk, sans-serif' }}>
+            {/* Header Mini Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '12px' }}>
+                {[
+                    { label: 'Total Releases', value: stats.counts.releases },
+                    { label: 'Total Tracks', value: stats.counts.songs },
+                    { label: 'Total Videos', value: stats.counts.pendingDemos },
+                ].map((s, i) => (
+                    <div key={i} style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px' }}>
+                        <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, marginBottom: '4px' }}>{s.label}</p>
+                        <p style={{ fontSize: '20px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>{compactNumber(s.value)}</p>
+                    </div>
+                ))}
+            </div>
 
-                    {/* Top Stats */}
-                    <div className="bc-top-stats">
-                        {topStats.map((stat, i) => (
-                            <div key={i} className="bc-stat-card glow-cyan">
-                                <div style={{ flex: 1 }}>
-                                    <span className="bc-stat-label">{stat.label}</span>
-                                    <span className="bc-stat-val text-accent">{stat.value}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'start' }}>
+                {/* LEFT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                    {/* Welcome Banner */}
+                    <div style={{
+                        background: 'linear-gradient(110deg, #064e3b 0%, #134e4a 50%, #164e63 100%)',
+                        borderRadius: '20px',
+                        padding: '40px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minHeight: '220px',
+                        border: `1px solid ${DASHBOARD_THEME.border}`
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
+                            <div style={{ width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${DASHBOARD_THEME.accent}4c` }}>
+                                <NextImage
+                                    src={normalizeImageSrc(session?.user?.image)}
+                                    width={90}
+                                    height={90}
+                                    alt="Avatar"
+                                    unoptimized
+                                    onError={handleImageError}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            </div>
+                            <div>
+                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome to LOST, {session?.user?.stageName || 'Admin'}!</h1>
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'right', zIndex: 1 }}>
+                            <p style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats.counts.gross || 0).toLocaleString()}</p>
+                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>Credit Available</p>
+                        </div>
+                        {/* Decorative background glow */}
+                        <div style={{ position: 'absolute', top: '-50%', right: '-30%', width: '100%', height: '200%', background: `radial-gradient(circle, ${DASHBOARD_THEME.accent}19 0%, transparent 60%)`, transform: 'rotate(-20deg)' }} />
+                    </div>
+
+                    {/* Action Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        {[
+                            { title: 'Create Release', desc: 'Add a release to your catalog', icon: <RefreshCw size={20} />, target: 'submissions' },
+                            { title: 'Invite Team', desc: 'Invite users to use your account', icon: <Users size={20} />, target: 'users' },
+                        ].map((a, i) => (
+                            <div key={i} onClick={() => onNavigate(a.target)} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
+                                    {a.icon}
                                 </div>
-                                <Sparkline data={stats.monthlyTrend || []} color={DASHBOARD_THEME.accent} />
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>{a.title}</h4>
+                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
+                                </div>
+                                <ChevronRight size={18} color={DASHBOARD_THEME.accent} />
                             </div>
                         ))}
                     </div>
 
-                    {/* Welcome Banner */}
-                    <div className="bc-welcome-banner">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                            <div className="bc-welcome-avatar">
-                                <NextImage src={session?.user?.image || '/default-album.jpg'} alt="Admin" width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </div>
-                            <div>
-                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome back, Admin!</h1>
-                                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
-                                    You have full access to management and <a href="/dashboard?view=my-overview" style={{ color: DASHBOARD_THEME.accent, fontWeight: '700', textDecoration: 'none' }}>your personal artist portal</a>.
-                                </p>
-                            </div>
+                    {/* Recent Releases */}
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Recent Releases</h3>
+                            <button onClick={() => onNavigate('releases')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <h2 style={{ fontSize: '36px', fontWeight: '900', color: '#fff', margin: 0 }}>{stats.counts.artists || 0}</h2>
-                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px', fontWeight: '700' }}>Active Artists</p>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-                        <div className="bc-analytics-card" style={{ marginBottom: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <div>
-                                    <h3 className="bc-card-title">Consumer Growth</h3>
-                                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Aggregate Monthly Listeners</p>
-                                </div>
-                                <TrendingUp size={16} color={DASHBOARD_THEME.accent} />
-                            </div>
-                            <div style={{ height: '160px', width: '100%' }}>
-                                <RechartsAreaChart data={stats.listenerTrends || []} color={DASHBOARD_THEME.accent} height={160} />
-                            </div>
-                        </div>
-
-                        <div className="bc-analytics-card" style={{ marginBottom: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <div>
-                                    <h3 className="bc-card-title">Revenue Trends</h3>
-                                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Last 6 months revenue</p>
-                                </div>
-                                <DollarSign size={16} color={DASHBOARD_THEME.success} />
-                            </div>
-                            <div style={{ height: '160px', width: '100%' }}>
-                                <RechartsAreaChart data={stats.trends?.map(t => ({ label: t.label, value: t.revenue })) || []} color={DASHBOARD_THEME.success} height={160} />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Quick Actions / System Health */}
-                    <div style={{ marginBottom: '32px' }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: DASHBOARD_THEME.muted, letterSpacing: '2px', marginBottom: '20px' }}>SYSTEM_MONITORING</h3>
-                        <div className="bc-quick-actions">
-                            <div className="bc-action-card">
-                                <div className="bc-action-icon"><AlertCircle size={20} /></div>
-                                <h3 className="bc-action-title">Pending Submissions</h3>
-                                <p className="bc-action-desc">{stats.counts.pendingDemos} demos waiting for review</p>
-                                <ChevronRight size={18} className="bc-action-arrow" />
-                            </div>
-                            <div className="bc-action-card">
-                                <div className="bc-action-icon"><BarChart3 size={20} /></div>
-                                <h3 className="bc-action-title">Open Requests</h3>
-                                <p className="bc-action-desc">{stats.counts.pendingRequests} support tickets active</p>
-                                <ChevronRight size={18} className="bc-action-arrow" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Artist Workspace Quick Links */}
-                    <div style={{ marginBottom: '32px' }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: '800', color: DASHBOARD_THEME.muted, letterSpacing: '2px', marginBottom: '20px' }}>ARTIST_WORKSPACE</h3>
-                        <div className="bc-quick-actions">
-                            <a href="/dashboard?view=my-releases" style={{ textDecoration: 'none' }} className="bc-action-card">
-                                <div className="bc-action-icon"><Disc size={20} /></div>
-                                <h3 className="bc-action-title">My Releases</h3>
-                                <p className="bc-action-desc">View and manage your catalog</p>
-                                <ChevronRight size={18} className="bc-action-arrow" />
-                            </a>
-                            <a href="/dashboard?view=my-submit" style={{ textDecoration: 'none' }} className="bc-action-card">
-                                <div className="bc-action-icon"><Music2 size={20} /></div>
-                                <h3 className="bc-action-title">New Submission</h3>
-                                <p className="bc-action-desc">Upload your latest tracks</p>
-                                <ChevronRight size={18} className="bc-action-arrow" />
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Top Performing Artists */}
-                    <div className="bc-recent-releases">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>Top Performing Artists</h3>
-                            <button className="bc-btn-outline">View Directory</button>
-                        </div>
-                        <div className="bc-artists-mini-list">
-                            {stats.topArtists?.slice(0, 4).map((artist, i) => (
-                                <div key={artist.id} className="admin-artist-mini-card">
-                                    <div className="admin-artist-rank">#{i + 1}</div>
-                                    <div className="admin-artist-info">
-                                        <div className="admin-artist-name">{artist.name}</div>
-                                        <div className="admin-artist-meta">{artist.monthlyListeners?.toLocaleString()} Monthly Listeners</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                            {stats.topArtists?.slice(0, 4).map((a, i) => (
+                                <div key={i} style={{ cursor: 'pointer' }}>
+                                    <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', background: '#000', marginBottom: '8px' }}>
+                                        <div style={{ width: '100%', height: '100%', background: `linear-gradient(45deg, #111, #222)`, position: 'relative' }}>
+                                            {/* Placeholder for real images */}
+                                        </div>
                                     </div>
-                                    <div className="admin-artist-trend">
-                                        <TrendingUp size={14} color={DASHBOARD_THEME.accent} />
-                                    </div>
+                                    <p style={{ fontSize: '12px', fontWeight: '800', color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
+                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.monthlyListeners?.toLocaleString()} streams</p>
                                 </div>
                             ))}
                         </div>
                     </div>
-
                 </div>
 
                 {/* RIGHT COLUMN */}
-                <div className="bc-analytics-col">
-                    <div className="bc-analytics-card">
-                        <CircularProgress label="System Uptime" subtitle="Operational" value={99} />
-                        <CircularProgress label="Processing Rate" subtitle="Stable" value={87} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <CircularProgress label="Top Retailer" subtitle="Spotify" value={88} />
+                    <CircularProgress label="Top Territory" subtitle="Brazil" value={63} />
+                    <CircularProgress label="Listener Behaviour" subtitle="Active" value={77} />
 
-                        <div style={{ paddingTop: '24px' }}>
-                            <h4 className="bc-card-title">Network Load</h4>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '16px' }}>
-                                <div>
-                                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px', fontWeight: '700' }}>CURRENT</p>
-                                    <p style={{ fontSize: '20px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>42%</p>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px', fontWeight: '700' }}>AVAILABLE</p>
-                                    <p style={{ fontSize: '20px', fontWeight: '900', color: '#fff' }}>58%</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bc-analytics-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    {/* Total Streams Chart */}
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                             <div>
-                                <h3 className="bc-card-title">Revenue Trends</h3>
-                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Last 6 months</p>
+                                <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h4>
+                                <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Last 6 months</p>
                             </div>
-                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: '700' }}>See Detailed &gt;</span>
+                            <button style={{ background: 'none', border: 'none', color: DASHBOARD_THEME.accent, fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>See Trends &gt;</button>
                         </div>
-                        <div style={{ height: '160px', width: '100%', position: 'relative', marginBottom: '20px' }}>
-                            <RechartsAreaChart data={stats.trends?.map(t => ({ label: t.label, value: t.revenue })) || []} color={DASHBOARD_THEME.accent} height={160} />
+
+                        <div style={{ height: '140px', width: '100%', position: 'relative', margin: '16px 0' }}>
+                            <GlowChart data={stats.listenerTrends || []} color={DASHBOARD_THEME.accent} />
                         </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1db954', display: 'grid', placeItems: 'center' }}>
-                                        <Music2 size={12} color="#fff" />
+                            {[
+                                { name: 'Spotify', value: '124,422', color: '#1DB954' },
+                                { name: 'Apple Music', value: '231,332', color: '#FA2D48' }
+                            ].map((s, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: s.color }} />
+                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>{s.name}</span>
                                     </div>
-                                    <span style={{ fontSize: '13px', fontWeight: '700' }}>Spotify Total</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>{s.value}</span>
                                 </div>
-                                <span style={{ fontSize: '13px', fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{(stats.counts.songs || 0).toLocaleString()}</span>
-                            </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             </div>
-
-            <style jsx>{`
-                .lost-shell {
-                    color: #fff;
-                    font-family: 'Space Grotesk', sans-serif;
-                }
-
-                .lost-main-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 340px;
-                    gap: 24px;
-                    align-items: start;
-                }
-
-                /* LEFT COLUMN */
-                .bc-top-stats {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 16px;
-                    margin-bottom: 24px;
-                }
-
-                .bc-stat-card {
-                    background: #0E0E0E;
-                    border-radius: 14px;
-                    border: 1px solid ${DASHBOARD_THEME.border};
-                    padding: 24px;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
-                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-                .bc-stat-card:hover {
-                    transform: translateY(-2px);
-                    background: #121212;
-                }
-                .glow-cyan {
-                    border-color: rgba(24, 212, 199, 0.08) !important;
-                }
-                .glow-cyan:hover {
-                    border-color: rgba(24, 212, 199, 0.25) !important;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(24, 212, 199, 0.05);
-                }
-                .bc-stat-label {
-                    font-size: 11px;
-                    font-weight: 800;
-                    color: ${DASHBOARD_THEME.muted};
-                    letter-spacing: 1.2px;
-                    text-transform: uppercase;
-                    margin-bottom: 4px;
-                    display: block;
-                }
-                .bc-stat-val {
-                    font-size: 28px;
-                    font-weight: 900;
-                    letter-spacing: -0.5px;
-                }
-
-                .text-accent {
-                    color: ${DASHBOARD_THEME.accent};
-                }
-
-                .bc-welcome-banner {
-                    background: linear-gradient(110deg, #3A2396 0%, #1A114D 100%);
-                    border-radius: 20px;
-                    padding: 40px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 24px;
-                    position: relative;
-                    overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-                }
-
-                .bc-welcome-banner::after {
-                    content: '';
-                    position: absolute;
-                    top: -50%;
-                    right: -25%;
-                    width: 75%;
-                    height: 200%;
-                    background: radial-gradient(circle, rgba(107, 76, 246, 0.1) 0%, transparent 70%);
-                    transform: rotate(-15deg);
-                    pointer-events: none;
-                }
-
-                .bc-welcome-avatar {
-                    width: 100px;
-                    height: 100px;
-                    border-radius: 50%;
-                    overflow: hidden;
-                    border: 3px solid rgba(255, 255, 255, 0.15);
-                    background: #111;
-                }
-
-                .bc-quick-actions {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    margin-bottom: 32px;
-                }
-
-                .bc-action-card {
-                    background: #0E0E0E;
-                    border-radius: 16px;
-                    border: 1px solid rgba(255, 255, 255, 0.05);
-                    padding: 24px;
-                    position: relative;
-                    cursor: pointer;
-                    transition: all 0.25s ease;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                }
-
-                .bc-action-card:hover {
-                    background: #121212;
-                    transform: translateY(-2px);
-                    border-color: ${DASHBOARD_THEME.accent};
-                }
-
-                .bc-action-icon {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 10px;
-                    background: rgba(255,255,255,0.03);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    margin-bottom: 16px;
-                    color: ${DASHBOARD_THEME.accent};
-                }
-
-                .bc-action-title {
-                    font-size: 16px;
-                    font-weight: 800;
-                    color: #fff;
-                    margin: 0 0 6px 0;
-                }
-
-                .bc-action-desc {
-                    font-size: 12px;
-                    color: ${DASHBOARD_THEME.muted};
-                    margin: 0;
-                }
-
-                .bc-action-arrow {
-                    position: absolute;
-                    top: 50%;
-                    right: 20px;
-                    transform: translateY(-50%);
-                    color: rgba(255,255,255,0.2);
-                }
-
-                .bc-artists-mini-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .admin-artist-mini-card {
-                    background: #0E0E0E;
-                    border: 1px solid rgba(255,255,255,0.04);
-                    border-radius: 12px;
-                    padding: 16px 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                    transition: all 0.2s ease;
-                }
-
-                .admin-artist-mini-card:hover {
-                    background: #121212;
-                    border-color: rgba(255,255,255,0.1);
-                }
-
-                .admin-artist-rank {
-                    font-size: 14px;
-                    font-weight: 900;
-                    color: ${DASHBOARD_THEME.accent};
-                    width: 30px;
-                }
-
-                .admin-artist-info {
-                    flex: 1;
-                }
-
-                .admin-artist-name {
-                    font-size: 15px;
-                    font-weight: 800;
-                    color: #fff;
-                }
-
-                .admin-artist-meta {
-                    font-size: 11px;
-                    color: ${DASHBOARD_THEME.muted};
-                    margin-top: 2px;
-                }
-
-                .bc-btn-outline {
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    color: #fff;
-                    padding: 8px 16px;
-                    border-radius: 20px;
-                    font-size: 11px;
-                    font-weight: 800;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .bc-btn-outline:hover {
-                    background: rgba(255,255,255,0.08);
-                    border-color: ${DASHBOARD_THEME.accent};
-                }
-
-                /* RIGHT COLUMN */
-                .bc-analytics-card {
-                    background: #0E0E0E;
-                    border: 1px solid rgba(255, 255, 255, 0.05);
-                    border-radius: 20px;
-                    padding: 24px;
-                    margin-bottom: 24px;
-                    box-shadow: 0 14px 40px rgba(0,0,0,0.3);
-                }
-
-                .bc-card-title {
-                    font-size: 14px;
-                    font-weight: 900;
-                    color: #fff;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    margin: 0;
-                }
-
-                @media (max-width: 1100px) {
-                    .lost-main-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-
-                @media (max-width: 768px) {
-                    .bc-top-stats {
-                        grid-template-columns: 1fr;
-                    }
-                    .bc-quick-actions {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            `}</style>
         </div>
     );
 }

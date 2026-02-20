@@ -17,18 +17,18 @@ import ProjectView from './ProjectView';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
 const DASHBOARD_THEME = {
-    bg: '#080808',
-    surface: '#0E0E0E', // Neutral Deep Grey
-    surfaceElevated: '#121212',
-    surfaceSoft: '#181818',
-    border: 'rgba(255,255,255,0.04)',
-    borderStrong: 'rgba(24,212,199,0.25)',
+    bg: '#0a0a0a',
+    surface: '#141414',
+    surfaceElevated: '#1c1c1c',
+    surfaceSoft: '#2a2a2a',
+    border: '#2a2a2a',
+    borderStrong: 'rgba(0,229,160,0.25)',
     text: '#FFFFFF',
-    muted: '#8C98AC',
-    accent: '#18D4C7',
-    accentHover: '#7DEEE6',
-    accentDark: '#0E746C',
-    accentAlt: '#4422A5', // Correct purple for gradients
+    muted: '#888888',
+    accent: '#00e5a0', // v0-ref Emerald/Mint
+    accentHover: '#7DEEE6', // Keeping existing as not specified in change
+    accentDark: '#0E746C', // Keeping existing as not specified in change
+    accentAlt: '#4422A5', // Keeping existing as not specified in change
     success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444'
@@ -54,6 +54,27 @@ const getBaseTitle = (title) => {
         .replace(/LIVE/gi, '')
         .replace(/REMASTERED/gi, '')
         .trim();
+};
+
+const FALLBACK_IMAGE = '/default-album.jpg';
+
+const resolveImageSrc = (src, releaseId = null) => {
+    if (typeof src !== 'string') return FALLBACK_IMAGE;
+    const trimmed = src.trim();
+    if (!trimmed) return FALLBACK_IMAGE;
+    if (trimmed.startsWith('private/')) {
+        return releaseId ? `/api/files/release/${releaseId}` : FALLBACK_IMAGE;
+    }
+    if (trimmed.startsWith('/')) return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return FALLBACK_IMAGE;
+};
+
+const handleImageError = (event) => {
+    const img = event.currentTarget;
+    if (img.dataset.fallbackApplied === '1') return;
+    img.dataset.fallbackApplied = '1';
+    img.src = FALLBACK_IMAGE;
 };
 
 const ChartTooltip = ({ active, payload, label, color }) => {
@@ -82,8 +103,8 @@ const ChartTooltip = ({ active, payload, label, color }) => {
 const Sparkline = ({ data, color }) => {
     if (!data || data.length < 2) return null;
     return (
-        <div style={{ width: '60px', height: '30px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+        <div style={{ width: '60px', height: '30px', minWidth: 0, minHeight: '30px' }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
                 <AreaChart data={data}>
                     <Area
                         type="monotone"
@@ -112,6 +133,29 @@ const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
         ? data.filter((point) => point && Number.isFinite(Number(point.value)))
         : [];
     const hasSignal = sanitizedData.some((point) => Number(point.value) > 0);
+    const containerRef = useRef(null);
+    const [canRenderChart, setCanRenderChart] = useState(false);
+
+    useEffect(() => {
+        const node = containerRef.current;
+        if (!node) return;
+
+        const updateReady = () => {
+            const rect = node.getBoundingClientRect();
+            setCanRenderChart(rect.width > 0 && rect.height > 0);
+        };
+
+        updateReady();
+
+        if (typeof ResizeObserver === 'undefined') {
+            const raf = requestAnimationFrame(updateReady);
+            return () => cancelAnimationFrame(raf);
+        }
+
+        const observer = new ResizeObserver(() => updateReady());
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [height]);
 
     if (sanitizedData.length === 0 || !hasSignal) return (
         <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
@@ -150,45 +194,47 @@ const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
     }
 
     return (
-        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                    <XAxis
-                        dataKey="label"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
-                        dy={10}
-                    />
-                    <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
-                        tickFormatter={(val) => {
-                            if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
-                            if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
-                            return val;
-                        }}
-                    />
-                    <Tooltip content={<ChartTooltip color={color} />} />
-                    <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke={color}
-                        strokeWidth={3}
-                        fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 2, fill: color, strokeWidth: 0 }}
-                        activeDot={{ r: 5, fill: color, stroke: '#000', strokeWidth: 2 }}
-                    />
-                </AreaChart>
-            </ResponsiveContainer>
+        <div ref={containerRef} style={{ width: '100%', height: `${height}px`, marginTop: '10px', minWidth: 0, minHeight: `${height}px` }}>
+            {canRenderChart && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
+                    <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                        <XAxis
+                            dataKey="label"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
+                            dy={10}
+                        />
+                        <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: '#444', fontSize: 9, fontWeight: 700 }}
+                            tickFormatter={(val) => {
+                                if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+                                if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
+                                return val;
+                            }}
+                        />
+                        <Tooltip content={<ChartTooltip color={color} />} />
+                        <Area
+                            type="monotone"
+                            dataKey="value"
+                            stroke={color}
+                            strokeWidth={3}
+                            fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
+                            dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                            activeDot={{ r: 5, fill: color, stroke: '#000', strokeWidth: 2 }}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            )}
         </div>
     );
 };
@@ -303,7 +349,7 @@ export default function ArtistView() {
             });
 
             if (res.ok) {
-                showToast('Withdrawal request submitted successfully', 'success');
+                showToast('Withdrawal request submitted successfully!', 'success');
                 setWithdrawModalOpen(false);
                 setWithdrawAmount('');
                 setWithdrawNotes('');
@@ -619,6 +665,7 @@ export default function ArtistView() {
                     stats={stats}
                     recentReleases={releases.slice(0, 4)}
                     onNavigate={navigateToView}
+                    session={session}
                     actionRequiredContract={actionRequiredContract}
                     onSignClick={(c) => {
                         setActionRequiredContract(c);
@@ -1024,127 +1071,159 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
     );
 }
 
-function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick }) {
+function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick, session }) {
     const userName = stats?.user?.stageName || stats?.name || 'Artist';
     const availableCredit = stats.available ?? stats.balance ?? 0;
     const totalReleases = stats.releases || 0;
     const totalTracks = stats.songs || 0;
     const totalVideos = 0;
 
-    const CircularProgress = ({ value, label, subtitle }) => {
-        const radius = 24;
+    const CircularProgress = ({ value, label, subtitle, size = 60 }) => {
+        const strokeWidth = 5;
+        const radius = (size - strokeWidth) / 2;
         const circumference = 2 * Math.PI * radius;
-        const strokeDashoffset = circumference - (value / 100) * circumference;
+        const offset = circumference - (value / 100) * circumference;
 
         return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div>
-                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: DASHBOARD_THEME.text, marginBottom: '2px' }}>{label}</h4>
-                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, fontWeight: '700' }}>{subtitle}</p>
-                </div>
-                <div style={{ position: 'relative', width: '60px', height: '60px' }}>
-                    <svg width="60" height="60" style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx="30" cy="30" r="24" stroke="rgba(255,255,255,0.08)" strokeWidth="6" fill="transparent" />
-                        <circle
-                            cx="30"
-                            cy="30"
-                            r="24"
-                            stroke={DASHBOARD_THEME.accent}
-                            strokeWidth="6"
-                            fill="transparent"
-                            strokeDasharray={circumference}
-                            strokeDashoffset={strokeDashoffset}
-                            style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }}
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '12px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>
-                        {value}%
+            <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>{label}</h4>
+                        <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, marginTop: '4px' }}>{subtitle}</p>
+                    </div>
+                    <div style={{ position: 'relative', width: size, height: size }}>
+                        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+                            <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
+                            <circle
+                                cx={size / 2}
+                                cy={size / 2}
+                                r={radius}
+                                fill="none"
+                                stroke={DASHBOARD_THEME.accent}
+                                strokeWidth={strokeWidth}
+                                strokeDasharray={circumference}
+                                strokeDashoffset={offset}
+                                strokeLinecap="round"
+                            />
+                        </svg>
                     </div>
                 </div>
-            </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <div>
+                        <p style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '1px' }}>CURRENT</p>
+                        <p style={{ fontSize: '18px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: '2px 0 0 0' }}>{value.toLocaleString()} <span style={{ fontSize: '10px', fontWeight: '500', color: 'rgba(24,212,199,0.5)' }}>8% <TrendingUp size={10} /></span></p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '1px' }}>% OF GLOBAL</p>
+                        <p style={{ fontSize: '18px', fontWeight: '900', color: '#fff', margin: '2px 0 0 0' }}>{Math.round(value / 20)}%</p>
+                    </div>
+                </div>
+            </div >
         );
     };
 
     return (
-        <div className="lost-shell">
-            <div className="lost-main-grid">
-                <div className="lost-left-col">
-                    <div className="bc-top-stats">
-                        <div className="bc-stat-card glow-cyan">
-                            <div style={{ flex: 1 }}>
-                                <span className="bc-stat-label">Total Releases</span>
-                                <span className="bc-stat-val text-accent">{totalReleases.toLocaleString()}</span>
-                            </div>
-                            <Sparkline data={stats.trends || []} color={DASHBOARD_THEME.accent} />
-                        </div>
-                        <div className="bc-stat-card glow-cyan">
-                            <div style={{ flex: 1 }}>
-                                <span className="bc-stat-label">Total Tracks</span>
-                                <span className="bc-stat-val text-accent">{totalTracks.toLocaleString()}</span>
-                            </div>
-                            <Sparkline data={stats.trends || []} color={DASHBOARD_THEME.accent} />
-                        </div>
-                        <div className="bc-stat-card glow-cyan">
-                            <div style={{ flex: 1 }}>
-                                <span className="bc-stat-label">Total Videos</span>
-                                <span className="bc-stat-val text-accent">{totalVideos.toLocaleString()}</span>
-                            </div>
-                            <Sparkline data={stats.trendsDaily || []} color={DASHBOARD_THEME.accent} />
-                        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Header Mini Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                {[
+                    { label: 'Total Releases', value: totalReleases },
+                    { label: 'Total Tracks', value: totalTracks },
+                    { label: 'Total Videos', value: totalVideos },
+                ].map((s, i) => (
+                    <div key={i} style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px' }}>
+                        <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, marginBottom: '4px' }}>{s.label}</p>
+                        <p style={{ fontSize: '20px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>{(s.value || 0).toLocaleString()}</p>
                     </div>
+                ))}
+            </div>
 
-                    <div className="bc-welcome-banner">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <div className="bc-welcome-avatar">
-                                <NextImage src={stats.artistImage || '/default-album.jpg'} alt="Profile" width={80} height={80} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'start' }}>
+                {/* LEFT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                    {/* Welcome Banner */}
+                    <div style={{
+                        background: 'linear-gradient(110deg, #064e3b 0%, #134e4a 50%, #164e63 100%)',
+                        borderRadius: '20px',
+                        padding: '40px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minHeight: '220px',
+                        border: `1px solid ${DASHBOARD_THEME.border}`
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
+                            <div style={{ width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${DASHBOARD_THEME.accent}4c` }}>
+                                <NextImage
+                                    src={resolveImageSrc(session?.user?.image)}
+                                    width={90}
+                                    height={90}
+                                    alt="Artist Avatar"
+                                    unoptimized
+                                    onError={handleImageError}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
                             </div>
                             <div>
-                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.62)', marginBottom: '4px' }}>
-                                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                </p>
-                                <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome back, {userName}</h1>
+                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome, {session?.user?.stageName || 'Artist'}!</h1>
                             </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>
-                                ${availableCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </h2>
-                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', marginTop: '4px' }}>Credit Available</p>
+                        <div style={{ textAlign: 'right', zIndex: 1 }}>
+                            <p style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString()}</p>
+                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>Balance Available</p>
                         </div>
+                        {/* Decorative background glow */}
+                        <div style={{ position: 'absolute', top: '-50%', right: '-30%', width: '100%', height: '200%', background: `radial-gradient(circle, ${DASHBOARD_THEME.accent}19 0%, transparent 60%)`, transform: 'rotate(-20deg)' }} />
                     </div>
 
-                    <div className="bc-quick-actions">
-                        <div className="bc-action-card" onClick={() => onNavigate('submit')}>
-                            <div className="bc-action-icon"><Disc size={18} /></div>
-                            <h3 className="bc-action-title">Create Release</h3>
-                            <p className="bc-action-desc">Add a release to your catalog</p>
-                            <ChevronRight size={16} color={DASHBOARD_THEME.accent} className="bc-action-arrow" />
-                        </div>
-                        <div className="bc-action-card" onClick={() => onNavigate('support')}>
-                            <div className="bc-action-icon"><Users size={18} /></div>
-                            <h3 className="bc-action-title">Support</h3>
-                            <p className="bc-action-desc">Open a request and talk with admin</p>
-                            <ChevronRight size={16} color={DASHBOARD_THEME.accent} className="bc-action-arrow" />
-                        </div>
+                    {/* Action Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        {[
+                            { title: 'Create Release', desc: 'Add a release to your catalog', icon: <Disc size={20} />, action: () => onNavigate('submit') },
+                            { title: 'Support', desc: 'Open a request and talk with admin', icon: <Users size={20} />, action: () => onNavigate('support') },
+                        ].map((a, i) => (
+                            <div key={i} onClick={a.action} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
+                                    {a.icon}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>{a.title}</h4>
+                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
+                                </div>
+                                <ChevronRight size={18} color={DASHBOARD_THEME.accent} />
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="bc-recent-releases">
+                    {/* Recent Releases */}
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: 0 }}>Recent Releases</h3>
-                            <button onClick={() => onNavigate('releases')} className="bc-btn-outline">Show All</button>
+                            <h3 style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '1px' }}>RECENT_RELEASES</h3>
+                            <button onClick={() => onNavigate('releases')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
                         </div>
-                        <div className="bc-releases-grid">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                             {recentReleases.length === 0 ? (
-                                <p style={{ color: DASHBOARD_THEME.muted, fontSize: '12px' }}>No releases found.</p>
+                                <p style={{ color: DASHBOARD_THEME.muted, fontSize: '11px' }}>No releases found.</p>
                             ) : (
-                                recentReleases.slice(0, 4).map((release) => (
-                                    <div key={release.id} className="bc-release-item" onClick={() => onNavigate('releases')}>
-                                        <div className="bc-release-cover">
-                                            <NextImage src={release.image || stats.artistImage || '/default-album.jpg'} alt={release.name} width={200} height={200} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                recentReleases.slice(0, 4).map((release, i) => (
+                                    <div key={i} onClick={() => onNavigate('releases')} style={{ cursor: 'pointer' }}>
+                                        <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', background: '#000', marginBottom: '8px', border: `1px solid ${DASHBOARD_THEME.border}` }}>
+                                            <NextImage
+                                                src={resolveImageSrc(release.image || stats.artistImage, release.id)}
+                                                width={200}
+                                                height={200}
+                                                alt={release.name}
+                                                unoptimized
+                                                onError={handleImageError}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            />
                                         </div>
-                                        <div className="bc-release-name">{release.name}</div>
-                                        <div className="bc-release-artist">{stats.artistName || 'Unknown Artist'}</div>
+                                        <p style={{ fontSize: '12px', fontWeight: '800', color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.name}</p>
+                                        <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{stats.artistName || 'Artist'}</p>
                                     </div>
                                 ))
                             )}
@@ -1152,261 +1231,49 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     </div>
                 </div>
 
-                <div className="lost-right-col">
-                    <div className="bc-sidebar-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <div>
-                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h3>
-                                <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Historical Trend</p>
-                            </div>
+                {/* RIGHT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h4>
                             <TrendingUp size={16} color={DASHBOARD_THEME.accent} />
                         </div>
-                        <div style={{ height: '160px', width: '100%', position: 'relative' }}>
-                            <RechartsAreaChart data={stats.listenerTrend || []} color={DASHBOARD_THEME.accent} height={160} />
+                        <div style={{ height: '120px', width: '100%' }}>
+                            <RechartsAreaChart data={stats.listenerTrend || []} color={DASHBOARD_THEME.accent} height={120} />
                         </div>
                     </div>
 
-                    <div className="bc-sidebar-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                             <div>
-                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h3>
+                                <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h4>
                                 <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Last 6 months</p>
                             </div>
-                            <span style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, cursor: 'pointer' }}>See Trends &gt;</span>
+                            <button style={{ background: 'none', border: 'none', color: DASHBOARD_THEME.accent, fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>See Trends &gt;</button>
                         </div>
-                        <div style={{ flex: 1, minHeight: '180px', position: 'relative' }}>
-                            <RechartsAreaChart data={stats.trends || []} color={DASHBOARD_THEME.accent} height={180} />
+
+                        <div style={{ height: '140px', width: '100%', position: 'relative', margin: '16px 0' }}>
+                            <RechartsAreaChart data={stats.trends || []} color={DASHBOARD_THEME.accent} height={140} />
                         </div>
-                        <div style={{ marginTop: '20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '12px', fontWeight: '800' }}>
-                                <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1db954' }} /> Spotify</span>
-                                <span style={{ color: DASHBOARD_THEME.muted }}>{(stats.streams || 0).toLocaleString()}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '800' }}>
-                                <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#fa243c' }} /> Apple Music</span>
-                                <span style={{ color: DASHBOARD_THEME.muted }}>{Math.floor((stats.streams || 0) * 0.45).toLocaleString()}</span>
-                            </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {[
+                                { name: 'Spotify', value: (stats.streams || 0).toLocaleString(), color: '#1DB954' },
+                                { name: 'Apple Music', value: Math.floor((stats.streams || 0) * 0.45).toLocaleString(), color: '#FA2D48' }
+                            ].map((s, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: s.color }} />
+                                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>{s.name}</span>
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>{s.value}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             </div>
-
-            <style jsx>{`
-                .lost-shell {
-                    display: flex;
-                    flex-direction: column;
-                    width: 100%;
-                }
-                .lost-main-grid {
-                    display: grid;
-                    grid-template-columns: 2.2fr 1fr;
-                    gap: 18px;
-                }
-                .lost-left-col {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 18px;
-                }
-                .lost-right-col {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 18px;
-                }
-                .text-accent {
-                    color: ${DASHBOARD_THEME.accent} !important;
-                }
-                .bc-top-stats {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 14px;
-                }
-                .bc-stat-card {
-                    background: ${DASHBOARD_THEME.surface};
-                    border-radius: 14px;
-                    border: 1px solid ${DASHBOARD_THEME.border};
-                    padding: 24px;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
-                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-                .bc-stat-card:hover {
-                    transform: translateY(-2px);
-                    background: ${DASHBOARD_THEME.surfaceElevated};
-                }
-                .glow-cyan {
-                    border-color: rgba(24, 212, 199, 0.08) !important;
-                }
-                .glow-cyan:hover {
-                    border-color: rgba(24, 212, 199, 0.25) !important;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(24, 212, 199, 0.05);
-                }
-                .bc-stat-label {
-                    font-size: 11px;
-                    font-weight: 800;
-                    color: ${DASHBOARD_THEME.muted};
-                    letter-spacing: 1.2px;
-                    text-transform: uppercase;
-                    margin-bottom: 4px;
-                    display: block;
-                }
-                .bc-stat-val {
-                    font-size: 28px;
-                    font-weight: 900;
-                    letter-spacing: -0.5px;
-                }
-                .bc-welcome-banner {
-                    background: linear-gradient(110deg, #3A2396 0%, #1A114D 100%);
-                    border-radius: 20px;
-                    padding: 40px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 24px;
-                    position: relative;
-                    overflow: hidden;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-                }
-
-                .bc-welcome-banner::after {
-                    content: '';
-                    position: absolute;
-                    top: -50%;
-                    right: -25%;
-                    width: 75%;
-                    height: 200%;
-                    background: radial-gradient(circle, rgba(107, 76, 246, 0.1) 0%, transparent 70%);
-                    transform: rotate(-15deg);
-                    pointer-events: none;
-                }
-                .bc-welcome-avatar {
-                    width: 80px;
-                    height: 80px;
-                    border-radius: 50%;
-                    background: rgba(0,0,0,0.3);
-                    border: 2px solid rgba(255,255,255,0.25);
-                    overflow: hidden;
-                }
-                .bc-quick-actions {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 14px;
-                }
-                .bc-action-card {
-                    background: #0E0E0E;
-                    border-radius: 14px;
-                    border: 1px solid ${DASHBOARD_THEME.border};
-                    padding: 24px;
-                    position: relative;
-                    cursor: pointer;
-                    transition: all 0.25s ease;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                }
-                .bc-action-card:hover {
-                    background: #121212;
-                    transform: translateY(-2px);
-                    border-color: ${DASHBOARD_THEME.accent};
-                }
-                .bc-action-icon {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 8px;
-                    background: rgba(255,255,255,0.03);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    margin-bottom: 16px;
-                    color: ${DASHBOARD_THEME.text};
-                }
-                .bc-action-title {
-                    font-size: 16px;
-                    font-weight: 800;
-                    color: #fff;
-                    margin: 0 0 6px 0;
-                }
-                .bc-action-desc {
-                    font-size: 12px;
-                    color: ${DASHBOARD_THEME.muted};
-                    margin: 0;
-                }
-                .bc-action-arrow {
-                    position: absolute;
-                    top: 50%;
-                    right: 20px;
-                    transform: translateY(-50%);
-                    opacity: 0.4;
-                }
-                .bc-recent-releases {
-                    margin-top: 10px;
-                }
-                .bc-btn-outline {
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid ${DASHBOARD_THEME.border};
-                    color: #fff;
-                    padding: 8px 16px;
-                    border-radius: 20px;
-                    font-size: 11px;
-                    font-weight: 800;
-                    cursor: pointer;
-                }
-                .bc-releases-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-                    gap: 15px;
-                }
-                .bc-release-item {
-                    cursor: pointer;
-                }
-                .bc-release-cover {
-                    width: 100%;
-                    aspect-ratio: 1/1;
-                    border-radius: 10px;
-                    overflow: hidden;
-                    background: #0E0E0E;
-                    margin-bottom: 12px;
-                    border: 1px solid ${DASHBOARD_THEME.border};
-                }
-                .bc-release-name {
-                    font-size: 13px;
-                    font-weight: 800;
-                    color: #fff;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-                .bc-release-artist {
-                    font-size: 11px;
-                    color: ${DASHBOARD_THEME.muted};
-                    margin-top: 4px;
-                }
-                .bc-sidebar-card {
-                    background: #0E0E0E;
-                    border-radius: 14px;
-                    border: 1px solid ${DASHBOARD_THEME.border};
-                    padding: 24px;
-                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
-                }
-                @media (max-width: 1100px) {
-                    .lost-main-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-                @media (max-width: 860px) {
-                    .bc-top-stats {
-                        grid-template-columns: 1fr;
-                    }
-                    .bc-quick-actions {
-                        grid-template-columns: 1fr;
-                    }
-                    .bc-welcome-banner {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 18px;
-                    }
-                }
-            `}</style>
-        </div >
+        </div>
     );
 }
 
@@ -1668,10 +1535,26 @@ function ReleaseCard({ release, versions = [], stats, getRequestStatus, setReque
         <div style={{ ...glassStyle, padding: '15px' }}>
             <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', marginBottom: '15px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '2px' }}>
                 {release.image ? (
-                    <NextImage src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <NextImage
+                        src={resolveImageSrc(release.image, release.id)}
+                        alt={release.name}
+                        width={300}
+                        height={300}
+                        unoptimized
+                        onError={handleImageError}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                 ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-                        <NextImage src={stats?.artistImage || '/default-album.jpg'} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />
+                        <NextImage
+                            src={resolveImageSrc(stats?.artistImage)}
+                            alt={release.name}
+                            width={300}
+                            height={300}
+                            unoptimized
+                            onError={handleImageError}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }}
+                        />
                     </div>
                 )}
                 {hasMultiple && (
@@ -2712,13 +2595,13 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
     }, {})).sort((a, b) => b.spend - a.spend).slice(0, 5);
 
     const earningsTone = {
-        shellGlowA: 'rgba(107,76,246,0.11)',
-        shellGlowB: 'rgba(124,141,255,0.11)',
-        panel: '#101725',
-        panelSoft: '#151E2F',
-        panelBorder: 'rgba(174,188,214,0.16)',
-        muted: '#96A6C0',
-        accent: '#7C8DFF',
+        shellGlowA: 'rgba(0,229,160,0.11)',
+        shellGlowB: 'rgba(0,184,212,0.11)',
+        panel: '#141414',
+        panelSoft: '#1c1c1c',
+        panelBorder: '#2a2a2a',
+        muted: '#888888',
+        accent: '#00e5a0',
         info: '#60A5FA'
     };
 

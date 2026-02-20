@@ -53,8 +53,8 @@ export const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => 
     );
 
     return (
-        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px', minWidth: 0, minHeight: `${height}px` }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
                 <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                         <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
@@ -98,8 +98,8 @@ export const DonutChart = ({ data }) => {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '200px', height: '200px' }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <div style={{ position: 'relative', width: '200px', height: '200px', minWidth: 0, minHeight: '200px' }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
                     <PieChart>
                         <Pie
                             data={data}

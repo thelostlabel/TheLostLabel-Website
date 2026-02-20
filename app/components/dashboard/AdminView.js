@@ -245,7 +245,12 @@ export default function AdminView() {
 
     return (
         <div style={{ padding: '0px' }}>
-            {view === 'overview' && <HomeView />}
+            {view === 'overview' && <HomeView onNavigate={(v) => {
+                const params = new URLSearchParams(window.location.search);
+                params.set('view', v);
+                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                window.dispatchEvent(new Event('popstate'));
+            }} />}
             {view === 'submissions' && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} />}
             {view === 'artists' && <ArtistsView artists={artists} users={users} onSync={handleSyncStats} onRefresh={fetchArtists} />}
             {view === 'users' && <UsersView users={users} onRefresh={fetchUsers} />}
