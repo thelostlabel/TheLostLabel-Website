@@ -3,12 +3,24 @@ import Link from 'next/link';
 import NextImage from 'next/image';
 import { Play, Pause, ExternalLink } from 'lucide-react';
 import { usePlayer } from './PlayerContext';
+import { motion } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
 
 export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initialData }) {
     const data = initialData || null;
     const loading = !initialData;
     const error = false;
     const { playTrack, currentTrack, isPlaying } = usePlayer();
+
+    const cardRef = useRef(null);
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+    const [isHovered, setIsHovered] = useState(false);
+
+    const handleMouseMove = (e) => {
+        if (!cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    };
 
     const getBaseTitle = (t) => {
         if (!t) return "";
@@ -57,39 +69,52 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
     };
 
     return (
-        <div className="glass-premium" style={{
-            padding: '0',
-            borderRadius: '24px',
-            border: '1px solid var(--border)',
-            transition: 'all 0.4s ease',
-            overflow: 'hidden',
-            position: 'relative'
-        }}>
-            <Link href={`/releases/${data?.id || id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <motion.div
+            ref={cardRef}
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            whileHover={{ y: -10, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="release-card" style={{
+                padding: '0',
+                borderRadius: '0', // Kurate style square edges
+                border: 'none',
+                overflow: 'hidden',
+                position: 'relative',
+                aspectRatio: '1/1',
+                boxShadow: isHovered ? '0 30px 60px rgba(0,0,0,0.6)' : '0 10px 30px rgba(0,0,0,0.3)',
+                background: '#111'
+            }}>
+            {/* Removed Hover Spotlight */}
+
+            <Link href={`/releases/${data?.id || id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
                 <div className="card-image-container" style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(0,0,0,0.2))',
-                    height: '280px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    height: '100%',
+                    width: '100%',
                     position: 'relative',
                     overflow: 'hidden'
                 }}>
                     {normalizedImage ? (
                         <>
-                            <NextImage
-                                src={normalizedImage}
-                                alt={title}
-                                width={400}
-                                height={400}
-                                className="release-image"
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
-                                }}
-                            />
+                            <motion.div
+                                animate={isHovered ? { scale: 1.08 } : { scale: 1 }}
+                                transition={{ duration: 0.6, ease: "easeOut" }}
+                                style={{ width: '100%', height: '100%' }}
+                            >
+                                <NextImage
+                                    src={normalizedImage}
+                                    alt={title}
+                                    width={400}
+                                    height={400}
+                                    className="release-image"
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover'
+                                    }}
+                                />
+                            </motion.div>
                             {data?.stream_count_text && (
                                 <div style={{
                                     position: 'absolute',
@@ -117,13 +142,12 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                                     right: '16px',
                                     background: 'rgba(0, 0, 0, 0.8)',
                                     backdropFilter: 'blur(8px)',
-                                    color: 'var(--accent)',
                                     padding: '6px 12px',
                                     fontSize: '9px',
                                     fontWeight: '900',
                                     letterSpacing: '1px',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '0px',
+                                    border: '1px solid rgba(255,255,255,1)',
                                     zIndex: 2
                                 }}>
                                     {versionCount} VERSIONS
@@ -133,24 +157,62 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                             {/* Play Button Overlay - only if preview exists */}
                             {hasPreview && (
                                 <div className={`play-overlay ${isActive ? 'active' : ''}`} onClick={handlePlay}>
-                                    <div style={{
-                                        width: '64px',
-                                        height: '64px',
-                                        borderRadius: '50%',
-                                        background: 'rgba(255,255,255,0.2)',
-                                        backdropFilter: 'blur(10px)',
-                                        border: '1px solid rgba(255,255,255,0.3)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-                                        transition: 'transform 0.2s'
-                                    }}>
-                                        {isActive ? <Pause size={32} fill="#fff" /> : <Play size={32} fill="#fff" style={{ marginLeft: '4px' }} />}
-                                    </div>
+                                    <motion.div
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        style={{
+                                            width: '64px',
+                                            height: '64px',
+                                            borderRadius: '0px',
+                                            background: '#fff',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                        }}>
+                                        {isActive ? <Pause size={28} fill="#000" /> : <Play size={28} fill="#000" style={{ marginLeft: '4px' }} />}
+                                    </motion.div>
                                 </div>
                             )}
+
+                            {/* Gradient Overlay and Text */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }}
+                                transition={{ duration: 0.4 }}
+                                style={{
+                                    position: 'absolute',
+                                    bottom: 0, left: 0, right: 0,
+                                    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)',
+                                    padding: '40px 24px 24px 24px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'flex-end',
+                                    zIndex: 6
+                                }}
+                            >
+                                <h3 style={{
+                                    fontSize: '24px',
+                                    color: '#fff',
+                                    marginBottom: '4px',
+                                    textTransform: 'uppercase',
+                                    fontWeight: '900',
+                                    lineHeight: 1.1,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                }}>{baseTitle.toUpperCase()}</h3>
+                                <p style={{
+                                    fontSize: '14px',
+                                    color: 'rgba(255,255,255,0.6)',
+                                    fontWeight: '500',
+                                    margin: 0,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                }}>{artist}</p>
+                            </motion.div>
                         </>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -160,57 +222,12 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                         </div>
                     )}
                 </div>
-                <div style={{ padding: '24px' }}>
-                    <h3 style={{
-                        fontSize: '18px',
-                        marginBottom: '8px',
-                        textTransform: 'uppercase',
-                        fontWeight: '800',
-                        lineHeight: 1.2,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        height: '43px' // Fixed height for 2 lines
-                    }}>{baseTitle.toUpperCase()}</h3>
-                    <p style={{
-                        fontSize: '12px',
-                        color: 'var(--accent)',
-                        fontWeight: '700',
-                        letterSpacing: '0.5px',
-                        marginBottom: '20px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                    }}>{artist}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'nowrap', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                        <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', fontWeight: '600', letterSpacing: '1px' }}>LOST_CATALOG_ID: {id?.slice(0, 8).toUpperCase()}</span>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            {hasPreview ? (
-                                <button
-                                    onClick={handlePlay}
-                                    style={{ border: 'none', background: 'var(--accent)', color: '#000', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(245,197,66,0.3)' }}
-                                >
-                                    {isActive ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" style={{ marginLeft: '2px' }} />}
-                                </button>
-                            ) : (
-                                <div style={{ width: '32px', height: '32px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)' }}>
-                                    <ExternalLink size={12} />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
             </Link>
             <style jsx>{`
-                .glass-premium:hover {
-                    transform: translateY(-10px);
+                .release-card:hover {
                     background: rgba(255,255,255,0.05);
                     border-color: rgba(255,255,255,0.15);
-                    box-shadow: 0 30px 60px -12px rgba(0,0,0,0.5);
-                }
-                .glass-premium:hover .release-image {
-                    transform: scale(1.08);
+                    box-shadow: 0 30px 60px -12px rgba(0,0,0,0.5) !important;
                 }
                 .play-overlay {
                     position: absolute;
@@ -221,11 +238,12 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
                     justify-content: center;
                     opacity: 0;
                     transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                    z-index: 5;
                 }
-                .glass-premium:hover .play-overlay, .play-overlay.active {
+                .release-card:hover .play-overlay, .play-overlay.active {
                     opacity: 1;
                 }
             `}</style>
-        </div>
+        </motion.div>
     );
 }

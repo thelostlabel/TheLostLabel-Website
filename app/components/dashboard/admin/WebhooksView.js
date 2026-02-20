@@ -106,7 +106,7 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                             background: 'rgba(255, 255, 255, 0.03)',
                             backdropFilter: 'blur(30px)',
                             borderRadius: '32px',
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            border: '1px solid var(--border)',
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
                         }}
                     >
@@ -137,7 +137,7 @@ export default function WebhooksView({ webhooks, onRefresh }) {
 
                             <div>
                                 <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SUBSCRIBE_EVENTS</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', background: 'var(--glass)', padding: '15px', borderRadius: '20px', border: '1px solid var(--border)' }}>
                                     {eventOptions.map(opt => {
                                         const isSelected = form.events.includes(opt.value);
                                         return (
@@ -192,7 +192,7 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                             <button onClick={handleSave} disabled={saving || !form.name || !form.url} className="glow-button" style={{ flex: 2, padding: '18px', fontWeight: '900', height: 'auto' }}>
                                 {saving ? 'PROCESSING...' : (editingWebhook ? 'UPDATE_WEBHOOK' : 'CREATE_WEBHOOK')}
                             </button>
-                            <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
+                            <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
                                 CANCEL
                             </button>
                         </div>
@@ -210,9 +210,9 @@ export default function WebhooksView({ webhooks, onRefresh }) {
             </div>
 
             <div style={glassStyle}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <table className="admin-responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <tr style={{ background: 'var(--glass)' }}>
                             <th style={thStyle}>NAME / ENDPOINT</th>
                             <th style={thStyle}>SUBSCRIPTIONS</th>
                             <th style={thStyle}>STATUS</th>
@@ -222,11 +222,11 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                     <tbody>
                         {webhooks.map(webhook => (
                             <tr key={webhook.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                <td style={tdStyle}>
+                                <td data-label="NAME / ENDPOINT" style={tdStyle}>
                                     <div style={{ fontSize: '13px', fontWeight: '900', color: '#fff' }}>{webhook.name}</div>
                                     <div style={{ fontSize: '9px', color: '#444', marginTop: '4px', letterSpacing: '0.5px' }}>{webhook.url.substring(0, 60)}...</div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="SUBSCRIPTIONS" style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                         {webhook.events?.split(',').filter(e => e).map(event => (
                                             <span key={event} style={{ fontSize: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', color: '#888', borderRadius: '4px', fontWeight: '800' }}>
@@ -235,13 +235,13 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                                         ))}
                                     </div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="STATUS" style={tdStyle}>
                                     <button
                                         onClick={() => handleToggle(webhook)}
                                         style={{
                                             background: webhook.enabled ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255,255,255,0.02)',
                                             color: webhook.enabled ? '#00ff88' : '#444',
-                                            border: '1px solid rgba(255,255,255,0.05)',
+                                            border: '1px solid var(--border)',
                                             padding: '6px 12px',
                                             fontSize: '9px',
                                             cursor: 'pointer',
@@ -252,9 +252,9 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                                         {webhook.enabled ? 'ACTIVE' : 'DISABLED'}
                                     </button>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="ACTIONS" style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button onClick={() => testWebhook(webhook.url)} style={{ ...btnStyle, fontSize: '9px', background: 'rgba(255,255,255,0.02)' }}>TEST</button>
+                                        <button onClick={() => testWebhook(webhook.url)} style={{ ...btnStyle, fontSize: '9px', background: 'var(--glass)' }}>TEST</button>
                                         <button onClick={() => {
                                             setEditingWebhook(webhook);
                                             setForm({
@@ -264,7 +264,7 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                                                 enabled: webhook.enabled,
                                                 config: webhook.config || ''
                                             });
-                                        }} style={{ ...btnStyle, fontSize: '9px', background: 'rgba(255,255,255,0.02)' }}>EDIT</button>
+                                        }} style={{ ...btnStyle, fontSize: '9px', background: 'var(--glass)' }}>EDIT</button>
                                         <button onClick={() => handleDelete(webhook.id)} style={{ ...btnStyle, fontSize: '9px', color: 'var(--status-error)', background: 'rgba(255,68,68,0.05)' }}>DELETE</button>
                                     </div>
                                 </td>

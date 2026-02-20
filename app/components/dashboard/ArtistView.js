@@ -8,19 +8,38 @@ import {
     Upload, Music, Disc, User as UserIcon, CheckCircle,
     XCircle, Clock, AlertCircle, Trash2, Send, ExternalLink,
     Briefcase, DollarSign, CreditCard, Users, ClipboardList,
-    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell, Lock
+    MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell, Lock,
+    ChevronDown, ChevronRight, Filter, Download, LayoutDashboard, List
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '@/app/components/ToastContext';
 import ProjectView from './ProjectView';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
+const DASHBOARD_THEME = {
+    bg: '#05060B',
+    surface: '#0A0D14',
+    surfaceElevated: '#0F1320',
+    surfaceSoft: '#151B2B',
+    border: 'rgba(146,158,188,0.2)',
+    borderStrong: 'rgba(116,135,255,0.42)',
+    text: '#EEF3FF',
+    muted: '#96A2BD',
+    accent: '#7C8DFF',
+    accentHover: '#B3BEFF',
+    accentDark: '#4458D4',
+    accentAlt: '#7756FF',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444'
+};
+
 const glassStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '24px',
-    overflow: 'hidden'
+    background: `linear-gradient(160deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
+    border: `1px solid ${DASHBOARD_THEME.border}`,
+    borderRadius: '14px',
+    overflow: 'hidden',
+    boxShadow: '0 16px 38px rgba(2, 7, 16, 0.34)'
 };
 
 const getBaseTitle = (title) => {
@@ -43,14 +62,14 @@ const ChartTooltip = ({ active, payload, label, color }) => {
 
     return (
         <div style={{
-            background: 'rgba(10,10,12,0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
+            background: '#000',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '2px',
             padding: '12px 16px',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
         }}>
-            <div style={{ fontSize: '9px', color: '#a8b0bc', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
+            <div style={{ fontSize: '12px', color: '#a8b0bc', fontWeight: '800', letterSpacing: '0.5px', marginBottom: '6px' }}>{label}</div>
             {payload.map((p, i) => (
                 <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
                     {isCurrency ? `$${Number(p.value).toLocaleString()}` : Number(p.value).toLocaleString()}
@@ -67,7 +86,7 @@ function formatChartValue(v) {
     return `${Math.round(value)}`;
 }
 
-const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
+const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
     const sanitizedData = Array.isArray(data)
         ? data.filter((point) => point && Number.isFinite(Number(point.value)))
         : [];
@@ -112,38 +131,29 @@ const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
     return (
         <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                         <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="8%" stopColor={color} stopOpacity={0.2} />
+                            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
                             <stop offset="95%" stopColor={color} stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.11)" />
                     <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
-                        tickLine={false}
-                        axisLine={{ stroke: 'rgba(255,255,255,0.16)' }}
-                        tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
+                        hide
                     />
                     <YAxis
-                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={44}
-                        tickCount={5}
-                        tickFormatter={formatChartValue}
+                        hide
                     />
                     <Tooltip content={<ChartTooltip color={color} />} />
                     <Area
                         type="monotone"
                         dataKey="value"
                         stroke={color}
-                        strokeWidth={2.8}
+                        strokeWidth={3}
                         fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 4, fill: '#0a0a0c', stroke: color, strokeWidth: 2.2 }}
-                        activeDot={{ r: 6, fill: color, stroke: '#0a0a0c', strokeWidth: 2.2 }}
+                        dot={false}
+                        activeDot={{ r: 4, fill: color, stroke: '#000', strokeWidth: 2 }}
                     />
                 </AreaChart>
             </ResponsiveContainer>
@@ -152,31 +162,33 @@ const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
 };
 
 const btnStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    color: '#666',
-    padding: '10px 20px',
-    fontSize: '9px',
+    background: 'linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+    border: `1px solid ${DASHBOARD_THEME.border}`,
+    color: DASHBOARD_THEME.text,
+    padding: '10px 16px',
+    fontSize: '12px',
     cursor: 'pointer',
     fontWeight: '900',
-    letterSpacing: '2px',
-    borderRadius: '12px',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    letterSpacing: '0.8px',
+    borderRadius: '10px',
+    transition: 'all 0.2s',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '10px'
+    justifyContent: 'center',
+    gap: '8px'
 };
 
 const inputStyle = {
     width: '100%',
-    padding: '15px 20px',
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    color: '#fff',
+    padding: '14px 16px',
+    background: 'linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))',
+    border: `1px solid ${DASHBOARD_THEME.border}`,
+    color: DASHBOARD_THEME.text,
     fontSize: '12px',
     fontWeight: '700',
     borderRadius: '10px',
     outline: 'none',
+    transition: 'all 0.2s',
     letterSpacing: '0.5px'
 };
 
@@ -212,8 +224,70 @@ export default function ArtistView() {
         setSelectedRequestId(searchParams.get('id'));
     }, [searchParams]);
 
-    const [stats, setStats] = useState({ releases: 0, listeners: 0, pendingRequests: 0, earnings: 0, withdrawn: 0, balance: 0, trends: [], trendsDaily: [] });
+    const [stats, setStats] = useState({
+        releases: 0,
+        listeners: 0,
+        pendingRequests: 0,
+        earnings: 0,
+        withdrawn: 0,
+        paid: 0,
+        pending: 0,
+        available: 0,
+        balance: 0,
+        trends: [],
+        trendsDaily: []
+    });
     const [payments, setPayments] = useState([]);
+
+    // Withdrawal Modal State
+    const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawMethod, setWithdrawMethod] = useState('BANK_TRANSFER');
+    const [withdrawNotes, setWithdrawNotes] = useState('');
+    const [withdrawing, setWithdrawing] = useState(false);
+
+    const handleWithdrawSubmit = async (e) => {
+        e.preventDefault();
+        if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+            showToast('Please enter a valid amount', 'warning');
+            return;
+        }
+
+        if (parseFloat(withdrawAmount) > (stats.available ?? stats.balance ?? 0)) {
+            showToast('Amount exceeds available balance', 'error');
+            return;
+        }
+
+        setWithdrawing(true);
+        try {
+            const res = await fetch('/api/artist/withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: parseFloat(withdrawAmount),
+                    method: withdrawMethod,
+                    notes: withdrawNotes
+                })
+            });
+
+            if (res.ok) {
+                showToast('Withdrawal request submitted successfully', 'success');
+                setWithdrawModalOpen(false);
+                setWithdrawAmount('');
+                setWithdrawNotes('');
+                // Refresh data
+                fetchStats();
+                fetchPayments();
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Failed to submit request', 'error');
+            }
+        } catch (e) {
+            showToast('Network error', 'error');
+        } finally {
+            setWithdrawing(false);
+        }
+    };
     const fetchStats = useCallback(async () => {
         setLoading(true);
         try {
@@ -446,13 +520,24 @@ export default function ArtistView() {
         profile: 'view_profile'
     };
 
+    const navigateToView = useCallback((nextView, extraParams = {}) => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('view', nextView);
+        Object.entries(extraParams).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') params.delete(key);
+            else params.set(key, String(value));
+        });
+        window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+        window.dispatchEvent(new Event('popstate'));
+    }, []);
+
     if (!loading && !hasPermission(viewToPerm[view])) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
                 <div style={{ padding: '30px', ...glassStyle, textAlign: 'center', maxWidth: '400px' }}>
                     <AlertCircle size={32} style={{ color: 'var(--status-error)', marginBottom: '15px' }} />
                     <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>ACCESS_RESTRICTED</h3>
-                    <p style={{ fontSize: '11px', color: '#666', lineHeight: '1.6' }}>
+                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, lineHeight: '1.6' }}>
                         You do not have the required permissions to access this module. If you believe this is an error, please contact the label administration.
                     </p>
                 </div>
@@ -461,23 +546,47 @@ export default function ArtistView() {
     }
 
     return (
-        <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '24px', marginBottom: '30px', letterSpacing: '2px', fontWeight: '800', color: '#fff', paddingLeft: '10px' }}>
-                {viewTitles[view] || 'DASHBOARD'}
-            </h2>
+        <div
+            className="artist-dashboard-view"
+            style={{
+                flex: 1,
+                padding: '30px',
+                overflowY: 'auto',
+                background: DASHBOARD_THEME.bg,
+                borderRadius: '0px'
+            }}
+        >
+            <div
+                style={{
+                    marginBottom: '18px',
+                    padding: '18px 16px',
+                    borderRadius: '14px',
+                    border: `1px solid ${DASHBOARD_THEME.border}`,
+                    background: `linear-gradient(180deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
+                    boxShadow: '0 14px 32px rgba(3, 8, 18, 0.35)'
+                }}
+            >
+                <p style={{ margin: 0, fontSize: '11px', color: DASHBOARD_THEME.muted, letterSpacing: '1.1px', fontWeight: '900' }}>ARTIST DASHBOARD</p>
+                <h2 style={{ fontSize: '22px', margin: '8px 0 0', letterSpacing: '0.8px', fontWeight: '900', color: DASHBOARD_THEME.text }}>
+                    {viewTitles[view] || 'DASHBOARD'}
+                </h2>
+            </div>
+
+            {!loading && view !== 'overview' && (
+                <ArtistQuickAccessBar
+                    stats={stats}
+                    currentView={view}
+                    onNavigate={navigateToView}
+                />
+            )}
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '80px', fontSize: '11px', letterSpacing: '3px', color: '#444' }}>LOADING...</div>
+                <div style={{ textAlign: 'center', padding: '80px', fontSize: '12px', letterSpacing: '1px', color: DASHBOARD_THEME.muted }}>LOADING...</div>
             ) : view === 'overview' ? (
                 <OverviewView
                     stats={stats}
                     recentReleases={releases.slice(0, 4)}
-                    onNavigate={(v) => {
-                        const params = new URLSearchParams(window.location.search);
-                        params.set('view', v);
-                        window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-                        window.dispatchEvent(new Event('popstate'));
-                    }}
+                    onNavigate={navigateToView}
                     actionRequiredContract={actionRequiredContract}
                     onSignClick={(c) => {
                         setActionRequiredContract(c);
@@ -513,7 +622,15 @@ export default function ArtistView() {
                     handleSubmit={handleSubmit}
                 />
             ) : view === 'earnings' ? (
-                <ArtistEarningsView earnings={earnings} payments={payments} session={session} pagination={earningsPagination} onPageChange={fetchEarnings} />
+                <ArtistEarningsView
+                    earnings={earnings}
+                    payments={payments}
+                    session={session}
+                    pagination={earningsPagination}
+                    onPageChange={fetchEarnings}
+                    stats={stats}
+                    onWithdrawClick={() => setWithdrawModalOpen(true)}
+                />
             ) : view === 'contracts' ? (
                 <ArtistContractsView contracts={contracts} session={session} />
             ) : view === 'support' ? (
@@ -544,8 +661,89 @@ export default function ArtistView() {
                 <ProfileView onUpdate={update} />
             ) : null}
 
+            {/* Withdrawal Modal */}
+            {
+                withdrawModalOpen && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+                        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                    }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            style={{
+                                width: '450px', background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: '4px', padding: '40px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                            }}
+                        >
+                            <h3 style={{ fontSize: '14px', letterSpacing: '3px', fontWeight: '950', color: '#fff', marginBottom: '8px', textTransform: 'uppercase' }}>WITHDRAW_FUNDS</h3>
+                            <p style={{ fontSize: '12px', color: '#555', marginBottom: '30px', fontWeight: '800', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '15px' }}>
+                                AVAILABLE_BALANCE: <span style={{ color: 'var(--accent)' }}>${(stats.available ?? stats.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </p>
+
+                            <form onSubmit={handleWithdrawSubmit} style={{ display: 'grid', gap: '20px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '950', color: DASHBOARD_THEME.muted, letterSpacing: '1px', marginBottom: '8px' }}>AMOUNT_USD</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        required
+                                        value={withdrawAmount}
+                                        onChange={e => setWithdrawAmount(e.target.value)}
+                                        placeholder="0.00"
+                                        style={{ ...inputStyle, borderRadius: '2px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '950', color: DASHBOARD_THEME.muted, letterSpacing: '1px', marginBottom: '8px' }}>PAYMENT_METHOD</label>
+                                    <select
+                                        value={withdrawMethod}
+                                        onChange={e => setWithdrawMethod(e.target.value)}
+                                        style={{ ...inputStyle, borderRadius: '2px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                    >
+                                        <option value="BANK_TRANSFER">Bank Transfer (IBAN)</option>
+                                        <option value="PAYPAL">PayPal</option>
+                                        <option value="CRYPTO">Crypto (USDT/BTC)</option>
+                                        <option value="WISE">Wise</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '950', color: DASHBOARD_THEME.muted, letterSpacing: '1px', marginBottom: '8px' }}>PAYMENT_DETAILS / NOTES</label>
+                                    <textarea
+                                        value={withdrawNotes}
+                                        onChange={e => setWithdrawNotes(e.target.value)}
+                                        placeholder="IBAN, Email or Wallet Address..."
+                                        style={{ ...inputStyle, borderRadius: '2px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.1)', minHeight: '80px', resize: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                                    <button
+                                        type="submit"
+                                        disabled={withdrawing}
+                                        style={{ ...btnStyle, flex: 2, background: 'var(--accent)', color: '#000', border: 'none', height: '45px', justifyContent: 'center' }}
+                                    >
+                                        {withdrawing ? 'PROCESSING...' : 'SUBMIT_REQUEST'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setWithdrawModalOpen(false)}
+                                        style={{ ...btnStyle, flex: 1, background: 'rgba(255,255,255,0.05)', height: '45px', justifyContent: 'center' }}
+                                    >
+                                        CANCEL
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )
+            }
+
             {/* Signing Modal removed per user request */}
-        </div>
+        </div >
     );
 }
 
@@ -563,12 +761,12 @@ const GoalProgress = ({ label, current, target, color }) => {
                     <span style={{ fontSize: '10px', fontWeight: '900', color: safeColor }}>{percentage}%</span>
                 </div>
             </div>
-            <div style={{ width: '100%', height: '7px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '0px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${percentage}%` }}
                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ height: '100%', background: safeColor, borderRadius: '10px', boxShadow: `0 0 18px ${safeColor}50` }}
+                    style={{ height: '100%', background: safeColor, borderRadius: '0px', boxShadow: `0 0 10px ${safeColor}30` }}
                 />
             </div>
         </div>
@@ -652,14 +850,14 @@ function SimpleChart({ data, color = 'var(--accent)' }) {
                 position: 'absolute',
                 right: '10px',
                 top: '0px',
-                background: 'rgba(0,0,0,0.5)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: '#000',
+                border: '1px solid rgba(255,255,255,0.2)',
                 padding: '6px 12px',
-                borderRadius: '8px',
+                borderRadius: '0px',
                 color: '#fff',
                 fontSize: '11px',
                 fontWeight: '900',
-                letterSpacing: '0.5px',
+                letterSpacing: '1px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                 backdropFilter: 'blur(10px)'
             }}>
@@ -675,349 +873,472 @@ function SimpleChart({ data, color = 'var(--accent)' }) {
     );
 }
 
-function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick }) {
-    const [chartRange, setChartRange] = useState('monthly'); // monthly | daily
-    const [chartType, setChartType] = useState('earnings'); // earnings | listeners
+function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
+    const available = stats.available ?? stats.balance ?? 0;
+    const pending = stats.pending ?? 0;
+    const paid = stats.paid ?? 0;
 
-    const chartData = chartType === 'listeners'
-        ? (stats.listenerTrend || [])
-        : (chartRange === 'daily'
-            ? (stats.trendsDaily && stats.trendsDaily.length ? stats.trendsDaily : stats.trends)
-            : stats.trends);
+    const cardStyle = {
+        padding: '16px',
+        background: `linear-gradient(165deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
+        border: `1px solid ${DASHBOARD_THEME.border}`,
+        borderRadius: '8px',
+        minHeight: '92px',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        cursor: 'pointer'
+    };
 
-    const chartTitle = chartType === 'listeners' ? 'GROWTH FLOW' : 'PERFORMANCE FLOW';
-    const chartColor = chartType === 'listeners' ? '#00d4ff' : 'var(--accent)';
-    const chartSubtitle = chartType === 'listeners'
-        ? 'Your monthly listeners growth day by day'
-        : (chartRange === 'daily'
-            ? 'Estimated earnings trend by day (Last 30)'
-            : 'Estimated earnings trend by month');
-    const chartTypeButtonActive = chartType === 'listeners' ? '#00d4ff' : 'var(--accent)';
-    const chartRangeButtonActive = 'var(--accent)';
+    const labelStyle = { fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '800', letterSpacing: '0.8px', marginBottom: '8px', zIndex: 2, position: 'relative' };
+    const valueStyle = { fontSize: '24px', color: DASHBOARD_THEME.text, fontWeight: '900', letterSpacing: '-0.5px', zIndex: 2, position: 'relative' };
 
-    // --- Hero / Welcome Section ---
-    const userFirstName = stats.artistName?.split(' ')[0] || 'Artist';
+    const navButtonStyle = {
+        ...btnStyle,
+        minHeight: '38px',
+        borderRadius: '999px',
+        width: 'auto',
+        padding: '0 14px',
+        fontSize: '12px',
+        letterSpacing: '0.6px'
+    };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-            {/* 1. Hero Welcome Area with Blurred Glow */}
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                    position: 'relative',
-                    padding: '24px 0',
-                    textAlign: 'center',
-                    marginBottom: '10px'
-                }}
+        <div style={{ marginBottom: '20px', display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+            <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ y: 0 }}
+                onClick={() => onNavigate('earnings')}
+                style={cardStyle}
             >
-                <div style={{
-                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    width: '60%', height: '100%',
-                    background: 'radial-gradient(circle, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%)',
-                    filter: 'blur(40px)', zIndex: -1
-                }} />
+                <div style={{ position: 'absolute', top: '-50px', right: '-40px', width: '130px', height: '130px', background: `radial-gradient(circle, ${DASHBOARD_THEME.accent}55 0%, transparent 72%)`, pointerEvents: 'none', zIndex: 1 }} />
+                <div style={labelStyle}>AVAILABLE</div>
+                <div style={{ ...valueStyle, color: DASHBOARD_THEME.accentHover }}>${Number(available).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            </motion.button>
 
-                <h1 style={{ fontSize: '34px', fontWeight: '900', letterSpacing: '-0.8px', color: '#fff', marginBottom: '8px' }}>
-                    Welcome back, <span style={{ color: 'var(--accent)' }}>{userFirstName}</span>
-                </h1>
-                <p style={{ fontSize: '13px', color: '#888', letterSpacing: '1px', fontWeight: '500' }}>
-                    Here&apos;s what&apos;s happening with your music today.
-                </p>
-            </motion.div>
+            <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ y: 0 }}
+                onClick={() => onNavigate('earnings')}
+                style={cardStyle}
+            >
+                <div style={labelStyle}>PENDING</div>
+                <div style={valueStyle}>${Number(pending).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            </motion.button>
 
-            {/* 2. Key Metrics Grid (Redesigned) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '18px' }}>
+            <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ y: 0 }}
+                onClick={() => onNavigate('earnings')}
+                style={cardStyle}
+            >
+                <div style={labelStyle}>PAID</div>
+                <div style={valueStyle}>${Number(paid).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            </motion.button>
+
+            <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ y: 0 }}
+                onClick={() => onNavigate('overview')}
+                style={cardStyle}
+            >
+                <div style={labelStyle}>MONTHLY LISTENERS</div>
+                <div style={valueStyle}>{Number(stats.listeners || 0).toLocaleString()}</div>
+            </motion.button>
+
+            <div className="quick-nav-grid">
                 {[
-                    { label: 'MONTHLY LISTENERS', value: stats.listeners?.toLocaleString() || '0', icon: <Users size={18} />, color: '#fff' },
-                    { label: 'TOTAL SONGS', value: stats.songs || '0', icon: <Disc size={18} />, color: '#fff' },
-                    { label: 'TOTAL STREAMS', value: stats.streams ? stats.streams.toLocaleString() : '0', icon: <Music size={18} />, color: '#fff' },
-                    { label: 'PENDING DEMOS', value: stats.demos || '0', icon: <Clock size={18} />, color: stats.demos > 0 ? '#ffaa00' : '#666' },
-                    { label: 'WALLET BALANCE', value: `$${(stats.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`, icon: <DollarSign size={18} />, color: 'var(--accent)', highlight: true }
-                ].map((card, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        whileHover={{ y: -4, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}
-                        style={{
-                            ...glassStyle,
-                            padding: '18px',
-                            background: card.highlight ? 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)' : 'rgba(255,255,255,0.02)',
-                            border: card.highlight ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.04)',
-                            display: 'flex', flexDirection: 'column', gap: '12px'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', color: card.color }}>
-                                {card.icon}
-                            </div>
-                            {card.trend && <span style={{ fontSize: '9px', fontWeight: '800', color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '4px 8px', borderRadius: '8px' }}>{card.trend}</span>}
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '22px', fontWeight: '900', color: '#fff', letterSpacing: '-0.4px' }}>{card.value}</div>
-                            <div style={{ fontSize: '9px', fontWeight: '800', color: '#555', letterSpacing: '1px', marginTop: '4px' }}>{card.label}</div>
-                        </div>
-                    </motion.div>
-                ))}
+                    { view: 'submit', label: 'SUBMIT', icon: <Upload size={13} /> },
+                    { view: 'contracts', label: 'CONTRACTS', icon: <Briefcase size={13} /> },
+                    { view: 'support', label: 'SUPPORT', icon: <MessageSquare size={13} /> },
+                    { view: 'releases', label: 'CATALOG', icon: <Disc size={13} /> }
+                ].map((item) => {
+                    const isActive = currentView === item.view;
+                    return (
+                        <motion.button
+                            key={item.view}
+                            whileHover={{ y: -1 }}
+                            whileTap={{ y: 0 }}
+                            onClick={() => onNavigate(item.view)}
+                            style={{
+                                ...navButtonStyle,
+                                background: isActive ? DASHBOARD_THEME.accent : 'rgba(255,255,255,0.015)',
+                                color: isActive ? '#0b0914' : DASHBOARD_THEME.text,
+                                border: isActive ? 'none' : navButtonStyle.border
+                            }}
+                        >
+                            {item.icon} {item.label}
+                        </motion.button>
+                    );
+                })}
             </div>
 
-            {/* 3. Main Dashboard Content (Chart + Spotlight) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+            <style jsx>{`
+                .quick-nav-grid {
+                    grid-column: 1 / -1;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-top: 2px;
+                }
+                @media (max-width: 860px) {
+                    .quick-nav-grid {
+                        gap: 8px;
+                    }
+                }
+            `}</style>
+        </div>
+    );
+}
 
-                {/* Performance Chart */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    style={{ ...glassStyle, padding: '22px', minHeight: '330px' }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <div>
-                            <h3 style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: '900', color: '#fff' }}>{chartTitle}</h3>
-                            <p style={{ fontSize: '10px', color: '#98a3b3', marginTop: '4px', fontWeight: '700' }}>{chartSubtitle}</p>
+function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick }) {
+    const userName = stats?.user?.stageName || stats?.name || 'Artist';
+    const availableCredit = stats.available ?? stats.balance ?? 0;
+    const totalReleases = stats.releases || 0;
+    const totalTracks = stats.songs || 0;
+    const totalVideos = 0;
+
+    const CircularProgress = ({ value, label, subtitle }) => {
+        const radius = 24;
+        const circumference = 2 * Math.PI * radius;
+        const strokeDashoffset = circumference - (value / 100) * circumference;
+
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div>
+                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: DASHBOARD_THEME.text, marginBottom: '2px' }}>{label}</h4>
+                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, fontWeight: '700' }}>{subtitle}</p>
+                </div>
+                <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                    <svg width="60" height="60" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="30" cy="30" r="24" stroke="rgba(255,255,255,0.08)" strokeWidth="6" fill="transparent" />
+                        <circle
+                            cx="30"
+                            cy="30"
+                            r="24"
+                            stroke={DASHBOARD_THEME.accent}
+                            strokeWidth="6"
+                            fill="transparent"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
+                            style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '12px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>
+                        {value}%
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="beatclap-shell">
+            <div className="beatclap-main-grid">
+                <div className="beatclap-left-col">
+                    <div className="bc-top-stats">
+                        <div className="bc-stat-card">
+                            <span className="bc-stat-label">Total Releases</span>
+                            <span className="bc-stat-val text-accent">{totalReleases.toLocaleString()}</span>
                         </div>
-                        {/* Toggle Buttons */}
-                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
-                                {['earnings', 'listeners'].map(type => (
-                                    <button
-                                        key={type}
-                                        onClick={() => setChartType(type)}
-                                        style={{
-                                            border: 'none',
-                                            background: chartType === type ? chartTypeButtonActive : 'transparent',
-                                            color: chartType === type ? '#000' : '#9ca8ba',
-                                            fontSize: '9px',
-                                            fontWeight: '800',
-                                            padding: '6px 14px',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {type === 'earnings' ? 'EARNINGS' : 'GROWTH'}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="bc-stat-card">
+                            <span className="bc-stat-label">Total Tracks</span>
+                            <span className="bc-stat-val text-accent">{totalTracks.toLocaleString()}</span>
+                        </div>
+                        <div className="bc-stat-card">
+                            <span className="bc-stat-label">Total Videos</span>
+                            <span className="bc-stat-val text-accent">{totalVideos.toLocaleString()}</span>
+                        </div>
+                    </div>
 
-                            {chartType === 'earnings' && (
-                                <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
-                                    {['monthly', 'daily'].map(mode => (
-                                        <button
-                                            key={mode}
-                                            onClick={() => setChartRange(mode)}
-                                            style={{
-                                                border: 'none',
-                                                background: chartRange === mode ? chartRangeButtonActive : 'transparent',
-                                                color: chartRange === mode ? '#000' : '#9ca8ba',
-                                                fontSize: '9px',
-                                                fontWeight: '800',
-                                                padding: '6px 14px',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {mode.toUpperCase()}
-                                        </button>
-                                    ))}
-                                </div>
+                    <div className="bc-welcome-banner">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div className="bc-welcome-avatar">
+                                <NextImage src={stats.artistImage || '/default-album.jpg'} alt="Profile" width={80} height={80} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <div>
+                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.62)', marginBottom: '4px' }}>
+                                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </p>
+                                <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome back, {userName}</h1>
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <h2 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>
+                                ${availableCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </h2>
+                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', marginTop: '4px' }}>Credit Available</p>
+                        </div>
+                    </div>
+
+                    <div className="bc-quick-actions">
+                        <div className="bc-action-card" onClick={() => onNavigate('submit')}>
+                            <div className="bc-action-icon"><Disc size={18} /></div>
+                            <h3 className="bc-action-title">Create Release</h3>
+                            <p className="bc-action-desc">Add a release to your catalog</p>
+                            <ChevronRight size={16} color={DASHBOARD_THEME.accent} className="bc-action-arrow" />
+                        </div>
+                        <div className="bc-action-card" onClick={() => onNavigate('support')}>
+                            <div className="bc-action-icon"><Users size={18} /></div>
+                            <h3 className="bc-action-title">Support</h3>
+                            <p className="bc-action-desc">Open a request and talk with admin</p>
+                            <ChevronRight size={16} color={DASHBOARD_THEME.accent} className="bc-action-arrow" />
+                        </div>
+                    </div>
+
+                    <div className="bc-recent-releases">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', margin: 0 }}>Recent Releases</h3>
+                            <button onClick={() => onNavigate('releases')} className="bc-btn-outline">Show All</button>
+                        </div>
+                        <div className="bc-releases-grid">
+                            {recentReleases.length === 0 ? (
+                                <p style={{ color: DASHBOARD_THEME.muted, fontSize: '12px' }}>No releases found.</p>
+                            ) : (
+                                recentReleases.slice(0, 4).map((release) => (
+                                    <div key={release.id} className="bc-release-item" onClick={() => onNavigate('releases')}>
+                                        <div className="bc-release-cover">
+                                            <NextImage src={release.image || stats.artistImage || '/default-album.jpg'} alt={release.name} width={200} height={200} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div className="bc-release-name">{release.name}</div>
+                                        <div className="bc-release-artist">{stats.artistName || 'Unknown Artist'}</div>
+                                    </div>
+                                ))
                             )}
                         </div>
                     </div>
-
-                    {/* The Chart */}
-                    <div style={{ height: '280px' }}>
-                        {chartData && chartData.length > 0 ? (
-                            <RechartsAreaChart data={chartData} color={chartColor} height={280} />
-                        ) : (
-                            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '15px' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {chartType === 'earnings' ? <DollarSign size={16} color="#333" /> : <Users size={16} color="#333" />}
-                                </div>
-                                <div style={{ color: '#444', fontSize: '10px', letterSpacing: '1px', fontWeight: '800' }}>
-                                    {chartType === 'earnings' ? 'NO EARNINGS DATA YET' : 'NO GROWTH DATA YET'}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </motion.div>
-
-                {/* Spotlight / Goals Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-                    {/* Featured Release Card (Visual Show) */}
-                    {recentReleases[0] && (
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 }}
-                            style={{
-                                ...glassStyle,
-                                padding: '0',
-                                overflow: 'hidden',
-                                position: 'relative',
-                                height: '220px'
-                            }}
-                        >
-                            {/* Background Image with Blur */}
-                            <div style={{
-                                position: 'absolute', inset: 0,
-                                backgroundImage: `url(${recentReleases[0].image || '/default-album.jpg'})`,
-                                backgroundSize: 'cover', backgroundPosition: 'center',
-                                filter: 'blur(20px) brightness(0.4)', zIndex: 0
-                            }} />
-
-                            <div style={{ position: 'relative', zIndex: 1, padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{
-                                        fontSize: '9px', fontWeight: '900',
-                                        background: new Date(recentReleases[0].releaseDate) > new Date() ? 'var(--accent)' : 'rgba(255,255,255,0.2)',
-                                        padding: '4px 8px', borderRadius: '4px',
-                                        color: new Date(recentReleases[0].releaseDate) > new Date() ? '#000' : '#fff',
-                                        letterSpacing: '1px'
-                                    }}>
-                                        {new Date(recentReleases[0].releaseDate) > new Date() ? 'UPCOMING DROP' : 'LATEST DROP'}
-                                    </span>
-                                    <ExternalLink size={14} color="#fff" style={{ opacity: 0.7 }} />
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                                    <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
-                                        <NextImage src={recentReleases[0].image || stats.artistImage || '/default-album.jpg'} width={60} height={60} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Art" />
-                                    </div>
-                                    <div>
-                                        <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', margin: 0 }}>{recentReleases[0].name}</h4>
-                                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
-                                            {new Date(recentReleases[0].releaseDate).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* Goals Widget */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        style={{ ...glassStyle, padding: '24px', flex: 1 }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '11px', letterSpacing: '2px', fontWeight: '900', color: '#fff', margin: 0 }}>NEXT MILESTONES</h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <GoalProgress label="EARNINGS ($5K)" current={stats.balance} target={5000} color="var(--accent)" />
-                            <GoalProgress label="RELEASES (12)" current={stats.releases} target={12} color="#00d4ff" />
-                            <GoalProgress label="10K LISTENERS" current={stats.listeners || 0} target={10000} color="#ff0055" />
-                        </div>
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* Action Required Banner (if any) */}
-            {actionRequiredContract && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    style={{
-                        background: 'linear-gradient(90deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0.02) 100%)',
-                        border: '1px solid rgba(234, 179, 8, 0.2)',
-                        borderRadius: '16px',
-                        padding: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginTop: '-10px'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ padding: '10px', background: 'rgba(234, 179, 8, 0.2)', borderRadius: '50%' }}>
-                            <AlertCircle size={20} color="#eab308" />
-                        </div>
-                        <div>
-                            <h4 style={{ color: '#eab308', fontSize: '13px', fontWeight: '800', margin: 0 }}>ACTION REQUIRED</h4>
-                            <p style={{ color: '#aaa', fontSize: '11px', margin: '4px 0 0' }}>
-                                You have a pending contract for &quot;{actionRequiredContract.title}&quot; waiting for signature.
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => onSignClick(actionRequiredContract)}
-                        style={{ ...btnStyle, background: '#eab308', color: '#000', border: 'none', boxShadow: '0 4px 15px rgba(234, 179, 8, 0.3)' }}
-                    >
-                        REVIEW & SIGN
-                    </button>
-                </motion.div>
-            )}
-
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '3px', color: '#fff' }}>RECENT_RELEASES</h3>
-                        <button
-                            onClick={() => onNavigate('releases')}
-                            style={{ background: 'none', border: 'none', color: '#444', fontSize: '10px', fontWeight: '800', letterSpacing: '1px', cursor: 'pointer' }}>
-                            VIEW ALL
-                        </button>
-                    </div>
-
-                    {recentReleases.length === 0 ? (
-                        <div style={{ ...glassStyle, padding: '40px', textAlign: 'center', color: '#444' }}>
-                            <p style={{ fontSize: '10px', letterSpacing: '2px' }}>NO RELEASES TO SHOW</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
-                            {recentReleases.map(r => (
-                                <div key={r.id} style={{ ...glassStyle, padding: '10px' }}>
-                                    <div style={{ aspectRatio: '1/1', background: '#111', borderRadius: '12px', overflow: 'hidden', marginBottom: '10px' }}>
-                                        <NextImage src={r.image || stats.artistImage || '/default-album.jpg'} alt={r.name} width={140} height={140} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                    <div style={{ fontSize: '11px', fontWeight: '900', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name.toUpperCase()}</div>
-                                    <div style={{ fontSize: '8px', color: '#444', marginTop: '4px' }}>{new Date(r.releaseDate).toLocaleDateString()}</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                    <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '3px', color: '#fff', marginBottom: '20px' }}>QUICK_REACH</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <button
-                                onClick={() => onNavigate('submit')}
-                                style={{ ...btnStyle, width: '100%', background: 'rgba(255,255,255,0.03)', color: '#fff', justifyContent: 'center', padding: '18px' }}>
-                                <Upload size={14} style={{ color: 'var(--accent)' }} /> SUBMIT NEW TRACK
-                            </button>
-                            <button
-                                onClick={() => onNavigate('profile')}
-                                style={{ ...btnStyle, width: '100%', background: 'transparent', justifyContent: 'center', padding: '18px' }}>
-                                <UserIcon size={14} /> MANAGE PROFILE
-                            </button>
+                <div className="beatclap-right-col">
+                    <div className="bc-sidebar-card">
+                        <CircularProgress label="Top Retailer" subtitle="Spotify" value={38} />
+                        <CircularProgress label="Top Territory" subtitle="Brazil" value={63} />
+
+                        <div style={{ paddingTop: '16px' }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: '800', color: DASHBOARD_THEME.text, marginBottom: '16px' }}>Listener Behaviour</h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted }}>ACTIVE</p>
+                                    <p style={{ fontSize: '16px', fontWeight: '800', color: DASHBOARD_THEME.accent }}>77%</p>
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, textAlign: 'right' }}>PASSIVE</p>
+                                    <p style={{ fontSize: '16px', fontWeight: '800', color: '#fff', textAlign: 'right' }}>23%</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div style={{ ...glassStyle, padding: '25px', background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.01) 100%)' }}>
-                        <div style={{ color: 'var(--accent)', fontSize: '9px', fontWeight: '900', letterSpacing: '2px', marginBottom: '12px' }}>NEED HELP?</div>
-                        <p style={{ fontSize: '11px', color: '#666', lineHeight: '1.6', marginBottom: '15px' }}>Have questions about your release or earnings? Our team is here to support you.</p>
-                        <button
-                            onClick={() => onNavigate('releases')}
-                            style={{ ...btnStyle, width: '100%', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '8px' }}>
-                            START CONVERSATION
-                        </button>
+                    <div className="bc-sidebar-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <div>
+                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h3>
+                                <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Last 6 months</p>
+                            </div>
+                            <span style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, cursor: 'pointer' }}>See Trends &gt;</span>
+                        </div>
+                        <div style={{ flex: 1, minHeight: '180px', position: 'relative' }}>
+                            <RechartsAreaChart data={stats.trends || []} color={DASHBOARD_THEME.accent} height={180} />
+                        </div>
+                        <div style={{ marginTop: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '12px', fontWeight: '800' }}>
+                                <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#1db954' }} /> Spotify</span>
+                                <span style={{ color: DASHBOARD_THEME.muted }}>{(stats.streams || 0).toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '800' }}>
+                                <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#fa243c' }} /> Apple Music</span>
+                                <span style={{ color: DASHBOARD_THEME.muted }}>{Math.floor((stats.streams || 0) * 0.45).toLocaleString()}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <style jsx>{`
-                .stat-card:hover {
-                    background: rgba(255,255,255,0.03) !important;
-                    border-color: rgba(255,255,255,0.1) !important;
+                .beatclap-shell {
+                    display: flex;
+                    flex-direction: column;
+                    width: 100%;
+                }
+                .beatclap-main-grid {
+                    display: grid;
+                    grid-template-columns: 2.2fr 1fr;
+                    gap: 18px;
+                }
+                .beatclap-left-col {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 18px;
+                }
+                .beatclap-right-col {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 18px;
+                }
+                .text-accent {
+                    color: ${DASHBOARD_THEME.accent} !important;
+                }
+                .bc-top-stats {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 14px;
+                }
+                .bc-stat-card {
+                    background: linear-gradient(160deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface});
+                    border-radius: 14px;
+                    border: 1px solid ${DASHBOARD_THEME.border};
+                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    box-shadow: 0 14px 32px rgba(3, 8, 18, 0.32);
+                }
+                .bc-stat-label {
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: ${DASHBOARD_THEME.text};
+                }
+                .bc-stat-val {
+                    font-size: 26px;
+                    font-weight: 900;
+                }
+                .bc-welcome-banner {
+                    background: linear-gradient(130deg, rgba(119,86,255,0.88) 0%, rgba(124,141,255,0.42) 130%);
+                    border-radius: 16px;
+                    border: 1px solid rgba(152, 139, 255, 0.35);
+                    padding: 30px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 22px 40px rgba(26, 18, 58, 0.4);
+                }
+                .bc-welcome-avatar {
+                    width: 80px;
+                    height: 80px;
+                    border-radius: 50%;
+                    background: rgba(0,0,0,0.2);
+                    border: 2px solid rgba(255,255,255,0.32);
+                    overflow: hidden;
+                }
+                .bc-quick-actions {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 14px;
+                }
+                .bc-action-card {
+                    background: linear-gradient(165deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface});
+                    border-radius: 14px;
+                    border: 1px solid ${DASHBOARD_THEME.border};
+                    padding: 24px;
+                    position: relative;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                }
+                .bc-action-card:hover {
+                    background: linear-gradient(165deg, ${DASHBOARD_THEME.surfaceSoft}, ${DASHBOARD_THEME.surfaceElevated});
                     transform: translateY(-2px);
+                    border-color: ${DASHBOARD_THEME.borderStrong};
+                }
+                .bc-action-icon {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 8px;
+                    background: rgba(255,255,255,0.05);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 16px;
+                    color: ${DASHBOARD_THEME.text};
+                }
+                .bc-action-title {
+                    font-size: 16px;
+                    font-weight: 800;
+                    color: #fff;
+                    margin: 0 0 6px 0;
+                }
+                .bc-action-desc {
+                    font-size: 12px;
+                    color: ${DASHBOARD_THEME.muted};
+                    margin: 0;
+                }
+                .bc-action-arrow {
+                    position: absolute;
+                    top: 50%;
+                    right: 20px;
+                    transform: translateY(-50%);
+                }
+                .bc-recent-releases {
+                    margin-top: 10px;
+                }
+                .bc-btn-outline {
+                    background: rgba(255,255,255,0.05);
+                    border: 1px solid ${DASHBOARD_THEME.border};
+                    color: #fff;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    font-weight: 800;
+                    cursor: pointer;
+                }
+                .bc-releases-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                    gap: 15px;
+                }
+                .bc-release-item {
+                    cursor: pointer;
+                }
+                .bc-release-cover {
+                    width: 100%;
+                    aspect-ratio: 1/1;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    background: rgba(255,255,255,0.05);
+                    margin-bottom: 12px;
+                    border: 1px solid ${DASHBOARD_THEME.border};
+                }
+                .bc-release-name {
+                    font-size: 13px;
+                    font-weight: 800;
+                    color: #fff;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .bc-release-artist {
+                    font-size: 11px;
+                    color: ${DASHBOARD_THEME.muted};
+                    margin-top: 4px;
+                }
+                .bc-sidebar-card {
+                    background: linear-gradient(165deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface});
+                    border-radius: 14px;
+                    border: 1px solid ${DASHBOARD_THEME.border};
+                    padding: 24px;
+                    box-shadow: 0 14px 32px rgba(3, 8, 18, 0.3);
+                }
+                @media (max-width: 1100px) {
+                    .beatclap-main-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                @media (max-width: 860px) {
+                    .bc-top-stats {
+                        grid-template-columns: 1fr;
+                    }
+                    .bc-quick-actions {
+                        grid-template-columns: 1fr;
+                    }
+                    .bc-welcome-banner {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 18px;
+                    }
                 }
             `}</style>
         </div>
@@ -1027,11 +1348,10 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
 function ReleasesView({ stats }) {
     const [releases, setReleases] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [requestModal, setRequestModal] = useState(null); // { releaseId, releaseName }
+    const [requestModal, setRequestModal] = useState(null);
     const [requestType, setRequestType] = useState('question');
     const [requestDetails, setRequestDetails] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [viewingRequest, setViewingRequest] = useState(null); // Full request object for conversation
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -1044,15 +1364,14 @@ function ReleasesView({ stats }) {
         try {
             const res = await fetch('/api/artist/releases');
             const data = await res.json();
-            if (res.ok) {
-                setReleases(Array.isArray(data) ? data : []);
-            } else {
-                setError(data.error);
-            }
+            if (res.ok) setReleases(Array.isArray(data) ? data : []);
+            else setError(data.error || 'FAILED TO LOAD');
         } catch (e) {
             console.error(e);
             setError('FAILED TO CONNECT');
-        } finally { setLoading(false); }
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleRequestSubmit = async () => {
@@ -1076,49 +1395,59 @@ function ReleasesView({ stats }) {
                 alert('Request submitted successfully!');
                 setRequestModal(null);
                 setRequestDetails('');
-                fetchReleases(); // Refresh to show pending status
+                fetchReleases();
             } else {
                 alert(data.error || 'Request failed');
             }
-        } catch (e) { alert('Request failed'); }
-        finally { setSubmitting(false); }
+        } catch (e) {
+            alert('Request failed');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const getRequestStatus = (release) => {
         if (!release.requests || release.requests.length === 0) return null;
-
-        // Sort requests by updatedAt to get the most recent active one
         const sorted = [...release.requests].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-        // Find the most relevant active request (exclude rejected ones if there's an active one)
-        const active = sorted.find(r => r.status !== 'rejected');
-        if (active) return active;
-
-        // If all are rejected, show the last rejected one
-        return sorted[0];
+        const active = sorted.find((r) => r.status !== 'rejected');
+        return active || sorted[0];
     };
 
-    if (loading) return <div style={{ textAlign: 'center', padding: '50px', color: '#444' }}>Loading releases...</div>;
+    if (loading) {
+        return <div style={{ textAlign: 'center', padding: '50px', color: DASHBOARD_THEME.muted }}>Loading releases...</div>;
+    }
 
     return (
         <div>
             {requestModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.8)', zIndex: 1000,
-                    display: 'flex', justifyContent: 'center', alignItems: 'center',
-                    backdropFilter: 'blur(5px)'
-                }}>
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.8)',
+                        zIndex: 1000,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backdropFilter: 'blur(5px)'
+                    }}
+                >
                     <div style={{ ...glassStyle, padding: '30px', width: '450px' }}>
                         <h3 style={{ fontSize: '14px', marginBottom: '10px', letterSpacing: '2px', fontWeight: '800' }}>REQUEST CHANGE</h3>
-                        <p style={{ fontSize: '11px', color: '#666', marginBottom: '25px', letterSpacing: '1px' }}>
+                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginBottom: '25px', letterSpacing: '0.6px' }}>
                             FOR: <strong style={{ color: '#fff' }}>{requestModal.releaseName.toUpperCase()}</strong>
                         </p>
 
                         <div style={{ marginBottom: '15px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>REQUEST TYPE</label>
-                            <select value={requestType} onChange={(e) => setRequestType(e.target.value)}
-                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', fontSize: '13px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', color: DASHBOARD_THEME.muted, marginBottom: '5px', fontWeight: '800' }}>REQUEST TYPE</label>
+                            <select
+                                value={requestType}
+                                onChange={(e) => setRequestType(e.target.value)}
+                                style={{ width: '100%', padding: '10px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, color: '#fff', fontSize: '13px', borderRadius: '8px' }}
+                            >
                                 <option value="question">Question / Help / Support</option>
                                 <option value="cover_art">Update Cover Art</option>
                                 <option value="audio">Update Audio File</option>
@@ -1128,18 +1457,18 @@ function ReleasesView({ stats }) {
                         </div>
 
                         <div style={{ marginBottom: '25px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: '#666', marginBottom: '5px', fontWeight: '800' }}>DETAILS / LINKS</label>
+                            <label style={{ display: 'block', fontSize: '12px', color: DASHBOARD_THEME.muted, marginBottom: '5px', fontWeight: '800' }}>DETAILS / LINKS</label>
                             <textarea
                                 value={requestDetails}
                                 onChange={(e) => setRequestDetails(e.target.value)}
                                 placeholder="Describe your request. For files, provide a Dropbox/Drive link."
                                 rows={4}
-                                style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', resize: 'vertical' }}
+                                style={{ width: '100%', padding: '10px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, color: '#fff', resize: 'vertical', borderRadius: '8px' }}
                             />
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button onClick={handleRequestSubmit} disabled={submitting} className="glow-button" style={{ flex: 1, padding: '12px' }}>
+                            <button onClick={handleRequestSubmit} disabled={submitting} style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#0B0F1A', border: 'none', justifyContent: 'center', flex: 1, padding: '12px' }}>
                                 {submitting ? 'SUBMITTING...' : 'SUBMIT REQUEST'}
                             </button>
                             <button onClick={() => setRequestModal(null)} style={{ ...btnStyle, flex: 1, padding: '12px' }}>
@@ -1160,12 +1489,12 @@ function ReleasesView({ stats }) {
                     <button
                         onClick={() => {
                             const params = new URLSearchParams(window.location.search);
-                            // My change: Use 'my-profile' instead of 'profile'
                             params.set('view', 'my-profile');
                             window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
                             window.dispatchEvent(new Event('popstate'));
                         }}
-                        style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '12px 30px', marginTop: '10px' }}>
+                        style={{ ...btnStyle, background: 'var(--accent)', color: '#0B0F1A', border: 'none', padding: '12px 30px', marginTop: '10px' }}
+                    >
                         GO TO PROFILE
                     </button>
                 </div>
@@ -1180,10 +1509,8 @@ function ReleasesView({ stats }) {
                     <p style={{ fontSize: '10px', marginTop: '10px', color: '#666' }}>Your releases will appear here once distributed.</p>
                 </div>
             ) : (
-
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
                     {(() => {
-                        // Group releases by base name
                         const groups = releases.reduce((acc, r) => {
                             const base = getBaseTitle(r.name);
                             if (!acc[base]) acc[base] = [];
@@ -1192,18 +1519,17 @@ function ReleasesView({ stats }) {
                         }, {});
 
                         const groupEntries = Object.entries(groups).sort((a, b) => {
-                            // Sort by most recent release in each group
-                            const dateA = new Date(Math.max(...a[1].map(r => new Date(r.releaseDate))));
-                            const dateB = new Date(Math.max(...b[1].map(r => new Date(r.releaseDate))));
+                            const dateA = new Date(Math.max(...a[1].map((r) => new Date(r.releaseDate))));
+                            const dateB = new Date(Math.max(...b[1].map((r) => new Date(r.releaseDate))));
                             return dateB - dateA;
                         });
 
-                        const upcomingGroups = groupEntries.filter(([name, groupReleases]) =>
-                            groupReleases.some(r => new Date(r.releaseDate) > new Date())
+                        const upcomingGroups = groupEntries.filter(([, groupReleases]) =>
+                            groupReleases.some((r) => new Date(r.releaseDate) > new Date())
                         );
 
-                        const pastGroups = groupEntries.filter(([name, groupReleases]) =>
-                            groupReleases.every(r => new Date(r.releaseDate) <= new Date())
+                        const pastGroups = groupEntries.filter(([, groupReleases]) =>
+                            groupReleases.every((r) => new Date(r.releaseDate) <= new Date())
                         );
 
                         return (
@@ -1213,13 +1539,21 @@ function ReleasesView({ stats }) {
                                         <h3 style={{ fontSize: '11px', letterSpacing: '3px', color: 'var(--accent)', fontWeight: '900', marginBottom: '20px', borderLeft: '3px solid var(--accent)', paddingLeft: '12px' }}>UPCOMING_DROPS</h3>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
                                             {upcomingGroups.map(([baseName, groupReleases]) => (
-                                                <ReleaseCard key={baseName} stats={stats} release={groupReleases[0]} versions={groupReleases} getRequestStatus={getRequestStatus} setRequestModal={setRequestModal} onNavigate={(id) => {
-                                                    const params = new URLSearchParams(window.location.search);
-                                                    params.set('view', 'support');
-                                                    params.set('id', id);
-                                                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-                                                    window.dispatchEvent(new Event('popstate'));
-                                                }} />
+                                                <ReleaseCard
+                                                    key={baseName}
+                                                    stats={stats}
+                                                    release={groupReleases[0]}
+                                                    versions={groupReleases}
+                                                    getRequestStatus={getRequestStatus}
+                                                    setRequestModal={setRequestModal}
+                                                    onNavigate={(id) => {
+                                                        const params = new URLSearchParams(window.location.search);
+                                                        params.set('view', 'support');
+                                                        params.set('id', id);
+                                                        window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                                        window.dispatchEvent(new Event('popstate'));
+                                                    }}
+                                                />
                                             ))}
                                         </div>
                                     </div>
@@ -1229,13 +1563,21 @@ function ReleasesView({ stats }) {
                                     <h3 style={{ fontSize: '11px', letterSpacing: '3px', color: '#555', fontWeight: '900', marginBottom: '20px', borderLeft: '3px solid #333', paddingLeft: '12px' }}>DISCOGRAPHY</h3>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
                                         {pastGroups.map(([baseName, groupReleases]) => (
-                                            <ReleaseCard key={baseName} stats={stats} release={groupReleases[0]} versions={groupReleases} getRequestStatus={getRequestStatus} setRequestModal={setRequestModal} onNavigate={(id) => {
-                                                const params = new URLSearchParams(window.location.search);
-                                                params.set('view', 'support');
-                                                params.set('id', id);
-                                                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
-                                                window.dispatchEvent(new Event('popstate'));
-                                            }} />
+                                            <ReleaseCard
+                                                key={baseName}
+                                                stats={stats}
+                                                release={groupReleases[0]}
+                                                versions={groupReleases}
+                                                getRequestStatus={getRequestStatus}
+                                                setRequestModal={setRequestModal}
+                                                onNavigate={(id) => {
+                                                    const params = new URLSearchParams(window.location.search);
+                                                    params.set('view', 'support');
+                                                    params.set('id', id);
+                                                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                                    window.dispatchEvent(new Event('popstate'));
+                                                }}
+                                            />
                                         ))}
                                     </div>
                                     {pastGroups.length === 0 && (
@@ -1248,12 +1590,10 @@ function ReleasesView({ stats }) {
                         );
                     })()}
                 </div>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 }
-
 function ReleaseCard({ release, versions = [], stats, getRequestStatus, setRequestModal, onNavigate }) {
     const activeRequest = getRequestStatus(release);
     const baseTitle = getBaseTitle(release.name);
@@ -1261,16 +1601,16 @@ function ReleaseCard({ release, versions = [], stats, getRequestStatus, setReque
 
     return (
         <div style={{ ...glassStyle, padding: '15px' }}>
-            <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', marginBottom: '15px', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', marginBottom: '15px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '2px' }}>
                 {release.image ? (
                     <NextImage src={release.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release.image} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
                         <NextImage src={stats?.artistImage || '/default-album.jpg'} alt={release.name} width={300} height={300} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />
                     </div>
                 )}
                 {hasMultiple && (
-                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: '900', color: 'var(--accent)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: '#000', padding: '4px 8px', borderRadius: '2px', fontSize: '9px', fontWeight: '900', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
                         {versions.length} VERSIONS
                     </div>
                 )}
@@ -1306,9 +1646,9 @@ function ReleaseCard({ release, versions = [], stats, getRequestStatus, setReque
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div style={{
                                 padding: '12px',
-                                background: 'rgba(255,255,255,0.02)',
-                                border: `1px solid ${isApproved ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)'}`,
-                                borderRadius: '12px'
+                                background: 'rgba(255,255,255,0.01)',
+                                border: `1px solid ${isApproved ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                                borderRadius: '2px'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                     <span style={{ fontSize: '9px', color: getStatusColor(activeRequest.status), fontWeight: '900', letterSpacing: '1px' }}>
@@ -1390,7 +1730,7 @@ function SupportView({ requests, selectedId, onNavigate }) {
                             <h3 style={{ fontSize: '16px', fontWeight: '800' }}>{selectedRequest.release?.name || 'Support Ticket'}</h3>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>STATUS</div>
+                            <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '800' }}>STATUS</div>
                             <div style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>{selectedRequest.status.toUpperCase()}</div>
                         </div>
                     </div>
@@ -1427,14 +1767,14 @@ function SupportView({ requests, selectedId, onNavigate }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
                 <button
                     onClick={() => setIsCreating(true)}
-                    style={{ ...btnStyle, background: '#fff', color: '#000', border: 'none' }}
+                    style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none' }}
                 >
                     + NEW SUPPORT TICKET
                 </button>
             </div>
             {requests.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '100px', ...glassStyle }}>
-                    <p style={{ fontSize: '11px', letterSpacing: '2px', color: '#444' }}>NO ACTIVE SUPPORT REQUESTS</p>
+                    <p style={{ fontSize: '12px', letterSpacing: '1px', color: DASHBOARD_THEME.muted }}>NO ACTIVE SUPPORT REQUESTS</p>
                 </div>
             ) : (
                 requests.map(req => (
@@ -1450,13 +1790,13 @@ function SupportView({ requests, selectedId, onNavigate }) {
                             alignItems: 'center',
                             gap: '20px',
                             transition: 'all 0.2s',
-                            background: 'rgba(255,255,255,0.01)'
+                            background: DASHBOARD_THEME.surfaceElevated
                         }}
                         className="support-item"
                     >
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <MessageSquare size={16} color="#666" />
+                            <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.06)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <MessageSquare size={16} color={DASHBOARD_THEME.muted} />
                             </div>
                             <div>
                                 <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', marginBottom: '4px' }}>
@@ -1466,8 +1806,8 @@ function SupportView({ requests, selectedId, onNavigate }) {
                                     <span style={{ fontSize: '9px', fontWeight: '900', color: 'var(--accent)', letterSpacing: '1px' }}>
                                         {req.type.toUpperCase().replace('_', ' ')}
                                     </span>
-                                    <span style={{ fontSize: '10px', color: '#555' }}>•</span>
-                                    <div style={{ fontSize: '11px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>
+                                    <span style={{ fontSize: '10px', color: DASHBOARD_THEME.muted }}>•</span>
+                                    <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>
                                         {req.details}
                                     </div>
                                 </div>
@@ -1475,12 +1815,12 @@ function SupportView({ requests, selectedId, onNavigate }) {
                         </div>
 
                         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-                            <span style={{ fontSize: '9px', color: '#444' }}>{new Date(req.createdAt).toLocaleDateString()}</span>
+                            <span style={{ fontSize: '12px', color: DASHBOARD_THEME.muted }}>{new Date(req.createdAt).toLocaleDateString()}</span>
                             <div style={{
                                 padding: '4px 8px', borderRadius: '4px',
-                                background: req.status === 'completed' ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)',
-                                color: req.status === 'completed' ? 'var(--status-success)' : '#888',
-                                fontSize: '9px', fontWeight: '900'
+                                background: req.status === 'completed' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.08)',
+                                color: req.status === 'completed' ? DASHBOARD_THEME.success : DASHBOARD_THEME.muted,
+                                fontSize: '12px', fontWeight: '900'
                             }}>
                                 {req.status === 'pending' ? 'OPEN' : req.status.toUpperCase()}
                             </div>
@@ -1489,7 +1829,7 @@ function SupportView({ requests, selectedId, onNavigate }) {
                 ))
             )}
             <style jsx>{`
-                .support-item:hover { background: rgba(255,255,255,0.04) !important; }
+                .support-item:hover { background: ${DASHBOARD_THEME.surfaceSoft} !important; border-color: ${DASHBOARD_THEME.borderStrong} !important; }
             `}</style>
         </div>
     );
@@ -1524,8 +1864,8 @@ function CreateSupportForm({ onComplete }) {
         }
     };
 
-    const labelStyle = { display: 'block', fontSize: '9px', letterSpacing: '2px', color: '#555', marginBottom: '8px', fontWeight: '900' };
-    const inputStyle = { width: '100%', padding: '14px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', color: '#fff', fontSize: '13px', outline: 'none' };
+    const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '900' };
+    const inputStyle = { width: '100%', padding: '14px 18px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' };
 
     return (
         <form onSubmit={handleSubmit} style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1554,8 +1894,7 @@ function CreateSupportForm({ onComplete }) {
             <button
                 type="submit"
                 disabled={sending || !details.trim()}
-                className="glow-button"
-                style={{ height: '50px', marginTop: '10px' }}
+                style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', justifyContent: 'center', height: '50px', marginTop: '10px' }}
             >
                 {sending ? 'SUBMITTING...' : 'OPEN TICKET'}
             </button>
@@ -1611,18 +1950,18 @@ function RequestComments({ request, isArtist }) {
         finally { setSending(false); }
     };
 
-    if (loading) return <div style={{ fontSize: '11px', color: '#444', padding: '100px', textAlign: 'center', letterSpacing: '2px' }}>LOADING_CONVERSATION...</div>;
+    if (loading) return <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, padding: '100px', textAlign: 'center', letterSpacing: '1px' }}>LOADING_CONVERSATION...</div>;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', padding: '30px' }}>
                 <div style={{ alignSelf: 'center', margin: '20px 0', textAlign: 'center' }}>
-                    <div style={{ fontSize: '9px', fontWeight: '900', color: '#333', letterSpacing: '3px' }}>CONVERSATION_STARTED</div>
-                    <div style={{ fontSize: '8px', color: '#222', marginTop: '5px' }}>{new Date(request.createdAt).toLocaleString()}</div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: DASHBOARD_THEME.muted, letterSpacing: '1px' }}>CONVERSATION_STARTED</div>
+                    <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '5px' }}>{new Date(request.createdAt).toLocaleString()}</div>
                 </div>
 
                 {/* Artist's initial description */}
-                <div style={{ alignSelf: 'flex-end', maxWidth: '70%', background: 'var(--accent)', color: '#000', padding: '15px 20px', borderRadius: '15px 15px 2px 15px', border: '1px solid rgba(0,0,0,0.1)' }}>
+                <div style={{ alignSelf: 'flex-end', maxWidth: '70%', background: DASHBOARD_THEME.accent, color: '#041311', padding: '15px 20px', borderRadius: '15px 15px 2px 15px', border: '1px solid rgba(0,0,0,0.1)' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', lineHeight: '1.5' }}>{request.details}</div>
                     <div style={{ fontSize: '8px', opacity: 0.5, marginTop: '8px', fontWeight: '900', textAlign: 'right' }}>YOU (INITIAL)</div>
                 </div>
@@ -1635,18 +1974,18 @@ function RequestComments({ request, isArtist }) {
                         <div key={c.id} style={{
                             alignSelf: isMe ? 'flex-end' : 'flex-start',
                             maxWidth: '70%',
-                            background: isMe ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)',
+                            background: isMe ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)',
                             padding: '15px 20px',
                             borderRadius: isMe ? '15px 15px 2px 15px' : '15px 15px 15px 2px',
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            border: `1px solid ${DASHBOARD_THEME.border}`,
                         }}>
                             {!isMe && (
-                                <div style={{ fontSize: '8px', fontWeight: '900', color: isStaff ? 'var(--accent)' : '#666', marginBottom: '8px', letterSpacing: '1px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '900', color: isStaff ? DASHBOARD_THEME.accent : DASHBOARD_THEME.muted, marginBottom: '8px', letterSpacing: '0.8px' }}>
                                     {c.user.stageName?.toUpperCase() || 'EXTERNAL'} {isStaff ? '(STAFF)' : ''}
                                 </div>
                             )}
-                            <div style={{ fontSize: '12px', lineHeight: '1.6', color: isMe ? '#fff' : '#aaa' }}>{c.content}</div>
-                            <div style={{ fontSize: '8px', color: '#333', marginTop: '10px', fontWeight: '800', textAlign: isMe ? 'right' : 'left' }}>
+                            <div style={{ fontSize: '12px', lineHeight: '1.6', color: isMe ? '#fff' : '#d6dbea' }}>{c.content}</div>
+                            <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '10px', fontWeight: '800', textAlign: isMe ? 'right' : 'left' }}>
                                 {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                         </div>
@@ -1654,7 +1993,7 @@ function RequestComments({ request, isArtist }) {
                 })}
             </div>
 
-            <form onSubmit={handleSend} style={{ padding: '30px', borderTop: '1px solid rgba(255,255,255,0.03)', background: 'rgba(255,255,255,0.01)', display: 'flex', gap: '15px' }}>
+            <form onSubmit={handleSend} style={{ padding: '30px', borderTop: '1px solid rgba(255,255,255,0.08)', background: DASHBOARD_THEME.surface, display: 'flex', gap: '15px' }}>
                 <input
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
@@ -1663,7 +2002,7 @@ function RequestComments({ request, isArtist }) {
                 />
                 <button
                     disabled={sending || !newComment.trim()}
-                    style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '0 25px' }}
+                    style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', padding: '0 25px' }}
                 >
                     {sending ? '...' : 'SEND'}
                 </button>
@@ -1685,9 +2024,9 @@ function DemosView({ demos, onNavigate }) {
     return (
         <div>
             {demos.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '80px', color: '#444' }}>
-                    <p style={{ fontSize: '12px', letterSpacing: '2px', marginBottom: '20px' }}>NO DEMOS SUBMITTED YET</p>
-                    <a href="/dashboard?view=submit" className="glow-button" style={{ padding: '12px 30px' }}>
+                <div style={{ textAlign: 'center', padding: '80px', color: DASHBOARD_THEME.muted }}>
+                    <p style={{ fontSize: '12px', letterSpacing: '1px', marginBottom: '20px' }}>NO DEMOS SUBMITTED YET</p>
+                    <a href="/dashboard?view=submit" style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', padding: '12px 30px' }}>
                         SUBMIT YOUR FIRST DEMO
                     </a>
                 </div>
@@ -1704,19 +2043,19 @@ function DemosView({ demos, onNavigate }) {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
                                     <h3 style={{ fontSize: '16px', marginBottom: '5px' }}>{demo.title}</h3>
-                                    <p style={{ fontSize: '11px', color: '#666' }}>{demo.genre || 'No genre specified'}</p>
-                                    <p style={{ fontSize: '10px', color: '#444', marginTop: '5px' }}>
+                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted }}>{demo.genre || 'No genre specified'}</p>
+                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '5px' }}>
                                         Submitted: {new Date(demo.createdAt).toLocaleDateString()}
                                     </p>
                                     {demo.files && demo.files.length > 0 && (
-                                        <p style={{ fontSize: '9px', color: '#555', marginTop: '5px' }}>
+                                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '5px' }}>
                                             📁 {demo.files.length} file(s) attached
                                         </p>
                                     )}
                                     {demo.status === 'rejected' && demo.rejectionReason && (
                                         <div style={{ marginTop: '12px', padding: '10px', background: 'var(--status-error-bg)', border: '1px solid var(--status-error)', borderRadius: '4px', maxWidth: '400px' }}>
                                             <p style={{ fontSize: '9px', color: 'var(--status-error)', fontWeight: '800', marginBottom: '4px', letterSpacing: '1px' }}>REJECTION REASON</p>
-                                            <p style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.4' }}>{demo.rejectionReason}</p>
+                                            <p style={{ fontSize: '12px', color: '#ddd', lineHeight: '1.4' }}>{demo.rejectionReason}</p>
                                         </div>
                                     )}
                                 </div>
@@ -1727,7 +2066,7 @@ function DemosView({ demos, onNavigate }) {
                                     color: getStatusColor(demo.status),
                                     padding: '5px 12px',
                                     border: `1px solid ${getStatusColor(demo.status)}`,
-                                    borderRadius: '2px'
+                                    borderRadius: '6px'
                                 }}>
                                     {demo.status.toUpperCase()}
                                 </span>
@@ -1762,8 +2101,8 @@ function SubmitView({
         fetchGenres();
     }, []);
 
-    const labelStyle = { display: 'block', fontSize: '9px', letterSpacing: '2px', color: '#555', marginBottom: '8px', fontWeight: '900' };
-    const inputStyle = { width: '100%', padding: '14px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', color: '#fff', fontSize: '13px', outline: 'none', transition: 'border-color 0.2s' };
+    const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '950' };
+    const inputStyle = { width: '100%', padding: '14px 18px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '8px', color: '#fff', fontSize: '12px', outline: 'none', transition: 'border-color 0.2s' };
 
     return (
         <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -1821,19 +2160,19 @@ function SubmitView({
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                         style={{
-                            border: `2px dashed ${dragActive ? 'var(--accent)' : 'rgba(255,255,255,0.05)'}`,
-                            padding: '50px 30px',
+                            border: `1px dashed ${dragActive ? DASHBOARD_THEME.accent : 'rgba(255,255,255,0.18)'}`,
+                            padding: '60px 40px',
                             textAlign: 'center',
                             cursor: 'pointer',
-                            background: dragActive ? 'rgba(var(--accent-rgb), 0.05)' : 'rgba(255,255,255,0.01)',
-                            borderRadius: '16px',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                            background: dragActive ? 'rgba(124,141,255,0.1)' : DASHBOARD_THEME.surfaceSoft,
+                            borderRadius: '8px',
+                            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                         }}
                     >
                         <div style={{ marginBottom: '15px' }}>
-                            <Upload size={32} style={{ color: dragActive ? 'var(--accent)' : '#333' }} />
+                            <Upload size={32} style={{ color: dragActive ? DASHBOARD_THEME.accent : DASHBOARD_THEME.muted }} />
                         </div>
-                        <p style={{ color: '#888', fontSize: '12px', fontWeight: '500', margin: 0, lineHeight: 1.35 }}>
+                        <p style={{ color: DASHBOARD_THEME.muted, fontSize: '12px', fontWeight: '600', margin: 0, lineHeight: 1.35 }}>
                             {dragActive ? 'DROP_FILE_NOW' : 'DRAG & DROP WAV OR CLICK_TO_BROWSE'}
                         </p>
                         <input
@@ -1854,22 +2193,22 @@ function SubmitView({
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
                                     padding: '12px 20px',
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.05)',
-                                    borderRadius: '12px'
+                                    background: DASHBOARD_THEME.surfaceSoft,
+                                    border: `1px solid ${DASHBOARD_THEME.border}`,
+                                    borderRadius: '8px'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{ padding: '8px', background: 'rgba(var(--accent-rgb), 0.1)', color: 'var(--accent)', borderRadius: '8px' }}>
+                                        <div style={{ padding: '8px', background: 'rgba(124,141,255,0.14)', color: DASHBOARD_THEME.accent, borderRadius: '6px' }}>
                                             <Music size={14} />
                                         </div>
                                         <span style={{ fontSize: '11px', color: '#fff', fontWeight: '600' }}>
-                                            {file.name} <span style={{ color: '#555', marginLeft: '6px' }}>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                                            {file.name} <span style={{ color: DASHBOARD_THEME.muted, marginLeft: '6px' }}>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
                                         </span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); removeFile(index); }}
-                                        style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', padding: '5px' }}
+                                        style={{ background: 'transparent', border: 'none', color: DASHBOARD_THEME.muted, cursor: 'pointer', padding: '5px' }}
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -1884,14 +2223,14 @@ function SubmitView({
                     {uploading ? (
                         <div style={{ width: '100%' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '2px', color: 'var(--accent)' }}>UPLOADING_TRACK...</span>
-                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#fff' }}>{uploadProgress}%</span>
+                                <span style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '0.8px', color: DASHBOARD_THEME.accent }}>UPLOADING_TRACK...</span>
+                                <span style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>{uploadProgress}%</span>
                             </div>
-                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${uploadProgress}%` }}
-                                    style={{ height: '100%', background: 'var(--accent)', boxShadow: '0 0 15px var(--accent)' }}
+                                    style={{ height: '100%', background: 'var(--accent)', borderRadius: '2px' }}
                                 />
                             </div>
                         </div>
@@ -1902,12 +2241,12 @@ function SubmitView({
                                 width: '100%',
                                 padding: '18px',
                                 background: 'var(--accent)',
-                                color: '#000',
+                                color: '#071311',
                                 border: 'none',
-                                borderRadius: '16px',
-                                fontSize: '11px',
-                                fontWeight: '900',
-                                letterSpacing: '4px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                fontWeight: '950',
+                                letterSpacing: '1px',
                                 cursor: 'pointer',
                                 transition: '0.3s',
                                 display: 'flex',
@@ -1952,8 +2291,8 @@ function ProfileView({ onUpdate }) {
     const [notifySupport, setNotifySupport] = useState(true);
     const [notifyContracts, setNotifyContracts] = useState(true);
 
-    const labelStyle = { display: 'block', fontSize: '10px', letterSpacing: '2px', color: '#666', marginBottom: '8px', fontWeight: '800' };
-    const inputStyle = { width: '100%', padding: '12px 15px', background: '#0a0a0a', border: '1px solid #222', color: '#fff', fontSize: '13px' };
+    const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '800' };
+    const inputStyle = { width: '100%', padding: '12px 15px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, color: '#fff', fontSize: '13px', borderRadius: '8px', outline: 'none' };
 
     useEffect(() => {
         fetchProfile();
@@ -2053,14 +2392,14 @@ function ProfileView({ onUpdate }) {
     };
 
     if (loading) {
-        return <div style={{ textAlign: 'center', padding: '80px', color: '#444' }}>Loading profile...</div>;
+        return <div style={{ textAlign: 'center', padding: '80px', color: DASHBOARD_THEME.muted }}>Loading profile...</div>;
     }
 
     return (
         <div style={{ maxWidth: '1000px', margin: '0 0' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
                 {/* LEFT COLUMN: Profile Details */}
-                <div style={{ ...glassStyle, padding: '40px', height: 'fit-content' }}>
+                <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', padding: '40px', height: 'fit-content' }}>
                     <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '15px' }}>
                         PROFILE_DETAILS
                     </h3>
@@ -2131,7 +2470,7 @@ function ProfileView({ onUpdate }) {
                             placeholder="YOUR ARTIST NAME"
                             style={{ ...inputStyle, cursor: 'not-allowed', borderColor: 'rgba(255,255,255,0.05)' }}
                         />
-                        <p style={{ fontSize: '8px', color: '#666', marginTop: '6px', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '6px', fontStyle: 'italic' }}>
                             Contact support to change your artist name.
                         </p>
                     </div>
@@ -2148,7 +2487,7 @@ function ProfileView({ onUpdate }) {
                             placeholder="HTTPS://OPEN.SPOTIFY.COM/ARTIST/..."
                             style={{ ...inputStyle, cursor: 'not-allowed', borderColor: 'rgba(255,255,255,0.05)' }}
                         />
-                        <p style={{ fontSize: '8px', color: '#666', marginTop: '6px', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '6px', fontStyle: 'italic' }}>
                             Contact support to update your Spotify link.
                         </p>
                     </div>
@@ -2156,18 +2495,17 @@ function ProfileView({ onUpdate }) {
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="glow-button"
-                        style={{ width: '100%', padding: '15px', opacity: saving ? 0.5 : 1, fontWeight: '900', letterSpacing: '2px' }}
+                        style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', justifyContent: 'center', width: '100%', padding: '15px', opacity: saving ? 0.5 : 1, fontWeight: '900', letterSpacing: '1px' }}
                     >
                         {saving ? 'SAVING...' : 'SAVE CHANGES'}
                     </button>
-                </div>
+                </motion.div>
 
                 {/* RIGHT COLUMN: Password & Notifications */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
 
                     {/* Security Section */}
-                    <div style={{ ...glassStyle, padding: '30px' }}>
+                    <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', padding: '30px' }}>
                         <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <Shield size={14} color="var(--accent)" /> SECURITY
                         </h3>
@@ -2210,17 +2548,17 @@ function ProfileView({ onUpdate }) {
                             disabled={passwordSaving}
                             style={{
                                 width: '100%', padding: '12px',
-                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                color: '#fff', fontSize: '10px', fontWeight: '900', letterSpacing: '1px',
+                                background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`,
+                                color: '#fff', fontSize: '12px', fontWeight: '900', letterSpacing: '0.8px',
                                 cursor: passwordSaving ? 'wait' : 'pointer', opacity: passwordSaving ? 0.5 : 1
                             }}
                         >
                             {passwordSaving ? 'UPDATING...' : 'UPDATE PASSWORD'}
                         </button>
-                    </div>
+                    </motion.div>
 
                     {/* Notifications Section */}
-                    <div style={{ ...glassStyle, padding: '30px' }}>
+                    <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', padding: '30px' }}>
                         <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <Bell size={14} color="#fff" /> NOTIFICATIONS
                         </h3>
@@ -2236,11 +2574,11 @@ function ProfileView({ onUpdate }) {
                                     style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                         padding: '10px 12px', borderRadius: '6px',
-                                        background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)',
+                                        background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`,
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#aaa' }}>{item.label}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '800', color: DASHBOARD_THEME.muted }}>{item.label}</span>
                                     <div style={{
                                         width: '32px', height: '18px', borderRadius: '10px',
                                         background: item.state ? 'var(--status-success)' : 'rgba(255,255,255,0.1)',
@@ -2255,18 +2593,18 @@ function ProfileView({ onUpdate }) {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
-            <p style={{ marginTop: '30px', fontSize: '10px', color: '#444', textAlign: 'center', letterSpacing: '1px' }}>
+            <p style={{ marginTop: '30px', fontSize: '12px', color: DASHBOARD_THEME.muted, textAlign: 'center', letterSpacing: '0.6px' }}>
                 MEMBER SINCE: {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'UNKNOWN'}
             </p>
         </div>
     );
 }
 
-function ArtistEarningsView({ earnings, payments, session, pagination, onPageChange }) {
+function ArtistEarningsView({ earnings, payments, session, pagination, onPageChange, stats, onWithdrawClick }) {
     const calculateUserShare = (e) => {
         if (!e.contract?.splits || e.contract.splits.length === 0) return e.artistAmount;
 
@@ -2289,8 +2627,6 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
         return 0;
     };
 
-    const totalArtist = earnings.reduce((sum, e) => sum + calculateUserShare(e), 0);
-    const pendingArtist = earnings.filter(e => !e.paidToArtist).reduce((sum, e) => sum + calculateUserShare(e), 0);
     const totalSpend = earnings.reduce((sum, e) => sum + (e.expenseAmount || 0), 0);
     const totalLabel = earnings.reduce((sum, e) => sum + (e.labelAmount || 0), 0);
 
@@ -2310,135 +2646,228 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
         return acc;
     }, {})).sort((a, b) => b.spend - a.spend).slice(0, 5);
 
+    const earningsTone = {
+        shellGlowA: 'rgba(107,76,246,0.11)',
+        shellGlowB: 'rgba(124,141,255,0.11)',
+        panel: '#101725',
+        panelSoft: '#151E2F',
+        panelBorder: 'rgba(174,188,214,0.16)',
+        muted: '#96A6C0',
+        accent: '#7C8DFF',
+        info: '#60A5FA'
+    };
+
+    const panelStyle = {
+        background: `linear-gradient(160deg, ${earningsTone.panelSoft}, ${earningsTone.panel})`,
+        border: `1px solid ${earningsTone.panelBorder}`,
+        borderRadius: '12px'
+    };
+    const mutedText = earningsTone.muted;
+
     return (
-        <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '24px' }}>
-                <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>TOTAL BALANCE</div>
-                    <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--status-success)' }}>${totalArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                </div>
-                <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>PENDING PAYOUTS</div>
-                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff' }}>${pendingArtist.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                </div>
-                <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>AD SPEND (LABEL)</div>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#ffaa00' }}>${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                </div>
-                <div style={{ ...glassStyle, padding: '25px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>ROI (LABEL / SPEND)</div>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: totalSpend > 0 ? '#00ff88' : '#777' }}>
-                        {totalSpend > 0 ? `${(totalLabel / totalSpend).toFixed(1)}x` : '—'}
+        <div style={{
+            background: `radial-gradient(900px 340px at 15% -10%, ${earningsTone.shellGlowA}, transparent 50%), radial-gradient(900px 340px at 90% -20%, ${earningsTone.shellGlowB}, transparent 56%)`,
+            borderRadius: '10px',
+            padding: '2px'
+        }}>
+            {/* Wallet Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{
+                        ...panelStyle,
+                        padding: '30px',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+                    }}
+                >
+                    <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '150px', height: '150px', background: `radial-gradient(circle, ${earningsTone.accent} 0%, transparent 72%)`, opacity: 0.1, pointerEvents: 'none', zIndex: 1 }} />
+                    <div style={{ fontSize: '12px', color: mutedText, fontWeight: '900', letterSpacing: '1px', marginBottom: '15px', position: 'relative', zIndex: 2 }}>AVAILABLE BALANCE</div>
+                    <div style={{ fontSize: '42px', fontWeight: '950', color: '#fff', letterSpacing: '-1.5px', marginBottom: '25px', position: 'relative', zIndex: 2 }}>
+                        ${(stats?.available ?? stats?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
+                    <button
+                        onClick={onWithdrawClick}
+                        style={{ ...btnStyle, background: earningsTone.accent, color: '#120c22', border: 'none', padding: '12px 25px', width: '100%', justifyContent: 'center', position: 'relative', zIndex: 2 }}
+                    >
+                        WITHDRAW_FUNDS
+                    </button>
+                </motion.div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <motion.div whileHover={{ y: -2 }} style={{ ...panelStyle, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '12px', color: mutedText, fontWeight: '900', letterSpacing: '0.6px', marginBottom: '8px' }}>TOTAL EARNINGS</div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff' }}>${(stats?.earnings || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                        <div style={{ width: '100%', height: '2px', background: 'rgba(34, 197, 94, 0.35)', marginTop: '12px', borderRadius: '2px' }} />
+                    </motion.div>
+                    <motion.div whileHover={{ y: -2 }} style={{ ...panelStyle, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '12px', color: mutedText, fontWeight: '900', letterSpacing: '0.6px', marginBottom: '8px' }}>PAID</div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff' }}>${(stats?.paid ?? stats?.withdrawn ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                        <div style={{ width: '100%', height: '2px', background: 'rgba(56,189,248,0.35)', marginTop: '12px', borderRadius: '2px' }} />
+                    </motion.div>
+                    <motion.div whileHover={{ y: -2 }} style={{ ...panelStyle, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '12px', color: mutedText, fontWeight: '900', letterSpacing: '0.6px', marginBottom: '8px' }}>PENDING</div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff' }}>${(stats?.pending || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                        <div style={{ width: '100%', height: '2px', background: 'rgba(245, 158, 11, 0.35)', marginTop: '12px', borderRadius: '2px' }} />
+                    </motion.div>
+                    <motion.div whileHover={{ y: -2 }} style={{ ...panelStyle, padding: '25px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '12px', color: mutedText, fontWeight: '900', letterSpacing: '0.6px', marginBottom: '8px' }}>LABEL ROI</div>
+                        <div style={{ fontSize: '24px', fontWeight: '900', color: totalSpend > 0 ? earningsTone.info : mutedText }}>
+                            {totalSpend > 0 ? `${(totalLabel / totalSpend).toFixed(1)}x` : '—'}
+                        </div>
+                        <div style={{ width: '100%', height: '2px', background: totalSpend > 0 ? 'rgba(56,189,248,0.35)' : 'rgba(255, 255, 255, 0.1)', marginTop: '12px', borderRadius: '2px' }} />
+                    </motion.div>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '18px', marginBottom: '24px' }}>
-                <div style={{ ...glassStyle, padding: '18px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', margin: 0 }}>TOP RELEASES BY AD SPEND</h3>
-                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Top 4</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', marginBottom: '32px' }}>
+                <motion.div whileHover={{ y: -2 }} style={{ ...panelStyle, padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '12px', letterSpacing: '1px', fontWeight: '900', margin: 0, color: mutedText }}>TOP RELEASES BY AD SPEND</h3>
+                        <span style={{ fontSize: '12px', color: mutedText, fontWeight: '800' }}>Top 4</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {spendByRelease.map((r, i) => {
                             const pct = totalSpend ? Math.round((r.spend / totalSpend) * 100) : 0;
                             return (
-                                <div key={i} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                        <div style={{ color: '#fff', fontWeight: '900' }}>{r.name}</div>
-                                        <div style={{ color: '#ffaa00', fontWeight: '900' }}>${r.spend.toLocaleString()}</div>
+                                <motion.div whileHover={{ scale: 1.01 }} key={i} style={{ padding: '16px', background: earningsTone.panelSoft, borderRadius: '10px', border: `1px solid ${earningsTone.panelBorder}` }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <div style={{ color: '#fff', fontWeight: '900', fontSize: '13px' }}>{r.name}</div>
+                                        <div style={{ color: earningsTone.info, fontWeight: '900', fontSize: '13px' }}>${r.spend.toLocaleString()}</div>
                                     </div>
-                                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '800', marginBottom: '6px' }}>Label rev: ${r.revenue.toLocaleString()} • {pct}% of spend</div>
+                                    <div style={{ fontSize: '12px', color: mutedText, fontWeight: '800', marginBottom: '10px' }}>Label rev: ${r.revenue.toLocaleString()} • {pct}% of spend</div>
                                     <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '999px', overflow: 'hidden' }}>
-                                        <div style={{ width: `${pct}%`, height: '100%', background: '#ffaa00', boxShadow: '0 0 10px #ffaa0055' }} />
+                                        <motion.div initial={{ width: 0 }} whileInView={{ width: `${pct}%` }} transition={{ duration: 1, ease: "easeOut" }} style={{ height: '100%', background: earningsTone.info, boxShadow: '0 0 10px rgba(56,189,248,0.35)' }} />
                                     </div>
-                                </div>
+                                </motion.div>
                             );
                         })}
                         {spendByRelease.length === 0 && (
-                            <div style={{ padding: '22px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO SPEND DATA</div>
+                            <div style={{ padding: '30px', textAlign: 'center', color: mutedText, fontSize: '12px', letterSpacing: '1px', fontWeight: '900' }}>NO SPEND DATA</div>
                         )}
                     </div>
-                </div>
+                </motion.div>
 
-                <div style={{ ...glassStyle, padding: '18px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <h3 style={{ fontSize: '11px', letterSpacing: '3px', fontWeight: '900', margin: 0 }}>SPEND BY SOURCE</h3>
-                        <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>Top 5</span>
+                <motion.div whileHover={{ y: -2 }} style={{ ...panelStyle, padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '12px', letterSpacing: '1px', fontWeight: '900', margin: 0, color: mutedText }}>SPEND BY SOURCE</h3>
+                        <span style={{ fontSize: '12px', color: mutedText, fontWeight: '800' }}>Top 5</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {spendBySource.map((s, i) => {
                             const pct = totalSpend ? Math.round((s.spend / totalSpend) * 100) : 0;
                             return (
-                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 40px', gap: '8px', alignItems: 'center', padding: '8px 10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '10px' }}>
-                                    <div style={{ color: '#fff', fontWeight: '900' }}>{s.source}</div>
-                                    <div style={{ color: '#ffaa00', fontWeight: '900', textAlign: 'right' }}>${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                    <div style={{ fontSize: '9px', color: '#777', fontWeight: '800', textAlign: 'right' }}>{pct}%</div>
-                                    <div style={{ gridColumn: '1 / 4', width: '100%', height: '5px', background: 'rgba(255,255,255,0.04)', borderRadius: '999px', overflow: 'hidden' }}>
-                                        <div style={{ width: `${pct}%`, height: '100%', background: '#ffaa00', boxShadow: '0 0 8px #ffaa0055' }} />
+                                <motion.div whileHover={{ scale: 1.02 }} key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 40px', gap: '8px', alignItems: 'center', padding: '12px 16px', background: earningsTone.panelSoft, border: `1px solid ${earningsTone.panelBorder}`, borderRadius: '10px' }}>
+                                    <div style={{ color: '#fff', fontWeight: '900', fontSize: '12px' }}>{s.source}</div>
+                                    <div style={{ color: earningsTone.info, fontWeight: '900', textAlign: 'right', fontSize: '12px' }}>${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div style={{ fontSize: '12px', color: mutedText, fontWeight: '800', textAlign: 'right' }}>{pct}%</div>
+                                    <div style={{ gridColumn: '1 / 4', width: '100%', height: '5px', background: 'rgba(255,255,255,0.04)', borderRadius: '999px', overflow: 'hidden', marginTop: '4px' }}>
+                                        <motion.div initial={{ width: 0 }} whileInView={{ width: `${pct}%` }} transition={{ duration: 1, ease: "easeOut" }} style={{ height: '100%', background: earningsTone.info, boxShadow: '0 0 8px rgba(56,189,248,0.3)' }} />
                                     </div>
-                                </div>
+                                </motion.div>
                             );
                         })}
                         {spendBySource.length === 0 && (
-                            <div style={{ padding: '22px', textAlign: 'center', color: '#555', fontSize: '10px', letterSpacing: '2px', fontWeight: '900' }}>NO SPEND DATA</div>
+                            <div style={{ padding: '30px', textAlign: 'center', color: mutedText, fontSize: '12px', letterSpacing: '1px', fontWeight: '900' }}>NO SPEND DATA</div>
                         )}
                     </div>
-                </div>
+                </motion.div>
             </div>
 
-            <div style={glassStyle}>
-                <div style={{ padding: '20px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: '12px', letterSpacing: '2px', fontWeight: '900' }}>REV_SHARE_HISTORY</h3>
-                    <div style={{ fontSize: '10px', color: '#444' }}>{earnings.length} RECORDS FOUND</div>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                        <tr>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>PERIOD</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>RELEASE</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>YOUR SHARE</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>STREAMS</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {earnings.map(e => {
-                            const userShare = calculateUserShare(e);
-                            const userSplit = e.contract?.splits?.find(s => s.userId === session?.user?.id);
-
-                            return (
-                                <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.period}</td>
-                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                        <div style={{ fontWeight: '800', color: '#fff' }}>{e.contract?.release?.name || e.contract?.title || 'Unknown Release'}</div>
-                                        <div style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>{e.source}</div>
-                                    </td>
-                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                        <div style={{ color: 'var(--status-success)', fontWeight: '900' }}>${userShare.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                                        <div style={{ fontSize: '8px', color: '#444' }}>
-                                            {userSplit ? `${userSplit.percentage}% OF ARTIST SHARE` : `${Math.round(e.contract?.artistShare * 100)}% SPLIT`}
-                                        </div>
-                                    </td>
-                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>{e.streams?.toLocaleString() || '---'}</td>
-                                    <td style={{ ...tdStyle, padding: '15px 25px' }}>
-                                        <span style={{
-                                            fontSize: '8px', padding: '4px 8px', borderRadius: '4px',
-                                            background: e.paidToArtist ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)',
-                                            color: e.paidToArtist ? 'var(--status-success)' : '#888',
-                                            fontWeight: '900'
-                                        }}>
-                                            {e.paidToArtist ? 'PAID' : 'PENDING'}
-                                        </span>
-                                    </td>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                <div style={{ ...glassStyle, background: panelStyle.background, border: panelStyle.border }}>
+                    <div style={{ padding: '20px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '2px', fontWeight: '950' }}>REV_SHARE_HISTORY</h3>
+                        <div style={{ fontSize: '12px', color: mutedText, fontWeight: '800' }}>{earnings.length} RECORDS FOUND</div>
+                    </div>
+                    <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>PERIOD</th>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>RELEASE</th>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>YOUR SHARE</th>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>STATUS</th>
                                 </tr>
-                            );
-                        })}
-                        {earnings.length === 0 && (
-                            <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', padding: '50px', color: '#444' }}>NO EARNING DATA YET_</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody>
+                                {earnings.map(e => {
+                                    const userShare = calculateUserShare(e);
+                                    const userSplit = e.contract?.splits?.find(s => s.userId === session?.user?.id);
+
+                                    return (
+                                        <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                            <td style={{ ...tdStyle, padding: '12px 25px' }}>{e.period}</td>
+                                            <td style={{ ...tdStyle, padding: '12px 25px' }}>
+                                                <div style={{ fontWeight: '850', color: '#fff', fontSize: '11px' }}>{e.contract?.release?.name || e.contract?.title || 'Unknown Release'}</div>
+                                                <div style={{ fontSize: '12px', color: mutedText, textTransform: 'uppercase' }}>{e.source}</div>
+                                            </td>
+                                            <td style={{ ...tdStyle, padding: '12px 25px' }}>
+                                                <div style={{ color: earningsTone.info, fontWeight: '950' }}>${userShare.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                                <div style={{ fontSize: '12px', color: mutedText }}>
+                                                    {userSplit ? `${userSplit.percentage}% SPLIT` : `OWNER`}
+                                                </div>
+                                            </td>
+                                            <td style={{ ...tdStyle, padding: '12px 25px' }}>
+                                                <span style={{
+                                                    fontSize: '8px', padding: '3px 8px', borderRadius: '1px',
+                                                    background: e.paidToArtist ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)',
+                                                    color: e.paidToArtist ? DASHBOARD_THEME.success : mutedText,
+                                                    border: `1px solid ${e.paidToArtist ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.1)'}`,
+                                                    fontWeight: '950'
+                                                }}>
+                                                    {e.paidToArtist ? 'PROCESSED' : 'UNPAID'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style={{ ...glassStyle, background: panelStyle.background, border: panelStyle.border }}>
+                    <div style={{ padding: '20px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '11px', letterSpacing: '2px', fontWeight: '950' }}>PAYOUT_LOG</h3>
+                        <div style={{ fontSize: '12px', color: mutedText, fontWeight: '800' }}>{payments.length} RECORDS</div>
+                    </div>
+                    <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>DATE</th>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>AMOUNT</th>
+                                    <th style={{ ...thStyle, fontSize: '12px', padding: '12px 25px' }}>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {payments.map(p => (
+                                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                        <td style={{ ...tdStyle, padding: '12px 25px' }}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                                        <td style={{ ...tdStyle, padding: '12px 25px', fontWeight: '950', color: '#fff' }}>${p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td style={{ ...tdStyle, padding: '12px 25px' }}>
+                                            <span style={{
+                                                fontSize: '8px', padding: '3px 8px', borderRadius: '1px',
+                                                background: p.status === 'completed' ? 'rgba(34,197,94,0.1)' : p.status === 'pending' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                                                color: p.status === 'completed' ? DASHBOARD_THEME.success : p.status === 'pending' ? DASHBOARD_THEME.warning : DASHBOARD_THEME.error,
+                                                border: `1px solid ${p.status === 'completed' ? 'rgba(34,197,94,0.3)' : p.status === 'pending' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                                                fontWeight: '950', letterSpacing: '1px'
+                                            }}>
+                                                {p.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {payments.length === 0 && (
+                                    <tr><td colSpan="3" style={{ ...tdStyle, textAlign: 'center', padding: '40px', color: mutedText }}>NO PAYOUT HISTORY</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             {pagination && pagination.pages > 1 && (
@@ -2446,36 +2875,36 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
                     <button
                         disabled={pagination.page <= 1}
                         onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
-                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', color: pagination.page <= 1 ? '#444' : '#fff', cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer' }}
+                        style={{ ...btnStyle, background: earningsTone.panelSoft, color: pagination.page <= 1 ? mutedText : '#fff', cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer' }}
                     >
                         PREVIOUS
                     </button>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#666', letterSpacing: '1px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: mutedText, letterSpacing: '1px' }}>
                         PAGE <span style={{ color: '#fff' }}>{pagination.page}</span> OF {pagination.pages}
                     </span>
                     <button
                         disabled={pagination.page >= pagination.pages}
                         onClick={() => onPageChange(pagination.page + 1)}
-                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.05)', color: pagination.page >= pagination.pages ? '#444' : '#fff', cursor: pagination.page >= pagination.pages ? 'not-allowed' : 'pointer' }}
+                        style={{ ...btnStyle, background: earningsTone.panelSoft, color: pagination.page >= pagination.pages ? mutedText : '#fff', cursor: pagination.page >= pagination.pages ? 'not-allowed' : 'pointer' }}
                     >
                         NEXT
                     </button>
                 </div>
             )}
 
-            <div style={{ ...glassStyle, marginTop: '30px' }}>
+            <div style={{ ...glassStyle, marginTop: '30px', background: panelStyle.background, border: panelStyle.border }}>
                 <div style={{ padding: '20px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ fontSize: '12px', letterSpacing: '2px', fontWeight: '900' }}>PAYOUT_HISTORY</h3>
-                    <div style={{ fontSize: '10px', color: '#444' }}>{(payments || []).length} RECORDS FOUND</div>
+                    <div style={{ fontSize: '12px', color: mutedText }}>{(payments || []).length} RECORDS FOUND</div>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>DATE</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>METHOD</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>REFERENCE</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px' }}>STATUS</th>
-                            <th style={{ ...thStyle, fontSize: '9px', padding: '15px 25px', textAlign: 'right' }}>AMOUNT</th>
+                            <th style={{ ...thStyle, fontSize: '12px', padding: '15px 25px' }}>DATE</th>
+                            <th style={{ ...thStyle, fontSize: '12px', padding: '15px 25px' }}>METHOD</th>
+                            <th style={{ ...thStyle, fontSize: '12px', padding: '15px 25px' }}>REFERENCE</th>
+                            <th style={{ ...thStyle, fontSize: '12px', padding: '15px 25px' }}>STATUS</th>
+                            <th style={{ ...thStyle, fontSize: '12px', padding: '15px 25px', textAlign: 'right' }}>AMOUNT</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2483,12 +2912,12 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
                             <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                                 <td style={{ ...tdStyle, padding: '15px 25px' }}>{new Date(p.createdAt || p.processedAt).toLocaleDateString()}</td>
                                 <td style={{ ...tdStyle, padding: '15px 25px', textTransform: 'uppercase' }}>{p.method || 'Bank Transfer'}</td>
-                                <td style={{ ...tdStyle, padding: '15px 25px', fontFamily: 'monospace', color: '#666' }}>{p.reference || '---'}</td>
+                                <td style={{ ...tdStyle, padding: '15px 25px', fontFamily: 'monospace', color: mutedText }}>{p.reference || '---'}</td>
                                 <td style={{ ...tdStyle, padding: '15px 25px' }}>
                                     <span style={{
                                         fontSize: '8px', padding: '4px 8px', borderRadius: '4px',
-                                        background: p.status === 'completed' ? 'var(--status-success-bg)' : 'rgba(255,255,255,0.05)',
-                                        color: p.status === 'completed' ? 'var(--status-success)' : '#888',
+                                        background: p.status === 'completed' ? 'rgba(34,197,94,0.1)' : p.status === 'pending' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                                        color: p.status === 'completed' ? DASHBOARD_THEME.success : p.status === 'pending' ? DASHBOARD_THEME.warning : DASHBOARD_THEME.error,
                                         fontWeight: '900', textTransform: 'uppercase'
                                     }}>
                                         {p.status}
@@ -2499,7 +2928,7 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
                                 </td>
                             </tr>
                         )) : (
-                            <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', padding: '30px', color: '#444' }}>NO PAYOUT DATA YET_</td></tr>
+                            <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', padding: '30px', color: mutedText }}>NO PAYOUT DATA YET_</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -2511,14 +2940,14 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
 function ArtistContractsView({ contracts, session }) {
     return (
         <div>
-            <div style={{ ...glassStyle, padding: '40px', marginBottom: '30px' }}>
+            <div style={{ ...glassStyle, padding: '32px', marginBottom: '24px', borderRadius: '10px', border: `1px solid ${DASHBOARD_THEME.border}` }}>
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '8px', background: DASHBOARD_THEME.surfaceSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${DASHBOARD_THEME.border}` }}>
                         <Briefcase size={20} color="var(--accent)" />
                     </div>
                     <div>
-                        <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '900', color: '#fff' }}>ARTIST_AGREEMENT_PORTAL</h3>
-                        <p style={{ fontSize: '10px', color: '#444', marginTop: '4px' }}>ACCESS YOUR SONG-LEVEL CONTRACTS AND ROYALTY SPLITS</p>
+                        <h3 style={{ fontSize: '14px', letterSpacing: '3px', fontWeight: '950', color: '#fff', textTransform: 'uppercase' }}>ARTIST_AGREEMENT_PORTAL</h3>
+                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '4px', fontWeight: '800', letterSpacing: '0.8px' }}>MANAGE_SONG_LEVEL_CONTRACTS_AND_ROYALTY_SPLITS</p>
                     </div>
                 </div>
             </div>
@@ -2536,36 +2965,38 @@ function ArtistContractsView({ contracts, session }) {
                     );
 
                     return (
-                        <div key={c.id} style={{ ...glassStyle, padding: '25px', border: isOwner ? '1px solid rgba(255,255,255,0.03)' : '1px solid var(--status-success-bg)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                        <div key={c.id} style={{ ...glassStyle, padding: '24px', borderRadius: '10px', border: isOwner ? `1px solid ${DASHBOARD_THEME.border}` : '1px solid rgba(34,197,94,0.3)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '25px' }}>
                                 <div>
-                                    <h4 style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '4px' }}>{c.release?.name || c.title || 'Untitled Contract'}</h4>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '950', color: '#fff', marginBottom: '6px', letterSpacing: '-0.5px' }}>{c.release?.name || c.title || 'Untitled Contract'}</h4>
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <p style={{ fontSize: '9px', color: '#444' }}>CONTRACT ID: {c.id.slice(0, 8)}...</p>
-                                        {!isOwner && <span style={{ fontSize: '8px', padding: '2px 4px', background: 'var(--status-success-bg)', color: 'var(--status-success)', borderRadius: '3px' }}>COLLABORATOR</span>}
+                                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '900', letterSpacing: '0.8px' }}>REF_ID: {c.id.slice(0, 8).toUpperCase()}</p>
+                                        {!isOwner && <span style={{ fontSize: '7px', padding: '2px 6px', background: 'rgba(57, 255, 20, 0.05)', color: 'var(--accent)', borderRadius: '1px', fontWeight: '950', border: '1px solid rgba(57, 255, 20, 0.1)' }}>COLLABORATOR</span>}
                                     </div>
                                 </div>
-                                <span style={{ fontSize: '8px', padding: '4px 8px', borderRadius: '4px', background: 'var(--status-success-bg)', color: 'var(--status-success)', fontWeight: '900' }}>
+                                <span style={{
+                                    fontSize: '8px', padding: '4px 8px', borderRadius: '1px',
+                                    background: c.status === 'active' ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.06)',
+                                    color: c.status === 'active' ? DASHBOARD_THEME.success : DASHBOARD_THEME.muted,
+                                    border: `1px solid ${c.status === 'active' ? 'rgba(34,197,94,0.28)' : 'rgba(255,255,255,0.1)'}`,
+                                    fontWeight: '950', letterSpacing: '1px'
+                                }}>
                                     {c.status.toUpperCase()}
                                 </span>
                             </div>
 
-                            <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', marginBottom: '20px' }}>
+                            <div style={{ padding: '20px', background: 'rgba(255,255,255,0.01)', borderRadius: '2px', border: '1px solid rgba(255,255,255,0.03)', marginBottom: '20px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                    <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>{isOwner ? 'TOTAL ARTIST SHARE' : 'YOUR EFFECTIVE SHARE'}</span>
-                                    <span style={{ fontSize: '14px', color: 'var(--status-success)', fontWeight: '900' }}>
+                                    <span style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '950', letterSpacing: '0.8px' }}>{isOwner ? 'TOTAL_ARTIST_SHARE' : 'YOUR_EFFECTIVE_SHARE'}</span>
+                                    <span style={{ fontSize: '15px', color: 'var(--accent)', fontWeight: '950' }}>
                                         {isOwner
                                             ? `${Math.round(c.artistShare * 100)}%`
                                             : (() => {
-                                                // Find if user has any splits either directly or via artist profile
                                                 const userSplits = c.splits?.filter(s =>
                                                     s.userId === session?.user?.id ||
                                                     (s.artistId && session?.user?.artist?.id === s.artistId)
                                                 ) || [];
-
-                                                // Sum up all matching split percentages
                                                 const totalUserSplitPercentage = userSplits.reduce((sum, s) => sum + parseFloat(s.percentage), 0);
-
                                                 return `${((c.artistShare * totalUserSplitPercentage) / 100 * 100).toFixed(1)}%`;
                                             })()
                                         }
@@ -2573,51 +3004,51 @@ function ArtistContractsView({ contracts, session }) {
                                 </div>
 
                                 {c.splits?.length > 0 && (
-                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px', marginTop: '5px' }}>
-                                        <p style={{ fontSize: '9px', color: '#444', fontWeight: '900', letterSpacing: '1px', marginBottom: '10px' }}>ROYALTY_SPLITS</p>
+                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '15px', marginTop: '5px' }}>
+                                        <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '950', letterSpacing: '1px', marginBottom: '12px' }}>ROYALTY_SPLITS</p>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {c.splits.map((s, i) => (
                                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontSize: '11px', color: s.userId === session?.user?.id ? '#fff' : '#888', fontWeight: s.userId === session?.user?.id ? '900' : '700' }}>
-                                                        {s.name} {s.userId === session?.user?.id && '(YOU)'}
+                                                    <span style={{ fontSize: '12px', color: s.userId === session?.user?.id ? '#fff' : DASHBOARD_THEME.muted, fontWeight: '950' }}>
+                                                        {s.name.toUpperCase()} {s.userId === session?.user?.id && '(YOU)'}
                                                     </span>
-                                                    <span style={{ fontSize: '11px', color: s.userId === session?.user?.id ? 'var(--accent)' : '#666', fontWeight: '900' }}>{s.percentage}%</span>
+                                                    <span style={{ fontSize: '12px', color: s.userId === session?.user?.id ? 'var(--accent)' : DASHBOARD_THEME.muted, fontWeight: '950' }}>{s.percentage}%</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px' }}>
-                                    <span style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>LABEL SHARE</span>
-                                    <span style={{ fontSize: '14px', color: '#fff', fontWeight: '900' }}>{Math.round(c.labelShare * 100)}%</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '15px' }}>
+                                    <span style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '950', letterSpacing: '0.8px' }}>LABEL_SHARE</span>
+                                    <span style={{ fontSize: '15px', color: '#fff', fontWeight: '950' }}>{Math.round(c.labelShare * 100)}%</span>
                                 </div>
                             </div>
 
                             {userNotes && (
-                                <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.5', fontStyle: 'italic' }}>
+                                <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, lineHeight: '1.5', fontStyle: 'italic' }}>
                                     &quot;{userNotes}&quot;
                                 </div>
                             )}
 
-                            <div style={{ marginTop: '20px', pt: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '9px', color: '#333', display: 'flex', justifyContent: 'space-between' }}>
-                                <span>CREATED: {new Date(c.createdAt).toLocaleDateString()}</span>
+                            <div style={{ marginTop: '20px', pt: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '12px', color: DASHBOARD_THEME.muted, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '950', letterSpacing: '0.8px' }}>
+                                <span>SINCE: {new Date(c.createdAt).toLocaleDateString()}</span>
                                 {c.pdfUrl && (
-                                    <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 12px', background: 'var(--accent)', color: '#000', border: 'none' }}>
-                                        VIEW SIGNED PDF
+                                    <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '8px 15px', background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>
+                                        VIEW_AGREEMENT
                                     </a>
                                 )}
-                                <span>LOST_COMPLIANCE_ENFORCED</span>
+                                <span>LOST_COMPLIANCE_ACTIVE</span>
                             </div>
                         </div>
                     );
                 })}
 
                 {contracts.length === 0 && (
-                    <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '100px', color: '#444' }}>
+                    <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '100px', color: DASHBOARD_THEME.muted }}>
                         <Disc size={40} style={{ opacity: 0.1, marginBottom: '20px' }} />
                         <p style={{ fontSize: '12px', letterSpacing: '4px' }}>NO_CONTRACTS_ACTIVE</p>
-                        <p style={{ fontSize: '10px', marginTop: '10px' }}>CONTACT ADMIN IF YOU BELIEVE THIS IS AN ERROR</p>
+                        <p style={{ fontSize: '12px', marginTop: '10px' }}>CONTACT ADMIN IF YOU BELIEVE THIS IS AN ERROR</p>
                     </div>
                 )}
             </div>
@@ -2627,19 +3058,19 @@ function ArtistContractsView({ contracts, session }) {
 
 const thStyle = {
     padding: '20px 25px',
-    fontSize: '9px',
-    letterSpacing: '3px',
-    color: '#444',
+    fontSize: '12px',
+    letterSpacing: '1px',
+    color: DASHBOARD_THEME.muted,
     fontWeight: '900',
-    borderBottom: '1px solid rgba(255,255,255,0.03)',
-    background: 'rgba(255,255,255,0.01)',
+    borderBottom: `1px solid ${DASHBOARD_THEME.border}`,
+    background: DASHBOARD_THEME.surface,
     textTransform: 'uppercase'
 };
 
 const tdStyle = {
     padding: '18px 25px',
-    fontSize: '11px',
-    color: '#888',
+    fontSize: '12px',
+    color: DASHBOARD_THEME.muted,
     borderBottom: '1px solid rgba(255,255,255,0.02)',
     fontWeight: '700'
 };

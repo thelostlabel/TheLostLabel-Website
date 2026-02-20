@@ -14,14 +14,14 @@ const ChartTooltip = ({ active, payload, label, color }) => {
     if (!active || !payload?.length) return null;
     return (
         <div style={{
-            background: 'rgba(10,10,12,0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
+            background: '#000',
+            border: '1px solid var(--border)',
+            borderRadius: '2px',
             padding: '12px 16px',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
         }}>
-            <div style={{ fontSize: '9px', color: '#a8b0bc', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
+            <div style={{ fontSize: '9px', color: '#555', fontWeight: '900', letterSpacing: '2px', marginBottom: '6px' }}>{label}</div>
             {payload.map((p, i) => (
                 <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
                     ${Number(p.value).toLocaleString()}
@@ -38,7 +38,7 @@ function formatChartValue(v) {
     return `${Math.round(value)}`;
 }
 
-const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
+const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
     const sanitizedData = Array.isArray(data)
         ? data.filter((point) => point && Number.isFinite(Number(point.value)))
         : [];
@@ -56,9 +56,9 @@ const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
                 width: '100%',
                 height: `${height}px`,
                 marginTop: '10px',
-                borderRadius: '16px',
-                border: '1px dashed rgba(255,255,255,0.16)',
-                background: 'rgba(255,255,255,0.015)',
+                borderRadius: '2px',
+                border: '1px dashed rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.01)',
                 display: 'grid',
                 placeItems: 'center',
                 textAlign: 'center',
@@ -115,8 +115,8 @@ const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
                         stroke={color}
                         strokeWidth={2.8}
                         fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 4, fill: '#0a0a0c', stroke: color, strokeWidth: 2.2 }}
-                        activeDot={{ r: 6, fill: color, stroke: '#0a0a0c', strokeWidth: 2.2 }}
+                        dot={{ r: 4, fill: '#000', stroke: color, strokeWidth: 2.2 }}
+                        activeDot={{ r: 6, fill: color, stroke: '#000', strokeWidth: 2.2 }}
                     />
                 </AreaChart>
             </ResponsiveContainer>
@@ -153,14 +153,14 @@ const DonutChart = ({ data }) => {
                                 if (!active || !payload?.length) return null;
                                 return (
                                     <div style={{
-                                        background: 'rgba(10,10,12,0.95)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px',
+                                        background: '#000',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '2px',
                                         padding: '10px 14px',
-                                        backdropFilter: 'blur(20px)'
+                                        backdropFilter: 'blur(10px)'
                                     }}>
-                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#fff' }}>{payload[0].name}</div>
-                                        <div style={{ fontSize: '12px', fontWeight: '900', color: payload[0].payload.color }}>
+                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#555', letterSpacing: '1px' }}>{payload[0].name}</div>
+                                        <div style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>
                                             ${Number(payload[0].value).toLocaleString()} ({total ? Math.round((payload[0].value / total) * 100) : 0}%)
                                         </div>
                                     </div>
@@ -202,12 +202,12 @@ const GoalProgress = ({ label, current, target, color }) => {
                 <span style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>{label}</span>
                 <span style={{ fontSize: '13px', fontWeight: '950', color: '#fff' }}>{percentage}%</span>
             </div>
-            <div style={{ height: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ height: '4px', background: 'var(--glass)', borderRadius: '0px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${percentage}%` }}
                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ height: '100%', background: color, boxShadow: `0 0 15px ${color}33` }}
+                    style={{ height: '100%', background: color, boxShadow: `0 0 10px ${color}33` }}
                 />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
@@ -230,12 +230,7 @@ function pickPlatformColor(label) {
     return '#777';
 }
 
-const statCardStyle = {
-    background: 'rgba(255,255,255,0.02)',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '24px'
-};
+// Local style removed to use shared style from ./styles.js
 
 export default function HomeView() {
     const [stats, setStats] = useState(null);
@@ -323,7 +318,7 @@ export default function HomeView() {
         color: pickPlatformColor(p.label)
     }));
 
-    const revenueChartColor = '#f5c542';
+    const revenueChartColor = '#8b5cf6';
     const payoutChartColor = '#00ff88';
 
     return (
@@ -333,63 +328,49 @@ export default function HomeView() {
                     <motion.div
                         animate={{ opacity: [1, 0.4, 1] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                        style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 10px #00ff8855' }}
+                        style={{ width: '8px', height: '8px', borderRadius: '0px', background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }}
                     />
-                    <span style={{ fontSize: '10px', color: '#666', fontWeight: '900', letterSpacing: '4px' }}>SYSTEM_LIVE // ANALYTICS_REALTIME</span>
+                    <span style={{ fontSize: '10px', color: '#555', fontWeight: '900', letterSpacing: '4px' }}>SYSTEM_LIVE // ANALYTICS_REALTIME</span>
                 </div>
-                <div style={{ fontSize: '9px', color: '#444', fontWeight: '800', letterSpacing: '1px' }}>
+                <div style={{ fontSize: '9px', color: '#333', fontWeight: '900', letterSpacing: '1px' }}>
                     DATA_FETCHED: {new Date().toLocaleTimeString()}
                 </div>
             </div>
 
             {/* Stats Cards Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '36px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px', marginBottom: '36px' }}>
                 {cards.map((card, i) => (
                     <motion.div
                         key={i}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        whileHover={{ y: -5, scale: 1.02, background: 'rgba(255,255,255,0.04)' }}
-                        transition={{ duration: 0.5, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -2, scale: 1.01 }}
+                        transition={{ duration: 0.4, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
                         style={{
-                            ...statCardStyle,
-                            padding: '26px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            borderRadius: '20px',
-                            cursor: 'default',
-                            transition: 'all 0.3s ease'
+                            padding: '32px 24px',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '16px',
+                            display: 'flex', flexDirection: 'column', gap: '16px',
+                            position: 'relative', overflow: 'hidden'
                         }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
-                            <div style={{
-                                width: '45px',
-                                height: '45px',
-                                borderRadius: '14px',
-                                background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.09), rgba(255,255,255,0.02))',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: card.color,
-                                boxShadow: `0 0 20px ${card.color}11`
-                            }}>
+                        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', background: `radial-gradient(circle, ${card.color} 0%, transparent 70%)`, opacity: 0.1, pointerEvents: 'none', zIndex: 1 }} />
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 2 }}>
+                            <div style={{ color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
                                 {card.icon}
                             </div>
                             {card.trend && (
-                                <div style={{ fontSize: '10px', color: '#00ff88', fontWeight: '900', background: 'rgba(0,255,136,0.1)', padding: '4px 10px', borderRadius: '999px', border: '1px solid rgba(0,255,136,0.25)' }}>
+                                <div style={{ fontSize: '10px', fontWeight: '900', color: card.trend.startsWith('+') ? '#00ff88' : '#ff4444', background: card.trend.startsWith('+') ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '6px 10px', borderRadius: '6px' }}>
                                     {card.trend}
                                 </div>
                             )}
                         </div>
-
-                        <div style={{ fontSize: '28px', fontWeight: '950', color: '#fff', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: '8px' }}>
-                            {card.value}
-                        </div>
-
-                        <div style={{ fontSize: '9px', color: '#555', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
-                            {card.label}
+                        <div style={{ position: 'relative', zIndex: 2 }}>
+                            <div style={{ fontSize: '9px', fontWeight: '950', color: '#888', letterSpacing: '1.5px', marginBottom: '8px' }}>{card.label}</div>
+                            <div style={{ fontSize: '32px', fontWeight: '950', color: '#fff', letterSpacing: '-1px' }}>{card.value}</div>
                         </div>
                     </motion.div>
                 ))}
@@ -399,22 +380,23 @@ export default function HomeView() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '22px', marginBottom: '36px' }}>
                 {/* Revenue Chart */}
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    style={{ ...glassStyle, padding: '28px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)' }}
+                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', background: `radial-gradient(circle, ${revenueChartColor} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
                         <div>
-                            <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>REVENUE_OVERVIEW</h3>
-                            <p style={{ fontSize: '9px', color: '#98a3b3', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
+                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>REVENUE_OVERVIEW</h3>
+                            <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: revenueChartColor }} />
-                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#aab2be' }}>ESTIMATED_VOLUME</span>
+                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#888' }}>ESTIMATED_VOLUME</span>
                             </div>
-                            <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '4px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ display: 'inline-flex', background: 'var(--glass)', borderRadius: '6px', padding: '4px', border: '1px solid var(--border)' }}>
                                 {['3m', '6m', '12m'].map(r => (
                                     <button
                                         key={r}
@@ -422,14 +404,14 @@ export default function HomeView() {
                                         style={{
                                             border: 'none',
                                             background: range === r ? revenueChartColor : 'transparent',
-                                            color: range === r ? '#000' : '#afb6c1',
+                                            color: range === r ? '#000' : '#888',
                                             fontSize: '9px',
-                                            fontWeight: '900',
+                                            fontWeight: '950',
                                             letterSpacing: '1px',
-                                            padding: '7px 12px',
-                                            borderRadius: '10px',
+                                            padding: '6px 14px',
+                                            borderRadius: '4px',
                                             cursor: 'pointer',
-                                            transition: 'all 0.15s'
+                                            transition: 'all 0.2s'
                                         }}
                                     >
                                         {r.toUpperCase()}
@@ -439,52 +421,69 @@ export default function HomeView() {
                         </div>
                     </div>
 
-                    <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color={revenueChartColor} />
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                        <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color={revenueChartColor} />
+                    </div>
                 </motion.div>
 
                 {/* Payout Trends Chart */}
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ delay: 0.1 }}
-                    style={{ ...glassStyle, padding: '28px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)' }}
+                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', background: `radial-gradient(circle, ${payoutChartColor} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 2 }}>
                         <div>
-                            <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>PAYOUT_TRENDS</h3>
-                            <p style={{ fontSize: '9px', color: '#98a3b3', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
+                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>PAYOUT_TRENDS</h3>
+                            <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: payoutChartColor }} />
+                            <span style={{ fontSize: '9px', fontWeight: '900', color: '#888' }}>FULFILLED_PAYMENTS</span>
                         </div>
                     </div>
-                    <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color={payoutChartColor} />
+
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                        <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color={payoutChartColor} />
+                    </div>
                 </motion.div>
 
                 <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    style={{ ...glassStyle, padding: '28px', background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 100%)' }}
+                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
                 >
-                    <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', marginBottom: '25px' }}>PLATFORM_DISTRIBUTION</h3>
-                    <DonutChart data={platformData.length ? platformData : [
-                        { label: 'NO_DATA', value: 1, color: '#444' }
-                    ]} />
+                    <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.03, pointerEvents: 'none', zIndex: 1 }} />
+                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0, position: 'relative', zIndex: 2 }}>DISTRIBUTION</h3>
+                    <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', marginBottom: '25px', fontWeight: '800', position: 'relative', zIndex: 2 }}>REVENUE BY PLATFORM</p>
+                    <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <DonutChart data={platformData.length ? platformData : [
+                            { label: 'NO_DATA', value: 1, color: '#444' }
+                        ]} />
+                    </div>
                 </motion.div>
             </div>
 
             {/* Bottom Section: Goals, Top Performers, Recent Submit */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '22px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '32px' }}>
                 {/* Goals */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    style={{ ...glassStyle, padding: '30px' }}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', position: 'relative', overflow: 'hidden' }}
                 >
-                    <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '900', color: '#fff', marginBottom: '25px' }}>OPERATIONAL_GOALS</h3>
-                    <GoalProgress label="REVENUE_TARGET" current={stats.counts.gross} target={100000} color="var(--accent)" />
-                    <GoalProgress label="ARTIST_RETENTION" current={stats.counts.artists} target={1000} color="#fff" />
-                    <GoalProgress label="SUBMISSION_KPI" current={200 - stats.counts.pendingDemos} target={200} color="#444" />
+                    <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '200px', height: '200px', background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
+                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '950', color: '#fff', marginBottom: '30px', position: 'relative', zIndex: 2 }}>OPERATIONAL_GOALS</h3>
+                    <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <GoalProgress label="REVENUE_TARGET" current={stats.counts.gross} target={100000} color="var(--accent)" />
+                        <GoalProgress label="ARTIST_RETENTION" current={stats.counts.artists} target={1000} color="#fff" />
+                        <GoalProgress label="SUBMISSION_KPI" current={200 - stats.counts.pendingDemos} target={200} color="#888" />
+                    </div>
                 </motion.div>
 
                 {/* Top Performers */}
@@ -493,31 +492,32 @@ export default function HomeView() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: 0.1 }}
-                    style={{ ...glassStyle, overflow: 'hidden' }}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}
                 >
                     <div style={{
-                        padding: '24px 30px',
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        background: 'rgba(255,255,255,0.02)',
+                        padding: '28px 32px',
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        background: 'rgba(255,255,255,0.01)',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        position: 'relative', zIndex: 2
                     }}>
-                        <h3 style={{ fontSize: '10px', letterSpacing: '3px', fontWeight: '900', color: '#fff', margin: 0 }}>TOP_PERFORMERS</h3>
-                        <Users size={14} color="#555" />
+                        <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '950', color: '#fff', margin: 0 }}>TOP_PERFORMERS</h3>
+                        <Users size={18} color="#666" />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
                         {stats.topArtists?.slice(0, 5).map((artist, i) => (
-                            <div key={artist.id} style={{ padding: '16px 30px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#222', width: '25px' }}>#{i + 1}</div>
-                                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>{artist.name}</div>
+                            <motion.div whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }} key={artist.id} style={{ padding: '20px 32px', borderBottom: i === 4 ? 'none' : '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background-color 0.2s', cursor: 'default' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: '950', color: i === 0 ? 'var(--accent)' : '#666', width: '25px' }}>#{i + 1}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{artist.name.toUpperCase()}</div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '12px', fontWeight: '900', color: 'var(--accent)' }}>{artist.monthlyListeners?.toLocaleString()}</div>
-                                    <div style={{ fontSize: '8px', color: '#333', fontWeight: '800', letterSpacing: '1px' }}>MONTHLY_LISTENERS</div>
+                                    <div style={{ fontSize: '14px', fontWeight: '950', color: i === 0 ? 'var(--accent)' : '#ccc' }}>{artist.monthlyListeners?.toLocaleString() || 0}</div>
+                                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1.5px', marginTop: '4px' }}>LISTENERS</div>
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
                 </motion.div>

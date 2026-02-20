@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/app/components/ToastContext';
@@ -62,18 +61,18 @@ function RequestComments({ request }) {
                 <div style={{
                     alignSelf: 'flex-start',
                     maxWidth: '85%',
-                    background: 'rgba(255,255,255,0.02)',
-                    padding: '12px 18px',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(255,255,255,0.05)',
+                    background: 'rgba(255,255,255,0.01)',
+                    padding: '16px 20px',
+                    borderRadius: '2px',
+                    border: '1px solid var(--border)',
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '20px' }}>
-                        <span style={{ fontSize: '9px', fontWeight: '900', color: '#666', letterSpacing: '1px' }}>
-                            INITIAL_REQUEST
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '20px' }}>
+                        <span style={{ fontSize: '9px', fontWeight: '950', color: 'var(--accent)', letterSpacing: '2px' }}>
+                            INITIAL_REQUEST_DESCRIPTION
                         </span>
-                        <span style={{ fontSize: '8px', color: '#444' }}>{new Date(request.createdAt).toLocaleString()}</span>
+                        <span style={{ fontSize: '8px', color: '#444', fontWeight: '900' }}>{new Date(request.createdAt).toLocaleString().toUpperCase()}</span>
                     </div>
-                    <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#aaa', fontStyle: 'italic' }}>{request.details}</div>
+                    <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#888', fontStyle: 'italic' }}>{request.details}</div>
                 </div>
 
                 {comments.map(c => {
@@ -84,19 +83,19 @@ function RequestComments({ request }) {
                         <div key={c.id} style={{
                             alignSelf: isMe ? 'flex-end' : 'flex-start',
                             maxWidth: '80%',
-                            background: isMe ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
-                            padding: '12px 18px',
-                            borderRadius: '12px',
-                            border: isMe ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.03)',
+                            background: isMe ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.4)',
+                            padding: '16px 20px',
+                            borderRadius: '2px',
+                            border: isMe ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.05)',
                             position: 'relative'
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '20px' }}>
-                                <span style={{ fontSize: '9px', fontWeight: '900', color: isStaff ? 'var(--accent)' : '#fff', letterSpacing: '1px' }}>
-                                    {c.user?.stageName?.toUpperCase() || c.user?.email?.toUpperCase()} {isStaff ? '[STAFF]' : '[ARTIST]'}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '20px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: '950', color: isStaff ? 'var(--accent)' : '#fff', letterSpacing: '2px' }}>
+                                    {c.user?.stageName?.toUpperCase() || c.user?.email?.toUpperCase()} {isStaff ? '// STAFF' : '// ARTIST'}
                                 </span>
-                                <span style={{ fontSize: '8px', color: '#444' }}>{new Date(c.createdAt).toLocaleString()}</span>
+                                <span style={{ fontSize: '8px', color: '#444', fontWeight: '900' }}>{new Date(c.createdAt).toLocaleString().toUpperCase()}</span>
                             </div>
-                            <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#ccc' }}>{c.content}</div>
+                            <div style={{ fontSize: '12px', lineHeight: '1.6', color: '#ccc' }}>{c.content}</div>
                         </div>
                     );
                 })}
@@ -110,7 +109,7 @@ function RequestComments({ request }) {
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
                     placeholder="Type your message to the artist..."
-                    style={{ flex: 1, padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                    style={{ ...inputStyle, flex: 1, padding: '15px 25px' }}
                 />
                 <button
                     disabled={sending || !newComment.trim()}
@@ -196,7 +195,7 @@ export default function RequestsView({ requests, onUpdateStatus }) {
     if (selectedRequest) {
         return (
             <div style={{ ...glassStyle, minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'var(--glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <button onClick={() => setSelectedRequest(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '18px' }}>←</button>
                         <h3 style={{ fontSize: '14px', letterSpacing: '2px', margin: 0 }}>REQUEST DETAILS</h3>
@@ -213,11 +212,11 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                             </button>
                         )}
                         <div style={{
-                            padding: '5px 12px',
+                            padding: '6px 14px',
                             background: getStatusStyles(selectedRequest.status).bg,
                             border: `1px solid ${getStatusStyles(selectedRequest.status).border}`,
                             color: getStatusStyles(selectedRequest.status).color,
-                            fontSize: '11px', fontWeight: '800', letterSpacing: '1px'
+                            fontSize: '10px', fontWeight: '950', letterSpacing: '2px', borderRadius: '2px'
                         }}>
                             {selectedRequest.status.toUpperCase()}
                         </div>
@@ -227,7 +226,7 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                 <div style={{ padding: '30px', display: 'flex', gap: '40px' }}>
                     {/* LEFT COLUMN: RELEASE INFO */}
                     <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', border: '1px solid var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
                             {selectedRequest.release?.image && (
                                 <NextImage src={selectedRequest.release.image?.startsWith('private/') ? `/api/files/release/${selectedRequest.release.id}` : selectedRequest.release.image} alt="Release" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             )}
@@ -253,23 +252,23 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                     {/* RIGHT COLUMN: REQUEST DETAILS */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '25px' }}>
                         <div>
-                            <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '10px', fontWeight: '800' }}>REQUEST TYPE</label>
-                            <div style={{ fontSize: '14px', background: '#222', padding: '10px 20px', borderRadius: '16px', display: 'inline-block', border: '1px solid var(--border)' }}>
-                                {selectedRequest.type.toUpperCase().replace('_', ' ')} CHANGE
+                            <label style={{ fontSize: '10px', color: '#555', display: 'block', marginBottom: '12px', fontWeight: '950', letterSpacing: '2px' }}>REQUEST_TYPE</label>
+                            <div style={{ fontSize: '11px', background: 'var(--glass)', padding: '10px 20px', borderRadius: '2px', display: 'inline-block', border: '1px solid var(--border)', color: '#fff', fontWeight: '950', letterSpacing: '1px' }}>
+                                {selectedRequest.type.toUpperCase().replace('_', ' ')}_CHANGE
                             </div>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '10px', fontWeight: '800' }}>DESCRIPTION & FILES</label>
+                            <label style={{ fontSize: '10px', color: '#555', display: 'block', marginBottom: '12px', fontWeight: '950', letterSpacing: '2px' }}>DESCRIPTION_&_FILES</label>
                             <div style={{
-                                background: 'var(--surface-hover)',
-                                padding: '20px',
+                                background: 'rgba(255,255,255,0.01)',
+                                padding: '24px',
                                 border: '1px solid var(--border)',
-                                borderRadius: '16px',
+                                borderRadius: '4px',
                                 fontSize: '13px',
-                                lineHeight: '1.6',
+                                lineHeight: '1.7',
                                 whiteSpace: 'pre-wrap',
-                                color: '#ddd',
+                                color: '#aaa',
                                 minHeight: '120px'
                             }}>
                                 {selectedRequest.details}
@@ -286,7 +285,7 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                                     width: '100%',
                                     padding: '15px',
                                     background: 'rgba(0,0,0,0.3)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    border: '1px solid var(--border)',
                                     color: '#fff',
                                     fontSize: '13px',
                                     minHeight: '80px',
@@ -296,39 +295,39 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                             />
                         </div>
 
-                        <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'reviewing')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 170, 0, 0.1)', color: 'var(--status-warning)', borderColor: '#ffaa0030', height: 'auto' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 170, 0, 0.05)', color: '#ffaa00', borderColor: '#ffaa0020', height: 'auto', justifyContent: 'center' }}
                             >
                                 REVIEWING
                             </button>
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'processing')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(0, 170, 255, 0.1)', color: 'var(--status-info)', borderColor: '#00aaff30', height: 'auto' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(0, 170, 255, 0.05)', color: '#00aaff', borderColor: '#00aaff20', height: 'auto', justifyContent: 'center' }}
                             >
                                 PROCESSING
                             </button>
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'needs_action')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 240, 0, 0.1)', color: '#fff000', borderColor: '#fff00030', height: 'auto' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 240, 0, 0.05)', color: '#fff000', borderColor: '#fff00020', height: 'auto', justifyContent: 'center' }}
                             >
-                                NEEDS ACTION
+                                NEEDS_ACTION
                             </button>
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'completed')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, background: 'rgba(245, 197, 66, 0.18)', color: 'var(--accent)', borderColor: 'var(--accent)30', height: 'auto' }}
+                                style={{ ...btnStyle, flex: 1, background: 'var(--accent)', color: '#000', border: 'none', height: 'auto', justifyContent: 'center' }}
                             >
                                 COMPLETED
                             </button>
                             <button
                                 onClick={() => handleUpdate(selectedRequest.id, 'rejected')}
                                 disabled={processing === selectedRequest.id}
-                                style={{ ...btnStyle, flex: 1, color: 'var(--status-error)', borderColor: '#ff444430', height: 'auto' }}
+                                style={{ ...btnStyle, flex: 1, background: 'rgba(255, 0, 0, 0.05)', color: '#ff4444', borderColor: '#ff444420', height: 'auto', justifyContent: 'center' }}
                             >
                                 REJECT
                             </button>
@@ -371,7 +370,7 @@ export default function RequestsView({ requests, onUpdateStatus }) {
             </div>
 
             <div style={{ ...glassStyle, overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <table className="admin-responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr>
                             <th style={thStyle}>RELEASE / ARTIST</th>
@@ -383,15 +382,9 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredRequests.map((req, i) => (
-                            <motion.tr
-                                key={req.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.03 }}
-                                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-                            >
-                                <td style={tdStyle}>
+                        {filteredRequests.map((req) => (
+                            <tr key={req.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <td data-label="RELEASE / ARTIST" style={tdStyle}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <div style={{ width: '35px', height: '35px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', overflow: 'hidden' }}>
                                             {req.release?.image && (
@@ -404,13 +397,13 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                                         </div>
                                     </div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="TYPE" style={tdStyle}>
                                     <span style={{ fontSize: '10px', fontWeight: '800' }}>{req.type.toUpperCase()}</span>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="DATE" style={tdStyle}>
                                     <div style={{ fontSize: '10px', color: '#666' }}>{new Date(req.createdAt).toLocaleDateString()}</div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="STATUS" style={tdStyle}>
                                     <div style={{
                                         display: 'inline-block',
                                         padding: '4px 10px',
@@ -425,20 +418,20 @@ export default function RequestsView({ requests, onUpdateStatus }) {
                                         {req.status.toUpperCase()}
                                     </div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="STAFF" style={tdStyle}>
                                     <div style={{ fontSize: '10px', fontWeight: '800', color: req.assignedTo ? 'var(--accent)' : '#444' }}>
                                         {req.assignedTo?.stageName || req.assignedTo?.email || 'UNASSIGNED'}
                                     </div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="ACTIONS" style={tdStyle}>
                                     <button
                                         onClick={() => setSelectedRequest(req)}
-                                        style={{ ...btnStyle, padding: '5px 15px', fontSize: '9px', borderRadius: '8px', height: 'auto' }}
+                                        style={{ ...btnStyle, padding: '6px 14px', fontSize: '9px', borderRadius: '2px', background: 'rgba(255,255,255,0.05)', height: 'auto' }}
                                     >
                                         MANAGE
                                     </button>
                                 </td>
-                            </motion.tr>
+                            </tr>
                         ))}
                         {filteredRequests.length === 0 && (
                             <tr><td colSpan="6" style={{ ...tdStyle, textAlign: 'center', padding: '50px', color: '#555' }}>NO REQUESTS FOUND</td></tr>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReleaseCard from '@/app/components/ReleaseCard';
+import BackgroundEffects from '@/app/components/BackgroundEffects';
 
 export default function ArtistDetailClient({ artist, releases }) {
     if (!artist) {
@@ -17,47 +18,42 @@ export default function ArtistDetailClient({ artist, releases }) {
         );
     }
 
-    const glassStyle = {
+    const brutalistCardStyle = {
         background: 'rgba(255,255,255,0.02)',
-        backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255,255,255,0.05)',
-        borderRadius: '20px',
+        borderRadius: '4px',
         overflow: 'hidden'
     };
 
     return (
-        <div style={{ background: '#0d0d0d', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '120px' }}>
-            {/* Design Layers */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, pointerEvents: 'none' }}>
-                <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '70%', height: '70%', background: 'radial-gradient(circle, rgba(245,197,66,0.07) 0%, transparent 70%)', filter: 'blur(100px)' }} />
-                <div style={{ position: 'absolute', bottom: '10%', right: '-5%', width: '60%', height: '60%', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)', filter: 'blur(120px)' }} />
-                <div style={{ position: 'absolute', top: '40%', right: '10%', width: '40%', height: '40%', background: 'radial-gradient(circle, rgba(245,197,66,0.03) 0%, transparent 70%)', filter: 'blur(80px)' }} />
-            </div>
+        <div style={{ background: 'transparent', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '120px' }}>
+            <BackgroundEffects />
 
             <div style={{ position: 'relative', zIndex: 2, maxWidth: '1400px', margin: '0 auto', padding: '0 5vw 100px' }}>
                 {/* Artist Header */}
                 <header style={{ marginBottom: '100px' }}>
                     <div style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 1, ease: 'easeOut' }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
                             style={{
-                                width: '280px',
-                                height: '280px',
-                                borderRadius: '50%',
+                                width: '320px',
+                                height: '320px',
+                                borderRadius: '4px',
                                 overflow: 'hidden',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.08)',
                                 position: 'relative',
-                                background: 'rgba(255,255,255,0.02)'
+                                background: 'rgba(255,255,255,0.02)',
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
                             }}
                         >
                             <NextImage
                                 src={artist.images?.[0]?.url || '/placeholder.png'}
                                 alt={artist.name}
-                                width={280}
-                                height={280}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                width={400}
+                                height={400}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.9) contrast(1.1)' }}
                                 priority
                             />
                         </motion.div>
@@ -104,8 +100,23 @@ export default function ArtistDetailClient({ artist, releases }) {
                                 <a
                                     href={artist.external_urls?.spotify}
                                     target="_blank"
-                                    className="glow-button"
-                                    style={{ padding: '16px 40px', fontSize: '11px', textDecoration: 'none' }}
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        padding: '16px 40px',
+                                        fontSize: '11px',
+                                        textDecoration: 'none',
+                                        background: '#fff',
+                                        color: '#000',
+                                        fontWeight: '900',
+                                        letterSpacing: '2px',
+                                        borderRadius: '4px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(255,255,255,0.1)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                                 >
                                     OPEN_SPOTIFY_PROFILE
                                 </a>
@@ -114,13 +125,16 @@ export default function ArtistDetailClient({ artist, releases }) {
                                     style={{
                                         padding: '16px 30px',
                                         fontSize: '11px',
-                                        color: '#666',
+                                        color: '#fff',
                                         fontWeight: '900',
                                         letterSpacing: '2px',
                                         textDecoration: 'none',
-                                        border: '1px solid rgba(255,255,255,0.05)',
-                                        borderRadius: '30px'
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '4px',
+                                        transition: 'all 0.3s ease'
                                     }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                                 >
                                     BACK_TO_ROSTER
                                 </Link>
@@ -142,7 +156,7 @@ export default function ArtistDetailClient({ artist, releases }) {
                     </div>
 
                     {releases.length === 0 ? (
-                        <div style={{ ...glassStyle, padding: '100px', textAlign: 'center' }}>
+                        <div style={{ ...brutalistCardStyle, padding: '100px', textAlign: 'center' }}>
                             <p style={{ color: '#444', fontSize: '11px', fontWeight: '900', letterSpacing: '2px' }}>DATA_ABSENT: NO RELEASES FOUND IN CATALOG</p>
                         </div>
                     ) : (

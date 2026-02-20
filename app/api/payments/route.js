@@ -3,6 +3,8 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
+import { sendMail } from "@/lib/mail";
+import { generatePayoutStatusEmail } from "@/lib/mail-templates";
 
 // GET: Fetch payments
 export async function GET(req) {
@@ -89,10 +91,21 @@ export async function PATCH(req) {
 
     try {
         const body = await req.json();
-        const { id, amount, method, reference, notes, status } = body;
+        const { id, amount, method, reference, notes, status, adminNote } = body;
 
         if (!id) {
             return new Response(JSON.stringify({ error: "Missing payment ID" }), { status: 400 });
+        }
+
+        const existing = await prisma.payment.findUnique({
+            where: { id },
+            include: {
+                user: { select: { email: true, stageName: true } }
+            }
+        });
+
+        if (!existing) {
+            return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404 });
         }
 
         const updateData = {};
@@ -103,12 +116,36 @@ export async function PATCH(req) {
         if (status !== undefined) {
             updateData.status = status;
             if (status === 'completed') updateData.processedAt = new Date();
+            if (status === 'failed') updateData.processedAt = null;
+        }
+
+        if (adminNote && String(adminNote).trim()) {
+            const stamp = new Date().toISOString();
+            const noteBlock = `[ADMIN_DECISION_NOTE ${stamp}] ${String(adminNote).trim()}`;
+            updateData.notes = [existing.notes, noteBlock].filter(Boolean).join('\n\n');
         }
 
         const payment = await prisma.payment.update({
             where: { id },
             data: updateData
         });
+
+        if (status && ['completed', 'failed'].includes(status) && existing.status !== status) {
+            try {
+                await sendMail({
+                    to: existing.user.email,
+                    subject: `Payout ${status === 'completed' ? 'Approved' : 'Rejected'} - LOST.`,
+                    html: generatePayoutStatusEmail(
+                        existing.user.stageName || 'Artist',
+                        existing.amount,
+                        status,
+                        adminNote
+                    )
+                });
+            } catch (emailError) {
+                logger.error('Failed to send payout status email', emailError);
+            }
+        }
 
         return new Response(JSON.stringify(payment), { status: 200 });
     } catch (error) {

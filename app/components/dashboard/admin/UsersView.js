@@ -114,19 +114,18 @@ export default function UsersView({ users, onRefresh }) {
                             maxHeight: '90vh',
                             overflowY: 'auto',
                             padding: '40px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            backdropFilter: 'blur(30px)',
-                            borderRadius: '32px',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                            background: 'var(--surface)',
+                            borderRadius: '4px',
+                            border: '1px solid var(--border)',
+                            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)'
                         }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
-                                <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>USER_ACCESS_CONTROL</h3>
+                                <div style={{ width: '40px', height: '2px', background: 'var(--accent)' }}></div>
+                                <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '950', color: '#fff', margin: 0 }}>USER_ACCESS_CONTROL</h3>
                             </div>
-                            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '24px' }}>×</button>
+                            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '24px' }}>×</button>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
@@ -168,8 +167,8 @@ export default function UsersView({ users, onRefresh }) {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                                 <div>
-                                    <p style={{ fontSize: '10px', color: '#666', marginBottom: '15px', fontWeight: '900', letterSpacing: '2px' }}>PORTAL_PERMISSIONS</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <p style={{ fontSize: '10px', color: '#555', marginBottom: '15px', fontWeight: '950', letterSpacing: '2px' }}>PORTAL_PERMISSIONS</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                                         {[
                                             { key: 'view_overview', label: 'OVERVIEW' },
                                             { key: 'view_support', label: 'SUPPORT' },
@@ -194,8 +193,8 @@ export default function UsersView({ users, onRefresh }) {
                                 </div>
 
                                 <div>
-                                    <p style={{ fontSize: '10px', color: '#666', marginBottom: '15px', fontWeight: '900', letterSpacing: '2px' }}>ADMIN_PERMISSIONS</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <p style={{ fontSize: '10px', color: '#555', marginBottom: '15px', fontWeight: '950', letterSpacing: '2px' }}>ADMIN_PERMISSIONS</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                                         {[
                                             { key: 'admin_view_overview', label: 'STATS' },
                                             { key: 'admin_view_submissions', label: 'DEMOS' },
@@ -226,10 +225,10 @@ export default function UsersView({ users, onRefresh }) {
                         </div>
 
                         <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
-                            <button onClick={() => handleSave()} disabled={saving} className="glow-button" style={{ flex: 2, padding: '18px', fontWeight: '900', height: 'auto' }}>
+                            <button onClick={() => handleSave()} disabled={saving} style={{ ...btnStyle, flex: 2, padding: '18px', background: 'var(--accent)', color: '#000', border: 'none', height: 'auto' }}>
                                 {saving ? 'APPLYING_CHANGES...' : 'SAVE_USER_PERMISSIONS'}
                             </button>
-                            <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
+                            <button onClick={() => setEditingUser(null)} style={{ ...btnStyle, flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', height: 'auto' }}>
                                 CANCEL
                             </button>
                         </div>
@@ -243,7 +242,7 @@ export default function UsersView({ users, onRefresh }) {
                     placeholder="Search users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ ...inputStyle, width: '300px', background: 'rgba(255,255,255,0.02)' }}
+                    style={{ ...inputStyle, width: '300px', background: 'var(--glass)', borderRadius: '2px' }}
                 />
                 <div style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>
                     {users.filter(u => u.status === 'pending').length} PENDING REGISTRATIONS
@@ -252,14 +251,14 @@ export default function UsersView({ users, onRefresh }) {
 
             <div style={{
                 ...glassStyle,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border)',
+                background: 'var(--glass)',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)'
             }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <table className="admin-responsive-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <tr style={{ background: 'var(--glass)' }}>
                             <th style={thStyle}>EMAIL</th>
                             <th style={thStyle}>NAME</th>
                             <th style={thStyle}>ROLE</th>
@@ -268,15 +267,9 @@ export default function UsersView({ users, onRefresh }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredUsers.map((user, i) => (
-                            <motion.tr
-                                key={user.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.03 }}
-                                style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.3s ease' }}
-                            >
-                                <td style={tdStyle}>
+                        {filteredUsers.map((user) => (
+                            <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td data-label="EMAIL" style={tdStyle}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         {user.email}
                                         {user.emailVerified ? (
@@ -286,10 +279,10 @@ export default function UsersView({ users, onRefresh }) {
                                         )}
                                     </div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="NAME" style={tdStyle}>
                                     <div style={{ fontWeight: '800', color: '#ccc' }}>{user.stageName || user.fullName || '---'}</div>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="ROLE" style={tdStyle}>
                                     <span style={{
                                         fontSize: '9px',
                                         fontWeight: '900',
@@ -299,29 +292,30 @@ export default function UsersView({ users, onRefresh }) {
                                         {user.role?.toUpperCase()}
                                     </span>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="STATUS" style={tdStyle}>
                                     <span style={{
                                         fontSize: '9px',
-                                        fontWeight: '900',
+                                        fontWeight: '950',
                                         padding: '4px 12px',
-                                        borderRadius: '16px',
-                                        background: user.status === 'approved' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(245, 197, 66, 0.1)',
-                                        color: user.status === 'approved' ? '#00ff88' : 'var(--accent)',
-                                        border: `1px solid ${user.status === 'approved' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255,255,255,0.05)'}`
+                                        borderRadius: '2px',
+                                        background: user.status === 'approved' ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 240, 0, 0.05)',
+                                        color: user.status === 'approved' ? '#00ff88' : '#fff000',
+                                        letterSpacing: '1px',
+                                        border: `1px solid ${user.status === 'approved' ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255, 240, 0, 0.2)'}`
                                     }}>
                                         {user.status?.toUpperCase() || 'PENDING'}
                                     </span>
                                 </td>
-                                <td style={tdStyle}>
+                                <td data-label="ACTIONS" style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         {user.status === 'pending' && (
-                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '9px' }}>APPROVE</button>
+                                            <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto' }}>APPROVE</button>
                                         )}
-                                        <button onClick={() => openEdit(user)} style={{ ...btnStyle, background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', fontSize: '9px' }}>EDIT</button>
-                                        <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: 'var(--status-error)', background: 'rgba(255,68,68,0.05)', padding: '6px 12px', borderRadius: '8px', fontSize: '9px' }}>DELETE</button>
+                                        <button onClick={() => openEdit(user)} style={{ ...btnStyle, background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto' }}>EDIT</button>
+                                        <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: '#ff4444', background: 'rgba(255,68,68,0.05)', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto', borderColor: 'rgba(255,68,68,0.2)' }}>DELETE</button>
                                     </div>
                                 </td>
-                            </motion.tr>
+                            </tr>
                         ))}
                         {filteredUsers.length === 0 && (
                             <tr><td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#444', padding: '50px' }}>NO USERS MATCHING SEARCH</td></tr>
