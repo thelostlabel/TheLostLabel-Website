@@ -2093,166 +2093,232 @@ function SubmitView({
 
     const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '950' };
     const inputStyle = { width: '100%', padding: '14px 18px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '8px', color: '#fff', fontSize: '12px', outline: 'none', transition: 'border-color 0.2s' };
+    const selectedGenreLabel = genre || 'Not selected';
+    const fileCount = files.length;
+    const totalFileSizeMb = files.reduce((sum, f) => sum + (Number(f.size) || 0), 0) / (1024 * 1024);
+    const isReadyToSubmit = Boolean(title.trim()) && (fileCount > 0 || trackLink.trim());
 
     return (
-        <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ ...glassStyle, padding: '40px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '30px' }}>
-                    <div>
-                        <label style={labelStyle}>TRACK_TITLE *</label>
+        <form onSubmit={handleSubmit}>
+            <div className="submit-grid">
+                <div style={{ ...glassStyle, padding: '28px' }}>
+                    <div style={{ marginBottom: '22px' }}>
+                        <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, letterSpacing: '1.1px', fontWeight: '900', margin: 0 }}>NEW SUBMISSION</p>
+                        <h3 style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#fff' }}>Release Delivery Form</h3>
+                    </div>
+
+                    <div className="submit-fields-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', marginBottom: '20px' }}>
+                        <div>
+                            <label style={labelStyle}>TRACK_TITLE *</label>
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="Track title"
+                                required
+                                style={inputStyle}
+                            />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>GENRE / VIBE</label>
+                            <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
+                                <option value="">Select Genre</option>
+                                {genres.map((g) => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <label style={labelStyle}>TRACK_LINK (OPTIONAL)</label>
                         <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="TITLE"
-                            required
+                            type="url"
+                            value={trackLink}
+                            onChange={(e) => setTrackLink(e.target.value)}
+                            placeholder="https://soundcloud.com/..."
                             style={inputStyle}
                         />
                     </div>
 
-                    <div>
-                        <label style={labelStyle}>GENRE / VIBE</label>
-                        <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
-                            <option value="">Select Genre</option>
-                            {genres.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={labelStyle}>TRACK_LINK (OPTIONAL)</label>
-                    <input
-                        type="url"
-                        value={trackLink}
-                        onChange={(e) => setTrackLink(e.target.value)}
-                        placeholder="https://soundcloud.com/..."
-                        style={inputStyle}
-                    />
-                </div>
-
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={labelStyle}>MESSAGE_FOR_AR (OPTIONAL)</label>
-                    <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Tell us about this record..."
-                        rows={3}
-                        style={{ ...inputStyle, resize: 'none', lineHeight: '1.45', paddingTop: '12px', paddingBottom: '12px' }}
-                    />
-                </div>
-
-                <div style={{ marginBottom: '30px' }}>
-                    <label style={labelStyle}>MASTERED_AUDIO (WAV ONLY) *</label>
-                    <div
-                        onDragEnter={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDragOver={handleDrag}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        style={{
-                            border: `1px dashed ${dragActive ? DASHBOARD_THEME.accent : 'rgba(255,255,255,0.18)'}`,
-                            padding: '60px 40px',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            background: dragActive ? 'rgba(124,141,255,0.1)' : DASHBOARD_THEME.surfaceSoft,
-                            borderRadius: '8px',
-                            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-                        }}
-                    >
-                        <div style={{ marginBottom: '15px' }}>
-                            <Upload size={32} style={{ color: dragActive ? DASHBOARD_THEME.accent : DASHBOARD_THEME.muted }} />
-                        </div>
-                        <p style={{ color: DASHBOARD_THEME.muted, fontSize: '12px', fontWeight: '600', margin: 0, lineHeight: 1.35 }}>
-                            {dragActive ? 'DROP_FILE_NOW' : 'DRAG & DROP WAV OR CLICK_TO_BROWSE'}
-                        </p>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".wav"
-                            multiple
-                            onChange={handleFileSelect}
-                            style={{ display: 'none' }}
+                    <div style={{ marginBottom: '20px' }}>
+                        <label style={labelStyle}>MESSAGE_FOR_AR (OPTIONAL)</label>
+                        <textarea
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder="Tell us about this record..."
+                            rows={4}
+                            style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.45', paddingTop: '12px', paddingBottom: '12px' }}
                         />
                     </div>
 
-                    {files.length > 0 && (
-                        <div style={{ marginTop: '20px', display: 'grid', gap: '10px' }}>
-                            {files.map((file, index) => (
-                                <div key={index} style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '12px 20px',
-                                    background: DASHBOARD_THEME.surfaceSoft,
-                                    border: `1px solid ${DASHBOARD_THEME.border}`,
-                                    borderRadius: '8px'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{ padding: '8px', background: 'rgba(124,141,255,0.14)', color: DASHBOARD_THEME.accent, borderRadius: '6px' }}>
-                                            <Music size={14} />
-                                        </div>
-                                        <span style={{ fontSize: '11px', color: '#fff', fontWeight: '600' }}>
-                                            {file.name} <span style={{ color: DASHBOARD_THEME.muted, marginLeft: '6px' }}>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
-                                        </span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); removeFile(index); }}
-                                        style={{ background: 'transparent', border: 'none', color: DASHBOARD_THEME.muted, cursor: 'pointer', padding: '5px' }}
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )
-                    }
-                </div >
-
-                <div style={{ marginTop: '40px' }}>
-                    {uploading ? (
-                        <div style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '0.8px', color: DASHBOARD_THEME.accent }}>UPLOADING_TRACK...</span>
-                                <span style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>{uploadProgress}%</span>
-                            </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${uploadProgress}%` }}
-                                    style={{ height: '100%', background: 'var(--accent)', borderRadius: '2px' }}
-                                />
-                            </div>
-                        </div>
-                    ) : (
-                        <button
-                            type="submit"
+                    <div style={{ marginBottom: '24px' }}>
+                        <label style={labelStyle}>MASTERED_AUDIO (WAV ONLY) *</label>
+                        <div
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            onClick={() => fileInputRef.current?.click()}
                             style={{
-                                width: '100%',
-                                padding: '18px',
-                                background: 'var(--accent)',
-                                color: '#071311',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontWeight: '950',
-                                letterSpacing: '1px',
+                                border: `1px dashed ${dragActive ? DASHBOARD_THEME.accent : 'rgba(255,255,255,0.18)'}`,
+                                padding: '44px 26px',
+                                textAlign: 'center',
                                 cursor: 'pointer',
-                                transition: '0.3s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                lineHeight: 1
+                                background: dragActive ? 'rgba(209,213,219,0.09)' : DASHBOARD_THEME.surfaceSoft,
+                                borderRadius: '12px',
+                                transition: 'all 0.25s ease'
                             }}
-                            onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
                         >
-                            SUBMIT_DEMO
-                        </button>
-                    )}
+                            <div style={{ marginBottom: '12px' }}>
+                                <Upload size={30} style={{ color: dragActive ? '#e5e7eb' : DASHBOARD_THEME.muted }} />
+                            </div>
+                            <p style={{ color: '#d1d5db', fontSize: '12px', fontWeight: '700', margin: 0 }}>
+                                {dragActive ? 'Drop file to upload' : 'Drag and drop WAV files or click to browse'}
+                            </p>
+                            <p style={{ color: '#6b7280', fontSize: '11px', fontWeight: '600', margin: '8px 0 0 0' }}>
+                                Multiple files supported
+                            </p>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".wav"
+                                multiple
+                                onChange={handleFileSelect}
+                                style={{ display: 'none' }}
+                            />
+                        </div>
+
+                        {files.length > 0 && (
+                            <div style={{ marginTop: '14px', display: 'grid', gap: '8px' }}>
+                                {files.map((file, index) => (
+                                    <div key={index} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '10px 14px',
+                                        background: DASHBOARD_THEME.surfaceSoft,
+                                        border: `1px solid ${DASHBOARD_THEME.border}`,
+                                        borderRadius: '10px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                            <div style={{ padding: '7px', background: 'rgba(255,255,255,0.08)', color: '#d1d5db', borderRadius: '8px' }}>
+                                                <Music size={14} />
+                                            </div>
+                                            <span style={{ fontSize: '11px', color: '#fff', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {file.name} <span style={{ color: DASHBOARD_THEME.muted, marginLeft: '6px' }}>({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); removeFile(index); }}
+                                            style={{ background: 'transparent', border: 'none', color: DASHBOARD_THEME.muted, cursor: 'pointer', padding: '5px' }}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        {uploading ? (
+                            <div style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', letterSpacing: '0.8px', color: DASHBOARD_THEME.accent }}>UPLOADING TRACK...</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>{uploadProgress}%</span>
+                                </div>
+                                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${uploadProgress}%` }}
+                                        style={{ height: '100%', background: 'var(--accent)' }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                type="submit"
+                                style={{
+                                    width: '100%',
+                                    padding: '15px',
+                                    background: 'var(--accent)',
+                                    color: '#0b0b0b',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    fontSize: '12px',
+                                    fontWeight: '900',
+                                    letterSpacing: '1px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    lineHeight: 1
+                                }}
+                            >
+                                SUBMIT DEMO
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div >
-        </form >
+
+                <div style={{ display: 'grid', gap: '12px', alignContent: 'start' }}>
+                    <div style={{ ...glassStyle, padding: '20px' }}>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', fontWeight: '900', letterSpacing: '1px' }}>SUBMISSION STATUS</p>
+                        <div style={{ marginTop: '14px', display: 'grid', gap: '10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                <span style={{ color: '#d1d5db' }}>Title</span>
+                                <span style={{ color: title.trim() ? '#fff' : '#6b7280', fontWeight: '800' }}>{title.trim() ? 'Ready' : 'Missing'}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                <span style={{ color: '#d1d5db' }}>Genre</span>
+                                <span style={{ color: '#fff', fontWeight: '800' }}>{selectedGenreLabel}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                <span style={{ color: '#d1d5db' }}>Audio Files</span>
+                                <span style={{ color: '#fff', fontWeight: '800' }}>{fileCount}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                <span style={{ color: '#d1d5db' }}>Total Size</span>
+                                <span style={{ color: '#fff', fontWeight: '800' }}>{totalFileSizeMb.toFixed(1)} MB</span>
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${isReadyToSubmit ? 'rgba(34,197,94,0.35)' : DASHBOARD_THEME.border}`, background: isReadyToSubmit ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)', fontSize: '11px', fontWeight: '800', color: isReadyToSubmit ? '#bbf7d0' : '#9ca3af' }}>
+                            {isReadyToSubmit ? 'Ready to submit' : 'Add title + audio file or track link'}
+                        </div>
+                    </div>
+
+                    <div style={{ ...glassStyle, padding: '20px' }}>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', fontWeight: '900', letterSpacing: '1px' }}>RECOMMENDED CHECKLIST</p>
+                        <div style={{ marginTop: '12px', display: 'grid', gap: '8px', fontSize: '12px', color: '#d1d5db' }}>
+                            <p style={{ margin: 0 }}>1. Final WAV exported and mastered.</p>
+                            <p style={{ margin: 0 }}>2. Track title matches release metadata.</p>
+                            <p style={{ margin: 0 }}>3. Optional message includes important notes.</p>
+                            <p style={{ margin: 0 }}>4. Verify links before submitting.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style jsx>{`
+                .submit-grid {
+                    max-width: 1180px;
+                    margin: 0 auto;
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) 320px;
+                    gap: 12px;
+                }
+                @media (max-width: 1080px) {
+                    .submit-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                @media (max-width: 760px) {
+                    .submit-fields-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+            `}</style>
+        </form>
     );
 }
 
