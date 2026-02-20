@@ -169,6 +169,6 @@ export function pickPlatformColor(label) {
     if (upper.includes('AMAZON')) return '#FF9900';
     if (upper.includes('TIDAL')) return '#00A0FF';
     if (upper.includes('DEEZER')) return '#A238FF';
-    if (upper.includes('TIKTOK')) return '#FE2C55';
+    if (upper.includes('TIKTOK.')) return '#FE2C55';
     return '#777';
 }
