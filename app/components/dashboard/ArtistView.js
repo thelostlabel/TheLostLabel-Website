@@ -17,18 +17,18 @@ import ProjectView from './ProjectView';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
 const DASHBOARD_THEME = {
-    bg: '#05060B',
-    surface: '#0A0D14',
-    surfaceElevated: '#0F1320',
-    surfaceSoft: '#151B2B',
-    border: 'rgba(146,158,188,0.2)',
-    borderStrong: 'rgba(116,135,255,0.42)',
-    text: '#EEF3FF',
-    muted: '#96A2BD',
-    accent: '#7C8DFF',
-    accentHover: '#B3BEFF',
-    accentDark: '#4458D4',
-    accentAlt: '#7756FF',
+    bg: '#0B0D13',
+    surface: '#12161F',
+    surfaceElevated: '#171D27',
+    surfaceSoft: '#1D2533',
+    border: 'rgba(255,255,255,0.06)',
+    borderStrong: 'rgba(24,212,199,0.25)',
+    text: '#FFFFFF',
+    muted: '#8C98AC',
+    accent: '#18D4C7',
+    accentHover: '#7DEEE6',
+    accentDark: '#0E746C',
+    accentAlt: '#4422A5', // Correct purple for gradients
     success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444'
@@ -1206,16 +1206,28 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     font-weight: 900;
                 }
                 .bc-welcome-banner {
-                    background: linear-gradient(130deg, rgba(119,86,255,0.88) 0%, rgba(124,141,255,0.42) 130%);
-                    border-radius: 16px;
-                    border: 1px solid rgba(152, 139, 255, 0.35);
-                    padding: 30px;
+                    background: linear-gradient(110deg, #3A2396 0%, #1A114D 100%);
+                    border-radius: 20px;
+                    padding: 40px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
+                    margin-bottom: 24px;
                     position: relative;
                     overflow: hidden;
-                    box-shadow: 0 22px 40px rgba(26, 18, 58, 0.4);
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                }
+
+                .bc-welcome-banner::after {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    right: -25%;
+                    width: 75%;
+                    height: 200%;
+                    background: radial-gradient(circle, rgba(107, 76, 246, 0.12) 0%, transparent 70%);
+                    transform: rotate(-15deg);
+                    pointer-events: none;
                 }
                 .bc-welcome-avatar {
                     width: 80px;
@@ -1231,7 +1243,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     gap: 14px;
                 }
                 .bc-action-card {
-                    background: linear-gradient(165deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface});
+                    background: #11141D;
                     border-radius: 14px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                     padding: 24px;
@@ -1240,9 +1252,9 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     transition: all 0.25s ease;
                 }
                 .bc-action-card:hover {
-                    background: linear-gradient(165deg, ${DASHBOARD_THEME.surfaceSoft}, ${DASHBOARD_THEME.surfaceElevated});
+                    background: #171D27;
                     transform: translateY(-2px);
-                    border-color: ${DASHBOARD_THEME.borderStrong};
+                    border-color: ${DASHBOARD_THEME.accent};
                 }
                 .bc-action-icon {
                     width: 36px;
@@ -1316,11 +1328,11 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     margin-top: 4px;
                 }
                 .bc-sidebar-card {
-                    background: linear-gradient(165deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface});
+                    background: #11141D;
                     border-radius: 14px;
                     border: 1px solid ${DASHBOARD_THEME.border};
                     padding: 24px;
-                    box-shadow: 0 14px 32px rgba(3, 8, 18, 0.3);
+                    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
                 }
                 @media (max-width: 1100px) {
                     .beatclap-main-grid {

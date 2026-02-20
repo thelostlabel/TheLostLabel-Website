@@ -2,246 +2,111 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     DollarSign, Briefcase, CreditCard, Users, Mic2, Disc, Music,
-    FileAudio, BarChart3, AlertCircle
+    FileAudio, BarChart3, AlertCircle, ChevronRight, TrendingUp, Music2
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
-    Tooltip, Area, PieChart, Pie, Cell
+    Tooltip, Area
 } from 'recharts';
-import { glassStyle } from './styles';
+import NextImage from 'next/image';
+import { useSession } from 'next-auth/react';
 
-const ChartTooltip = ({ active, payload, label, color }) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div style={{
-            background: '#000',
-            border: '1px solid var(--border)',
-            borderRadius: '2px',
-            padding: '12px 16px',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-        }}>
-            <div style={{ fontSize: '9px', color: '#555', fontWeight: '900', letterSpacing: '2px', marginBottom: '6px' }}>{label}</div>
-            {payload.map((p, i) => (
-                <div key={i} style={{ fontSize: '13px', fontWeight: '900', color: p.color || color || '#fff' }}>
-                    ${Number(p.value).toLocaleString()}
-                </div>
-            ))}
-        </div>
-    );
+const DASHBOARD_THEME = {
+    bg: '#0B0D13',
+    surface: '#12161F',
+    surfaceElevated: '#171D27',
+    surfaceSoft: '#1D2533',
+    border: 'rgba(255,255,255,0.06)',
+    borderStrong: 'rgba(24,212,199,0.25)',
+    text: '#FFFFFF',
+    muted: '#8C98AC',
+    accent: '#18D4C7',
+    accentHover: '#7DEEE6',
+    accentDark: '#0E746C',
+    accentAlt: '#4422A5',
+    success: '#22C55E',
+    warning: '#F59E0B',
+    error: '#EF4444'
 };
 
-function formatChartValue(v) {
-    const value = Number(v) || 0;
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
-    return `${Math.round(value)}`;
-}
-
-const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
-    const sanitizedData = Array.isArray(data)
-        ? data.filter((point) => point && Number.isFinite(Number(point.value)))
-        : [];
-
-    if (sanitizedData.length === 0) return (
-        <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
-            NO DATA AVAILABLE
-        </div>
-    );
-
-    if (sanitizedData.length === 1) {
-        const onlyPoint = sanitizedData[0];
-        return (
-            <div style={{
-                width: '100%',
-                height: `${height}px`,
-                marginTop: '10px',
-                borderRadius: '2px',
-                border: '1px dashed rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.01)',
-                display: 'grid',
-                placeItems: 'center',
-                textAlign: 'center',
-                padding: '20px'
-            }}>
-                <div>
-                    <div style={{ fontSize: '10px', letterSpacing: '1.6px', color: '#99a5b6', fontWeight: '800', marginBottom: '8px' }}>
-                        SINGLE DATA POINT
-                    </div>
-                    <div style={{ fontSize: '34px', fontWeight: '900', color }}>
-                        ${Number(onlyPoint.value).toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#b2bac6', fontWeight: '800', marginTop: '8px' }}>
-                        {onlyPoint.label}
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#7f8b9b', marginTop: '8px' }}>
-                        Trend chart appears automatically as more months are collected.
-                    </div>
-                </div>
-            </div>
-        );
-    }
+const CircularProgress = ({ label, subtitle, value, size = 80 }) => {
+    const radius = (size - 8) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (value / 100) * circumference;
 
     return (
-        <div style={{ width: '100%', height: `${height}px`, marginTop: '10px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={sanitizedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id={`gradient-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="8%" stopColor={color} stopOpacity={0.2} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.11)" />
-                    <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
-                        tickLine={false}
-                        axisLine={{ stroke: 'rgba(255,255,255,0.16)' }}
-                        tickFormatter={(v) => v?.includes?.('-') ? v.split('-')[1] : v}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '16px 0', borderBottom: `1px solid ${DASHBOARD_THEME.border}` }}>
+            <div style={{ position: 'relative', width: size, height: size }}>
+                <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+                    <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="none"
+                        stroke="rgba(255,255,255,0.05)"
+                        strokeWidth="6"
                     />
-                    <YAxis
-                        tick={{ fontSize: 10, fill: '#aeb6c2', fontWeight: 800 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={44}
-                        tickCount={5}
-                        tickFormatter={formatChartValue}
+                    <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="none"
+                        stroke={DASHBOARD_THEME.accent}
+                        strokeWidth="6"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
                     />
-                    <Tooltip content={<ChartTooltip color={color} />} />
-                    <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke={color}
-                        strokeWidth={2.8}
-                        fill={`url(#gradient-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
-                        dot={{ r: 4, fill: '#000', stroke: color, strokeWidth: 2.2 }}
-                        activeDot={{ r: 6, fill: color, stroke: '#000', strokeWidth: 2.2 }}
-                    />
-                </AreaChart>
-            </ResponsiveContainer>
-        </div>
-    );
-};
-
-const DonutChart = ({ data }) => {
-    const total = data.reduce((acc, curr) => acc + curr.value, 0);
-    const topItem = data.reduce((best, item) => (item.value > best.value ? item : best), data[0] || { label: 'TOTAL', value: 0, color: '#666' });
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '200px', height: '200px' }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={85}
-                            paddingAngle={3}
-                            dataKey="value"
-                            nameKey="label"
-                            strokeWidth={0}
-                        >
-                            {data.map((entry, i) => (
-                                <Cell key={i} fill={entry.color} style={{ filter: `drop-shadow(0 0 6px ${entry.color}55)` }} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            content={({ active, payload }) => {
-                                if (!active || !payload?.length) return null;
-                                return (
-                                    <div style={{
-                                        background: '#000',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '2px',
-                                        padding: '10px 14px',
-                                        backdropFilter: 'blur(10px)'
-                                    }}>
-                                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#555', letterSpacing: '1px' }}>{payload[0].name}</div>
-                                        <div style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>
-                                            ${Number(payload[0].value).toLocaleString()} ({total ? Math.round((payload[0].value / total) * 100) : 0}%)
-                                        </div>
-                                    </div>
-                                );
-                            }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                    <div style={{ fontSize: '22px', fontWeight: '900', color: '#fff' }}>
-                        {total ? `${Math.round((topItem.value / total) * 100)}%` : '0%'}
-                    </div>
-                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1px' }}>{topItem.label}</div>
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '13px', fontWeight: '900', color: '#fff' }}>
+                    {value}%
                 </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minWidth: '150px' }}>
-                {data.map((item, i) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr 36px', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}66` }} />
-                        <div style={{ fontSize: '10px', fontWeight: '800', color: '#fff', letterSpacing: '0.5px' }}>{item.label}</div>
-                        <div style={{ fontSize: '10px', fontWeight: '900', color: '#777', textAlign: 'right' }}>
-                            {total ? Math.round((item.value / total) * 100) : 0}%
-                        </div>
-                        <div style={{ gridColumn: '2 / 4', height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
-                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, boxShadow: `0 0 10px ${item.color}55`, transition: 'width 1s ease' }} />
-                        </div>
-                    </div>
-                ))}
+            <div>
+                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>{label}</p>
+                <p style={{ fontSize: '16px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>{subtitle}</p>
             </div>
         </div>
     );
 };
 
-const GoalProgress = ({ label, current, target, color }) => {
-    const percentage = Math.min(Math.round((current / target) * 100), 100);
+const RechartsAreaChart = ({ data, color, height = 150 }) => {
     return (
-        <div style={{ marginBottom: '22px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                <span style={{ fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>{label}</span>
-                <span style={{ fontSize: '13px', fontWeight: '950', color: '#fff' }}>{percentage}%</span>
-            </div>
-            <div style={{ height: '4px', background: 'var(--glass)', borderRadius: '0px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percentage}%` }}
-                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ height: '100%', background: color, boxShadow: `0 0 10px ${color}33` }}
+        <ResponsiveContainer width="100%" height={height}>
+            <AreaChart data={data}>
+                <defs>
+                    <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={color} stopOpacity={0} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                <Tooltip
+                    contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
+                    itemStyle={{ color: '#fff' }}
                 />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                <span style={{ fontSize: '8px', color: '#333', fontWeight: '800' }}>CUR: {current.toLocaleString()}</span>
-                <span style={{ fontSize: '8px', color: '#333', fontWeight: '800' }}>TGT: {target.toLocaleString()}</span>
-            </div>
-        </div>
+                <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={color}
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorArea)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: color, stroke: '#fff', strokeWidth: 2 }}
+                />
+            </AreaChart>
+        </ResponsiveContainer>
     );
 };
-
-function pickPlatformColor(label) {
-    const upper = (label || '').toUpperCase();
-    if (upper.includes('SPOT')) return '#1DB954';
-    if (upper.includes('APPLE')) return '#FA243C';
-    if (upper.includes('YT') || upper.includes('YOU')) return '#FF0000';
-    if (upper.includes('AMAZON')) return '#FF9900';
-    if (upper.includes('TIDAL')) return '#00A0FF';
-    if (upper.includes('DEEZER')) return '#A238FF';
-    if (upper.includes('TIKTOK')) return '#FE2C55';
-    return '#777';
-}
-
-// Local style removed to use shared style from ./styles.js
 
 export default function HomeView() {
+    const { data: session } = useSession();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [range, setRange] = useState('12m'); // 3m, 6m, 12m
-    const [miniEarnings, setMiniEarnings] = useState([]);
-    const [miniPayments, setMiniPayments] = useState([]);
 
     useEffect(() => {
         fetchStats();
-        fetchMiniData();
     }, []);
 
     const fetchStats = async () => {
@@ -255,273 +120,378 @@ export default function HomeView() {
         finally { setLoading(false); }
     };
 
-    const fetchMiniData = async () => {
-        try {
-            const [earnRes, payRes] = await Promise.all([
-                fetch('/api/earnings'),
-                fetch('/api/payments')
-            ]);
-            if (earnRes.ok) {
-                const data = await earnRes.json();
-                const sorted = (data.earnings || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                setMiniEarnings(sorted.slice(0, 5));
-            }
-            if (payRes.ok) {
-                const data = await payRes.json();
-                const sorted = (data.payments || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                setMiniPayments(sorted.slice(0, 5));
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
     if (loading) {
         return (
             <div style={{ padding: '100px', textAlign: 'center' }}>
-                <motion.p
-                    animate={{ opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#444' }}
-                >
-                    REFRESHING_ANALYTICS
-                </motion.p>
+                <p style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#444' }}>SYNCING_SYSTEM_DATA...</p>
             </div>
         );
     }
+
     if (!stats) return null;
 
-    const cards = [
-        { label: 'GROSS_VOLUME', value: `$${(stats.counts.gross || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <DollarSign size={20} />, trend: '+12.5%' },
-        { label: 'NET_REVENUE', value: `$${(stats.counts.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'var(--accent)', icon: <Briefcase size={20} />, trend: '+8.2%' },
-        { label: 'TOTAL_PAYOUTS', value: `$${(stats.counts.payouts || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#00ff88', icon: <CreditCard size={20} /> },
-        { label: 'TOTAL_USERS', value: stats.counts.users || 0, color: '#fff', icon: <Users size={20} /> },
-        { label: 'TOTAL_ARTISTS', value: stats.counts.artists, color: '#fff', icon: <Mic2 size={20} /> },
-        { label: 'TOTAL_RELEASES', value: stats.counts.albums || 0, color: '#fff', icon: <Disc size={20} /> },
-        { label: 'TOTAL_SONGS', value: stats.counts.songs || 0, color: '#fff', icon: <Music size={20} /> },
-        { label: 'TOTAL_DEMOS', value: stats.counts.totalDemos || 0, color: '#fff', icon: <FileAudio size={20} /> },
-        { label: 'PENDING_DEMOS', value: stats.counts.pendingDemos, color: stats.counts.pendingDemos > 0 ? 'var(--accent)' : '#fff', icon: <BarChart3 size={20} /> },
-        { label: 'OPEN_REQUESTS', value: stats.counts.pendingRequests, color: stats.counts.pendingRequests > 0 ? 'var(--status-warning)' : '#fff', icon: <AlertCircle size={20} /> }
+    const topStats = [
+        { label: 'Total Volume', value: `$${(stats.counts.gross || 0).toLocaleString()}`, icon: <DollarSign size={18} /> },
+        { label: 'Net Revenue', value: `$${(stats.counts.revenue || 0).toLocaleString()}`, icon: <Briefcase size={18} /> },
+        { label: 'Total Users', value: (stats.counts.users || 0).toLocaleString(), icon: <Users size={18} /> },
     ];
 
-    const chartData = (() => {
-        if (!stats?.trends) return [];
-        const arr = [...stats.trends];
-        if (range === '3m') return arr.slice(-3);
-        if (range === '6m') return arr.slice(-6);
-        return arr.slice(-12);
-    })();
-
-    const platformData = (stats?.platforms?.length ? stats.platforms : []).map(p => ({
-        label: p.label,
-        value: p.value,
-        color: pickPlatformColor(p.label)
-    }));
-
-    const revenueChartColor = '#8b5cf6';
-    const payoutChartColor = '#00ff88';
-
     return (
-        <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', padding: '0 10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <motion.div
-                        animate={{ opacity: [1, 0.4, 1] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        style={{ width: '8px', height: '8px', borderRadius: '0px', background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }}
-                    />
-                    <span style={{ fontSize: '10px', color: '#555', fontWeight: '900', letterSpacing: '4px' }}>SYSTEM_LIVE // ANALYTICS_REALTIME</span>
-                </div>
-                <div style={{ fontSize: '9px', color: '#333', fontWeight: '900', letterSpacing: '1px' }}>
-                    DATA_FETCHED: {new Date().toLocaleTimeString()}
-                </div>
-            </div>
+        <div className="beatclap-shell">
+            <div className="beatclap-main-grid">
+                {/* LEFT COLUMN */}
+                <div className="beatclap-left-col">
 
-            {/* Stats Cards Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px', marginBottom: '36px' }}>
-                {cards.map((card, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        whileHover={{ y: -2, scale: 1.01 }}
-                        transition={{ duration: 0.4, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                        style={{
-                            padding: '32px 24px',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '16px',
-                            display: 'flex', flexDirection: 'column', gap: '16px',
-                            position: 'relative', overflow: 'hidden'
-                        }}
-                    >
-                        <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '120px', height: '120px', background: `radial-gradient(circle, ${card.color} 0%, transparent 70%)`, opacity: 0.1, pointerEvents: 'none', zIndex: 1 }} />
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 2 }}>
-                            <div style={{ color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                                {card.icon}
+                    {/* Top Stats */}
+                    <div className="bc-top-stats">
+                        {topStats.map((stat, i) => (
+                            <div key={i} className="bc-stat-card">
+                                <span className="bc-stat-label">{stat.label}</span>
+                                <span className="bc-stat-val text-accent">{stat.value}</span>
                             </div>
-                            {card.trend && (
-                                <div style={{ fontSize: '10px', fontWeight: '900', color: card.trend.startsWith('+') ? '#00ff88' : '#ff4444', background: card.trend.startsWith('+') ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', padding: '6px 10px', borderRadius: '6px' }}>
-                                    {card.trend}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ position: 'relative', zIndex: 2 }}>
-                            <div style={{ fontSize: '9px', fontWeight: '950', color: '#888', letterSpacing: '1.5px', marginBottom: '8px' }}>{card.label}</div>
-                            <div style={{ fontSize: '32px', fontWeight: '950', color: '#fff', letterSpacing: '-1px' }}>{card.value}</div>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* Main Content Area: Charts */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '22px', marginBottom: '36px' }}>
-                {/* Revenue Chart */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', background: `radial-gradient(circle, ${revenueChartColor} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
-                        <div>
-                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>REVENUE_OVERVIEW</h3>
-                            <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', fontWeight: '800' }}>LABEL EARNINGS PERFORMANCE OVER TIME</p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: revenueChartColor }} />
-                                <span style={{ fontSize: '9px', fontWeight: '900', color: '#888' }}>ESTIMATED_VOLUME</span>
-                            </div>
-                            <div style={{ display: 'inline-flex', background: 'var(--glass)', borderRadius: '6px', padding: '4px', border: '1px solid var(--border)' }}>
-                                {['3m', '6m', '12m'].map(r => (
-                                    <button
-                                        key={r}
-                                        onClick={() => setRange(r)}
-                                        style={{
-                                            border: 'none',
-                                            background: range === r ? revenueChartColor : 'transparent',
-                                            color: range === r ? '#000' : '#888',
-                                            fontSize: '9px',
-                                            fontWeight: '950',
-                                            letterSpacing: '1px',
-                                            padding: '6px 14px',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {r.toUpperCase()}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{ position: 'relative', zIndex: 2 }}>
-                        <RechartsAreaChart data={chartData.map(t => ({ label: t.label, value: t.revenue }))} color={revenueChartColor} />
-                    </div>
-                </motion.div>
-
-                {/* Payout Trends Chart */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '300px', height: '300px', background: `radial-gradient(circle, ${payoutChartColor} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 2 }}>
-                        <div>
-                            <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>PAYOUT_TRENDS</h3>
-                            <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', fontWeight: '800' }}>TOTAL PAYOUTS OVER TIME</p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: payoutChartColor }} />
-                            <span style={{ fontSize: '9px', fontWeight: '900', color: '#888' }}>FULFILLED_PAYMENTS</span>
-                        </div>
-                    </div>
-
-                    <div style={{ position: 'relative', zIndex: 2 }}>
-                        <RechartsAreaChart data={(stats.payoutTrends || []).map(t => ({ label: t.label, value: t.amount }))} color={payoutChartColor} />
-                    </div>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    style={{ background: 'var(--surface)', padding: '32px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.03, pointerEvents: 'none', zIndex: 1 }} />
-                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0, position: 'relative', zIndex: 2 }}>DISTRIBUTION</h3>
-                    <p style={{ fontSize: '10px', color: '#666', marginTop: '5px', marginBottom: '25px', fontWeight: '800', position: 'relative', zIndex: 2 }}>REVENUE BY PLATFORM</p>
-                    <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <DonutChart data={platformData.length ? platformData : [
-                            { label: 'NO_DATA', value: 1, color: '#444' }
-                        ]} />
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Bottom Section: Goals, Top Performers, Recent Submit */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-                {/* Goals */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '32px', position: 'relative', overflow: 'hidden' }}
-                >
-                    <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '200px', height: '200px', background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
-                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '950', color: '#fff', marginBottom: '30px', position: 'relative', zIndex: 2 }}>OPERATIONAL_GOALS</h3>
-                    <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <GoalProgress label="REVENUE_TARGET" current={stats.counts.gross} target={100000} color="var(--accent)" />
-                        <GoalProgress label="ARTIST_RETENTION" current={stats.counts.artists} target={1000} color="#fff" />
-                        <GoalProgress label="SUBMISSION_KPI" current={200 - stats.counts.pendingDemos} target={200} color="#888" />
-                    </div>
-                </motion.div>
-
-                {/* Top Performers */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}
-                >
-                    <div style={{
-                        padding: '28px 32px',
-                        borderBottom: '1px solid rgba(255,255,255,0.04)',
-                        background: 'rgba(255,255,255,0.01)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        position: 'relative', zIndex: 2
-                    }}>
-                        <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '950', color: '#fff', margin: 0 }}>TOP_PERFORMERS</h3>
-                        <Users size={18} color="#666" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
-                        {stats.topArtists?.slice(0, 5).map((artist, i) => (
-                            <motion.div whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }} key={artist.id} style={{ padding: '20px 32px', borderBottom: i === 4 ? 'none' : '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background-color 0.2s', cursor: 'default' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: '950', color: i === 0 ? 'var(--accent)' : '#666', width: '25px' }}>#{i + 1}</div>
-                                    <div style={{ fontSize: '14px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{artist.name.toUpperCase()}</div>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '14px', fontWeight: '950', color: i === 0 ? 'var(--accent)' : '#ccc' }}>{artist.monthlyListeners?.toLocaleString() || 0}</div>
-                                    <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '1.5px', marginTop: '4px' }}>LISTENERS</div>
-                                </div>
-                            </motion.div>
                         ))}
                     </div>
-                </motion.div>
+
+                    {/* Welcome Banner */}
+                    <div className="bc-welcome-banner">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                            <div className="bc-welcome-avatar">
+                                <NextImage src={session?.user?.image || '/default-album.jpg'} alt="Admin" width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <div>
+                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#fff', margin: 0 }}>Welcome back, Admin!</h1>
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <h2 style={{ fontSize: '36px', fontWeight: '900', color: '#fff', margin: 0 }}>{stats.counts.artists || 0}</h2>
+                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px', fontWeight: '700' }}>Active Artists</p>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions / System Health */}
+                    <div className="bc-quick-actions">
+                        <div className="bc-action-card">
+                            <div className="bc-action-icon"><AlertCircle size={20} /></div>
+                            <h3 className="bc-action-title">Pending Submissions</h3>
+                            <p className="bc-action-desc">{stats.counts.pendingDemos} demos waiting for review</p>
+                            <ChevronRight size={18} className="bc-action-arrow" />
+                        </div>
+                        <div className="bc-action-card">
+                            <div className="bc-action-icon"><BarChart3 size={20} /></div>
+                            <h3 className="bc-action-title">Open Requests</h3>
+                            <p className="bc-action-desc">{stats.counts.pendingRequests} support tickets active</p>
+                            <ChevronRight size={18} className="bc-action-arrow" />
+                        </div>
+                    </div>
+
+                    {/* Top Performing Artists */}
+                    <div className="bc-recent-releases">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>Top Performing Artists</h3>
+                            <button className="bc-btn-outline">View Directory</button>
+                        </div>
+                        <div className="bc-artists-mini-list">
+                            {stats.topArtists?.slice(0, 4).map((artist, i) => (
+                                <div key={artist.id} className="admin-artist-mini-card">
+                                    <div className="admin-artist-rank">#{i + 1}</div>
+                                    <div className="admin-artist-info">
+                                        <div className="admin-artist-name">{artist.name}</div>
+                                        <div className="admin-artist-meta">{artist.monthlyListeners?.toLocaleString()} Monthly Listeners</div>
+                                    </div>
+                                    <div className="admin-artist-trend">
+                                        <TrendingUp size={14} color={DASHBOARD_THEME.accent} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* RIGHT COLUMN */}
+                <div className="bc-analytics-col">
+                    <div className="bc-analytics-card">
+                        <CircularProgress label="System Uptime" subtitle="Operational" value={99} />
+                        <CircularProgress label="Processing Rate" subtitle="Stable" value={87} />
+
+                        <div style={{ paddingTop: '24px' }}>
+                            <h4 className="bc-card-title">Network Load</h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '16px' }}>
+                                <div>
+                                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px', fontWeight: '700' }}>CURRENT</p>
+                                    <p style={{ fontSize: '20px', fontWeight: '900', color: DASHBOARD_THEME.accent }}>42%</p>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px', fontWeight: '700' }}>AVAILABLE</p>
+                                    <p style={{ fontSize: '20px', fontWeight: '900', color: '#fff' }}>58%</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bc-analytics-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <div>
+                                <h3 className="bc-card-title">Revenue Trends</h3>
+                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>Last 6 months</p>
+                            </div>
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: '700' }}>See Detailed &gt;</span>
+                        </div>
+                        <div style={{ height: '160px', width: '100%', position: 'relative', marginBottom: '20px' }}>
+                            <RechartsAreaChart data={stats.trends?.map(t => ({ label: t.label, value: t.revenue })) || []} color={DASHBOARD_THEME.accent} height={160} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1db954', display: 'grid', placeItems: 'center' }}>
+                                        <Music2 size={12} color="#fff" />
+                                    </div>
+                                    <span style={{ fontSize: '13px', fontWeight: '700' }}>Spotify Total</span>
+                                </div>
+                                <span style={{ fontSize: '13px', fontWeight: '700', color: 'rgba(255,255,255,0.6)' }}>{(stats.counts.songs || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </>
+
+            <style jsx>{`
+                .beatclap-shell {
+                    color: #fff;
+                    font-family: 'Space Grotesk', sans-serif;
+                }
+
+                .beatclap-main-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 340px;
+                    gap: 24px;
+                    align-items: start;
+                }
+
+                /* LEFT COLUMN */
+                .bc-top-stats {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 16px;
+                    margin-bottom: 24px;
+                }
+
+                .bc-stat-card {
+                    background: #11141D;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 16px;
+                    padding: 24px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+                }
+
+                .bc-stat-label {
+                    font-size: 11px;
+                    font-weight: 800;
+                    color: rgba(255, 255, 255, 0.4);
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+
+                .bc-stat-val {
+                    font-size: 24px;
+                    font-weight: 900;
+                }
+
+                .text-accent {
+                    color: ${DASHBOARD_THEME.accent};
+                }
+
+                .bc-welcome-banner {
+                    background: linear-gradient(110deg, #3A2396 0%, #1A114D 100%);
+                    border-radius: 20px;
+                    padding: 40px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 24px;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                }
+
+                .bc-welcome-banner::after {
+                    content: '';
+                    position: absolute;
+                    top: -50%;
+                    right: -25%;
+                    width: 75%;
+                    height: 200%;
+                    background: radial-gradient(circle, rgba(107, 76, 246, 0.12) 0%, transparent 70%);
+                    transform: rotate(-15deg);
+                    pointer-events: none;
+                }
+
+                .bc-welcome-avatar {
+                    width: 100px;
+                    height: 100px;
+                    border-radius: 50%;
+                    overflow: hidden;
+                    border: 3px solid rgba(255, 255, 255, 0.15);
+                    background: #111;
+                }
+
+                .bc-quick-actions {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                    margin-bottom: 32px;
+                }
+
+                .bc-action-card {
+                    background: #11141D;
+                    border-radius: 16px;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    padding: 24px;
+                    position: relative;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                }
+
+                .bc-action-card:hover {
+                    background: #171D27;
+                    transform: translateY(-2px);
+                    border-color: ${DASHBOARD_THEME.accent};
+                }
+
+                .bc-action-icon {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 10px;
+                    background: rgba(255,255,255,0.03);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 16px;
+                    color: ${DASHBOARD_THEME.accent};
+                }
+
+                .bc-action-title {
+                    font-size: 16px;
+                    font-weight: 800;
+                    color: #fff;
+                    margin: 0 0 6px 0;
+                }
+
+                .bc-action-desc {
+                    font-size: 12px;
+                    color: ${DASHBOARD_THEME.muted};
+                    margin: 0;
+                }
+
+                .bc-action-arrow {
+                    position: absolute;
+                    top: 50%;
+                    right: 20px;
+                    transform: translateY(-50%);
+                    color: rgba(255,255,255,0.2);
+                }
+
+                .bc-artists-mini-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .admin-artist-mini-card {
+                    background: #11141D;
+                    border: 1px solid rgba(255,255,255,0.04);
+                    border-radius: 12px;
+                    padding: 16px 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    transition: all 0.2s ease;
+                }
+
+                .admin-artist-mini-card:hover {
+                    background: #171D27;
+                    border-color: rgba(255,255,255,0.1);
+                }
+
+                .admin-artist-rank {
+                    font-size: 14px;
+                    font-weight: 900;
+                    color: ${DASHBOARD_THEME.accent};
+                    width: 30px;
+                }
+
+                .admin-artist-info {
+                    flex: 1;
+                }
+
+                .admin-artist-name {
+                    font-size: 15px;
+                    font-weight: 800;
+                    color: #fff;
+                }
+
+                .admin-artist-meta {
+                    font-size: 11px;
+                    color: ${DASHBOARD_THEME.muted};
+                    margin-top: 2px;
+                }
+
+                .bc-btn-outline {
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    color: #fff;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    font-weight: 800;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .bc-btn-outline:hover {
+                    background: rgba(255,255,255,0.08);
+                    border-color: ${DASHBOARD_THEME.accent};
+                }
+
+                /* RIGHT COLUMN */
+                .bc-analytics-card {
+                    background: #11141D;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 20px;
+                    padding: 24px;
+                    margin-bottom: 24px;
+                    box-shadow: 0 14px 40px rgba(0,0,0,0.2);
+                }
+
+                .bc-card-title {
+                    font-size: 14px;
+                    font-weight: 900;
+                    color: #fff;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    margin: 0;
+                }
+
+                @media (max-width: 1100px) {
+                    .beatclap-main-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .bc-top-stats {
+                        grid-template-columns: 1fr;
+                    }
+                    .bc-quick-actions {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            `}</style>
+        </div>
     );
 }
