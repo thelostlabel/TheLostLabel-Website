@@ -13,12 +13,12 @@ export const GoalProgress = ({ label, current, target, color }) => {
                     <span style={{ fontSize: '10px', fontWeight: '900', color: safeColor }}>{percentage}%</span>
                 </div>
             </div>
-            <div style={{ width: '100%', height: '7px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.03)', borderRadius: '2px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${percentage}%` }}
                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ height: '100%', background: safeColor, borderRadius: '10px', boxShadow: `0 0 18px ${safeColor}50` }}
+                    style={{ height: '100%', background: safeColor, borderRadius: '2px' }}
                 />
             </div>
         </div>
@@ -29,12 +29,11 @@ export const ChartTooltip = ({ active, payload, label, color }) => {
     if (!active || !payload?.length) return null;
     return (
         <div style={{
-            background: 'rgba(10,10,12,0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+            background: 'var(--surface)',
+            border: '2px solid rgba(255,255,255,0.1)',
+            borderRadius: '2px',
+            padding: '16px 20px',
+            boxShadow: '10px 10px 0 rgba(0,0,0,0.5)'
         }}>
             <div style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px', marginBottom: '6px' }}>{label}</div>
             {payload.map((p, i) => (
@@ -46,7 +45,7 @@ export const ChartTooltip = ({ active, payload, label, color }) => {
     );
 };
 
-export const RechartsAreaChart = ({ data, color = '#f5c542', height = 260 }) => {
+export const RechartsAreaChart = ({ data, color = '#8b5cf6', height = 260 }) => {
     if (!data || data.length === 0) return (
         <div style={{ height: `${height}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '11px', letterSpacing: '2px', fontWeight: '800' }}>
             NO DATA AVAILABLE
@@ -122,11 +121,10 @@ export const DonutChart = ({ data }) => {
                                 if (!active || !payload?.length) return null;
                                 return (
                                     <div style={{
-                                        background: 'rgba(10,10,12,0.95)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px',
-                                        padding: '10px 14px',
-                                        backdropFilter: 'blur(20px)'
+                                        background: 'var(--surface)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '2px',
+                                        padding: '12px 16px'
                                     }}>
                                         <div style={{ fontSize: '10px', fontWeight: '900', color: '#fff' }}>{payload[0].name}</div>
                                         <div style={{ fontSize: '12px', fontWeight: '900', color: payload[0].payload.color }}>
@@ -148,13 +146,13 @@ export const DonutChart = ({ data }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minWidth: '150px' }}>
                 {data.map((item, i) => (
                     <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr 36px', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 8px ${item.color}66` }} />
+                        <div style={{ width: '8px', height: '8px', borderRadius: '1px', background: item.color }} />
                         <div style={{ fontSize: '10px', fontWeight: '800', color: '#fff', letterSpacing: '0.5px' }}>{item.label}</div>
                         <div style={{ fontSize: '10px', fontWeight: '900', color: '#777', textAlign: 'right' }}>
                             {total ? Math.round((item.value / total) * 100) : 0}%
                         </div>
-                        <div style={{ gridColumn: '2 / 4', height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
-                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, boxShadow: `0 0 10px ${item.color}55`, transition: 'width 1s ease' }} />
+                        <div style={{ gridColumn: '2 / 4', height: '4px', borderRadius: '1px', background: 'rgba(255,255,255,0.03)', overflow: 'hidden' }}>
+                            <div style={{ width: `${total ? Math.round((item.value / total) * 100) : 0}%`, height: '100%', background: item.color, transition: 'width 1s ease' }} />
                         </div>
                     </div>
                 ))}

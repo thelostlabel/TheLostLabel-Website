@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, useSpring } from "framer-motion";
 
 const Particle = ({ style, animate, transition }) => (
     <motion.div
@@ -9,11 +9,11 @@ const Particle = ({ style, animate, transition }) => (
         transition={transition}
         style={{
             position: "absolute",
-            width: "2px",
-            height: "2px",
-            background: "#fff",
+            width: "3px",
+            height: "3px",
+            background: "#ffffff",
             borderRadius: "50%",
-            boxShadow: "0 0 4px #fff",
+            boxShadow: "0 0 8px #ffffff",
             ...style
         }}
     />
@@ -21,11 +21,21 @@ const Particle = ({ style, animate, transition }) => (
 
 export default function BackgroundEffects() {
     const [particles, setParticles] = useState([]);
+    const mouseX = useSpring(0, { stiffness: 50, damping: 20 });
+    const mouseY = useSpring(0, { stiffness: 50, damping: 20 });
 
     useEffect(() => {
-        // Move generation to a timeout to avoid synchronous blocking and satisfy linter
+        const handleMouseMove = (e) => {
+            const x = (e.clientX / window.innerWidth - 0.5) * 40;
+            const y = (e.clientY / window.innerHeight - 0.5) * 40;
+            mouseX.set(x);
+            mouseY.set(y);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+
         const timer = setTimeout(() => {
-            const generatedParticles = Array.from({ length: 12 }).map((_, i) => ({
+            const generatedParticles = Array.from({ length: 20 }).map((_, i) => ({
                 id: i,
                 style: {
                     left: `${Math.random() * 100}%`,
@@ -33,11 +43,11 @@ export default function BackgroundEffects() {
                 },
                 animate: {
                     opacity: [0, 0.8, 0],
-                    scale: [0, 1.5, 0],
-                    y: [0, -40]
+                    scale: [0, Math.random() * 1.5 + 0.5, 0],
+                    y: [0, Math.random() * -60 - 20]
                 },
                 transition: {
-                    duration: Math.random() * 3 + 2,
+                    duration: Math.random() * 4 + 3,
                     repeat: Infinity,
                     delay: Math.random() * 5,
                     ease: "easeInOut"
@@ -45,42 +55,40 @@ export default function BackgroundEffects() {
             }));
             setParticles(generatedParticles);
         }, 0);
-        return () => clearTimeout(timer);
-    }, []);
+
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('mousemove', handleMouseMove);
+        };
+    }, [mouseX, mouseY]);
 
     return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden", background: "#06070a" }}>
 
-            {/* 1. Deep Background Gradient */}
+            {/* 1. Deep Void Background Gradient (Slightly Lighter for Cosmic Vibe) */}
             <div style={{
                 position: "absolute", inset: 0,
-                background: "radial-gradient(circle at 50% -20%, #252a3f 0%, #0a0a0c 60%)"
+                background: "radial-gradient(circle at 50% 0%, #1a1b26 0%, #06070a 80%)"
             }} />
 
-            {/* 2. Moving Retro Grid */}
-            <div className="perspective-grid" style={{ position: "absolute", inset: 0, opacity: 0.4 }}>
-                <div className="moving-grid" />
+            {/* 2. Cold Stark Grid lines (Vertical only for speed/falling effect) */}
+            <div style={{ position: "absolute", inset: 0, opacity: 0.1 }}>
+                <div style={{ position: "absolute", left: "20%", top: 0, bottom: 0, width: "1px", background: "linear-gradient(to bottom, transparent, #fff, transparent)" }} />
+                <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: "1px", background: "linear-gradient(to bottom, #fff, transparent)" }} />
+                <div style={{ position: "absolute", left: "80%", top: 0, bottom: 0, width: "1px", background: "linear-gradient(to bottom, transparent, #fff, transparent)" }} />
             </div>
 
-            {/* 3. Floating Orbs */}
-            <div className="floating-orb" style={{
-                top: "20%", left: "10%", width: "450px", height: "450px",
-                background: "radial-gradient(circle, rgba(178, 255, 46, 0.18), transparent 70%)",
-                animationDelay: "0s"
-            }} />
-            <div className="floating-orb" style={{
-                bottom: "10%", right: "5%", width: "550px", height: "550px",
-                background: "radial-gradient(circle, rgba(20, 180, 255, 0.15), transparent 70%)",
-                animationDelay: "-5s"
-            }} />
-            <div className="floating-orb" style={{
-                top: "50%", left: "50%", width: "350px", height: "350px",
-                background: "radial-gradient(circle, rgba(255, 20, 148, 0.12), transparent 70%)",
-                animationDelay: "-10s",
-                transform: "translate(-50%, -50%)"
+            {/* 3. Subtle Dark Starfield/Dust */}
+            <motion.div style={{
+                position: "absolute",
+                inset: 0,
+                x: useSpring(mouseX.get() * -0.5, { stiffness: 40, damping: 30 }),
+                y: useSpring(mouseY.get() * -0.5, { stiffness: 40, damping: 30 }),
+                backgroundSize: "100px 100px",
+                backgroundImage: "radial-gradient(circle at center, rgba(255,255,255,0.05) 1px, transparent 1px)"
             }} />
 
-            {/* 4. Particles / Stars */}
+            {/* 4. Drifting Space Debris (Particles) */}
             <div style={{ position: "absolute", inset: 0 }}>
                 {particles.map((p) => (
                     <Particle key={p.id} {...p} />

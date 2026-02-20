@@ -59,8 +59,8 @@ export async function GET(req) {
                 }
             }),
             prisma.payment.findMany({
-                where: { userId: userId, status: 'completed' },
-                select: { amount: true }
+                where: { userId: userId, status: { in: ['completed', 'pending'] } },
+                select: { amount: true, status: true }
             }),
             prisma.release.aggregate({
                 _count: { id: true },
@@ -93,15 +93,11 @@ export async function GET(req) {
                 contract: {
                     select: {
                         earnings: {
-                            where: {
-                                createdAt: {
-                                    gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) // Last 6 months only
-                                }
-                            },
                             select: {
                                 artistAmount: true,
                                 streams: true,
-                                createdAt: true
+                                createdAt: true,
+                                source: true
                             }
                         }
                     }
@@ -112,6 +108,7 @@ export async function GET(req) {
         // 4. Process Trends and Totals
         let totalEarnings = 0;
         let totalStreams = 0;
+        const sourceStreams = {};
         const monthlyTrend = {};
         const dailyTrend = {};
         const now = new Date();
@@ -135,7 +132,11 @@ export async function GET(req) {
                 contract.earnings.forEach(earning => {
                     const amount = (earning.artistAmount * split.percentage) / 100;
                     totalEarnings += amount;
-                    if (earning.streams) totalStreams += earning.streams;
+                    if (earning.streams) {
+                        totalStreams += earning.streams;
+                        const src = (earning.source || 'other').toLowerCase();
+                        sourceStreams[src] = (sourceStreams[src] || 0) + earning.streams;
+                    }
 
                     const d = new Date(earning.createdAt);
                     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -147,7 +148,13 @@ export async function GET(req) {
             }
         });
 
-        const totalWithdrawn = payments.reduce((sum, p) => sum + p.amount, 0);
+        const totalPaid = payments
+            .filter((p) => p.status === 'completed')
+            .reduce((sum, p) => sum + p.amount, 0);
+        const totalPending = payments
+            .filter((p) => p.status === 'pending')
+            .reduce((sum, p) => sum + p.amount, 0);
+        const available = totalEarnings - totalPaid - totalPending;
 
         // 5. Transform Listener History
         const listenerTrend = (artistProfile?.statsHistory || [])
@@ -165,14 +172,18 @@ export async function GET(req) {
             listeners: monthlyListeners,
             earnings: totalEarnings,
             streams: totalStreams,
-            withdrawn: totalWithdrawn,
-            balance: totalEarnings - totalWithdrawn,
+            withdrawn: totalPaid,
+            paid: totalPaid,
+            pending: totalPending,
+            available,
+            balance: available,
             releases: releasesCount,
             songs: totalSongs,
             demos: demosCount,
             trends: Object.values(monthlyTrend).reverse(),
             trendsDaily: Object.values(dailyTrend).reverse(),
-            listenerTrend: listenerTrend
+            listenerTrend: listenerTrend,
+            sourceStreams
         }), { status: 200 });
 
     } catch (e) {

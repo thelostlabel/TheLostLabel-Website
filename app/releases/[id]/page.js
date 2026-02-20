@@ -16,6 +16,7 @@ export default function ReleaseDetailPage() {
     const [release, setRelease] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [introDone, setIntroDone] = useState(false);
 
     useEffect(() => {
         async function fetchRelease() {
@@ -148,7 +149,13 @@ export default function ReleaseDetailPage() {
                 setLoading(false);
             }
         }
+
         if (releaseId) fetchRelease();
+
+        setTimeout(() => {
+            setIntroDone(true);
+        }, 1500);
+
     }, [releaseId]);
 
     const formatDuration = (ms) => {
@@ -162,21 +169,7 @@ export default function ReleaseDetailPage() {
     const firstPreview = release?.tracks?.find((t) => t.preview_url);
     const formatArtists = (artists) => artists?.map(a => a.name).join(", ") || 'Unknown Artist';
 
-    if (loading) {
-        return (
-            <div style={{ background: '#080808', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <motion.div
-                    animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#444' }}
-                >
-                    RETRIEVING_LOST_ASSETS
-                </motion.div>
-            </div>
-        );
-    }
-
-    if (error || !release) {
+    if (error || (!loading && !release)) {
         return (
             <div style={{ background: '#080808', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <h1 style={{ fontSize: 'clamp(30px, 5vw, 60px)', fontWeight: '900', color: '#ff4444' }}>LOST_IN_VOID</h1>
@@ -187,425 +180,568 @@ export default function ReleaseDetailPage() {
         );
     }
 
-    const normalizedImage = release.image?.startsWith('private/')
+    const normalizedImage = release?.image?.startsWith('private/')
         ? `/api/files/release/${release.id}`
-        : release.image;
+        : release?.image;
 
     return (
-        <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '110px' }}>
-            <BackgroundEffects />
-
-            <section className="release-hero">
-                <div
-                    className="hero-backdrop"
-                    style={normalizedImage ? { backgroundImage: `url(${normalizedImage})` } : undefined}
-                />
-                <div className="hero-inner">
-                    <Link href="/releases" className="back-link">
-                        <ChevronLeft size={16} /> BACK_TO_CATALOG
-                    </Link>
-
-                    <div className="hero-grid">
+        <>
+            <AnimatePresence>
+                {(loading || !introDone) && (
+                    <motion.div
+                        initial={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: "-100%" }}
+                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                        style={{
+                            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                            background: "#050505", zIndex: 9999,
+                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                            overflow: "hidden"
+                        }}
+                    >
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.8 }}
-                            className="cover-wrap"
-                            style={{ borderRadius: '32px', overflow: 'hidden' }}
+                            initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "var(--accent)" }}
                         >
-                            <NextImage
-                                src={normalizedImage || '/placeholder.png'}
-                                alt={release.name}
-                                width={420}
-                                height={420}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '32px' }}
-                                priority
-                            />
+                            LOST.
                         </motion.div>
-
                         <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className="meta-card"
-                        >
-                            <div className="meta-kicker">
-                                <span className="kicker-line" />
-                                <span>{release?.type?.toUpperCase() || 'RELEASE'} DATA</span>
-                            </div>
-                            <h1 className="release-title">{release.name}</h1>
+                            initial={{ width: 0 }}
+                            animate={{ width: "200px" }}
+                            transition={{ duration: 1.5, ease: "easeInOut" }}
+                            style={{ height: "2px", background: "rgba(158,240,26,0.5)", marginTop: "24px", borderRadius: "2px" }}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                            <div className="artist-list">
-                                {release.artists?.map((art, idx) => (
-                                    <span key={art.id} className="artist-pill">
-                                        <Link href={`/artists/${art.id}`}>{art.name}</Link>
-                                        {idx < release.artists.length - 1 && <span className="artist-sep">•</span>}
-                                    </span>
-                                ))}
-                            </div>
+            {release && (
+                <div style={{ background: 'transparent', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden', paddingTop: '0px' }}>
+                    <BackgroundEffects />
 
-                            <div className="stat-row">
-                                <div>
-                                    <div className="stat-label">RELEASE DATE</div>
-                                    <div className="stat-value">{releaseDateLabel}</div>
-                                </div>
-                                <div>
-                                    <div className="stat-label">TRACK COUNT</div>
-                                    <div className="stat-value">{release.total_tracks} TRACKS</div>
-                                </div>
-                                {firstPreview && (
-                                    <div>
-                                        <div className="stat-label">PREVIEW</div>
-                                        <div className="stat-value">AVAILABLE</div>
-                                    </div>
-                                )}
-                            </div>
+                    <div
+                        className="hero-backdrop"
+                        style={normalizedImage ? { backgroundImage: `url(${normalizedImage})` } : undefined}
+                    />
+                    <div className="hero-backdrop-gradient" />
 
-                            <div className="action-row">
-                                {firstPreview && (
-                                    <button
-                                        className="primary-btn"
-                                        onClick={() => {
-                                            playTrack({
-                                                id: firstPreview.id,
-                                                name: firstPreview.name,
-                                                artist: formatArtists(firstPreview.artists),
-                                                image: normalizedImage,
-                                                previewUrl: firstPreview.preview_url
-                                            });
-                                        }}
-                                    >
-                                        <Play size={14} /> PLAY_PREVIEW
-                                    </button>
-                                )}
-                                <a href={release.spotify_url} target="_blank" className="primary-btn glow-button" style={{ textDecoration: 'none' }}>
-                                    <ExternalLink size={14} /> VIEW_ON_SPOTIFY
-                                </a>
-                            </div>
-                        </motion.div>
-                    </div>
-                </div>
-            </section>
+                    <section className="release-hero">
+                        <div className="hero-inner">
+                            <Link href="/releases" className="back-link">
+                                <ChevronLeft size={16} strokeWidth={3} /> RETURN TO CATALOG
+                            </Link>
 
-            <div style={{ position: 'relative', zIndex: 2, maxWidth: '1200px', margin: '0 auto', padding: '40px 5vw 100px' }}>
-                <motion.section
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                >
-                    <div className="tracklist-header">
-                        <h2>TRACKLIST</h2>
-                        <div />
-                    </div>
-
-                    <div className="tracklist-panel">
-                        {release.tracks?.map((track, index) => {
-                            const isCurrent = currentTrack?.id === track.id;
-                            const isActive = isCurrent && isPlaying;
-
-                            return (
-                                <div
-                                    key={track.id}
-                                    className="track-row"
-                                    onClick={() => {
-                                        if (track.preview_url) {
-                                            playTrack({
-                                                id: track.id,
-                                                name: track.name,
-                                                artist: track.artists,
-                                                image: normalizedImage,
-                                                previewUrl: track.preview_url
-                                            });
-                                        }
-                                    }}
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: '50px 1fr 120px 50px',
-                                        alignItems: 'center',
-                                        padding: '20px 26px',
-                                        cursor: track.preview_url ? 'pointer' : 'default',
-                                        borderBottom: index !== release.tracks.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
-                                        background: isCurrent ? 'rgba(245,197,66,0.08)' : 'transparent',
-                                        transition: 'all 0.3s ease'
-                                    }}
+                            <div className="hero-grid">
+                                <motion.div
+                                    initial={{ opacity: 0, y: 40, filter: "blur(20px)" }}
+                                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                                    transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+                                    className="cover-wrap"
                                 >
-                                    <div style={{ opacity: 0.3, fontSize: '11px', fontWeight: '900' }}>{String(index + 1).padStart(2, '0')}</div>
-                                    <div>
-                                        <div style={{ fontSize: '14px', fontWeight: '700', color: isCurrent ? 'var(--accent)' : '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            {track.name}
-                                            {isActive && (
-                                                <motion.div
-                                                    animate={{ height: [4, 12, 4] }}
-                                                    transition={{ repeat: Infinity, duration: 0.5 }}
-                                                    style={{ width: '2px', background: 'var(--accent)' }}
-                                                />
-                                            )}
-                                        </div>
-                                        <div style={{ fontSize: '11px', color: '#666', marginTop: '4px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                            {track.artists?.map((art, idx) => (
-                                                <span key={art.id} style={{ display: 'flex', alignItems: 'center' }}>
-                                                    <Link
-                                                        href={`/artists/${art.id}`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }}
-                                                        onMouseEnter={(e) => e.target.style.color = '#888'}
-                                                        onMouseLeave={(e) => e.target.style.color = 'inherit'}
-                                                    >
-                                                        {art.name}
-                                                    </Link>
-                                                    {idx < track.artists.length - 1 && <span>,</span>}
-                                                </span>
-                                            ))}
-                                        </div>
+                                    <NextImage
+                                        src={normalizedImage || '/placeholder.png'}
+                                        alt={release.name}
+                                        width={800}
+                                        height={800}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        priority
+                                    />
+                                    <div className="cover-glare" />
+                                </motion.div>
+
+                                <motion.div
+                                    initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
+                                    animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                                    transition={{ duration: 1.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                                    className="meta-card"
+                                >
+                                    <div className="meta-kicker">
+                                        <span className="kicker-line" />
+                                        <span>{release?.type?.toUpperCase() || 'RELEASE DATA'}</span>
                                     </div>
-                                    <div style={{ fontSize: '11px', color: '#666', fontWeight: '800', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                        {track.duration_ms > 0 && (
-                                            <>
-                                                <Clock size={12} /> {formatDuration(track.duration_ms)}
-                                            </>
-                                        )}
-                                        {track.is_version && (
-                                            <span style={{ fontSize: '9px', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                VERSION
+                                    <h1 className="release-title">{release.name}</h1>
+
+                                    <div className="artist-list">
+                                        <span className="artist-by">BY</span>
+                                        {release.artists?.map((art, idx) => (
+                                            <span key={art.id} className="artist-pill">
+                                                <Link href={`/artists/${art.id}`}>{art.name}</Link>
+                                                {idx < release.artists.length - 1 && <span className="artist-sep">,</span>}
                                             </span>
-                                        )}
+                                        ))}
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        {track.preview_url ? (
-                                            <div style={{ color: isCurrent ? 'var(--accent)' : '#444' }}>
-                                                {isActive ? <Pause size={16} /> : <Play size={16} />}
-                                            </div>
-                                        ) : (
-                                            <div style={{ color: 'rgba(255,255,255,0.05)' }}>
-                                                <Music size={16} />
-                                            </div>
-                                        )}
+
+                                    <div className="stat-row">
+                                        <div className="stat-item">
+                                            <div className="stat-label">RELEASED</div>
+                                            <div className="stat-value">{releaseDateLabel}</div>
+                                        </div>
+                                        <div className="stat-item">
+                                            <div className="stat-label">TRACKS</div>
+                                            <div className="stat-value">{release.total_tracks}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+
+                                    <div className="action-row">
+                                        {firstPreview && (
+                                            <button
+                                                className="primary-btn"
+                                                onClick={() => {
+                                                    playTrack({
+                                                        id: firstPreview.id,
+                                                        name: firstPreview.name,
+                                                        artist: formatArtists(firstPreview.artists),
+                                                        image: normalizedImage,
+                                                        previewUrl: firstPreview.preview_url
+                                                    });
+                                                }}
+                                            >
+                                                <div className="play-icon-wrap"><Play size={12} fill="#000" /></div>
+                                                PLAY PREVIEW
+                                            </button>
+                                        )}
+                                        <a href={release.spotify_url} target="_blank" className="secondary-btn">
+                                            <ExternalLink size={14} /> SPOTIFY
+                                        </a>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div style={{ position: 'relative', zIndex: 2, maxWidth: '1200px', margin: '0 auto', padding: '40px 5vw 100px' }}>
+                        <motion.section
+                            initial={{ opacity: 0, y: 40, filter: "blur(15px)" }}
+                            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                            transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                        >
+                            <div className="tracklist-header">
+                                <div className="tracklist-kicker">TRACKLIST</div>
+                                <div className="tracklist-count">{release.total_tracks} SONGS</div>
+                            </div>
+
+                            <div className="tracklist-panel">
+                                {release.tracks?.map((track, index) => {
+                                    const isCurrent = currentTrack?.id === track.id;
+                                    const isActive = isCurrent && isPlaying;
+
+                                    return (
+                                        <div
+                                            key={track.id}
+                                            className={`track-row ${isCurrent ? 'active' : ''} ${track.preview_url ? 'playable' : ''}`}
+                                            onClick={() => {
+                                                if (track.preview_url) {
+                                                    playTrack({
+                                                        id: track.id,
+                                                        name: track.name,
+                                                        artist: track.artists,
+                                                        image: normalizedImage,
+                                                        previewUrl: track.preview_url
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <div className="track-number">
+                                                {isActive ? <Pause size={14} className="active-icon" /> :
+                                                    isCurrent ? <Play size={14} className="active-icon" /> :
+                                                        <>
+                                                            <span className="number-text">{String(index + 1).padStart(2, '0')}</span>
+                                                            {track.preview_url && <Play size={14} className="play-icon" />}
+                                                        </>}
+                                            </div>
+                                            <div className="track-info">
+                                                <div className="track-name">
+                                                    {track.name}
+                                                    {isActive && (
+                                                        <motion.div
+                                                            animate={{ height: [4, 12, 4] }}
+                                                            transition={{ repeat: Infinity, duration: 0.5 }}
+                                                            style={{ width: '2px', background: 'var(--accent)', marginLeft: '8px' }}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="track-artists">
+                                                    {track.artists?.map((art, idx) => (
+                                                        <span key={art.id}>
+                                                            <Link
+                                                                href={`/artists/${art.id}`}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="track-artist-link"
+                                                            >
+                                                                {art.name}
+                                                            </Link>
+                                                            {idx < track.artists.length - 1 && <span>, </span>}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="track-end">
+                                                {track.duration_ms > 0 && (
+                                                    <span className="track-duration">
+                                                        {formatDuration(track.duration_ms)}
+                                                    </span>
+                                                )}
+                                                {track.is_version && (
+                                                    <span className="version-badge">VERSION</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </motion.section>
+
                     </div>
-                </motion.section>
 
-            </div>
-
-            <style jsx>{`
+                    <style jsx>{`
                 .release-hero {
                     position: relative;
                     z-index: 1;
-                    padding: 30px 0 20px;
+                    padding: 150px 0 60px;
                 }
                 .hero-backdrop {
                     position: absolute;
-                    inset: 0;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 140vh;
                     background-size: cover;
                     background-position: center;
-                    filter: blur(40px) saturate(1.2);
-                    opacity: 0.18;
+                    filter: blur(140px) saturate(2) brightness(0.8);
+                    opacity: 0.35;
+                    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+                    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+                    z-index: 1;
+                    pointer-events: none;
                     transform: scale(1.1);
+                }
+                .hero-backdrop-gradient {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 140vh;
+                    background: linear-gradient(to bottom, transparent 0%, rgba(6,7,10,0.5) 60%, rgba(6,7,10,0.8) 100%);
+                    z-index: 2;
+                    pointer-events: none;
                 }
                 .hero-inner {
                     position: relative;
-                    z-index: 2;
-                    max-width: 1200px;
+                    z-index: 3;
+                    max-width: 1240px;
                     margin: 0 auto;
-                    padding: 0 5vw;
+                    padding: 40px 5vw 0;
                 }
                 .back-link {
                     display: inline-flex;
                     align-items: center;
-                    gap: 8px;
-                    color: #d7d7d7;
+                    gap: 6px;
+                    color: rgba(255,255,255,0.4);
                     text-decoration: none;
-                    font-size: 10px;
-                    font-weight: 900;
-                    letter-spacing: 3px;
-                    margin-bottom: 30px;
-                    text-transform: uppercase;
-                    padding: 10px 14px;
-                    border-radius: 14px;
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    backdrop-filter: blur(8px);
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 2px;
+                    margin-bottom: 20px;
+                    padding: 12px 0;
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .back-link:hover {
+                    color: #fff;
+                    transform: translateX(-4px);
                 }
                 .hero-grid {
                     display: grid;
-                    grid-template-columns: 420px 1fr;
-                    gap: 50px;
+                    grid-template-columns: minmax(320px, 400px) 1fr;
+                    gap: 60px;
                     align-items: center;
+                    padding-top: 10px;
                 }
                 .cover-wrap {
                     width: 100%;
                     aspect-ratio: 1 / 1;
-                    border-radius: 32px;
+                    border-radius: 8px;
                     overflow: hidden;
-                    box-shadow: 0 40px 100px rgba(0,0,0,0.7), 
-                                inset 0 0 0 1px rgba(255,255,255,0.1),
-                                0 0 0 1px rgba(255,255,255,0.05);
-                    border: none;
-                    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                    box-shadow: 0 30px 60px rgba(0,0,0,0.6), 
+                                0 0 0 1px rgba(255,255,255,0.08);
                     position: relative;
-                    /* Ensure child images also have the radius if transform/overflow is tricky */
-                    mask-image: -webkit-radial-gradient(white, black);
-                }
-                .cover-wrap:hover {
-                    transform: scale(1.03) translateY(-5px);
-                    box-shadow: 0 50px 120px rgba(0,0,0,0.8), 
-                                inset 0 0 0 1px rgba(255,255,255,0.2);
+                    transform-origin: center bottom;
                 }
                 .meta-card {
-                    background: rgba(12,12,14,0.72);
-                    border: 1px solid rgba(255,255,255,0.08);
-                    border-radius: 26px;
-                    padding: 30px;
-                    box-shadow: 0 30px 60px rgba(0,0,0,0.4);
-                    backdrop-filter: blur(24px);
+                    background: transparent;
+                    border: none;
+                    padding: 0;
                 }
                 .meta-kicker {
-                    display: flex;
+                    display: inline-flex;
                     align-items: center;
                     gap: 12px;
-                    font-size: 9px;
+                    font-size: 10px;
                     letter-spacing: 4px;
                     color: var(--accent);
                     font-weight: 900;
-                    margin-bottom: 16px;
+                    margin-bottom: 24px;
                 }
                 .kicker-line {
-                    width: 32px;
+                    width: 30px;
                     height: 1px;
                     background: var(--accent);
                 }
                 .release-title {
-                    font-size: clamp(36px, 5vw, 64px);
+                    font-size: clamp(36px, 5.5vw, 84px);
                     font-weight: 900;
                     letter-spacing: -0.04em;
-                    line-height: 1;
+                    line-height: 0.95;
                     text-transform: uppercase;
-                    margin-bottom: 16px;
+                    margin-bottom: 24px;
+                    color: #fff;
+                    text-wrap: balance;
+                    text-shadow: 0 4px 30px rgba(0,0,0,0.4);
                 }
                 .artist-list {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 10px;
-                    margin-bottom: 22px;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 32px;
+                }
+                .artist-by {
+                    font-size: 13px;
+                    color: rgba(255,255,255,0.4);
+                    font-weight: 700;
+                    margin-right: 4px;
                 }
                 .artist-pill a {
                     color: #fff;
                     text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 800;
-                    letter-spacing: 1px;
+                    font-size: 18px;
+                    font-weight: 700;
+                    letter-spacing: 0px;
+                    transition: opacity 0.2s ease;
+                }
+                .artist-pill a:hover {
+                    color: var(--accent);
                 }
                 .artist-sep {
-                    color: #444;
-                    margin-left: 8px;
+                    color: rgba(255,255,255,0.3);
                 }
                 .stat-row {
                     display: grid;
-                    grid-template-columns: repeat(3, minmax(0, 1fr));
-                    gap: 16px;
-                    margin-bottom: 24px;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 20px;
+                    margin-bottom: 40px;
+                    max-width: 320px;
+                }
+                .stat-item {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
                 }
                 .stat-label {
-                    font-size: 9px;
-                    color: #666;
+                    font-size: 10px;
+                    color: rgba(255,255,255,0.4);
                     font-weight: 900;
                     letter-spacing: 2px;
-                    margin-bottom: 6px;
                 }
                 .stat-value {
-                    font-size: 12px;
+                    font-size: 14px;
                     font-weight: 800;
+                    color: #fff;
                 }
                 .action-row {
                     display: flex;
-                    gap: 12px;
-                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: 20px;
+                    margin-top: 10px;
                 }
                 .primary-btn {
                     background: #fff;
                     color: #000;
                     border: none;
-                    padding: 12px 18px;
-                    border-radius: 14px;
-                    font-size: 10px;
+                    padding: 14px 28px;
+                    border-radius: 6px;
+                    font-size: 11px;
                     font-weight: 900;
                     letter-spacing: 2px;
                     display: inline-flex;
                     align-items: center;
-                    gap: 8px;
+                    gap: 12px;
                     cursor: pointer;
+                    text-transform: uppercase;
+                    transition: all 0.2s ease;
+                }
+                .primary-btn:hover {
+                    background: #e6e6e6;
+                    transform: translateY(-2px);
                 }
                 .secondary-btn {
-                    border: 1px solid rgba(255,255,255,0.2);
+                    background: transparent;
                     color: #fff;
-                    padding: 12px 18px;
-                    border-radius: 14px;
-                    font-size: 10px;
-                    font-weight: 900;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    padding: 14px 28px;
+                    border-radius: 6px;
+                    font-size: 11px;
+                    font-weight: 800;
                     letter-spacing: 2px;
                     display: inline-flex;
                     align-items: center;
-                    gap: 8px;
+                    gap: 10px;
                     text-decoration: none;
+                    transition: all 0.2s ease;
+                }
+                .secondary-btn:hover {
+                    background: rgba(255,255,255,1);
+                    color: #000;
                 }
                 .tracklist-header {
                     display: flex;
                     align-items: center;
-                    gap: 20px;
+                    justify-content: space-between;
                     margin-bottom: 24px;
+                    padding: 0 0 10px;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
                 }
-                .tracklist-header h2 {
-                    font-size: 11px;
-                    letter-spacing: 5px;
+                .tracklist-kicker {
+                    font-size: 12px;
                     font-weight: 900;
-                    color: #666;
+                    letter-spacing: 4px;
+                    color: #fff;
                 }
-                .tracklist-header div {
-                    flex: 1;
-                    height: 1px;
-                    background: rgba(255,255,255,0.06);
+                .tracklist-count {
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: rgba(255,255,255,0.4);
                 }
                 .tracklist-panel {
-                    background: rgba(255,255,255,0.015);
-                    border-radius: 24px;
-                    border: 1px solid rgba(255,255,255,0.06);
-                    overflow: hidden;
-                    box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+                    background: transparent;
+                    width: 100%;
+                }
+                .track-row {
+                    display: grid;
+                    grid-template-columns: 50px 1fr 100px;
+                    align-items: center;
+                    padding: 20px 0;
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    transition: all 0.2s ease;
+                }
+                .track-row.playable {
+                    cursor: pointer;
+                }
+                .track-row:hover .track-name {
+                    color: #fff;
+                }
+                .track-row.active .track-name {
+                    color: var(--accent);
+                }
+                .track-number {
+                    position: relative;
+                    font-size: 11px;
+                    font-weight: 900;
+                    color: rgba(255,255,255,0.3);
+                    display: flex;
+                    align-items: center;
+                }
+                .number-text {
+                    transition: opacity 0.2s ease;
+                }
+                .play-icon {
+                    position: absolute;
+                    left: 0;
+                    opacity: 0;
+                    color: #fff;
+                    transition: opacity 0.2s ease;
+                }
+                .active-icon {
+                    color: var(--accent);
+                }
+                .track-row.playable:hover .number-text {
+                    opacity: 0;
+                }
+                .track-row.playable:hover .play-icon {
+                    opacity: 1;
+                }
+                .track-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .track-name {
+                    font-size: 15px;
+                    font-weight: 800;
+                    color: rgba(255,255,255,0.8);
+                    display: flex;
+                    align-items: center;
+                    transition: color 0.2s ease;
+                }
+                .track-artists {
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: rgba(255,255,255,0.4);
+                }
+                .track-artist-link {
+                    color: inherit;
+                    text-decoration: none;
+                    transition: color 0.2s ease;
+                }
+                .track-artist-link:hover {
+                    color: #fff;
+                }
+                .track-end {
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 12px;
+                }
+                .track-duration {
+                    font-size: 12px;
+                    font-weight: 800;
+                    color: rgba(255,255,255,0.5);
+                }
+                .version-badge {
+                    font-size: 9px;
+                    color: var(--accent);
+                    border: 1px solid var(--accent);
+                    padding: 4px 8px;
+                    border-radius: 0;
+                    font-weight: 700;
+                    letter-spacing: 1px;
                 }
                 @media (max-width: 980px) {
                     .hero-grid {
                         grid-template-columns: 1fr;
+                        align-items: center;
+                        text-align: center;
+                        gap: 40px;
+                    }
+                    .meta-card {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                     }
                     .cover-wrap {
                         max-width: 360px;
+                        margin: 0 auto;
                     }
                     .stat-row {
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        justify-content: center;
+                    }
+                    .action-row {
+                        justify-content: center;
                     }
                 }
                 @media (max-width: 600px) {
-                    .meta-card {
-                        padding: 22px;
-                    }
                     .stat-row {
-                        grid-template-columns: 1fr;
+                        flex-direction: column;
+                        gap: 20px;
                     }
                     .track-row {
-                        grid-template-columns: 30px 1fr 90px 30px !important;
+                        grid-template-columns: 30px 1fr 60px;
                     }
                 }
-                .track-row:hover {
-                    background: rgba(255,255,255,0.03) !important;
-                }
-                .track-row:hover div {
-                    color: #fff !important;
-                }
-                .track-row:hover .track-title {
-                    color: var(--accent) !important;
-                }
             `}</style>
-        </div>
+                </div>
+            )}
+        </>
     );
 }

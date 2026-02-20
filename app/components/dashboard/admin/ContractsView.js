@@ -58,7 +58,7 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
                     setSearchTerm(e.target.value);
                     setShowDropdown(true);
                 }}
-                style={{ ...inputStyle, padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px', width: '100%' }}
+                style={{ ...inputStyle, padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px', width: '100%' }}
             />
             {value && !showDropdown && onClear && (
                 <button
@@ -71,9 +71,9 @@ const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist..
             {showDropdown && (
                 <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0,
-                    background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: '16px',
+                    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '2px',
                     maxHeight: '200px', overflowY: 'auto', zIndex: 100,
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
                     marginTop: '5px'
                 }}>
                     {filteredArtists.length > 0 ? filteredArtists.map(a => (
@@ -114,11 +114,11 @@ function SplitRow({ split, index, onUpdate, onRemove, onMakePrimary, artists, ef
     return (
         <div style={{
             display: 'grid',
-            gap: '10px',
+            gap: '15px',
             alignItems: 'center',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '14px',
-            padding: '12px',
+            border: '1px solid var(--border)',
+            borderRadius: '2px',
+            padding: '20px',
             background: 'rgba(255,255,255,0.01)'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -127,12 +127,14 @@ function SplitRow({ split, index, onUpdate, onRemove, onMakePrimary, artists, ef
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{
-                        fontSize: '9px',
-                        fontWeight: 900,
-                        padding: '4px 8px',
-                        borderRadius: '999px',
-                        background: split.role === 'primary' ? 'rgba(57,255,20,0.18)' : 'rgba(255,255,255,0.08)',
-                        color: split.role === 'primary' ? 'var(--accent)' : '#cfcfcf'
+                        fontSize: '8px',
+                        fontWeight: 950,
+                        padding: '4px 10px',
+                        borderRadius: '2px',
+                        letterSpacing: '2px',
+                        background: split.role === 'primary' ? 'rgba(57,255,20,0.1)' : 'rgba(255,255,255,0.05)',
+                        color: split.role === 'primary' ? 'var(--accent)' : '#666',
+                        border: split.role === 'primary' ? '1px solid rgba(57,255,20,0.2)' : '1px solid rgba(255,255,255,0.05)'
                     }}>
                         {(split.role || 'featured').toUpperCase()}
                     </span>
@@ -391,20 +393,21 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
     const isSplitValid = totalSplit > 99.9 && totalSplit < 100.1;
     const canSubmit = hasAtLeastOneNamedContributor && isSplitValid && (form.releaseId || form.demoId || form.title?.trim());
     const summaryChipStyle = {
-        padding: '6px 10px',
-        borderRadius: '999px',
-        fontSize: '10px',
-        fontWeight: 800,
-        letterSpacing: '0.04em',
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: 'rgba(255,255,255,0.03)',
-        color: '#cfcfcf'
+        padding: '6px 14px',
+        borderRadius: '2px',
+        fontSize: '9px',
+        fontWeight: 950,
+        letterSpacing: '1px',
+        border: '1px solid var(--border)',
+        background: 'rgba(255,255,255,0.05)',
+        color: '#888',
+        textTransform: 'uppercase'
     };
     const sectionCardStyle = {
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '14px',
-        padding: '14px',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.008))'
+        border: '1px solid var(--border)',
+        borderRadius: '2px',
+        padding: '24px',
+        background: 'rgba(255,255,255,0.01)'
     };
 
     const setPrimaryContributor = (targetIndex) => {
@@ -624,7 +627,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                     update.splits = newSplits;
                                     setForm(update);
                                 }}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             >
                                 <option value="">Optional: Select Release or Approved Demo...</option>
                                 <optgroup label="Approved Demos (Not Released)">
@@ -688,7 +691,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                             isDemo: true
                                         });
                                     }}
-                                    style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                    style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                                 />
                             </div>
                         </div>
@@ -728,7 +731,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 value={form.contractDetails.agreementReferenceNo}
                                 onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, agreementReferenceNo: e.target.value } })}
                                 placeholder="LL-2026-0001"
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
                         <div style={sectionCardStyle}>
@@ -737,7 +740,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 type="date"
                                 value={form.contractDetails.effectiveDate}
                                 onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, effectiveDate: e.target.value } })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
                         <div style={sectionCardStyle}>
@@ -746,7 +749,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 type="date"
                                 value={form.contractDetails.deliveryDate}
                                 onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, deliveryDate: e.target.value } })}
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
                         <div style={sectionCardStyle}>
@@ -755,7 +758,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 value={form.contractDetails.isrc}
                                 onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, isrc: e.target.value } })}
                                 placeholder="TR-XXX-26-00001"
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
                         <div style={{ gridColumn: 'span 2', ...sectionCardStyle }}>
@@ -764,7 +767,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 value={form.contractDetails.songTitles}
                                 onChange={e => setForm({ ...form, contractDetails: { ...form.contractDetails, songTitles: e.target.value } })}
                                 placeholder="Track A, Track B"
-                                style={{ width: '100%', padding: '12px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '16px' }}
+                                style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
                         <div style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '20px' }}>
@@ -850,152 +853,176 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 {canSubmit ? 'Form is ready to save.' : 'To save: add at least one artist, provide a selected item or custom title, and make total split exactly 100%.'}
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                            <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
-                            <button type="submit" disabled={saving || !canSubmit} style={{ ...btnStyle, background: '#fff', color: '#000', opacity: (saving || !canSubmit) ? 0.6 : 1 }}>
-                                {saving ? 'SAVING...' : editingContract ? 'SAVE CHANGES' : 'CREATE CONTRACT'}
-                            </button>
+                                <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
+                                <button type="submit" disabled={saving || !canSubmit} style={{ ...btnStyle, background: '#fff', color: '#000', opacity: (saving || !canSubmit) ? 0.6 : 1 }}>
+                                    {saving ? 'SAVING...' : editingContract ? 'SAVE CHANGES' : 'CREATE CONTRACT'}
+                                </button>
                             </div>
                         </div>
                     </form>
                 </motion.div>
             )}
 
-            <div style={glassStyle}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                        <tr>
-                            <th style={thStyle}>RELEASE</th>
-                            <th style={thStyle}>ARTIST</th>
-                            <th style={thStyle}>SPLIT</th>
-                            <th style={thStyle}>EARNINGS</th>
-                            <th style={thStyle}>STATUS</th>
-                            <th style={thStyle}>PDF</th>
-                            <th style={thStyle}>ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {contracts.map(c => (
-                            <tr key={c.id}>
-                                <td style={tdStyle}>
-                                    <div style={{ fontWeight: '800', color: '#fff' }}>{c.release?.name || c.title || 'Untitled Contract'}</div>
-                                    <div style={{ fontSize: '9px', color: '#444' }}>{c.releaseId ? 'SPOTIFY_RELEASE' : 'MANUAL / DEMO'}</div>
-                                </td>
-                                <td style={tdStyle}>
-                                    <div style={{ fontWeight: '800' }}>{c.artist?.name || c.primaryArtistName || c.user?.stageName || 'Unknown Artist'}</div>
-                                    {c.splits.length > 1 && (
-                                        <div style={{ fontSize: '9px', color: '#888', marginTop: '2px' }}>
-                                            + {c.splits.length - 1} OTHERS: {c.splits.filter(s => s.name !== (c.primaryArtistName || c.user?.stageName)).map(s => s.name).join(', ')}
-                                        </div>
-                                    )}
-                                    <div style={{ fontSize: '10px', color: '#555', marginTop: '4px' }}>
-                                        {c.user ? (
-                                            <span style={{ color: 'var(--accent)' }}>LINKED: {c.user.email}</span>
-                                        ) : (
-                                            <span style={{ color: '#666' }}>NO ACCOUNT LINKED</span>
-                                        )}
-                                    </div>
-                                </td>
-                                <td style={tdStyle}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ fontSize: '10px', fontWeight: '900' }}>
-                                            ARTIST: <span style={{ color: 'var(--accent)' }}>{Math.round(c.artistShare * 100)}%</span> / LABEL: <span style={{ color: 'var(--accent)' }}>{Math.round(c.labelShare * 100)}%</span>
-                                        </div>
-                                        {c.splits?.length > 0 && (
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '2px' }}>
-                                                {c.splits.map((s, i) => (
-                                                    <span key={i} style={{ fontSize: '8px', padding: '2px 5px', background: 'rgba(255,255,255,0.03)', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.05)', color: '#888' }}>
-                                                        {s.name}: <span style={{ color: '#fff' }}>{s.percentage}%</span>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td style={tdStyle}>
-                                    {c._count?.earnings || 0} Records
-                                </td>
-                                <td style={tdStyle}>
-                                    <span style={{ fontSize: '9px', padding: '4px 8px', borderRadius: '16px', background: 'rgba(255,255,255,0.05)', fontWeight: '900' }}>
-                                        {c.status.toUpperCase()}
-                                    </span>
-                                </td>
-                                <td style={tdStyle}>
-                                    <a href={`/api/files/contract/${c.id}?download=1`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '5px 10px', fontSize: '8px' }}>
-                                        {c.pdfUrl ? 'VIEW PDF' : 'DOWNLOAD PDF'}
-                                    </a>
-                                </td>
-                                <td style={tdStyle}>
-                                    <button onClick={() => {
-                                        const { details, userNotes } = extractContractMetaAndNotes(c.notes || '');
-                                        let featuredArtists = [];
-                                        try {
-                                            featuredArtists = c.featuredArtists ? JSON.parse(c.featuredArtists) : [];
-                                        } catch {
-                                            featuredArtists = [];
-                                        }
-                                        const featuredByKey = new Map(
-                                            featuredArtists.map((f) => [
-                                                `${f.artistId || ''}:${f.userId || ''}:${(f.name || '').toLowerCase()}`,
-                                                f
-                                            ])
-                                        );
-                                        setEditingContract(c);
-                                        const hydratedSplits = (c.splits || []).map((s, idx) => {
-                                            const match = featuredByKey.get(`${s.artistId || ''}:${s.userId || ''}:${(s.name || '').toLowerCase()}`);
-                                            return {
-                                                ...createEmptySplit(),
-                                                name: s.name,
-                                                percentage: s.percentage,
-                                                userId: s.userId || '',
-                                                artistId: s.artistId || '',
-                                                email: s.email || match?.email || '',
-                                                legalName: match?.legalName || s.user?.legalName || s.user?.fullName || s.artist?.user?.legalName || s.artist?.user?.fullName || '',
-                                                phoneNumber: match?.phoneNumber || s.user?.phoneNumber || s.artist?.user?.phoneNumber || '',
-                                                address: match?.address || s.user?.address || s.artist?.user?.address || '',
-                                                role: match?.role || (idx === 0 ? 'primary' : 'featured')
-                                            };
-                                        });
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
+                    <div>RELEASE</div>
+                    <div>ARTIST</div>
+                    <div>SPLIT</div>
+                    <div>EARNINGS</div>
+                    <div>STATUS</div>
+                    <div>PDF</div>
+                    <div style={{ textAlign: 'right' }}>ACTIONS</div>
+                </div>
 
-                                        setForm({
-                                            userId: c.userId || '',
-                                            artistId: c.artistId || '',
-                                            primaryArtistName: c.primaryArtistName || '',
-                                            releaseId: c.releaseId || '',
-                                            isDemo: !c.releaseId,
-                                            artistShare: c.artistShare,
-                                            labelShare: c.labelShare,
-                                            notes: userNotes || '',
-                                            pdfUrl: c.pdfUrl || '',
-                                            contractDetails: {
-                                                agreementReferenceNo: details.agreementReferenceNo || '',
-                                                effectiveDate: details.effectiveDate || '',
-                                                deliveryDate: details.deliveryDate || '',
-                                                isrc: details.isrc || '',
-                                                songTitles: details.songTitles || '',
-                                                artistLegalName: details.artistLegalName || '',
-                                                artistPhone: details.artistPhone || '',
-                                                artistAddress: details.artistAddress || ''
-                                            },
-                                            isValid: true,
-                                            splits: hydratedSplits.length > 0
-                                                ? hydratedSplits
-                                                : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
-                                        });
-                                        setShowAdd(true);
-                                    }} style={{ ...btnStyle, marginRight: '5px' }}>
-                                        EDIT
-                                    </button>
-                                    <button onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, color: 'var(--status-error)' }}>
-                                        <Trash2 size={12} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {contracts.length === 0 && (
-                            <tr><td colSpan="7" style={{ ...tdStyle, textAlign: 'center', padding: '50px' }}>NO CONTRACTS DEFINED</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {contracts.map((c, idx) => (
+                        <motion.div
+                            key={c.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: idx * 0.05 }}
+                            whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr',
+                                padding: '20px 24px',
+                                borderBottom: idx === contracts.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
+                                alignItems: 'center',
+                                transition: 'background-color 0.2s',
+                                gap: '15px'
+                            }}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ fontSize: '13px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{c.release?.name || c.title || 'Untitled Contract'}</div>
+                                <div style={{ fontSize: '9px', color: '#666', fontWeight: '800', letterSpacing: '1px', marginTop: '4px' }}>{c.releaseId ? 'SPOTIFY_RELEASE' : 'MANUAL / DEMO'}</div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ fontSize: '13px', fontWeight: '900', color: '#eaeaea' }}>{c.artist?.name || c.primaryArtistName || c.user?.stageName || 'Unknown Artist'}</div>
+                                {c.splits.length > 1 && (
+                                    <div style={{ fontSize: '9px', color: '#888', fontWeight: '800', marginTop: '4px' }}>
+                                        + {c.splits.length - 1} OTHERS: {c.splits.filter(s => s.name !== (c.primaryArtistName || c.user?.stageName)).map(s => s.name).join(', ')}
+                                    </div>
+                                )}
+                                <div style={{ fontSize: '10px', fontWeight: '800', marginTop: '6px' }}>
+                                    {c.user ? (
+                                        <span style={{ color: 'var(--accent)', background: 'var(--accent-10)', padding: '2px 6px', borderRadius: '4px' }}>LINKED: {c.user.email}</span>
+                                    ) : (
+                                        <span style={{ color: '#666' }}>NO ACCOUNT LINKED</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: '900', color: '#fff' }}>
+                                    ARTIST: <span style={{ color: 'var(--accent)' }}>{Math.round(c.artistShare * 100)}%</span> / LABEL: <span style={{ color: 'var(--accent)' }}>{Math.round(c.labelShare * 100)}%</span>
+                                </div>
+                                {c.splits?.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {c.splits.map((s, i) => (
+                                            <span key={i} style={{ fontSize: '9px', fontWeight: '800', padding: '4px 8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', border: '1px solid var(--border)', color: '#aaa' }}>
+                                                {s.name}: <span style={{ color: '#fff' }}>{s.percentage}%</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ fontSize: '12px', fontWeight: '800', color: '#aaa' }}>
+                                {c._count?.earnings || 0} Records
+                            </div>
+
+                            <div>
+                                <span style={{
+                                    fontSize: '9px',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    background: c.status === 'active' ? 'rgba(57, 255, 20, 0.1)' : 'rgba(255,255,255,0.05)',
+                                    color: c.status === 'active' ? 'var(--accent)' : '#888',
+                                    border: `1px solid ${c.status === 'active' ? 'rgba(57, 255, 20, 0.2)' : 'rgba(255,255,255,0.1)'}`,
+                                    fontWeight: '950',
+                                    letterSpacing: '1px',
+                                    display: 'inline-block'
+                                }}>
+                                    {c.status.toUpperCase()}
+                                </span>
+                            </div>
+
+                            <div>
+                                <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{
+                                    ...btnStyle, padding: '8px 16px', fontSize: '9px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px', display: 'inline-block', textDecoration: 'none'
+                                }}>
+                                    VIEW PDF
+                                </a>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                <button onClick={() => {
+                                    const { details, userNotes } = extractContractMetaAndNotes(c.notes || '');
+                                    let featuredArtists = [];
+                                    try {
+                                        featuredArtists = c.featuredArtists ? JSON.parse(c.featuredArtists) : [];
+                                    } catch {
+                                        featuredArtists = [];
+                                    }
+                                    const featuredByKey = new Map(
+                                        featuredArtists.map((f) => [
+                                            `${f.artistId || ''}:${f.userId || ''}:${(f.name || '').toLowerCase()}`,
+                                            f
+                                        ])
+                                    );
+                                    setEditingContract(c);
+                                    const hydratedSplits = (c.splits || []).map((s, idx) => {
+                                        const match = featuredByKey.get(`${s.artistId || ''}:${s.userId || ''}:${(s.name || '').toLowerCase()}`);
+                                        return {
+                                            ...createEmptySplit(),
+                                            name: s.name,
+                                            percentage: s.percentage,
+                                            userId: s.userId || '',
+                                            artistId: s.artistId || '',
+                                            email: s.email || match?.email || '',
+                                            legalName: match?.legalName || s.user?.legalName || s.user?.fullName || s.artist?.user?.legalName || s.artist?.user?.fullName || '',
+                                            phoneNumber: match?.phoneNumber || s.user?.phoneNumber || s.artist?.user?.phoneNumber || '',
+                                            address: match?.address || s.user?.address || s.artist?.user?.address || '',
+                                            role: s.role || (idx === 0 ? 'primary' : 'featured')
+                                        };
+                                    });
+
+                                    setForm({
+                                        userId: c.userId || '',
+                                        artistId: c.artistId || '',
+                                        primaryArtistName: c.primaryArtistName || '',
+                                        releaseId: c.releaseId || '',
+                                        isDemo: !c.releaseId,
+                                        artistShare: c.artistShare * 100,
+                                        labelShare: c.labelShare * 100,
+                                        notes: userNotes || '',
+                                        pdfUrl: c.pdfUrl || '',
+                                        contractDetails: {
+                                            agreementReferenceNo: details.agreementReferenceNo || '',
+                                            effectiveDate: details.effectiveDate || '',
+                                            deliveryDate: details.deliveryDate || '',
+                                            isrc: details.isrc || '',
+                                            songTitles: details.songTitles || '',
+                                            artistLegalName: details.artistLegalName || '',
+                                            artistPhone: details.artistPhone || '',
+                                            artistAddress: details.artistAddress || ''
+                                        },
+                                        isValid: true,
+                                        splits: hydratedSplits.length > 0 ? hydratedSplits : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
+                                    });
+                                    setShowAdd(true);
+                                }} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>EDIT</button>
+                                <button onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', color: '#ff4444', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>DEL</button>
+                            </div>
+                        </motion.div>
+                    ))}
+                    {contracts.length === 0 && (
+                        <div style={{ padding: '60px 20px', textAlign: 'center', color: '#555', fontSize: '11px', fontWeight: '900', letterSpacing: '2px' }}>
+                            NO CONTRACTS DEFINED
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

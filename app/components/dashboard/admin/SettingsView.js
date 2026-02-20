@@ -138,17 +138,24 @@ export default function SettingsView({ users = [], artists = [] }) {
 
     return (
         <div style={{ maxWidth: '800px' }}>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         style={{
                             ...btnStyle,
-                            background: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.05)',
+                            background: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.02)',
                             color: activeTab === tab.id ? '#000' : '#888',
-                            border: 'none',
-                            whiteSpace: 'nowrap'
+                            border: activeTab === tab.id ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: '8px',
+                            whiteSpace: 'nowrap',
+                            fontSize: '11px',
+                            fontWeight: '950',
+                            letterSpacing: '1px',
+                            padding: '12px 20px',
+                            transition: 'all 0.2s',
+                            boxShadow: activeTab === tab.id ? '0 4px 12px rgba(255,255,255,0.1)' : 'none'
                         }}
                     >
                         {tab.label}
@@ -156,35 +163,36 @@ export default function SettingsView({ users = [], artists = [] }) {
                 ))}
             </div>
 
-            <div style={{ ...glassStyle, padding: '30px' }}>
+            <div style={{ background: 'var(--surface)', padding: '40px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '-150px', right: '-150px', width: '300px', height: '300px', background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.03, pointerEvents: 'none', zIndex: 0 }} />
 
                 {/* GENERAL SETTINGS */}
                 {activeTab === 'general' && (
                     <div style={{ display: 'grid', gap: '20px' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>SITE NAME</label>
-                            <input type="text" value={config.siteName} onChange={(e) => handleChange('siteName', e.target.value)} style={inputStyle} />
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>SITE NAME</label>
+                            <input type="text" value={config.siteName} onChange={(e) => handleChange('siteName', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>ADMIN EMAIL</label>
-                            <input type="email" value={config.adminEmail} onChange={(e) => handleChange('adminEmail', e.target.value)} style={inputStyle} />
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>ADMIN EMAIL</label>
+                            <input type="email" value={config.adminEmail} onChange={(e) => handleChange('adminEmail', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>DEFAULT PLAYLIST ID (SYNC)</label>
-                            <input type="text" value={config.defaultPlaylistId} onChange={(e) => handleChange('defaultPlaylistId', e.target.value)} style={inputStyle} />
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>DEFAULT PLAYLIST ID (SYNC)</label>
+                            <input type="text" value={config.defaultPlaylistId} onChange={(e) => handleChange('defaultPlaylistId', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} />
                         </div>
 
-                        <div style={{ marginTop: '10px', paddingTop: '20px', borderTop: '1px solid #222', display: 'grid', gap: '15px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>REGISTRATIONS OPEN</span>
-                                <div onClick={() => toggle('registrationsOpen')} style={{ width: '40px', height: '20px', background: config.registrationsOpen ? 'var(--accent)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
-                                    <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.registrationsOpen ? '22px' : '2px', transition: 'left 0.3s' }} />
+                        <div style={{ marginTop: '16px', paddingTop: '32px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'grid', gap: '16px', position: 'relative', zIndex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                <span style={{ fontSize: '11px', fontWeight: '950', letterSpacing: '1px', color: '#ccc' }}>REGISTRATIONS OPEN</span>
+                                <div onClick={() => toggle('registrationsOpen')} style={{ width: '48px', height: '24px', background: config.registrationsOpen ? '#fff' : 'rgba(255,255,255,0.1)', borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
+                                    <div style={{ width: '20px', height: '20px', background: '#000', borderRadius: '50%', position: 'absolute', top: '2px', left: config.registrationsOpen ? '26px' : '2px', transition: 'left 0.3s' }} />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--status-error)' }}>MAINTENANCE MODE</span>
-                                <div onClick={() => toggle('maintenanceMode')} style={{ width: '40px', height: '20px', background: config.maintenanceMode ? 'var(--status-error)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
-                                    <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.maintenanceMode ? '22px' : '2px', transition: 'left 0.3s' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,68,68,0.05)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,68,68,0.1)' }}>
+                                <span style={{ fontSize: '11px', fontWeight: '950', letterSpacing: '1px', color: '#ff4444' }}>MAINTENANCE MODE</span>
+                                <div onClick={() => toggle('maintenanceMode')} style={{ width: '48px', height: '24px', background: config.maintenanceMode ? '#ff4444' : 'rgba(255,255,255,0.1)', borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
+                                    <div style={{ width: '20px', height: '20px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.maintenanceMode ? '26px' : '2px', transition: 'left 0.3s' }} />
                                 </div>
                             </div>
                         </div>
@@ -192,19 +200,20 @@ export default function SettingsView({ users = [], artists = [] }) {
                 )}
 
                 {activeTab === 'system' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                         {[
-                            { label: 'TOTAL_USERS', value: users.length, icon: <Users size={16} /> },
-                            { label: 'TOTAL_ARTISTS', value: artists.length, icon: <Music size={16} /> },
-                            { label: 'TOTAL_RELEASES', value: artists.reduce((acc, a) => acc + (a._count?.releases || 0), 0), icon: <Disc size={16} /> },
-                            { label: 'TOTAL_CONTRACTS', value: artists.reduce((acc, a) => acc + (a._count?.contracts || 0), 0), icon: <FileText size={16} /> },
+                            { label: 'TOTAL USERS', value: users.length, icon: <Users size={18} /> },
+                            { label: 'TOTAL ARTISTS', value: artists.length, icon: <Music size={18} /> },
+                            { label: 'TOTAL RELEASES', value: artists.reduce((acc, a) => acc + (a._count?.releases || 0), 0), icon: <Disc size={18} /> },
+                            { label: 'TOTAL CONTRACTS', value: artists.reduce((acc, a) => acc + (a._count?.contracts || 0), 0), icon: <FileText size={18} /> },
                         ].map((stat, i) => (
-                            <div key={i} style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#444', marginBottom: '10px' }}>
+                            <div key={i} style={{ padding: '32px 24px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
+                                <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)', borderRadius: '50%' }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent)' }}>
                                     {stat.icon}
-                                    <span style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '2px' }}>{stat.label}</span>
+                                    <span style={{ fontSize: '10px', fontWeight: '950', letterSpacing: '1.5px', color: '#888' }}>{stat.label}</span>
                                 </div>
-                                <div style={{ fontSize: '24px', fontWeight: '900', color: '#fff' }}>{stat.value}</div>
+                                <div style={{ fontSize: '36px', fontWeight: '950', color: '#fff', letterSpacing: '-1px' }}>{stat.value}</div>
                             </div>
                         ))}
                     </div>
@@ -212,8 +221,8 @@ export default function SettingsView({ users = [], artists = [] }) {
 
                 {/* GENRES SETTINGS */}
                 {activeTab === 'genres' && (
-                    <div>
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
                             <input
                                 type="text"
                                 placeholder="Add new genre..."
@@ -227,7 +236,7 @@ export default function SettingsView({ users = [], artists = [] }) {
                                         }
                                     }
                                 }}
-                                style={inputStyle}
+                                style={{ ...inputStyle, flex: 1, borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px' }}
                             />
                             <button
                                 onClick={() => {
@@ -238,22 +247,22 @@ export default function SettingsView({ users = [], artists = [] }) {
                                         input.value = '';
                                     }
                                 }}
-                                style={{ ...btnStyle, background: 'var(--accent)', color: '#000', padding: '12px 20px', border: 'none', borderRadius: '16px' }}
+                                style={{ ...btnStyle, background: '#fff', color: '#000', padding: '0 32px', border: 'none', borderRadius: '8px', height: 'auto', fontWeight: '950', fontSize: '11px', letterSpacing: '1px' }}
                             >
-                                ADD
+                                ADD GENRE
                             </button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
                             {config.genres.map(g => (
                                 <div key={g} style={{
-                                    padding: '10px 15px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                                    borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                    padding: '16px 20px', background: 'var(--glass)', border: '1px solid var(--border)',
+                                    borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                 }}>
-                                    <span style={{ fontSize: '11px', fontWeight: '800' }}>{g}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#ccc' }}>{g}</span>
                                     <button
                                         onClick={() => handleChange('genres', config.genres.filter(genre => genre !== g))}
-                                        style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer', fontSize: '14px' }}
+                                        style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', color: '#ff4444', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '4px', lineHeight: 1 }}
                                     >
                                         ×
                                     </button>
@@ -267,10 +276,10 @@ export default function SettingsView({ users = [], artists = [] }) {
                 {activeTab === 'requests' && (
                     <div style={{ display: 'grid', gap: '15px' }}>
                         {[{ k: 'allowCoverArt', l: 'Allow Cover Art Updates' }, { k: 'allowAudio', l: 'Allow Audio File Updates' }, { k: 'allowDelete', l: 'Allow Takedown Requests' }, { k: 'allowOther', l: 'Allow Other Requests' }].map(item => (
-                            <div key={item.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                                <span style={{ fontSize: '11px', color: '#ccc', fontWeight: '800' }}>{item.l}</span>
-                                <div onClick={() => toggle(item.k)} style={{ width: '40px', height: '20px', background: config[item.k] ? 'var(--accent)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
-                                    <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config[item.k] ? '22px' : '2px', transition: 'left 0.3s' }} />
+                            <div key={item.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '12px', position: 'relative', zIndex: 1 }}>
+                                <span style={{ fontSize: '11px', color: '#ccc', fontWeight: '950', letterSpacing: '1px' }}>{item.l.toUpperCase()}</span>
+                                <div onClick={() => toggle(item.k)} style={{ width: '48px', height: '24px', background: config[item.k] ? '#fff' : 'rgba(255,255,255,0.1)', borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
+                                    <div style={{ width: '20px', height: '20px', background: '#000', borderRadius: '50%', position: 'absolute', top: '2px', left: config[item.k] ? '26px' : '2px', transition: 'left 0.3s' }} />
                                 </div>
                             </div>
                         ))}
@@ -281,59 +290,61 @@ export default function SettingsView({ users = [], artists = [] }) {
                 {activeTab === 'home' && (
                     <div style={{ display: 'grid', gap: '20px' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>HERO MAIN TEXT</label>
-                            <input type="text" value={config.heroText} onChange={(e) => handleChange('heroText', e.target.value)} style={inputStyle} />
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>HERO MAIN TEXT</label>
+                            <input type="text" value={config.heroText} onChange={(e) => handleChange('heroText', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>HERO SUBTEXT</label>
-                            <textarea value={config.heroSubText} onChange={(e) => handleChange('heroSubText', e.target.value)} style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>HERO SUBTEXT</label>
+                            <textarea value={config.heroSubText} onChange={(e) => handleChange('heroSubText', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px', minHeight: '100px', resize: 'vertical' }} />
                         </div>
-                        <div style={{ display: 'grid', gap: '12px' }}>
-                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '10px', fontWeight: '800', color: '#666' }}>FEATURED CARD LABELS</label>
-                            <input
-                                type="text"
-                                value={config.featuredReleaseLabel}
-                                onChange={(e) => handleChange('featuredReleaseLabel', e.target.value)}
-                                placeholder="FEATURED RELEASE"
-                                style={inputStyle}
-                            />
-                            <input
-                                type="text"
-                                value={config.featuredReleaseSubLabel}
-                                onChange={(e) => handleChange('featuredReleaseSubLabel', e.target.value)}
-                                placeholder="NOW STREAMING"
-                                style={inputStyle}
-                            />
-                            <input
-                                type="text"
-                                value={config.featuredReleaseStatus}
-                                onChange={(e) => handleChange('featuredReleaseStatus', e.target.value)}
-                                placeholder="Featured"
-                                style={inputStyle}
-                            />
+                        <div style={{ display: 'grid', gap: '16px', padding: '24px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '10px', fontWeight: '950', color: '#ccc', letterSpacing: '1.5px' }}>FEATURED CARD LABELS</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                                <input
+                                    type="text"
+                                    value={config.featuredReleaseLabel}
+                                    onChange={(e) => handleChange('featuredReleaseLabel', e.target.value)}
+                                    placeholder="FEATURED RELEASE"
+                                    style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', padding: '12px 16px', fontSize: '12px' }}
+                                />
+                                <input
+                                    type="text"
+                                    value={config.featuredReleaseSubLabel}
+                                    onChange={(e) => handleChange('featuredReleaseSubLabel', e.target.value)}
+                                    placeholder="NOW STREAMING"
+                                    style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', padding: '12px 16px', fontSize: '12px' }}
+                                />
+                                <input
+                                    type="text"
+                                    value={config.featuredReleaseStatus}
+                                    onChange={(e) => handleChange('featuredReleaseStatus', e.target.value)}
+                                    placeholder="Featured"
+                                    style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', padding: '12px 16px', fontSize: '12px' }}
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>FEATURED RELEASE ID (Hero highlight)</label>
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>FEATURED RELEASE ID (Hero highlight)</label>
                             <select
                                 value={config.featuredReleaseId}
                                 onChange={(e) => handleChange('featuredReleaseId', e.target.value)}
-                                style={{ ...inputStyle, background: '#0d0d0d' }}
+                                style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px', color: '#fff' }}
                             >
-                                <option value="">(Auto-pick latest)</option>
+                                <option value="" style={{ color: '#000' }}>(Auto-pick latest)</option>
                                 {releaseOptions.map(r => (
-                                    <option key={r.id} value={r.id}>
+                                    <option key={r.id} value={r.id} style={{ color: '#000' }}>
                                         {r.name} — {r.artistName || 'Unknown'}
                                     </option>
                                 ))}
                             </select>
-                            <p style={{ fontSize: '11px', color: '#444', marginTop: '6px' }}>
-                                Anasayfa hero&apos;da görünecek release. Seçilmezse en güncel release kullanılır.
+                            <p style={{ fontSize: '10px', color: '#666', marginTop: '8px', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                Anasayfa hero'da görünecek release. Seçilmezse en güncel release kullanılır.
                             </p>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                            <span style={{ fontSize: '11px', color: '#ccc', fontWeight: '800' }}>SHOW STATS SECTION</span>
-                            <div onClick={() => toggle('showStats')} style={{ width: '40px', height: '20px', background: config.showStats ? 'var(--accent)' : '#333', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
-                                <div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', top: '2px', left: config.showStats ? '22px' : '2px', transition: 'left 0.3s' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '12px', position: 'relative', zIndex: 1 }}>
+                            <span style={{ fontSize: '11px', color: '#ccc', fontWeight: '950', letterSpacing: '1px' }}>SHOW STATS SECTION</span>
+                            <div onClick={() => toggle('showStats')} style={{ width: '48px', height: '24px', background: config.showStats ? '#fff' : 'rgba(255,255,255,0.1)', borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
+                                <div style={{ width: '20px', height: '20px', background: '#000', borderRadius: '50%', position: 'absolute', top: '2px', left: config.showStats ? '26px' : '2px', transition: 'left 0.3s' }} />
                             </div>
                         </div>
                     </div>
@@ -342,34 +353,34 @@ export default function SettingsView({ users = [], artists = [] }) {
                 {/* JOIN PAGE SETTINGS */}
                 {activeTab === 'join' && (
                     <div style={{ display: 'grid', gap: '20px' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>JOIN PAGE TITLE</label>
-                            <input type="text" value={config.joinHeroTitle} onChange={(e) => handleChange('joinHeroTitle', e.target.value)} style={inputStyle} />
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>JOIN PAGE TITLE</label>
+                            <input type="text" value={config.joinHeroTitle} onChange={(e) => handleChange('joinHeroTitle', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} />
                         </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>JOIN PAGE SUBTITLE</label>
-                            <input type="text" value={config.joinHeroSub} onChange={(e) => handleChange('joinHeroSub', e.target.value)} style={inputStyle} />
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>JOIN PAGE SUBTITLE</label>
+                            <input type="text" value={config.joinHeroSub} onChange={(e) => handleChange('joinHeroSub', e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} />
                         </div>
-                        <div style={{ padding: '20px', background: 'rgba(245, 197, 66, 0.05)', border: '1px solid rgba(245, 197, 66, 0.1)', borderRadius: '12px' }}>
-                            <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '800', margin: 0 }}>TIP: Detailed information like Accepted Genres and Commission Table are managed in the &ldquo;CONTENT&rdquo; section of the Admin Dashboard.</p>
+                        <div style={{ padding: '24px', background: 'rgba(255, 240, 0, 0.05)', border: '1px solid rgba(255, 240, 0, 0.1)', borderRadius: '12px', position: 'relative', zIndex: 1 }}>
+                            <p style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '950', margin: 0, letterSpacing: '0.5px', lineHeight: 1.5 }}>TIP: Detailed information like Accepted Genres and Commission Table are managed in the &ldquo;CONTENT&rdquo; section of the Admin Dashboard.</p>
                         </div>
                     </div>
                 )}
 
                 {/* SOCIALS SETTINGS */}
                 {activeTab === 'socials' && (
-                    <div style={{ display: 'grid', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', position: 'relative', zIndex: 1 }}>
                         {['discord', 'instagram', 'spotify', 'youtube', 'twitter', 'facebook'].map(social => (
                             <div key={social}>
-                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '10px', fontWeight: '800', color: '#666' }}>{social.toUpperCase()} URL</label>
-                                <input type="text" value={config[social]} onChange={(e) => handleChange(social, e.target.value)} style={inputStyle} placeholder={`https://${social}.com/...`} />
+                                <label style={{ display: 'block', marginBottom: '10px', fontSize: '10px', fontWeight: '900', color: '#888', letterSpacing: '1px' }}>{social.toUpperCase()} URL</label>
+                                <input type="text" value={config[social]} onChange={(e) => handleChange(social, e.target.value)} style={{ ...inputStyle, width: '100%', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', fontSize: '13px' }} placeholder={`https://${social}.com/...`} />
                             </div>
                         ))}
                     </div>
                 )}
 
-                <div style={{ marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                    <button onClick={handleSave} disabled={saving} className="glow-button" style={{ fontSize: '12px', padding: '12px 30px', height: 'auto' }}>
+                <div style={{ marginTop: '40px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '32px', display: 'flex', justifyContent: 'flex-end', position: 'relative', zIndex: 1 }}>
+                    <button onClick={handleSave} disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000', border: 'none', padding: '16px 48px', height: 'auto', borderRadius: '8px', fontWeight: '950', fontSize: '11px', letterSpacing: '1px' }}>
                         {saving ? 'SAVING...' : 'SAVE CHANGES'}
                     </button>
                 </div>

@@ -130,7 +130,7 @@ export default function ContentView({ content, onRefresh }) {
                                         background: 'rgba(255,255,255,0.01)',
                                         padding: '30px',
                                         borderRadius: '20px',
-                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        border: '1px solid var(--border)',
                                         marginTop: '20px'
                                     }}
                                 >
@@ -141,7 +141,7 @@ export default function ContentView({ content, onRefresh }) {
                                             value={editTitle}
                                             onChange={(e) => setEditTitle(e.target.value)}
                                             placeholder="Section Title..."
-                                            style={{ width: '100%', padding: '12px 15px', background: '#000', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '10px', fontSize: '12px', outline: 'none' }}
+                                            style={{ width: '100%', padding: '12px 15px', background: '#000', border: '1px solid var(--border)', color: '#fff', borderRadius: '10px', fontSize: '12px', outline: 'none' }}
                                         />
                                     </div>
 
@@ -149,7 +149,7 @@ export default function ContentView({ content, onRefresh }) {
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                             <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px' }}>FAQ BUILDER</label>
                                             {faqItems.map((item, index) => (
-                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                <div key={index} style={{ background: 'var(--glass)', padding: '20px', borderRadius: '15px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '900' }}>QUESTION {index + 1}</span>
                                                         <button onClick={() => removeFaqItem(index)} style={{ background: 'rgba(255,0,0,0.1)', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '9px', padding: '5px 10px', borderRadius: '6px' }}>REMOVE</button>
@@ -159,14 +159,14 @@ export default function ContentView({ content, onRefresh }) {
                                                         value={item.q}
                                                         onChange={(e) => updateFaqItem(index, 'q', e.target.value)}
                                                         placeholder="The question..."
-                                                        style={{ width: '100%', padding: '12px', background: '#080808', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', borderRadius: '8px', fontSize: '12px', outline: 'none' }}
+                                                        style={{ width: '100%', padding: '12px', background: '#080808', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', fontSize: '12px', outline: 'none' }}
                                                     />
                                                     <textarea
                                                         value={item.a}
                                                         onChange={(e) => updateFaqItem(index, 'a', e.target.value)}
                                                         placeholder="The answer..."
                                                         rows={3}
-                                                        style={{ width: '100%', padding: '12px', background: '#080808', border: '1px solid rgba(255,255,255,0.05)', color: '#888', borderRadius: '8px', resize: 'vertical', fontSize: '12px', outline: 'none' }}
+                                                        style={{ width: '100%', padding: '12px', background: '#080808', border: '1px solid var(--border)', color: '#888', borderRadius: '8px', resize: 'vertical', fontSize: '12px', outline: 'none' }}
                                                     />
                                                 </div>
                                             ))}
@@ -182,11 +182,11 @@ export default function ContentView({ content, onRefresh }) {
                                                 <span></span>
                                             </div>
                                             {faqItems.map((item, index) => (
-                                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '80px 1fr 1fr auto', gap: '12px', alignItems: 'center' }}>
+                                                <div key={index} style={{ background: 'var(--glass)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '80px 1fr 1fr auto', gap: '12px', alignItems: 'center' }}>
                                                     <select
                                                         value={item.released || 'No'}
                                                         onChange={(e) => updateFaqItem(index, 'released', e.target.value)}
-                                                        style={{ padding: '10px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', borderRadius: '8px', outline: 'none' }}
+                                                        style={{ padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#fff', fontSize: '11px', borderRadius: '8px', outline: 'none' }}
                                                     >
                                                         <option value="Yes">YES</option>
                                                         <option value="No">NO</option>
@@ -196,14 +196,14 @@ export default function ContentView({ content, onRefresh }) {
                                                         value={item.listeners || ''}
                                                         onChange={(e) => updateFaqItem(index, 'listeners', e.target.value)}
                                                         placeholder="e.g. 100K - 500K"
-                                                        style={{ padding: '10px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', borderRadius: '8px', outline: 'none' }}
+                                                        style={{ padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#fff', fontSize: '11px', borderRadius: '8px', outline: 'none' }}
                                                     />
                                                     <input
                                                         type="text"
                                                         value={item.commission || ''}
                                                         onChange={(e) => updateFaqItem(index, 'commission', e.target.value)}
                                                         placeholder="e.g. 5% Royalties"
-                                                        style={{ padding: '10px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', borderRadius: '8px', outline: 'none' }}
+                                                        style={{ padding: '10px', background: '#000', border: '1px solid var(--border)', color: '#fff', fontSize: '11px', borderRadius: '8px', outline: 'none' }}
                                                     />
                                                     <button onClick={() => removeFaqItem(index)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '14px', fontWeight: '900' }}>×</button>
                                                 </div>
@@ -218,7 +218,7 @@ export default function ContentView({ content, onRefresh }) {
                                                 onChange={(e) => setEditContent(e.target.value)}
                                                 placeholder={editing === 'join_genres' ? "Enter genres separated by new lines or commas..." : "Enter document content..."}
                                                 rows={editing === 'join_genres' ? 12 : 15}
-                                                style={{ width: '100%', padding: '15px', background: '#080808', border: '1px solid rgba(255,255,255,0.08)', color: '#bbb', borderRadius: '12px', resize: 'vertical', fontSize: '13px', lineHeight: '1.6', outline: 'none' }}
+                                                style={{ width: '100%', padding: '15px', background: '#080808', border: '1px solid var(--border)', color: '#bbb', borderRadius: '12px', resize: 'vertical', fontSize: '13px', lineHeight: '1.6', outline: 'none' }}
                                             />
                                             <p style={{ fontSize: '10px', color: '#444', marginTop: '10px' }}>TIP: Use double-enter for new paragraphs.</p>
                                         </div>
@@ -228,7 +228,7 @@ export default function ContentView({ content, onRefresh }) {
                                         <button onClick={handleSave} disabled={saving} className="glow-button" style={{ padding: '12px 35px', borderRadius: '12px', fontSize: '11px', height: 'auto' }}>
                                             {saving ? 'PUBLISHING...' : 'SAVE & PUBLISH'}
                                         </button>
-                                        <button onClick={() => setEditing(null)} style={{ ...btnStyle, padding: '12px 25px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)' }}>DISCARD</button>
+                                        <button onClick={() => setEditing(null)} style={{ ...btnStyle, padding: '12px 25px', borderRadius: '12px', background: 'var(--glass)' }}>DISCARD</button>
                                     </div>
                                 </motion.div>
                             ) : item ? (

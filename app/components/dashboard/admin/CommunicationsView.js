@@ -117,10 +117,10 @@ export default function CommunicationsView({ artists }) {
                         <div style={{ fontSize: '14px', fontWeight: '900', color: '#fff', marginBottom: '10px', textTransform: 'uppercase', textAlign: 'center' }}>{subject || 'SUBJECT'}</div>
                         <div style={{ marginBottom: '15px' }}>Hello Artist,</div>
                         <div style={{
-                            background: 'rgba(255,255,255,0.02)',
+                            background: 'var(--glass)',
                             padding: '15px',
                             borderRadius: '12px',
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            border: '1px solid var(--border)',
                             color: '#fff',
                             whiteSpace: 'pre-wrap'
                         }}>
@@ -154,7 +154,7 @@ export default function CommunicationsView({ artists }) {
                                     placeholder="Search artists..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    style={{ ...inputStyle, paddingLeft: '35px', background: 'rgba(255,255,255,0.02)' }}
+                                    style={{ ...inputStyle, paddingLeft: '35px', background: 'var(--glass)' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>

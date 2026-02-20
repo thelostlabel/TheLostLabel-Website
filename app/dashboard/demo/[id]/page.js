@@ -112,7 +112,7 @@ export default function DemoReviewPage({ params }) {
         switch (status) {
             case 'approved': return 'var(--accent)';
             case 'rejected': return '#ff4444';
-            case 'reviewing': return '#f5c542';
+            case 'reviewing': return '#F59E0B';
             default: return '#888';
         }
     };

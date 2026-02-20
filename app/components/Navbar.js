@@ -78,6 +78,7 @@ export default function Navbar() {
                             alt={`${siteName} Logo`}
                             width={40}
                             height={40}
+                            style={{ mixBlendMode: 'lighten' }}
                         />
                         {siteName}
                     </Link>
@@ -197,7 +198,7 @@ export default function Navbar() {
                     >
                         <div className="mobile-panel-header">
                             <div className="mobile-brand">
-                                <NextImage src="/logo.png" alt={`${siteName} Logo`} width={28} height={28} />
+                                <NextImage src="/logo.png" alt={`${siteName} Logo`} width={28} height={28} style={{ mixBlendMode: 'lighten' }} />
                                 <span>{siteName}</span>
                             </div>
                             <button className="mobile-close" onClick={() => setMobileMenuOpen(false)}>
