@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-# Install Playwright browser only when missing.
+# Install Playwright browser only when explicitly enabled and missing.
 # Use persistent storage mount at /ms-playwright to avoid downloading on every deploy.
-if [ "${PLAYWRIGHT_INSTALL_ON_STARTUP:-1}" = "1" ]; then
+if [ "${PLAYWRIGHT_INSTALL_ON_STARTUP:-0}" = "1" ]; then
   if ! ls /ms-playwright/chromium-* >/dev/null 2>&1; then
     echo "[startup] Playwright Chromium not found. Installing once..."
     if [ -f /app/node_modules/playwright/cli.js ]; then
