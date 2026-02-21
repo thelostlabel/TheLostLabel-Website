@@ -48,6 +48,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV LOG_LEVEL=warn
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_INSTALL_ON_STARTUP=0
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -109,7 +110,7 @@ RUN chmod +x /app/docker-entrypoint.sh
 RUN mkdir -p /ms-playwright && chown -R nextjs:nodejs /ms-playwright
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Use dumb-init as entrypoint to handle signals properly
