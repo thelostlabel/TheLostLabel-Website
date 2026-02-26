@@ -1,7 +1,7 @@
 export const glassStyle = {
-    background: '#141414', // v0-ref Card Surface
-    border: '1px solid var(--border)',
-    borderRadius: '4px',
+    background: '#0E0E0E',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '16px',
     overflow: 'hidden'
 };
 
@@ -14,24 +14,24 @@ export const thStyle = {
     padding: '16px',
     fontSize: '9px',
     letterSpacing: '2px',
-    color: '#666',
+    color: '#888',
     fontWeight: '900',
-    borderBottom: '1px solid var(--border)',
-    background: '#141414',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+    background: '#0E0E0E',
     textTransform: 'uppercase'
 };
 
 export const tdStyle = {
     padding: '16px',
     fontSize: '11px',
-    color: '#888',
-    borderBottom: '1px solid rgba(255,255,255,0.02)',
+    color: '#A0A0A0',
+    borderBottom: '1px solid rgba(255,255,255,0.03)',
     fontWeight: '700'
 };
 
 export const btnStyle = {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     color: '#fff',
     padding: '8px 14px',
     fontSize: '9px',
@@ -39,7 +39,7 @@ export const btnStyle = {
     fontWeight: '900',
     letterSpacing: '2px',
     textDecoration: 'none',
-    borderRadius: '2px',
+    borderRadius: '10px',
     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -47,12 +47,12 @@ export const btnStyle = {
 };
 
 export const inputStyle = {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid var(--border)',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     color: '#fff',
-    padding: '10px 14px',
-    borderRadius: '2px',
-    fontSize: '11px',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    fontSize: '12px',
     width: '100%',
     outline: 'none',
     transition: 'border-color 0.2s'

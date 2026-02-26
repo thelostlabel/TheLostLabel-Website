@@ -11,15 +11,15 @@ import {
 import NextImage from 'next/image';
 
 const DASHBOARD_THEME = {
-    bg: '#0a0a0a',
-    surface: '#141414',
-    surfaceElevated: '#1c1c1c',
-    surfaceSoft: '#2a2a2a',
-    border: '#2a2a2a',
+    bg: '#050505',
+    surface: '#0E0E0E',
+    surfaceElevated: '#161616',
+    surfaceSoft: '#1A1A1A',
+    border: 'rgba(255, 255, 255, 0.08)',
     text: '#FFFFFF',
     muted: '#888888',
-    accent: '#D1D5DB',
-    accentCyan: '#9CA3AF',
+    accent: '#FFFFFF',
+    accentCyan: '#A0A0A0',
     success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444'
@@ -562,7 +562,7 @@ export default function HomeView({ onNavigate }) {
                             initial={{ opacity: 0.35 }}
                             animate={{ opacity: [0.35, 0.7, 0.35] }}
                             transition={{ repeat: Infinity, duration: 1.2, delay: item * 0.08 }}
-                            style={{ height: 76, borderRadius: 12, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
+                            style={{ height: 76, borderRadius: 12, background: '#0E0E0E', border: `1px solid ${DASHBOARD_THEME.border}` }}
                         />
                     ))}
                 </div>
@@ -573,13 +573,13 @@ export default function HomeView({ onNavigate }) {
                             initial={{ opacity: 0.35 }}
                             animate={{ opacity: [0.35, 0.7, 0.35] }}
                             transition={{ repeat: Infinity, duration: 1.3 }}
-                            style={{ height: 220, borderRadius: 20, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
+                            style={{ height: 220, borderRadius: 20, background: '#0E0E0E', border: `1px solid ${DASHBOARD_THEME.border}` }}
                         />
                         <motion.div
                             initial={{ opacity: 0.35 }}
                             animate={{ opacity: [0.35, 0.7, 0.35] }}
                             transition={{ repeat: Infinity, duration: 1.3, delay: 0.1 }}
-                            style={{ height: 300, borderRadius: 20, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
+                            style={{ height: 300, borderRadius: 20, background: '#0E0E0E', border: `1px solid ${DASHBOARD_THEME.border}` }}
                         />
                     </div>
                     <div style={{ display: 'grid', gap: '12px' }}>
@@ -589,7 +589,7 @@ export default function HomeView({ onNavigate }) {
                                 initial={{ opacity: 0.35 }}
                                 animate={{ opacity: [0.35, 0.7, 0.35] }}
                                 transition={{ repeat: Infinity, duration: 1.1, delay: item * 0.06 }}
-                                style={{ height: item === 4 ? 220 : 120, borderRadius: 20, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
+                                style={{ height: item === 4 ? 220 : 120, borderRadius: 20, background: '#0E0E0E', border: `1px solid ${DASHBOARD_THEME.border}` }}
                             />
                         ))}
                     </div>
@@ -640,7 +640,7 @@ export default function HomeView({ onNavigate }) {
                     {/* Top Analytics */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div style={{
-                            background: 'linear-gradient(120deg, #121212 0%, #181818 60%, #1f1f1f 100%)',
+                            background: '#0E0E0E',
                             borderRadius: '20px',
                             padding: '24px',
                             position: 'relative',
@@ -707,10 +707,10 @@ export default function HomeView({ onNavigate }) {
                                 </div>
                             </div>
 
-                            <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '70%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', transform: 'rotate(-20deg)' }} />
+                            <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '70%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', transform: 'rotate(-20deg)' }} />
                         </div>
 
-                        <div style={{ background: 'linear-gradient(120deg, #121212 0%, #181818 60%, #1f1f1f 100%)', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', minHeight: '320px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ background: '#0E0E0E', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', minHeight: '320px', position: 'relative', overflow: 'hidden' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', position: 'relative', zIndex: 2 }}>
                                 <div>
                                     <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listener Scale</h4>
@@ -753,15 +753,15 @@ export default function HomeView({ onNavigate }) {
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px', position: 'relative', zIndex: 2 }}>
-                                <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#111' }}>
+                                    <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#0E0E0E' }}>
                                     <p style={{ margin: 0, fontSize: 10, color: '#666', fontWeight: 800 }}>Artists</p>
                                     <p style={{ margin: '3px 0 0 0', fontSize: 14, fontWeight: 900, color: '#fff' }}>{Number(stats.counts.artists || 0).toLocaleString()}</p>
                                 </div>
-                                <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#111' }}>
+                                    <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#0E0E0E' }}>
                                     <p style={{ margin: 0, fontSize: 10, color: '#666', fontWeight: 800 }}>Releases</p>
                                     <p style={{ margin: '3px 0 0 0', fontSize: 14, fontWeight: 900, color: '#fff' }}>{Number(stats.counts.releases || 0).toLocaleString()}</p>
                                 </div>
-                                <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#111' }}>
+                                    <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#0E0E0E' }}>
                                     <p style={{ margin: 0, fontSize: 10, color: '#666', fontWeight: 800 }}>Listeners / Artist</p>
                                     <p style={{ margin: '3px 0 0 0', fontSize: 14, fontWeight: 900, color: '#fff' }}>
                                         {(Number(stats.counts.artists || 0) ? Math.round(latestListeners / Number(stats.counts.artists || 0)) : 0).toLocaleString()}
@@ -792,7 +792,7 @@ export default function HomeView({ onNavigate }) {
                                 </div>
                             </div>
 
-                            <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '70%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', transform: 'rotate(-20deg)' }} />
+                            <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '70%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', transform: 'rotate(-20deg)' }} />
                         </div>
                     </div>
 

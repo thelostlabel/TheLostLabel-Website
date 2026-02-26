@@ -77,7 +77,7 @@ function DashboardLayoutContent({ children }) {
     }
 
     if (!session) {
-        return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#637089', background: '#0b0e14' }}>Access Denied</div>;
+        return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', background: '#050505' }}>Access Denied</div>;
     }
 
     const { role } = session.user;
@@ -138,14 +138,14 @@ function DashboardLayoutContent({ children }) {
     const railWidth = isRailExpanded ? (isCompact ? 188 : 206) : (isCompact ? 72 : 82);
     const showRailLabels = isRailExpanded || isMobileNavOpen;
 
-    const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
+    const shellBackground = isLight ? '#F0F2F5' : '#050505';
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
-    const shellAccent = '#D1D5DB'; // Soft silver accent
-    const shellAccent2 = '#9CA3AF'; // Cool gray secondary accent
-    const shellSurface = isLight ? '#FFFFFF' : '#141414'; // v0-ref Card Surface
-    const shellSurface2 = isLight ? '#F9FAFB' : '#1c1c1c'; // v0-ref Muted Surface
-    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : '#2a2a2a'; // v0-ref Border
-    const shellMuted = isLight ? '#6B7280' : '#888888'; // v0-ref Muted Foreground
+    const shellAccent = '#FFFFFF';
+    const shellAccent2 = '#A0A0A0';
+    const shellSurface = isLight ? '#FFFFFF' : '#0E0E0E';
+    const shellSurface2 = isLight ? '#F9FAFB' : '#161616';
+    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255, 255, 255, 0.08)';
+    const shellMuted = isLight ? '#6B7280' : '#888888';
 
     return (
         <div
@@ -313,10 +313,10 @@ function DashboardLayoutContent({ children }) {
                     z-index: 100;
                     display: flex;
                     flex-direction: column;
-                    background: #0a0a0a;
-                    border: 1px solid var(--border);
+                    background: #0A0A0A;
+                    border: 1px solid rgba(255, 255, 255, 0.06);
                     border-radius: 20px;
-                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(20px);
                     overflow: hidden;
                     transition: width 0.28s ease;
@@ -495,9 +495,9 @@ function DashboardLayoutContent({ children }) {
                 .dashboard-window {
                     min-height: calc(100vh - 32px);
                     border-radius: 24px;
-                    border: 1px solid var(--border);
-                    background: #0a0a0a;
-                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: #0A0A0A;
+                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
@@ -758,7 +758,7 @@ export default function DashboardLayout({ children }) {
     return (
         <Suspense
             fallback={
-                <div style={{ background: '#05020a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: '#050505', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <p style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#555' }}>SYNCING_INTERFACE...</p>
                 </div>
             }

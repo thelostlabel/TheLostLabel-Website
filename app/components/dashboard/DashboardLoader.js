@@ -15,7 +15,7 @@ export default function DashboardLoader({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#0a0a0a'
+            background: '#050505'
         }
         : overlay
             ? {
@@ -25,7 +25,7 @@ export default function DashboardLoader({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'rgba(8,8,8,0.72)',
+                background: 'rgba(5,5,5,0.72)',
                 backdropFilter: 'blur(4px)'
             }
             : {
@@ -45,13 +45,13 @@ export default function DashboardLoader({
                 style={{
                     width: 'min(520px, 92%)',
                     borderRadius: '18px',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    background: 'linear-gradient(135deg, #111 0%, #171717 45%, #121212 100%)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: '#0E0E0E',
                     padding: '24px'
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                    <p style={{ margin: 0, color: '#d1d5db', fontSize: '11px', fontWeight: 900, letterSpacing: '2px' }}>{label}</p>
+                    <p style={{ margin: 0, color: '#fff', fontSize: '11px', fontWeight: 900, letterSpacing: '2px' }}>{label}</p>
                     <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
@@ -59,8 +59,8 @@ export default function DashboardLoader({
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            border: '2px solid rgba(255,255,255,0.2)',
-                            borderTopColor: '#E5E7EB'
+                            border: '2px solid rgba(255,255,255,0.12)',
+                            borderTopColor: '#FFFFFF'
                         }}
                     />
                 </div>
@@ -78,7 +78,7 @@ export default function DashboardLoader({
                                 height: '8px',
                                 width: `${w}%`,
                                 borderRadius: '999px',
-                                background: 'rgba(229,231,235,0.6)'
+                                background: 'rgba(255,255,255,0.5)'
                             }}
                         />
                     ))}

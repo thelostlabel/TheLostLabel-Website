@@ -3,19 +3,21 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Lost Label Design System ── */
   --background: #050505;
-  --foreground: #F5F5FF;
-  --surface: #0a0a0c;
-  --surface-hover: #11111a;
-  --primary: #ffffff;
-  --primary-glow: rgba(229, 231, 235, 0.22);
-  --accent: #E5E7EB;
-  --accent-2: #9CA3AF;
-  --text-secondary: #9EA6B8;
+  --foreground: #F5F5F5;
+  --surface: #0E0E0E;
+  --surface-hover: #161616;
+  --surface-elevated: #1A1A1A;
+  --primary: #FFFFFF;
+  --primary-glow: rgba(255, 255, 255, 0.12);
+  --accent: #FFFFFF;
+  --accent-2: #A0A0A0;
+  --text-secondary: #888888;
   --border: rgba(255, 255, 255, 0.08);
   /* Premium Glass Variables */
   --glass: rgba(255, 255, 255, 0.02);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.06);
   --glass-blur: blur(24px);
   --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 

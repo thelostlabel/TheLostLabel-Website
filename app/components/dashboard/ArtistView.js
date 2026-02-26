@@ -17,17 +17,17 @@ import ProjectView from './ProjectView';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
 const DASHBOARD_THEME = {
-    bg: '#0a0a0a',
-    surface: '#141414',
-    surfaceElevated: '#1c1c1c',
-    surfaceSoft: '#2a2a2a',
-    border: '#2a2a2a',
-    borderStrong: 'rgba(209,213,219,0.3)',
+    bg: '#050505',
+    surface: '#0E0E0E',
+    surfaceElevated: '#161616',
+    surfaceSoft: '#1A1A1A',
+    border: 'rgba(255, 255, 255, 0.08)',
+    borderStrong: 'rgba(255, 255, 255, 0.2)',
     text: '#FFFFFF',
     muted: '#888888',
-    accent: '#D1D5DB',
+    accent: '#FFFFFF',
     accentHover: '#E5E7EB',
-    accentDark: '#9CA3AF',
+    accentDark: '#A0A0A0',
     accentAlt: '#6B7280',
     success: '#22C55E',
     warning: '#F59E0B',
@@ -35,11 +35,11 @@ const DASHBOARD_THEME = {
 };
 
 const glassStyle = {
-    background: '#0E0E0E', // Solid matte, no gradient
+    background: '#0E0E0E',
     border: `1px solid ${DASHBOARD_THEME.border}`,
-    borderRadius: '14px',
+    borderRadius: '16px',
     overflow: 'hidden',
-    boxShadow: '0 16px 38px rgba(0, 0, 0, 0.4)' // Pure black shadow
+    boxShadow: '0 16px 38px rgba(0, 0, 0, 0.3)'
 };
 
 const getBaseTitle = (title) => {
