@@ -5,6 +5,7 @@ import { sendMail } from "@/lib/mail";
 import { generateDemoApprovalEmail, generateDemoRejectionEmail } from "@/lib/mail-templates";
 import { notifyDemoApproval } from "@/lib/discord";
 import { randomUUID } from "crypto";
+import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 
 function normalizeReleaseDate(value) {
     if (!value) return null;
@@ -217,6 +218,29 @@ export async function PATCH(req, { params }) {
                 updatedDemo.title,
                 status === 'contract_sent' ? "Contract Sent" : "Pending Deal Configuration"
             );
+        }
+
+        if (status && ["approved", "rejected", "contract_sent"].includes(status)) {
+            try {
+                await insertDiscordOutboxEvent(
+                    status === "approved"
+                        ? "demo_approved"
+                        : status === "rejected"
+                            ? "demo_rejected"
+                            : "demo_contract_sent",
+                    {
+                        demoId: updatedDemo.id,
+                        title: updatedDemo.title,
+                        status: updatedDemo.status,
+                        artistId: updatedDemo.artistId,
+                        artistName: updatedDemo.artist?.stageName || updatedDemo.artist?.fullName || null,
+                        rejectionReason: status === "rejected" ? rejectionReason || null : null
+                    },
+                    updatedDemo.id
+                );
+            } catch (outboxError) {
+                console.error("[Demo PATCH] Failed to enqueue Discord outbox event:", outboxError);
+            }
         }
 
         // If status changed to rejected, notify artist

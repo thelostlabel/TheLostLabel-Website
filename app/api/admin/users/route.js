@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { linkUserToArtist } from "@/lib/userArtistLink";
+import { enqueueRoleSync, getDiscordLinkByUserId } from "@/lib/discord-bridge-service";
 
 // GET: Fetch all users (Admin only)
 export async function GET(req) {
@@ -79,6 +80,22 @@ export async function PATCH(req) {
             where: { id: userId },
             data: updateData
         });
+
+        if ((role !== undefined && oldUser.role !== updatedUser.role) || (status !== undefined && oldUser.status !== updatedUser.status)) {
+            try {
+                const discordLink = await getDiscordLinkByUserId(userId);
+                if (discordLink?.discord_user_id) {
+                    await enqueueRoleSync({
+                        userId,
+                        discordUserId: discordLink.discord_user_id,
+                        role: updatedUser.role,
+                        guildId: discordLink.guild_id || null
+                    });
+                }
+            } catch (roleSyncError) {
+                console.error("[Users PATCH] Failed to enqueue role sync:", roleSyncError);
+            }
+        }
 
         // Trigger approval side effects without failing the main user update.
         // This prevents local SMTP or integration issues from returning a PATCH 500.

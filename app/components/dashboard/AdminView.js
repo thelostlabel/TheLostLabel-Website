@@ -18,6 +18,7 @@ import ContentView from './admin/ContentView';
 import WebhooksView from './admin/WebhooksView';
 import CommunicationsView from './admin/CommunicationsView';
 import SettingsView from './admin/SettingsView';
+import DiscordBridgeView from './admin/DiscordBridgeView';
 import DashboardLoader from './DashboardLoader';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
@@ -43,7 +44,8 @@ export default function AdminView() {
         'payments',
         'releases',
         'settings',
-        'communications'
+        'communications',
+        'discord-bridge'
     ]);
     const view = knownViews.has(normalizedView) ? normalizedView : 'overview';
 
@@ -57,6 +59,7 @@ export default function AdminView() {
     const [earnings, setEarnings] = useState([]);
     const [payments, setPayments] = useState([]);
     const [releases, setReleases] = useState([]);
+    const [discordBridge, setDiscordBridge] = useState(null);
     const [loading, setLoading] = useState(true);
     const showLoading = useMinimumLoader(loading, 900);
 
@@ -74,6 +77,7 @@ export default function AdminView() {
         else if (view === 'payments') { fetchPayments(); fetchUsers(); }
         else if (view === 'webhooks') fetchWebhooks();
         else if (view === 'communications') fetchArtists();
+        else if (view === 'discord-bridge') fetchDiscordBridge();
         else if (view === 'settings') setLoading(false);
         else setLoading(false);
     }, [view]);
@@ -179,6 +183,19 @@ export default function AdminView() {
         finally { setLoading(false); }
     };
 
+    const fetchDiscordBridge = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/admin/discord-bridge');
+            const data = await res.json();
+            setDiscordBridge(data || null);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSyncStats = async (userId, existingUrl, artistId = null) => {
         if (!userId && !existingUrl) return;
         let spotifyUrl = existingUrl;
@@ -246,7 +263,8 @@ export default function AdminView() {
         payments: 'admin_view_payments',
         releases: 'admin_view_releases',
         settings: 'admin_view_settings',
-        communications: 'admin_view_communications'
+        communications: 'admin_view_communications',
+        'discord-bridge': 'admin_view_discord_bridge'
     };
 
     if (!showLoading && !hasAdminPermission(viewToPerm[view])) {
@@ -282,6 +300,7 @@ export default function AdminView() {
             {view === 'releases' && <ReleasesView releases={releases} />}
             {view === 'communications' && <CommunicationsView artists={artists} />}
             {view === 'settings' && <SettingsView />}
+            {view === 'discord-bridge' && <DiscordBridgeView data={discordBridge} onRefresh={fetchDiscordBridge} />}
         </div>
     );
 }

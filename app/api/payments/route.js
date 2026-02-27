@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
 import { sendMail } from "@/lib/mail";
 import { generatePayoutStatusEmail } from "@/lib/mail-templates";
+import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 
 // GET: Fetch payments
 export async function GET(req) {
@@ -73,6 +74,23 @@ export async function POST(req) {
             }
         });
 
+        try {
+            await insertDiscordOutboxEvent(
+                resolvedStatus === "completed" ? "payment_completed" : "payment_created",
+                {
+                    paymentId: payment.id,
+                    userId: payment.userId,
+                    amount: Number(payment.amount || 0),
+                    currency: payment.currency,
+                    status: payment.status,
+                    method: payment.method || null
+                },
+                payment.id
+            );
+        } catch (outboxError) {
+            logger.error("Failed to enqueue payment outbox event", outboxError);
+        }
+
         // Optional: Update earnings as "paid" if there are specific earnings linked? 
         // For simplicity, payments are aggregate.
 
@@ -129,6 +147,25 @@ export async function PATCH(req) {
             where: { id },
             data: updateData
         });
+
+        if (status && ["completed", "failed"].includes(status) && existing.status !== status) {
+            try {
+                await insertDiscordOutboxEvent(
+                    status === "completed" ? "payment_completed" : "payment_failed",
+                    {
+                        paymentId: payment.id,
+                        userId: payment.userId,
+                        amount: Number(payment.amount || 0),
+                        currency: payment.currency,
+                        status: payment.status,
+                        method: payment.method || null
+                    },
+                    payment.id
+                );
+            } catch (outboxError) {
+                logger.error("Failed to enqueue payment status outbox event", outboxError);
+            }
+        }
 
         if (status && ['completed', 'failed'].includes(status) && existing.status !== status) {
             try {
