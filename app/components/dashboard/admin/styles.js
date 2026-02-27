@@ -1,8 +1,11 @@
 export const glassStyle = {
-    background: '#141414', // v0-ref Card Surface
-    border: '1px solid var(--border)',
-    borderRadius: '4px',
-    overflow: 'hidden'
+    background: 'rgba(255,255,255,0.028)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.36)'
 };
 
 export const statCardStyle = {
@@ -12,9 +15,9 @@ export const statCardStyle = {
 
 export const thStyle = {
     padding: '16px',
-    fontSize: '9px',
-    letterSpacing: '2px',
-    color: '#666',
+    fontSize: '10px',
+    letterSpacing: '1.2px',
+    color: '#9CA3AF',
     fontWeight: '900',
     borderBottom: '1px solid var(--border)',
     background: '#141414',
@@ -23,9 +26,9 @@ export const thStyle = {
 
 export const tdStyle = {
     padding: '16px',
-    fontSize: '11px',
-    color: '#888',
-    borderBottom: '1px solid rgba(255,255,255,0.02)',
+    fontSize: '12px',
+    color: '#D1D5DB',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
     fontWeight: '700'
 };
 
@@ -34,12 +37,12 @@ export const btnStyle = {
     border: '1px solid var(--border)',
     color: '#fff',
     padding: '8px 14px',
-    fontSize: '9px',
+    fontSize: '11px',
     cursor: 'pointer',
     fontWeight: '900',
-    letterSpacing: '2px',
+    letterSpacing: '1.2px',
     textDecoration: 'none',
-    borderRadius: '2px',
+    borderRadius: '10px',
     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     display: 'inline-flex',
     alignItems: 'center',
@@ -51,8 +54,8 @@ export const inputStyle = {
     border: '1px solid var(--border)',
     color: '#fff',
     padding: '10px 14px',
-    borderRadius: '2px',
-    fontSize: '11px',
+    borderRadius: '10px',
+    fontSize: '12px',
     width: '100%',
     outline: 'none',
     transition: 'border-color 0.2s'

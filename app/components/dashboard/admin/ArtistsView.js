@@ -81,7 +81,7 @@ function UserLinker({ artistId, users, artistEmail }) {
                                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                                 onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                             >
-                                <span style={{ color: '#fff', fontWeight: '800' }}>{u.stageName || 'NO STAGE NAME'} <span style={{ color: '#666', fontSize: '10px', fontWeight: 'normal' }}>// {u.email}</span></span>
+                                <span style={{ color: '#fff', fontWeight: '800' }}>{u.stageName || 'NO STAGE NAME'} <span style={{ color: '#666', fontSize: '10px', fontWeight: 'normal' }}>{'// '}{u.email}</span></span>
                                 <span style={{ color: 'var(--accent)', fontSize: '10px', fontWeight: '950', letterSpacing: '1px' }}>SELECT</span>
                             </div>
                         ))}
@@ -162,8 +162,21 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
     };
 
     if (selectedArtist) {
+        const hasLinkedUser = Boolean(selectedArtist.user);
+        const hasSpotifyProfile = Boolean(selectedArtist.spotifyUrl);
+        const completedProfileFields = [
+            Boolean(selectedArtist.name),
+            Boolean(selectedArtist.email),
+            hasSpotifyProfile,
+            hasLinkedUser
+        ].filter(Boolean).length;
+        const profileCompleteness = Math.round((completedProfileFields / 4) * 100);
+        const lastSyncText = selectedArtist.lastSyncedAt
+            ? new Date(selectedArtist.lastSyncedAt).toLocaleString()
+            : 'Never synced';
+
         return (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ ...glassStyle, padding: '40px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px' }}>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ ...glassStyle, padding: '40px', background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}>
                 <button onClick={() => setSelectedArtist(null)} style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', padding: '10px 20px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>← BACK TO LIST</button>
 
                 <div style={{ display: 'flex', gap: '30px', alignItems: 'center', marginBottom: '40px' }}>
@@ -177,7 +190,7 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                         {selectedArtist.spotifyUrl && <a href={selectedArtist.spotifyUrl} target="_blank" rel="noreferrer" style={{ color: '#fff', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', fontWeight: '950', letterSpacing: '1px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '6px', width: 'fit-content', border: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>OPEN SPOTIFY PROFILE ↗</a>}
                     </div>
 
-                    <div style={{ textAlign: 'right', background: 'var(--glass)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <div style={{ textAlign: 'right', background: 'rgba(255,255,255,0.024)', padding: '24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                         <div style={{ fontSize: '11px', color: '#888', fontWeight: '900', marginBottom: '8px', letterSpacing: '1px' }}>MONTHLY LISTENERS</div>
                         <div style={{ fontSize: '32px', fontWeight: '950', color: (selectedArtist.monthlyListeners !== undefined && selectedArtist.monthlyListeners !== null) ? '#fff' : '#ff0000', letterSpacing: '-1px', marginBottom: '16px' }}>
                             {(selectedArtist.monthlyListeners !== undefined && selectedArtist.monthlyListeners !== null) ? selectedArtist.monthlyListeners.toLocaleString() : (
@@ -218,8 +231,8 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                    <div style={{ padding: '30px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.15fr) minmax(0,0.85fr)', gap: '24px', alignItems: 'start' }}>
+                    <div style={{ padding: '30px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                         <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '24px', letterSpacing: '1px' }}>LINKED SYSTEM ACCOUNT</h3>
                         {selectedArtist.user ? (
                             <div>
@@ -258,6 +271,78 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                         ) : (
                             <UserLinker artistId={selectedArtist.id} users={users} artistEmail={selectedArtist.email} />
                         )}
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '16px' }}>
+                        <div style={{ padding: '24px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                            <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '18px', letterSpacing: '1px' }}>PLATFORM HEALTH</h3>
+                            <div style={{ display: 'grid', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                                    <span style={{ color: '#aaa', fontWeight: '800' }}>Profile Completeness</span>
+                                    <span style={{ color: '#fff', fontWeight: '900' }}>{profileCompleteness}%</span>
+                                </div>
+                                <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                    <div style={{ width: `${profileCompleteness}%`, height: '100%', background: 'var(--accent)' }} />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '4px' }}>
+                                    <span style={{ color: '#aaa', fontWeight: '800' }}>Linked Account</span>
+                                    <span style={{ color: hasLinkedUser ? '#fff' : '#ff6b6b', fontWeight: '900' }}>{hasLinkedUser ? 'Connected' : 'Missing'}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                                    <span style={{ color: '#aaa', fontWeight: '800' }}>Spotify Profile</span>
+                                    <span style={{ color: hasSpotifyProfile ? '#fff' : '#ff6b6b', fontWeight: '900' }}>{hasSpotifyProfile ? 'Connected' : 'Missing'}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                                    <span style={{ color: '#aaa', fontWeight: '800' }}>Last Sync</span>
+                                    <span style={{ color: '#fff', fontWeight: '900', textAlign: 'right', marginLeft: '16px' }}>{lastSyncText}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ padding: '24px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                            <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '18px', letterSpacing: '1px' }}>QUICK ACTIONS</h3>
+                            <div style={{ display: 'grid', gap: '10px' }}>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        try {
+                                            await navigator.clipboard.writeText(selectedArtist.id);
+                                            showToast('Artist ID copied to clipboard', 'success');
+                                        } catch (e) {
+                                            showToast('Unable to copy artist ID', 'error');
+                                        }
+                                    }}
+                                    style={{ ...btnStyle, justifyContent: 'center', height: 'auto', padding: '12px', borderRadius: '8px', fontSize: '10px', fontWeight: '950', letterSpacing: '1px' }}
+                                >
+                                    COPY ARTIST ID
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => window.open(`/artists`, '_blank')}
+                                    style={{ ...btnStyle, justifyContent: 'center', height: 'auto', padding: '12px', borderRadius: '8px', fontSize: '10px', fontWeight: '950', letterSpacing: '1px' }}
+                                >
+                                    OPEN PUBLIC ROSTER
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        showConfirm(
+                                            'REFRESH ARTIST NOW?',
+                                            `This will re-sync ${selectedArtist.name} from Spotify.`,
+                                            async () => {
+                                                if (syncingArtistId) return;
+                                                setSyncingArtistId(selectedArtist.id);
+                                                await onSync(selectedArtist.userId, selectedArtist.spotifyUrl, selectedArtist.id);
+                                                setSyncingArtistId(null);
+                                            }
+                                        );
+                                    }}
+                                    style={{ ...btnStyle, justifyContent: 'center', height: 'auto', padding: '12px', borderRadius: '8px', fontSize: '10px', fontWeight: '950', letterSpacing: '1px' }}
+                                >
+                                    FORCE RESYNC
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </motion.div>
@@ -399,7 +484,7 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                 </div>
             )}
 
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.11)', borderRadius: '12px', overflow: 'hidden', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.5fr 1fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
                     <div>ARTIST</div>
                     <div>MONTHLY</div>

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 const glassStyle = {
     background: 'var(--surface)',
@@ -48,6 +50,7 @@ export default function DemoReviewPage({ params }) {
     const { showToast, showConfirm } = useToast();
     const [demo, setDemo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const showLoading = useMinimumLoader(loading, 900);
     const [error, setError] = useState(null);
     const [activeFile, setActiveFile] = useState(null);
     const [showApproveModal, setShowApproveModal] = useState(false);
@@ -105,7 +108,9 @@ export default function DemoReviewPage({ params }) {
         }
     };
 
-    if (loading) return <div style={{ color: '#444', fontSize: '11px', letterSpacing: '2px', padding: '100px', textAlign: 'center' }}>LOADING DEMO...</div>;
+    if (showLoading) {
+        return <DashboardLoader fullScreen label="LOADING DEMO" subLabel="Fetching submission details and files..." />;
+    }
     if (error || !demo) return <div style={{ padding: '40px', textAlign: 'center' }}><h2>ERROR: {error || "Demo not found"}</h2><Link href="/dashboard" style={{ color: 'var(--accent)' }}>GO BACK</Link></div>;
 
     const getStatusColor = (status) => {

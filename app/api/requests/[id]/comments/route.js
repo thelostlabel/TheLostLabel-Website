@@ -4,6 +4,28 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateSupportUpdateEmail } from "@/lib/mail-templates";
 
+function extractSpotifyArtistId(url) {
+    if (!url || typeof url !== "string") return null;
+    const parts = url.split('/').filter(Boolean);
+    const lastPart = parts.pop() || '';
+    const id = lastPart.split('?')[0]?.trim();
+    return id || null;
+}
+
+function hasArtistAccessBySpotifyId(artistsJson, spotifyId) {
+    if (!artistsJson || !spotifyId) return false;
+    try {
+        const parsed = JSON.parse(artistsJson);
+        if (!Array.isArray(parsed)) return false;
+        return parsed.some((artist) => {
+            if (typeof artist === "string") return artist === spotifyId;
+            return artist?.id === spotifyId;
+        });
+    } catch {
+        return artistsJson.includes(spotifyId);
+    }
+}
+
 // GET: Fetch comments for a specific request
 export async function GET(req, { params }) {
     const session = await getServerSession(authOptions);
@@ -36,15 +58,16 @@ export async function GET(req, { params }) {
             // Check if user is a collaborator on the associated release
             const user = await prisma.user.findUnique({
                 where: { id: session.user.id },
-                select: { spotifyUrl: true }
+                select: {
+                    spotifyUrl: true,
+                    artist: { select: { spotifyUrl: true } }
+                }
             });
 
             let isCollaborator = false;
-            if (user?.spotifyUrl && request.release?.artistsJson) {
-                const spotifyId = user.spotifyUrl.split('/').filter(Boolean).pop()?.split('?')[0];
-                if (spotifyId && request.release.artistsJson.includes(spotifyId)) {
-                    isCollaborator = true;
-                }
+            if ((user?.spotifyUrl || user?.artist?.spotifyUrl) && request.release?.artistsJson) {
+                const spotifyId = extractSpotifyArtistId(user.artist?.spotifyUrl) || extractSpotifyArtistId(user.spotifyUrl);
+                isCollaborator = hasArtistAccessBySpotifyId(request.release.artistsJson, spotifyId);
             }
 
             if (!isCollaborator) {
@@ -99,15 +122,16 @@ export async function POST(req, { params }) {
             // Check if user is a collaborator on the associated release
             const user = await prisma.user.findUnique({
                 where: { id: session.user.id },
-                select: { spotifyUrl: true }
+                select: {
+                    spotifyUrl: true,
+                    artist: { select: { spotifyUrl: true } }
+                }
             });
 
             let isCollaborator = false;
-            if (user?.spotifyUrl && request.release?.artistsJson) {
-                const spotifyId = user.spotifyUrl.split('/').filter(Boolean).pop()?.split('?')[0];
-                if (spotifyId && request.release.artistsJson.includes(spotifyId)) {
-                    isCollaborator = true;
-                }
+            if ((user?.spotifyUrl || user?.artist?.spotifyUrl) && request.release?.artistsJson) {
+                const spotifyId = extractSpotifyArtistId(user.artist?.spotifyUrl) || extractSpotifyArtistId(user.spotifyUrl);
+                isCollaborator = hasArtistAccessBySpotifyId(request.release.artistsJson, spotifyId);
             }
 
             if (!isCollaborator) {

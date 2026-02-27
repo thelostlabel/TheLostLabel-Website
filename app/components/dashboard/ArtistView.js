@@ -14,7 +14,9 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '@/app/components/ToastContext';
 import ProjectView from './ProjectView';
+import DashboardLoader from './DashboardLoader';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
+import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 const DASHBOARD_THEME = {
     bg: '#0a0a0a',
@@ -284,6 +286,7 @@ export default function ArtistView() {
     const [requests, setRequests] = useState([]);
     const [selectedRequestId, setSelectedRequestId] = useState(null);
     const [loading, setLoading] = useState(true);
+    const showLoading = useMinimumLoader(loading, 900);
     const [actionRequiredContract, setActionRequiredContract] = useState(null);
 
     // Submit form state
@@ -609,9 +612,9 @@ export default function ArtistView() {
         window.dispatchEvent(new Event('popstate'));
     }, []);
 
-    if (!loading && !hasPermission(viewToPerm[view])) {
+    if (!showLoading && !hasPermission(viewToPerm[view])) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
+            <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
                 <div style={{ padding: '30px', ...glassStyle, textAlign: 'center', maxWidth: '400px' }}>
                     <AlertCircle size={32} style={{ color: 'var(--status-error)', marginBottom: '15px' }} />
                     <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>ACCESS_RESTRICTED</h3>
@@ -625,7 +628,7 @@ export default function ArtistView() {
 
     return (
         <div
-            className="artist-dashboard-view"
+            className="artist-dashboard-view dashboard-view"
             style={{
                 flex: 1,
                 padding: '30px',
@@ -650,7 +653,7 @@ export default function ArtistView() {
                 </h2>
             </div>
 
-            {!loading && view !== 'overview' && (
+            {!loading && view === 'overview' && (
                 <ArtistQuickAccessBar
                     stats={stats}
                     currentView={view}
@@ -658,8 +661,12 @@ export default function ArtistView() {
                 />
             )}
 
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '80px', fontSize: '12px', letterSpacing: '1px', color: DASHBOARD_THEME.muted }}>LOADING...</div>
+            {showLoading ? (
+                <DashboardLoader
+                    fullScreen
+                    label="LOADING ARTIST PANEL"
+                    subLabel={`Refreshing ${String(viewTitles[view] || 'dashboard').toLowerCase()} data...`}
+                />
             ) : view === 'overview' ? (
                 <OverviewView
                     stats={stats}
@@ -681,7 +688,7 @@ export default function ArtistView() {
                     window.dispatchEvent(new Event('popstate'));
                 }} />
             ) : view === 'releases' ? (
-                <ReleasesView stats={stats} />
+                <ReleasesView stats={stats} showToast={showToast} />
             ) : view === 'submit' ? (
                 // ... same as before
                 <SubmitView
@@ -716,6 +723,8 @@ export default function ArtistView() {
                 <SupportView
                     requests={requests}
                     selectedId={selectedRequestId}
+                    onRefresh={fetchRequests}
+                    showToast={showToast}
                     onNavigate={(id) => {
                         const params = new URLSearchParams(window.location.search);
                         if (id) params.set('id', id);
@@ -737,7 +746,7 @@ export default function ArtistView() {
                     }}
                 />
             ) : view === 'profile' ? (
-                <ProfileView onUpdate={update} />
+                <ProfileView onUpdate={update} showToast={showToast} />
             ) : null}
 
             {/* Withdrawal Modal */}
@@ -985,11 +994,12 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
     };
 
     return (
-        <div style={{ marginBottom: '20px', display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        <div className="quick-access-root" style={{ marginBottom: '20px', display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
             <motion.button
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
                 onClick={() => onNavigate('earnings')}
+                className="quick-access-card"
                 style={cardStyle}
             >
                 <div style={labelStyle}>AVAILABLE</div>
@@ -1000,6 +1010,7 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
                 onClick={() => onNavigate('earnings')}
+                className="quick-access-card"
                 style={cardStyle}
             >
                 <div style={labelStyle}>PENDING</div>
@@ -1010,6 +1021,7 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
                 onClick={() => onNavigate('earnings')}
+                className="quick-access-card"
                 style={cardStyle}
             >
                 <div style={labelStyle}>PAID</div>
@@ -1020,6 +1032,7 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
                 onClick={() => onNavigate('overview')}
+                className="quick-access-card"
                 style={cardStyle}
             >
                 <div style={labelStyle}>MONTHLY LISTENERS</div>
@@ -1040,6 +1053,7 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
                             whileHover={{ y: -1 }}
                             whileTap={{ y: 0 }}
                             onClick={() => onNavigate(item.view)}
+                            className="quick-nav-btn"
                             style={{
                                 ...navButtonStyle,
                                 background: isActive ? DASHBOARD_THEME.accent : 'rgba(255,255,255,0.015)',
@@ -1064,6 +1078,27 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
                 @media (max-width: 860px) {
                     .quick-nav-grid {
                         gap: 8px;
+                    }
+                }
+                @media (max-width: 640px) {
+                    .quick-access-root {
+                        grid-template-columns: 1fr 1fr !important;
+                    }
+                    .quick-access-card {
+                        min-height: 82px !important;
+                        padding: 12px !important;
+                    }
+                    .quick-nav-grid {
+                        display: grid !important;
+                        grid-template-columns: 1fr 1fr;
+                        width: 100%;
+                    }
+                    .quick-nav-btn {
+                        width: 100% !important;
+                        justify-content: center !important;
+                        min-height: 36px;
+                        padding: 0 10px !important;
+                        font-size: 11px !important;
                     }
                 }
             `}</style>
@@ -1115,7 +1150,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
     }, [stats.spotifyStreams, stats.appleStreams, stats.streams]);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="overview-root" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Header Mini Stats */}
             <div className="overview-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
                 {[
@@ -1123,7 +1158,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     { label: 'Total Tracks', value: totalTracks },
                     { label: 'Total Streams', value: totalStreams },
                 ].map((s, i) => (
-                    <div key={i} style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div key={i} className="overview-kpi-card" style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, margin: 0 }}>{s.label}</p>
                         <p style={{ fontSize: '22px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: 0 }}>{(s.value || 0).toLocaleString()}</p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1139,7 +1174,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
                     {/* Welcome Banner */}
-                    <div style={{
+                    <div className="overview-welcome" style={{
                         background: 'linear-gradient(130deg, #111111 0%, #171717 60%, #101010 100%)',
                         borderRadius: '20px',
                         padding: '30px',
@@ -1151,8 +1186,8 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         minHeight: '180px',
                         border: `1px solid ${DASHBOARD_THEME.border}`
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
-                            <div style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
+                        <div className="overview-welcome-main" style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
+                            <div className="overview-welcome-avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
                                 <NextImage
                                     src={resolveImageSrc(session?.user?.image)}
                                     width={90}
@@ -1165,12 +1200,12 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             </div>
                             <div>
                                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: 0 }}>WELCOME, {session?.user?.stageName || 'Artist'}!</h1>
+                                <h1 className="overview-welcome-title" style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: 0 }}>WELCOME, {session?.user?.stageName || 'Artist'}!</h1>
                                 <p style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af', fontWeight: '700' }}>Artist Dashboard Overview</p>
                             </div>
                         </div>
-                        <div style={{ textAlign: 'right', zIndex: 1 }}>
-                            <p style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        <div className="overview-balance-panel" style={{ textAlign: 'right', zIndex: 1 }}>
+                            <p className="overview-balance-value" style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                             <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>BALANCE AVAILABLE</p>
                             <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '700', marginTop: '10px' }}>Monthly listeners: {Number(stats.listeners || 0).toLocaleString()}</p>
                         </div>
@@ -1183,7 +1218,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             { title: 'Create Release', desc: 'Add a release to your catalog', icon: <Disc size={20} />, action: () => onNavigate('submit') },
                             { title: 'Support', desc: 'Open a request and talk with admin', icon: <Users size={20} />, action: () => onNavigate('support') },
                         ].map((a, i) => (
-                            <div key={i} onClick={a.action} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+                            <div key={i} className="overview-action-card" onClick={a.action} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
                                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
                                     {a.icon}
                                 </div>
@@ -1197,7 +1232,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     </div>
 
                     {/* Recent Releases */}
-                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
+                    <div className="overview-release-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '1px' }}>RECENT_RELEASES</h3>
                             <button onClick={() => onNavigate('releases')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
@@ -1230,13 +1265,13 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
 
                 {/* RIGHT COLUMN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div className="overview-right-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="overview-range-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                             <div>
                                 <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h4>
                                 <p style={{ fontSize: '11px', color: '#9ca3af', margin: '4px 0 0 0' }}>{Number(stats.listeners || 0).toLocaleString()} current</p>
                             </div>
-                            <div style={{ display: 'flex', gap: '6px' }}>
+                            <div className="overview-range-group" style={{ display: 'flex', gap: '6px' }}>
                                 {['7D', '30D', '90D', '180D'].map((range) => (
                                     <button
                                         key={range}
@@ -1262,7 +1297,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         </div>
                     </div>
 
-                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px' }}>
+                    <div className="overview-right-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                             <div>
                                 <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h4>
@@ -1302,13 +1337,84 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     .overview-release-grid {
                         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                     }
+                    .overview-welcome {
+                        padding: 22px !important;
+                        min-height: 160px !important;
+                    }
+                    .overview-welcome-main {
+                        gap: 14px !important;
+                    }
+                    .overview-welcome-title {
+                        font-size: 22px !important;
+                    }
+                    .overview-balance-value {
+                        font-size: 28px !important;
+                    }
                 }
                 @media (max-width: 640px) {
+                    .overview-root {
+                        gap: 10px !important;
+                    }
                     .overview-action-grid {
                         grid-template-columns: 1fr !important;
                     }
                     .overview-kpi-grid {
                         grid-template-columns: 1fr !important;
+                    }
+                    .overview-kpi-card {
+                        padding: 14px 15px !important;
+                    }
+                    .overview-main-grid {
+                        gap: 10px !important;
+                    }
+                    .overview-welcome {
+                        padding: 16px !important;
+                        border-radius: 14px !important;
+                        min-height: 0 !important;
+                        flex-direction: column !important;
+                        align-items: flex-start !important;
+                        gap: 12px !important;
+                    }
+                    .overview-welcome-main {
+                        width: 100%;
+                        align-items: flex-start !important;
+                        gap: 12px !important;
+                    }
+                    .overview-welcome-avatar {
+                        width: 60px !important;
+                        height: 60px !important;
+                    }
+                    .overview-welcome-title {
+                        font-size: 18px !important;
+                        line-height: 1.2 !important;
+                    }
+                    .overview-balance-panel {
+                        width: 100%;
+                        text-align: left !important;
+                    }
+                    .overview-balance-value {
+                        font-size: 24px !important;
+                    }
+                    .overview-action-card {
+                        padding: 14px !important;
+                        border-radius: 12px !important;
+                        gap: 10px !important;
+                    }
+                    .overview-release-card {
+                        padding: 14px !important;
+                        border-radius: 14px !important;
+                    }
+                    .overview-right-card {
+                        padding: 14px !important;
+                        border-radius: 14px !important;
+                    }
+                    .overview-range-head {
+                        flex-direction: column;
+                        align-items: flex-start !important;
+                        gap: 8px;
+                    }
+                    .overview-range-group {
+                        flex-wrap: wrap;
                     }
                     .overview-release-grid {
                         grid-template-columns: 1fr !important;
@@ -1319,7 +1425,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
     );
 }
 
-function ReleasesView({ stats }) {
+function ReleasesView({ stats, showToast }) {
     const [releases, setReleases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [requestModal, setRequestModal] = useState(null);
@@ -1350,7 +1456,8 @@ function ReleasesView({ stats }) {
 
     const handleRequestSubmit = async () => {
         if (!requestDetails.trim()) {
-            alert('Please provide details for your request.');
+            if (showToast) showToast('Please provide details for your request.', 'warning');
+            else alert('Please provide details for your request.');
             return;
         }
         setSubmitting(true);
@@ -1366,15 +1473,18 @@ function ReleasesView({ stats }) {
             });
             const data = await res.json();
             if (res.ok) {
-                alert('Request submitted successfully!');
+                if (showToast) showToast('Request submitted successfully!', 'success');
+                else alert('Request submitted successfully!');
                 setRequestModal(null);
                 setRequestDetails('');
                 fetchReleases();
             } else {
-                alert(data.error || 'Request failed');
+                if (showToast) showToast(data.error || 'Request failed', 'error');
+                else alert(data.error || 'Request failed');
             }
         } catch (e) {
-            alert('Request failed');
+            if (showToast) showToast('Request failed', 'error');
+            else alert('Request failed');
         } finally {
             setSubmitting(false);
         }
@@ -1697,7 +1807,7 @@ function ReleaseCard({ release, versions = [], stats, getRequestStatus, setReque
     );
 }
 
-function SupportView({ requests, selectedId, onNavigate }) {
+function SupportView({ requests, selectedId, onNavigate, onRefresh, showToast }) {
     const selectedRequest = requests.find(r => r.id === selectedId);
     const [isCreating, setIsCreating] = useState(false);
 
@@ -1746,7 +1856,14 @@ function SupportView({ requests, selectedId, onNavigate }) {
                     <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                         <h3 style={{ fontSize: '12px', letterSpacing: '2px', fontWeight: '900' }}>CREATE_NEW_SUPPORT_TICKET</h3>
                     </div>
-                    <CreateSupportForm onComplete={() => { setIsCreating(false); onNavigate(null); window.location.reload(); }} />
+                    <CreateSupportForm
+                        onToast={showToast}
+                        onComplete={async () => {
+                            setIsCreating(false);
+                            onNavigate(null);
+                            if (onRefresh) await onRefresh();
+                        }}
+                    />
                 </div>
             </div>
         );
@@ -1825,7 +1942,7 @@ function SupportView({ requests, selectedId, onNavigate }) {
     );
 }
 
-function CreateSupportForm({ onComplete }) {
+function CreateSupportForm({ onComplete, onToast }) {
     const [type, setType] = useState('general_support');
     const [details, setDetails] = useState('');
     const [sending, setSending] = useState(false);
@@ -1841,14 +1958,18 @@ function CreateSupportForm({ onComplete }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type, details })
             });
+            const data = await res.json().catch(() => ({}));
             if (res.ok) {
+                if (onToast) onToast('Support ticket created.', 'success');
                 onComplete();
             } else {
-                alert('Failed to submit ticket');
+                if (onToast) onToast(data.error || 'Failed to submit ticket', 'error');
+                else alert('Failed to submit ticket');
             }
         } catch (e) {
             console.error(e);
-            alert('An error occurred');
+            if (onToast) onToast('An error occurred', 'error');
+            else alert('An error occurred');
         } finally {
             setSending(false);
         }
@@ -1940,7 +2061,9 @@ function RequestComments({ request, isArtist }) {
         finally { setSending(false); }
     };
 
-    if (loading) return <div style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, padding: '100px', textAlign: 'center', letterSpacing: '1px' }}>LOADING_CONVERSATION...</div>;
+    if (loading) {
+        return <DashboardLoader label="LOADING CONVERSATION" subLabel="Fetching support thread messages..." />;
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -2301,11 +2424,13 @@ function SubmitView({
 
             <style jsx>{`
                 .submit-grid {
-                    max-width: 1180px;
-                    margin: 0 auto;
+                    width: 100%;
+                    max-width: none;
+                    margin: 0;
                     display: grid;
                     grid-template-columns: minmax(0, 1fr) 320px;
                     gap: 12px;
+                    align-items: start;
                 }
                 @media (max-width: 1080px) {
                     .submit-grid {
@@ -2323,7 +2448,7 @@ function SubmitView({
 }
 
 
-function ProfileView({ onUpdate }) {
+function ProfileView({ onUpdate, showToast }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -2349,6 +2474,10 @@ function ProfileView({ onUpdate }) {
 
     const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '800' };
     const inputStyle = { width: '100%', padding: '12px 15px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, color: '#fff', fontSize: '13px', borderRadius: '8px', outline: 'none' };
+    const notify = (message, type = 'info') => {
+        if (showToast) showToast(message, type);
+        else alert(message);
+    };
 
     useEffect(() => {
         fetchProfile();
@@ -2388,38 +2517,36 @@ function ProfileView({ onUpdate }) {
                     legalName,
                     phoneNumber,
                     address,
-                    stageName,
-                    spotifyUrl,
                     notifyDemos, notifyEarnings, notifySupport, notifyContracts
                 })
             });
             if (res.ok) {
                 if (onUpdate) {
                     await onUpdate({
-                        user: { email, fullName, legalName, phoneNumber, address, stageName, spotifyUrl }
+                        user: { email, fullName, legalName, phoneNumber, address }
                     });
                 }
-                alert('Profile updated successfully!');
+                notify('Profile updated successfully!', 'success');
             } else {
-                alert('Failed to save profile');
+                notify('Failed to save profile', 'error');
             }
         } catch (e) {
             console.error(e);
-            alert('Failed to save profile');
+            notify('Failed to save profile', 'error');
         } finally { setSaving(false); }
     };
 
     const handlePasswordChange = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
-            alert('Please fill all password fields');
+            notify('Please fill all password fields', 'warning');
             return;
         }
         if (newPassword !== confirmPassword) {
-            alert('New passwords do not match');
+            notify('New passwords do not match', 'warning');
             return;
         }
         if (newPassword.length < 6) {
-            alert('New password must be at least 6 characters');
+            notify('New password must be at least 6 characters', 'warning');
             return;
         }
 
@@ -2432,23 +2559,23 @@ function ProfileView({ onUpdate }) {
             });
             const data = await res.json();
             if (res.ok) {
-                alert('Password updated successfully!');
+                notify('Password updated successfully!', 'success');
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
             } else {
-                alert(data.error || 'Failed to update password');
+                notify(data.error || 'Failed to update password', 'error');
             }
         } catch (e) {
             console.error(e);
-            alert('Failed to update password');
+            notify('Failed to update password', 'error');
         } finally {
             setPasswordSaving(false);
         }
     };
 
     if (loading) {
-        return <div style={{ textAlign: 'center', padding: '80px', color: DASHBOARD_THEME.muted }}>Loading profile...</div>;
+        return <DashboardLoader label="LOADING PROFILE" subLabel="Preparing artist account settings..." />;
     }
 
     return (
@@ -3087,7 +3214,7 @@ function ArtistContractsView({ contracts, session }) {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: '20px', pt: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '12px', color: DASHBOARD_THEME.muted, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '950', letterSpacing: '0.8px' }}>
+                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '12px', color: DASHBOARD_THEME.muted, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '950', letterSpacing: '0.8px' }}>
                                 <span>SINCE: {new Date(c.createdAt).toLocaleDateString()}</span>
                                 {c.pdfUrl && (
                                     <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '8px 15px', background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>

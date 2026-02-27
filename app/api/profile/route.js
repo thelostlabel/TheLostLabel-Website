@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 // GET: Fetch current user's profile
-export async function GET(req) {
+export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
@@ -23,15 +23,37 @@ export async function GET(req) {
                 spotifyUrl: true,
                 monthlyListeners: true,
                 role: true,
+                status: true,
                 createdAt: true,
                 notifyDemos: true,
                 notifyEarnings: true,
                 notifySupport: true,
-                notifyContracts: true
+                notifyContracts: true,
+                artist: {
+                    select: {
+                        id: true,
+                        name: true,
+                        image: true,
+                        spotifyUrl: true,
+                        monthlyListeners: true
+                    }
+                }
             }
         });
 
-        return new Response(JSON.stringify(user), { status: 200 });
+        if (!user) {
+            return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
+        }
+
+        const profile = {
+            ...user,
+            stageName: user.stageName || user.artist?.name || null,
+            spotifyUrl: user.spotifyUrl || user.artist?.spotifyUrl || null,
+            monthlyListeners: user.monthlyListeners ?? user.artist?.monthlyListeners ?? 0,
+            artistImage: user.artist?.image || null
+        };
+
+        return new Response(JSON.stringify(profile), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
@@ -52,24 +74,16 @@ export async function PATCH(req) {
             legalName,
             phoneNumber,
             address,
-            stageName,
-            spotifyUrl,
             notifyDemos,
             notifyEarnings,
             notifySupport,
             notifyContracts
         } = body;
 
-        // Check if user is linked to an Artist profile
-        const user = await prisma.user.findUnique({
-            where: { id: session.user.id },
-            include: { artist: true }
-        });
-
         // Create update object
         let dataToUpdate = {
-            email: email || undefined,
-            fullName: fullName || undefined,
+            email: typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : undefined,
+            fullName: typeof fullName === 'string' ? fullName.trim() || null : undefined,
             legalName: legalName !== undefined ? legalName : undefined,
             phoneNumber: phoneNumber !== undefined ? phoneNumber : undefined,
             address: address !== undefined ? address : undefined,
