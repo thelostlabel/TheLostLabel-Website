@@ -643,3 +643,7 @@
  POST /api/internal/discord/events/pull 200 in 160ms (compile: 1058µs, render: 159ms)
  POST /api/internal/discord/role_sync/pull 200 in 230ms (compile: 10ms, render: 220ms)
  POST /api/internal/discord/events/pull 200 in 382ms (compile: 3ms, render: 379ms)
+ POST /api/internal/discord/events/pull 200 in 233ms (compile: 810µs, render: 232ms)
+ POST /api/internal/discord/role_sync/pull 200 in 334ms (compile: 898µs, render: 333ms)
+ POST /api/internal/discord/events/pull 200 in 238ms (compile: 3ms, render: 235ms)
+ POST /api/internal/discord/role_sync/pull 200 in 198ms (compile: 4ms, render: 194ms)
