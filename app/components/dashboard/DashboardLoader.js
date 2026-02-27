@@ -1,38 +1,17 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-
-const INTRO_SEEN_KEY = 'lost_dashboard_intro_seen_v1';
 
 export default function DashboardLoader({
     label = 'LOADING DASHBOARD',
     subLabel = 'Syncing modules...',
     fullScreen = false,
-    overlay = false
+    overlay = false,
+    branded = false
 }) {
-    const [showIntroLoader] = useState(() => {
-        if (typeof window === 'undefined') return true;
-        try {
-            return window.localStorage.getItem(INTRO_SEEN_KEY) !== '1';
-        } catch {
-            return false;
-        }
-    });
-
-    useEffect(() => {
-        if (!fullScreen || !showIntroLoader || typeof window === 'undefined') return;
-        try {
-            window.localStorage.setItem(INTRO_SEEN_KEY, '1');
-        } catch {
-            // no-op (private mode / blocked storage)
-        }
-    }, [fullScreen, showIntroLoader]);
+    const showIntroLoader = Boolean(branded);
 
     if (fullScreen) {
-        if (typeof document === 'undefined') return null;
-
         const fullScreenContent = showIntroLoader ? (
             <motion.div
                 initial={{ opacity: 1, y: 0 }}
@@ -98,7 +77,7 @@ export default function DashboardLoader({
             </motion.div>
         );
 
-        return createPortal(fullScreenContent, document.body);
+        return fullScreenContent;
     }
 
     const wrapperClass = overlay
@@ -122,18 +101,25 @@ export default function DashboardLoader({
                 className="relative z-10 text-center"
             >
                 <p className="mb-3 text-[11px] font-black tracking-[0.22em] text-white/70">{label}</p>
-                <div className="text-[clamp(52px,9vw,128px)] font-black leading-none tracking-[0.34em] text-white">
-                    LOST.
-                </div>
+                {showIntroLoader ? (
+                    <div className="text-[clamp(52px,9vw,128px)] font-black leading-none tracking-[0.34em] text-white">
+                        LOST.
+                    </div>
+                ) : (
+                    <div className="mx-auto h-[2px] w-[190px] rounded-full bg-white/20">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: '100%' }}
+                            transition={{ duration: 1.2, ease: 'easeInOut', repeat: Infinity }}
+                            className="h-[2px] rounded-full bg-white/70"
+                        />
+                    </div>
+                )}
 
                 <p className="mt-5 text-xs font-semibold tracking-[0.08em] text-white/65">{subLabel}</p>
             </motion.div>
         </div>
     );
-
-    if (fullScreen && typeof document !== 'undefined') {
-        return createPortal(content, document.body);
-    }
 
     return content;
 }

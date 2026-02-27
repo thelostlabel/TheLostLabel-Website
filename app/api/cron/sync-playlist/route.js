@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
 import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
+import { enqueueArtistRoleSyncForRelease, insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 
 const DEFAULT_PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
 const NETWORK_TIMEOUT_MS = 10000;
@@ -272,6 +273,32 @@ export async function POST(req) {
             if (newReleases.length > 0) {
                 logger.info('Playlist synced with new releases', { playlistId, releaseCount: newReleases.length });
 
+                for (const release of newReleases) {
+                    try {
+                        await insertDiscordOutboxEvent(
+                            "new_release",
+                            {
+                                releaseId: release.id,
+                                playlistId,
+                                name: release.name,
+                                artistName: release.artistName,
+                                image: release.image,
+                                spotifyUrl: release.spotifyUrl,
+                                releaseDate: release.releaseDate
+                            },
+                            release.id
+                        );
+                    } catch (outboxError) {
+                        logger.error("Failed to enqueue new release outbox event", outboxError);
+                    }
+
+                    try {
+                        await enqueueArtistRoleSyncForRelease(release);
+                    } catch (roleSyncError) {
+                        logger.error("Failed to enqueue artist role sync for release", roleSyncError);
+                    }
+                }
+
                 // Filter webhooks for THIS playlist
                 const relevantWebhooks = allWebhooks.filter(wh => {
                     if (!wh.events?.includes('playlist_update') && !wh.events?.includes('new_track')) return false;
@@ -285,13 +312,14 @@ export async function POST(req) {
                 if (relevantWebhooks.length > 0) {
                     for (const release of newReleases) {
                         const embed = {
-                            title: "🎵 NEW TRACK ADDED",
-                            description: `Added to playlist: **${playlistId === DEFAULT_PLAYLIST_ID ? 'LOST OFFICIAL' : 'Custom Playlist'}**`,
+                            title: "💿 NEW PLAYLIST ADDITION",
+                            description: `A new track was detected in **${playlistId === DEFAULT_PLAYLIST_ID ? 'LOST OFFICIAL' : 'Custom Playlist'}**. Album details:`,
                             color: 0x00ff88,
                             fields: [
-                                { name: "Track", value: release.name, inline: true },
+                                { name: "Album", value: release.name, inline: true },
                                 { name: "Artist", value: release.artistName, inline: true },
-                                { name: "Released", value: new Date(release.releaseDate).toLocaleDateString(), inline: true }
+                                { name: "Release Date", value: new Date(release.releaseDate).toLocaleDateString(), inline: true },
+                                { name: "Spotify Album", value: release.spotifyUrl ? `[Open in Spotify](${release.spotifyUrl})` : "N/A", inline: false }
                             ],
                             thumbnail: { url: release.image },
                             url: release.spotifyUrl,

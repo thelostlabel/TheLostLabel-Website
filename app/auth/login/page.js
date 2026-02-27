@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { signIn, getSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import BackgroundEffects from '../../components/BackgroundEffects';
@@ -12,6 +12,13 @@ export default function Login() {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+
+    const getSafeCallbackUrl = () => {
+        if (typeof window === 'undefined') return '/dashboard';
+        const raw = new URLSearchParams(window.location.search).get('callbackUrl');
+        if (!raw || !raw.startsWith('/')) return '/dashboard';
+        return raw;
+    };
 
     const getFriendlyError = (rawError) => {
         switch (rawError) {
@@ -44,7 +51,7 @@ export default function Login() {
             setError(result.error);
             setLoading(false);
         } else {
-            router.push('/dashboard');
+            router.push(getSafeCallbackUrl());
             router.refresh();
         }
     };

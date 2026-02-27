@@ -207,6 +207,7 @@ export default function UsersView({ users, onRefresh }) {
                                             { key: 'admin_view_communications', label: 'COMMUNICATIONS' },
                                             { key: 'admin_view_content', label: 'CONTENT' },
                                             { key: 'admin_view_webhooks', label: 'WEBHOOKS' },
+                                            { key: 'admin_view_discord_bridge', label: 'DISCORD BRIDGE' },
                                             { key: 'admin_view_settings', label: 'SETTINGS' }
                                         ].map(p => (
                                             <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', color: editForm.permissions?.[p.key] === true ? 'var(--accent)' : '#333' }}>

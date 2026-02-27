@@ -138,11 +138,11 @@ export default function ContractSigningModal({ contract, user, onClose, onComple
                         <div style={{ background: '#0a0a0b', padding: '20px', borderRadius: '8px', marginBottom: '20px', fontSize: '12px', color: '#ccc' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                                 <span>ARTIST SHARE:</span>
-                                <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{(contract.artistShare * 100).toFixed(0)}%</span>
+                                <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{(Number(contract?.artistShare || 0) * 100).toFixed(0)}%</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                                 <span>LABEL SHARE:</span>
-                                <span style={{ color: '#fff', fontWeight: 'bold' }}>{(contract.labelShare * 100).toFixed(0)}%</span>
+                                <span style={{ color: '#fff', fontWeight: 'bold' }}>{(Number(contract?.labelShare || 0) * 100).toFixed(0)}%</span>
                             </div>
                             <p style={{ marginTop: '15px', lineHeight: '1.5', color: '#666' }}>
                                 By clicking sign, you agree to the terms of the Lost Music Group distribution agreement.

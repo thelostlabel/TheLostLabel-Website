@@ -53,6 +53,11 @@ export default function ProjectView({ projectId, onBack, user }) {
     const [audio, setAudio] = useState(null);
 
     useEffect(() => {
+        if (!projectId || projectId === 'null' || projectId === 'undefined') {
+            setProject(null);
+            setLoading(false);
+            return;
+        }
         const fetchProject = async () => {
             setLoading(true);
             try {
@@ -105,6 +110,9 @@ export default function ProjectView({ projectId, onBack, user }) {
 
     if (loading) {
         return <DashboardLoader label="LOADING PROJECT" subLabel="Gathering project timeline and files..." />;
+    }
+    if (!projectId || projectId === 'null' || projectId === 'undefined') {
+        return <div style={{ padding: '50px', textAlign: 'center', color: '#888' }}>Select a demo from MY DEMOS to open project details.</div>;
     }
     if (!project) return <div style={{ padding: '50px', textAlign: 'center', color: 'red' }}>PROJECT NOT FOUND</div>;
 
@@ -232,11 +240,11 @@ export default function ProjectView({ projectId, onBack, user }) {
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 <li style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
                                     <span style={{ color: '#666' }}>ARTIST SHARE</span>
-                                    <span style={{ color: '#fff', fontWeight: '800' }}>{project.contract?.artistShare * 100}%</span>
+                                    <span style={{ color: '#fff', fontWeight: '800' }}>{Math.round((Number(project.contract?.artistShare) || 0) * 100)}%</span>
                                 </li>
                                 <li style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
                                     <span style={{ color: '#666' }}>LABEL SHARE</span>
-                                    <span style={{ color: '#fff', fontWeight: '800' }}>{project.contract?.labelShare * 100}%</span>
+                                    <span style={{ color: '#fff', fontWeight: '800' }}>{Math.round((Number(project.contract?.labelShare) || 0) * 100)}%</span>
                                 </li>
                                 <li style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
                                     <span style={{ color: '#666' }}>TERM</span>

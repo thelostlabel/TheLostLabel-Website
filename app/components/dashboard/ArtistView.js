@@ -9,7 +9,7 @@ import {
     XCircle, Clock, AlertCircle, Trash2, Send, ExternalLink,
     Briefcase, DollarSign, CreditCard, Users, ClipboardList,
     MessageSquare, ArrowLeft, SendHorizontal, BarChart3, TrendingUp, Shield, Bell, Lock,
-    ChevronDown, ChevronRight, Filter, Download, LayoutDashboard, List
+    ChevronDown, ChevronRight, Filter, Download, LayoutDashboard, List, Link2, Unlink
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '@/app/components/ToastContext';
@@ -285,6 +285,13 @@ export default function ArtistView() {
     const [releases, setReleases] = useState([]);
     const [requests, setRequests] = useState([]);
     const [selectedRequestId, setSelectedRequestId] = useState(null);
+    const [discordLink, setDiscordLink] = useState({
+        linked: false,
+        discordUserId: null,
+        discordUsername: null,
+        linkedAt: null,
+        loading: true
+    });
     const [loading, setLoading] = useState(true);
     const showLoading = useMinimumLoader(loading, 900);
     const [actionRequiredContract, setActionRequiredContract] = useState(null);
@@ -302,7 +309,12 @@ export default function ArtistView() {
 
 
     useEffect(() => {
-        setSelectedRequestId(searchParams.get('id'));
+        const rawId = searchParams.get('id');
+        if (!rawId || rawId === 'null' || rawId === 'undefined') {
+            setSelectedRequestId(null);
+            return;
+        }
+        setSelectedRequestId(rawId);
     }, [searchParams]);
 
     const [stats, setStats] = useState({
@@ -436,6 +448,24 @@ export default function ArtistView() {
         finally { setLoading(false); }
     }, []);
 
+    const fetchDiscordLink = useCallback(async () => {
+        try {
+            const res = await fetch('/api/profile/discord-link');
+            if (!res.ok) return;
+            const data = await res.json();
+            setDiscordLink({
+                linked: Boolean(data?.linked),
+                discordUserId: data?.discordUserId || null,
+                discordUsername: data?.discordUsername || null,
+                linkedAt: data?.linkedAt || null,
+                loading: false
+            });
+        } catch (e) {
+            console.error(e);
+            setDiscordLink((prev) => ({ ...prev, loading: false }));
+        }
+    }, []);
+
     useEffect(() => {
         if (view === 'overview') fetchStats();
         else if (view === 'demos') fetchDemos();
@@ -459,6 +489,12 @@ export default function ArtistView() {
         };
         if (session) checkPendingContracts();
     }, [session]);
+
+    useEffect(() => {
+        if (session?.user?.id) {
+            fetchDiscordLink();
+        }
+    }, [session, fetchDiscordLink, searchParams]);
 
 
     // File handling
@@ -612,6 +648,8 @@ export default function ArtistView() {
         window.dispatchEvent(new Event('popstate'));
     }, []);
 
+    const hasDiscordLink = Boolean(discordLink?.linked && discordLink?.discordUserId);
+
     if (!showLoading && !hasPermission(viewToPerm[view])) {
         return (
             <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
@@ -680,13 +718,22 @@ export default function ArtistView() {
                     }}
                 />
             ) : view === 'demos' ? (
-                <DemosView demos={demos} onNavigate={(id) => {
-                    const url = new URL(window.location);
-                    url.searchParams.set('view', 'project');
-                    url.searchParams.set('id', id);
-                    window.history.pushState({}, '', url);
-                    window.dispatchEvent(new Event('popstate'));
-                }} />
+                <>
+                    {!hasDiscordLink && (
+                        <DiscordLinkSoftBlockNotice
+                            title="DISCORD LINK RECOMMENDED"
+                            message="Demo updates from Discord commands are unavailable until you link your Discord account."
+                            onLink={() => navigateToView('profile')}
+                        />
+                    )}
+                    <DemosView demos={demos} onNavigate={(id) => {
+                        const url = new URL(window.location);
+                        url.searchParams.set('view', 'project');
+                        url.searchParams.set('id', id);
+                        window.history.pushState({}, '', url);
+                        window.dispatchEvent(new Event('popstate'));
+                    }} />
+                </>
             ) : view === 'releases' ? (
                 <ReleasesView stats={stats} showToast={showToast} />
             ) : view === 'submit' ? (
@@ -708,17 +755,35 @@ export default function ArtistView() {
                     handleSubmit={handleSubmit}
                 />
             ) : view === 'earnings' ? (
-                <ArtistEarningsView
-                    earnings={earnings}
-                    payments={payments}
-                    session={session}
-                    pagination={earningsPagination}
-                    onPageChange={fetchEarnings}
-                    stats={stats}
-                    onWithdrawClick={() => setWithdrawModalOpen(true)}
-                />
+                <>
+                    {!hasDiscordLink && (
+                        <DiscordLinkSoftBlockNotice
+                            title="DISCORD LINK REQUIRED FOR BOT EARNINGS COMMAND"
+                            message="Use Discord commands like /earnings after linking your account."
+                            onLink={() => navigateToView('profile')}
+                        />
+                    )}
+                    <ArtistEarningsView
+                        earnings={earnings}
+                        payments={payments}
+                        session={session}
+                        pagination={earningsPagination}
+                        onPageChange={fetchEarnings}
+                        stats={stats}
+                        onWithdrawClick={() => setWithdrawModalOpen(true)}
+                    />
+                </>
             ) : view === 'contracts' ? (
-                <ArtistContractsView contracts={contracts} session={session} />
+                <>
+                    {!hasDiscordLink && (
+                        <DiscordLinkSoftBlockNotice
+                            title="DISCORD LINK REQUIRED FOR BOT CONTRACT COMMAND"
+                            message="Use Discord commands like /contracts after linking your account."
+                            onLink={() => navigateToView('profile')}
+                        />
+                    )}
+                    <ArtistContractsView contracts={contracts} session={session} />
+                </>
             ) : view === 'support' ? (
                 <SupportView
                     requests={requests}
@@ -746,7 +811,13 @@ export default function ArtistView() {
                     }}
                 />
             ) : view === 'profile' ? (
-                <ProfileView onUpdate={update} showToast={showToast} />
+                <ProfileView
+                    onUpdate={update}
+                    showToast={showToast}
+                    discordLink={discordLink}
+                    linkStatusCode={searchParams.get('discord')}
+                    onDiscordLinkChange={fetchDiscordLink}
+                />
             ) : null}
 
             {/* Withdrawal Modal */}
@@ -2447,8 +2518,38 @@ function SubmitView({
     );
 }
 
+function DiscordLinkSoftBlockNotice({ title, message, onLink }) {
+    return (
+        <div style={{
+            marginBottom: '12px',
+            padding: '14px 16px',
+            borderRadius: '12px',
+            border: '1px solid rgba(250, 204, 21, 0.35)',
+            background: 'linear-gradient(160deg, rgba(250, 204, 21, 0.12), rgba(255, 255, 255, 0.02))',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertCircle size={16} color="#facc15" />
+                <div>
+                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{title}</div>
+                    <div style={{ fontSize: '11px', color: '#d1d5db', marginTop: '3px' }}>{message}</div>
+                </div>
+            </div>
+            <button
+                type="button"
+                onClick={onLink}
+                style={{ ...btnStyle, border: '1px solid rgba(255,255,255,0.2)', padding: '8px 12px', fontSize: '11px' }}
+            >
+                <Link2 size={12} /> LINK NOW
+            </button>
+        </div>
+    );
+}
 
-function ProfileView({ onUpdate, showToast }) {
+function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDiscordLinkChange }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -2471,6 +2572,9 @@ function ProfileView({ onUpdate, showToast }) {
     const [notifyEarnings, setNotifyEarnings] = useState(true);
     const [notifySupport, setNotifySupport] = useState(true);
     const [notifyContracts, setNotifyContracts] = useState(true);
+    const [linking, setLinking] = useState(false);
+    const [unlinking, setUnlinking] = useState(false);
+    const [oauthStatus, setOauthStatus] = useState(null);
 
     const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '800' };
     const inputStyle = { width: '100%', padding: '12px 15px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, color: '#fff', fontSize: '13px', borderRadius: '8px', outline: 'none' };
@@ -2482,6 +2586,36 @@ function ProfileView({ onUpdate, showToast }) {
     useEffect(() => {
         fetchProfile();
     }, []);
+
+    useEffect(() => {
+        if (!linkStatusCode) return;
+        const statusMap = {
+            linked: { type: 'success', text: 'Discord account linked successfully.' },
+            "already-linked": { type: 'warning', text: 'This Discord account is already linked to another user.' },
+            "invalid-state": { type: 'error', text: 'Discord link session expired. Please try linking again.' },
+            "expired-state": { type: 'error', text: 'Discord link session expired. Please try linking again.' },
+            "missing-state": { type: 'error', text: 'Invalid Discord link state.' },
+            "session-required": { type: 'error', text: 'Please sign in again and retry linking.' },
+            "oauth-missing": { type: 'error', text: 'Discord OAuth callback is missing required values.' },
+            "oauth-not-configured": { type: 'error', text: 'Discord OAuth is not configured yet.' },
+            "bridge-disabled": { type: 'error', text: 'Discord bridge is currently disabled.' },
+            "token-exchange-failed": { type: 'error', text: 'Discord token exchange failed.' },
+            "identify-failed": { type: 'error', text: 'Discord identity fetch failed.' },
+            "identify-empty": { type: 'error', text: 'Discord identity payload is empty.' },
+            "link-failed": { type: 'error', text: 'Failed to link Discord account.' }
+        };
+        const mapped = statusMap[linkStatusCode] || {
+            type: 'warning',
+            text: `Discord status: ${linkStatusCode}`
+        };
+        setOauthStatus(mapped);
+
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('discord');
+            window.history.replaceState({}, '', `${url.pathname}?${url.searchParams.toString()}`.replace(/\?$/, ''));
+        }
+    }, [linkStatusCode]);
 
     const fetchProfile = async () => {
         try {
@@ -2571,6 +2705,56 @@ function ProfileView({ onUpdate, showToast }) {
             notify('Failed to update password', 'error');
         } finally {
             setPasswordSaving(false);
+        }
+    };
+
+    const handleStartDiscordLink = async () => {
+        setLinking(true);
+        try {
+            const res = await fetch('/api/profile/discord-link', { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                notify(data?.error || 'Failed to start Discord link flow.', 'error');
+                return;
+            }
+            if (data?.linked) {
+                notify('Discord account is already linked.', 'info');
+                if (onDiscordLinkChange) await onDiscordLinkChange();
+                return;
+            }
+            if (!data?.authorizeUrl) {
+                notify('Missing Discord authorize URL.', 'error');
+                return;
+            }
+            window.location.href = data.authorizeUrl;
+        } catch (e) {
+            console.error(e);
+            notify('Failed to start Discord link flow.', 'error');
+        } finally {
+            setLinking(false);
+        }
+    };
+
+    const handleDiscordUnlink = async () => {
+        const confirmed = window.confirm('Disconnect your Discord account from LOST?');
+        if (!confirmed) return;
+
+        setUnlinking(true);
+        try {
+            const res = await fetch('/api/profile/discord-link', { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                notify(data?.error || 'Failed to unlink Discord account.', 'error');
+                return;
+            }
+            notify('Discord account disconnected.', 'success');
+            if (onDiscordLinkChange) await onDiscordLinkChange();
+            setOauthStatus(null);
+        } catch (e) {
+            console.error(e);
+            notify('Failed to unlink Discord account.', 'error');
+        } finally {
+            setUnlinking(false);
         }
     };
 
@@ -2686,6 +2870,75 @@ function ProfileView({ onUpdate, showToast }) {
 
                 {/* RIGHT COLUMN: Password & Notifications */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', padding: '30px' }}>
+                        <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Link2 size={14} color="var(--accent)" /> DISCORD ACCOUNT
+                        </h3>
+
+                        {oauthStatus && (
+                            <div style={{
+                                marginBottom: '16px',
+                                borderRadius: '8px',
+                                border: `1px solid ${oauthStatus.type === 'success' ? 'rgba(34,197,94,0.45)' : oauthStatus.type === 'warning' ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.4)'}`,
+                                background: oauthStatus.type === 'success' ? 'rgba(34,197,94,0.10)' : oauthStatus.type === 'warning' ? 'rgba(250,204,21,0.10)' : 'rgba(239,68,68,0.10)',
+                                color: '#e5e7eb',
+                                padding: '10px 12px',
+                                fontSize: '12px',
+                                fontWeight: '700'
+                            }}>
+                                {oauthStatus.text}
+                            </div>
+                        )}
+
+                        <div style={{ border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '8px', padding: '12px', background: DASHBOARD_THEME.surfaceSoft }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>
+                                    {discordLink?.linked ? 'CONNECTED' : 'NOT CONNECTED'}
+                                </span>
+                                {discordLink?.linked ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', fontSize: '10px', fontWeight: '900', borderRadius: '999px', color: '#bbf7d0', border: '1px solid rgba(34,197,94,0.45)', background: 'rgba(34,197,94,0.15)' }}>
+                                        <CheckCircle size={11} /> VERIFIED
+                                    </span>
+                                ) : null}
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '6px', fontSize: '12px', color: DASHBOARD_THEME.muted }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Discord Username</span>
+                                    <span style={{ color: '#fff', fontWeight: '800' }}>{discordLink?.discordUsername || '-'}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Discord ID</span>
+                                    <span style={{ color: '#fff', fontWeight: '800' }}>{discordLink?.discordUserId || '-'}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Linked At</span>
+                                    <span style={{ color: '#fff', fontWeight: '800' }}>
+                                        {discordLink?.linkedAt ? new Date(discordLink.linkedAt).toLocaleString() : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+                            <button
+                                type="button"
+                                onClick={handleStartDiscordLink}
+                                disabled={linking}
+                                style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', flex: 1, justifyContent: 'center', opacity: linking ? 0.7 : 1 }}
+                            >
+                                {linking ? 'REDIRECTING...' : 'LINK DISCORD'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDiscordUnlink}
+                                disabled={unlinking || !discordLink?.linked}
+                                style={{ ...btnStyle, flex: 1, justifyContent: 'center', opacity: (unlinking || !discordLink?.linked) ? 0.5 : 1 }}
+                            >
+                                <Unlink size={13} /> {unlinking ? 'UNLINKING...' : 'UNLINK'}
+                            </button>
+                        </div>
+                    </motion.div>
 
                     {/* Security Section */}
                     <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', padding: '30px' }}>
@@ -3173,14 +3426,14 @@ function ArtistContractsView({ contracts, session }) {
                                     <span style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '950', letterSpacing: '0.8px' }}>{isOwner ? 'TOTAL_ARTIST_SHARE' : 'YOUR_EFFECTIVE_SHARE'}</span>
                                     <span style={{ fontSize: '15px', color: 'var(--accent)', fontWeight: '950' }}>
                                         {isOwner
-                                            ? `${Math.round(c.artistShare * 100)}%`
+                                            ? `${Math.round((Number(c.artistShare) || 0) * 100)}%`
                                             : (() => {
                                                 const userSplits = c.splits?.filter(s =>
                                                     s.userId === session?.user?.id ||
                                                     (s.artistId && session?.user?.artist?.id === s.artistId)
                                                 ) || [];
                                                 const totalUserSplitPercentage = userSplits.reduce((sum, s) => sum + parseFloat(s.percentage), 0);
-                                                return `${((c.artistShare * totalUserSplitPercentage) / 100 * 100).toFixed(1)}%`;
+                                                return `${(((Number(c.artistShare) || 0) * totalUserSplitPercentage) / 100 * 100).toFixed(1)}%`;
                                             })()
                                         }
                                     </span>
@@ -3204,7 +3457,7 @@ function ArtistContractsView({ contracts, session }) {
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '15px' }}>
                                     <span style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '950', letterSpacing: '0.8px' }}>LABEL_SHARE</span>
-                                    <span style={{ fontSize: '15px', color: '#fff', fontWeight: '950' }}>{Math.round(c.labelShare * 100)}%</span>
+                                    <span style={{ fontSize: '15px', color: '#fff', fontWeight: '950' }}>{Math.round((Number(c.labelShare) || 0) * 100)}%</span>
                                 </div>
                             </div>
 

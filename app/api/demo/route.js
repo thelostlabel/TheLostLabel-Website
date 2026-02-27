@@ -6,6 +6,7 @@ import { sendMail } from "@/lib/mail";
 import { generateDemoReceivedEmail } from "@/lib/mail-templates";
 import { z } from "zod";
 import rateLimit from "@/lib/rate-limit";
+import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 
 // Rate limiter: 10 demos per hour per user
 const limiter = rateLimit({
@@ -85,6 +86,24 @@ export async function POST(req) {
                 files: true
             }
         });
+
+        // Internal Discord bridge outbox (bot-driven delivery)
+        try {
+            await insertDiscordOutboxEvent(
+                "demo_submitted",
+                {
+                    demoId: demo.id,
+                    title: demo.title,
+                    genre: demo.genre,
+                    status: demo.status,
+                    stageName: session.user.stageName || session.user.email,
+                    source: "web"
+                },
+                demo.id
+            );
+        } catch (outboxError) {
+            console.error("[Demo POST] Failed to enqueue Discord outbox event:", outboxError);
+        }
 
         /* 
         // Send Discord notification

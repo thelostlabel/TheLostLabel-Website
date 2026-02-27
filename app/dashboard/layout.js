@@ -31,7 +31,7 @@ import {
     X,
     Search,
     HelpCircle,
-    Book
+    Bot
 } from 'lucide-react';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
@@ -107,6 +107,7 @@ function DashboardLayoutContent({ children }) {
         { name: 'COMMUNICATIONS', view: 'communications', icon: <Mail size={16} />, perm: 'admin_view_communications' },
         { name: 'CONTENT', view: 'content', icon: <File size={16} />, perm: 'admin_view_content' },
         { name: 'WEBHOOKS', view: 'webhooks', icon: <Bell size={16} />, perm: 'admin_view_webhooks' },
+        { name: 'DISCORD BRIDGE', view: 'discord-bridge', icon: <Bot size={16} />, perm: 'admin_view_discord_bridge' },
         { name: 'SETTINGS', view: 'settings', icon: <Settings size={16} />, perm: 'admin_view_settings' }
     ].filter((item) => hasAdminPermission(item.perm));
 
@@ -1018,6 +1019,14 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 @media (max-width: 768px) {
+                    .dashboard-content-container {
+                        overflow-x: hidden;
+                    }
+
+                    .dashboard-content-container .dashboard-view {
+                        max-width: 100%;
+                    }
+
                     .dashboard-content-container table {
                         display: block;
                         width: 100%;
@@ -1106,6 +1115,24 @@ function DashboardLayoutContent({ children }) {
 
                     .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1fr 1fr"] {
                         grid-template-columns: 1fr !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="width: 850px"],
+                    .dashboard-content-container .dashboard-view [style*="width: 800px"],
+                    .dashboard-content-container .dashboard-view [style*="width: 700px"],
+                    .dashboard-content-container .dashboard-view [style*="width: 600px"],
+                    .dashboard-content-container .dashboard-view [style*="width: 500px"] {
+                        width: min(100vw - 26px, 100%) !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="max-width: 800px"],
+                    .dashboard-content-container .dashboard-view [style*="max-width: 700px"],
+                    .dashboard-content-container .dashboard-view [style*="max-width: 600px"] {
+                        max-width: 100% !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="padding: 40px"] {
+                        padding: 18px !important;
                     }
                 }
 
