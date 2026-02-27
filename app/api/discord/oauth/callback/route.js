@@ -15,25 +15,34 @@ function isExpired(dateValue) {
     return Number.isNaN(date.getTime()) || date.getTime() < Date.now();
 }
 
-function redirectWithCode(req, code) {
-    const url = new URL("/dashboard", req.url);
+function resolvePublicBaseUrl(bridgeConfig, req) {
+    const fromConfig = String(bridgeConfig?.publicBaseUrl || "").trim();
+    const fromEnv = String(process.env.NEXTAUTH_URL || "").trim();
+    const selected = fromConfig || fromEnv || new URL(req.url).origin;
+    return selected.replace(/\/+$/, "");
+}
+
+function redirectWithCode(baseUrl, code) {
+    const url = new URL("/dashboard", baseUrl);
     url.searchParams.set("view", "my-profile");
     url.searchParams.set("discord", code);
     return Response.redirect(url);
 }
 
 export async function GET(req) {
+    const bridgeConfig = await getDiscordBridgeConfig();
+    const baseUrl = resolvePublicBaseUrl(bridgeConfig, req);
     const url = new URL(req.url);
     const state = String(url.searchParams.get("state") || "").trim();
     const code = String(url.searchParams.get("code") || "").trim();
 
     if (!state || !code) {
-        return redirectWithCode(req, "oauth-missing");
+        return redirectWithCode(baseUrl, "oauth-missing");
     }
 
     const stateRow = await getDiscordOauthState(state);
     if (!stateRow || stateRow.consumed_at || isExpired(stateRow.expires_at)) {
-        return redirectWithCode(req, "invalid-state");
+        return redirectWithCode(baseUrl, "invalid-state");
     }
 
     let userId = stateRow.user_id;
@@ -43,16 +52,15 @@ export async function GET(req) {
     }
 
     if (!userId) {
-        return redirectWithCode(req, "session-required");
+        return redirectWithCode(baseUrl, "session-required");
     }
 
-    const bridgeConfig = await getDiscordBridgeConfig();
     if (!bridgeConfig.enabled) {
-        return redirectWithCode(req, "bridge-disabled");
+        return redirectWithCode(baseUrl, "bridge-disabled");
     }
 
     if (!bridgeConfig.oauthClientId || !bridgeConfig.oauthClientSecret || !bridgeConfig.oauthRedirectUri) {
-        return redirectWithCode(req, "oauth-not-configured");
+        return redirectWithCode(baseUrl, "oauth-not-configured");
     }
 
     try {
@@ -69,12 +77,12 @@ export async function GET(req) {
         });
 
         if (!tokenResponse.ok) {
-            return redirectWithCode(req, "token-exchange-failed");
+            return redirectWithCode(baseUrl, "token-exchange-failed");
         }
 
         const tokenPayload = await tokenResponse.json();
         if (!tokenPayload?.access_token) {
-            return redirectWithCode(req, "token-missing");
+            return redirectWithCode(baseUrl, "token-missing");
         }
 
         const meResponse = await fetch("https://discord.com/api/users/@me", {
@@ -84,12 +92,12 @@ export async function GET(req) {
         });
 
         if (!meResponse.ok) {
-            return redirectWithCode(req, "identify-failed");
+            return redirectWithCode(baseUrl, "identify-failed");
         }
 
         const discordUser = await meResponse.json();
         if (!discordUser?.id) {
-            return redirectWithCode(req, "identify-empty");
+            return redirectWithCode(baseUrl, "identify-empty");
         }
 
         await linkDiscordAccountToUser({
@@ -116,13 +124,13 @@ export async function GET(req) {
         }
 
         await consumeDiscordOauthState(state);
-        return redirectWithCode(req, "linked");
+        return redirectWithCode(baseUrl, "linked");
     } catch (error) {
         if (error?.code === "DISCORD_ACCOUNT_ALREADY_LINKED") {
-            return redirectWithCode(req, "already-linked");
+            return redirectWithCode(baseUrl, "already-linked");
         }
 
         console.error("Discord OAuth callback error:", error);
-        return redirectWithCode(req, "link-failed");
+        return redirectWithCode(baseUrl, "link-failed");
     }
 }
