@@ -3,6 +3,22 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateSupportStatusEmail } from "@/lib/mail-templates";
+import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
+
+const WEBHOOK_TIMEOUT_MS = 10000;
+const RETRY_OPTIONS = {
+    retries: 2,
+    baseDelayMs: 300,
+    maxDelayMs: 2500,
+    jitter: 0.2
+};
+
+const createTransientWebhookError = (status) => {
+    const error = new Error(`ChangeRequest webhook transient status: ${status}`);
+    error.isTransient = true;
+    error.status = status;
+    return error;
+};
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -81,11 +97,23 @@ export async function PATCH(req) {
                     timestamp: new Date().toISOString()
                 };
 
-                await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ embeds: [embed] })
-                });
+                await fetchWithRetry(async () => {
+                    const response = await fetchWithTimeout(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ embeds: [embed] })
+                    }, WEBHOOK_TIMEOUT_MS);
+
+                    if (isTransientStatus(response.status)) {
+                        throw createTransientWebhookError(response.status);
+                    }
+
+                    if (!response.ok) {
+                        console.error(`Webhook request failed with status ${response.status}`);
+                    }
+
+                    return response;
+                }, RETRY_OPTIONS);
             }
         } catch (webhookError) {
             console.error("Webhook Error:", webhookError);

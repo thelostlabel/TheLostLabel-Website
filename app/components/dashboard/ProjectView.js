@@ -7,6 +7,7 @@ import {
     Play, Pause, Download, RefreshCw
 } from 'lucide-react';
 import ContractSigningModal from './ContractSigningModal';
+import DashboardLoader from './DashboardLoader';
 
 const glassStyle = {
     background: 'rgba(255,255,255,0.02)',
@@ -102,7 +103,9 @@ export default function ProjectView({ projectId, onBack, user }) {
         return 0;
     };
 
-    if (loading) return <div style={{ padding: '50px', textAlign: 'center', color: '#666', letterSpacing: '2px' }}>LOADING PROJECT...</div>;
+    if (loading) {
+        return <DashboardLoader label="LOADING PROJECT" subLabel="Gathering project timeline and files..." />;
+    }
     if (!project) return <div style={{ padding: '50px', textAlign: 'center', color: 'red' }}>PROJECT NOT FOUND</div>;
 
     const currentStageIndex = getCurrentStageIndex(project);
@@ -132,7 +135,7 @@ export default function ProjectView({ projectId, onBack, user }) {
 
             {/* Timeline Stepper */}
             <div style={{ ...glassStyle, padding: '30px', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: '50%', left: '80px', right: '80px', height: '2px', background: 'rgba(255,255,255,0.05)', currentPage: '12px' }}>
+                <div style={{ position: 'absolute', top: '50%', left: '80px', right: '80px', height: '2px', background: 'rgba(255,255,255,0.05)' }}>
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}

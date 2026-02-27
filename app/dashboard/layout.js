@@ -2,7 +2,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -34,14 +34,18 @@ import {
     Book
 } from 'lucide-react';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 function DashboardLayoutContent({ children }) {
     const { data: session, status } = useSession();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const currentView = searchParams.get('view') || 'overview';
+    const showAuthLoader = useMinimumLoader(status === 'loading', 900);
 
-    const [isRailExpanded, setIsRailExpanded] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [themeMode, setThemeMode] = useState(() => {
         if (typeof window === 'undefined') return 'dark';
         const storedTheme = localStorage.getItem('dashboard_theme_mode');
@@ -52,7 +56,6 @@ function DashboardLayoutContent({ children }) {
         const storedDensity = localStorage.getItem('dashboard_density_mode');
         return storedDensity === 'compact' || storedDensity === 'comfortable' ? storedDensity : 'comfortable';
     });
-    const [isViewTransitioning, setIsViewTransitioning] = useState(false);
 
     useEffect(() => {
         localStorage.setItem('dashboard_theme_mode', themeMode);
@@ -63,21 +66,16 @@ function DashboardLayoutContent({ children }) {
     }, [densityMode]);
 
     useEffect(() => {
-        setIsMobileNavOpen(false);
+        const frame = requestAnimationFrame(() => setIsMobileNavOpen(false));
+        return () => cancelAnimationFrame(frame);
     }, [currentView]);
 
-    useEffect(() => {
-        setIsViewTransitioning(true);
-        const timer = setTimeout(() => setIsViewTransitioning(false), 360);
-        return () => clearTimeout(timer);
-    }, [currentView]);
-
-    if (status === 'loading') {
+    if (showAuthLoader) {
         return <DashboardLoader fullScreen label="AUTHENTICATING" subLabel="Verifying access permissions..." />;
     }
 
     if (!session) {
-        return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#637089', background: '#0b0e14' }}>Access Denied</div>;
+        return <div className="flex h-screen items-center justify-center bg-[#0b0e14] text-sm font-semibold text-[#637089]">Access Denied</div>;
     }
 
     const { role } = session.user;
@@ -123,20 +121,57 @@ function DashboardLayoutContent({ children }) {
         { name: 'MY PROFILE', view: 'my-profile', icon: <User size={16} />, perm: 'view_profile' }
     ].filter((item) => hasPermission(item.perm));
 
-    const sections = (isAdmin || isAR)
+    const sections = ((isAdmin || isAR)
         ? [
             { label: 'MANAGEMENT', items: mgmtItems },
             { label: 'PERSONAL PORTAL', items: personalItems }
         ]
-        : [{ label: 'ARTIST DASHBOARD', items: personalItems }];
+        : [{ label: 'ARTIST DASHBOARD', items: personalItems }]).filter((section) => section.items.length > 0);
 
-    const flatItems = sections.flatMap((section) => section.items);
-    const activeItem = flatItems.find((item) => item.view === currentView);
+    const isPersonalView = currentView.startsWith('my-');
+    const canSwitchModes = (isAdmin || isAR) && mgmtItems.length > 0 && personalItems.length > 0;
+    const displayedSections = canSwitchModes
+        ? [isPersonalView ? { label: 'ARTIST PORTAL', items: personalItems } : { label: 'MANAGEMENT', items: mgmtItems }]
+        : sections;
+
+    const switchDashboardMode = (mode) => {
+        const targetView = mode === 'artist' ? personalItems[0]?.view : mgmtItems[0]?.view;
+        if (!targetView || targetView === currentView) return;
+        router.push(`/dashboard?view=${targetView}`);
+        setIsMobileNavOpen(false);
+    };
+
+    const deduped = new Map();
+    displayedSections.flatMap((section) => section.items).forEach((item) => {
+        if (!deduped.has(item.view)) deduped.set(item.view, item);
+    });
+    const searchableItems = Array.from(deduped.values());
+
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const searchResults = !normalizedSearch
+        ? searchableItems.slice(0, 8)
+        : searchableItems
+            .filter((item) =>
+                item.name.toLowerCase().includes(normalizedSearch) ||
+                item.view.toLowerCase().includes(normalizedSearch)
+            )
+            .slice(0, 8);
+
+    const navigateFromSearch = (item) => {
+        if (!item?.view || item.view === currentView) {
+            setIsSearchOpen(false);
+            return;
+        }
+        router.push(`/dashboard?view=${item.view}`);
+        setSearchQuery('');
+        setIsSearchOpen(false);
+        setIsMobileNavOpen(false);
+    };
 
     const isLight = themeMode === 'light';
     const isCompact = densityMode === 'compact';
-    const railWidth = isRailExpanded ? (isCompact ? 188 : 206) : (isCompact ? 72 : 82);
-    const showRailLabels = isRailExpanded || isMobileNavOpen;
+    const railWidth = isCompact ? 228 : 248;
+    const showRailLabels = true;
 
     const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
@@ -184,22 +219,50 @@ function DashboardLayoutContent({ children }) {
             </button>
 
             <aside
-                className={`dashboard-rail ${isRailExpanded ? 'expanded' : ''} ${isMobileNavOpen ? 'open' : ''}`}
+                className={`dashboard-rail expanded ${isMobileNavOpen ? 'open' : ''}`}
                 style={{ width: `${railWidth}px` }}
             >
                 <div className="rail-top">
-                    <div className="rail-user-avatar">
-                        {session.user.image ? (
-                            <img src={session.user.image} alt="Profile" />
-                        ) : (
-                            <span>{session.user.stageName?.[0] || 'U'}</span>
+                    <div className="rail-user-head">
+                        <div className="rail-user-avatar">
+                            {session.user.image ? (
+                                <img src={session.user.image} alt="Profile" />
+                            ) : (
+                                <span>{session.user.stageName?.[0] || 'U'}</span>
+                            )}
+                        </div>
+                        {showRailLabels && (
+                            <div className="rail-user-meta">
+                                <span className="rail-user-name">{session.user.stageName || session.user.name || session.user.email}</span>
+                                <small className="rail-user-role">{(session.user.role || 'artist').toUpperCase()}</small>
+                            </div>
                         )}
                     </div>
+
+                    {canSwitchModes && showRailLabels && (
+                        <div className="rail-mode-switch">
+                            <button
+                                type="button"
+                                className={`rail-mode-btn ${!isPersonalView ? 'active' : ''}`}
+                                onClick={() => switchDashboardMode('admin')}
+                            >
+                                ADMIN
+                            </button>
+                            <button
+                                type="button"
+                                className={`rail-mode-btn ${isPersonalView ? 'active' : ''}`}
+                                onClick={() => switchDashboardMode('artist')}
+                            >
+                                ARTIST
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <nav className="rail-nav">
-                    {sections.map((section) => (
-                        <React.Fragment key={section.label}>
+                    {displayedSections.map((section) => (
+                        <div key={section.label} className="rail-section">
+                            {showRailLabels && <p className="rail-section-label">{section.label}</p>}
                             {section.items.map((item) => {
                                 const isActive = currentView === item.view;
                                 return (
@@ -214,13 +277,26 @@ function DashboardLayoutContent({ children }) {
                                     </Link>
                                 );
                             })}
-                        </React.Fragment>
+                        </div>
                     ))}
                 </nav>
 
                 <div className="rail-footer">
                     <button className="rail-footer-btn" title="Help & Support">
                         <HelpCircle size={18} />
+                        {showRailLabels && <span>HELP</span>}
+                    </button>
+                    <button
+                        className="rail-footer-btn"
+                        title="Logout"
+                        onClick={() => {
+                            const ok = window.confirm('Are you sure you want to log out?');
+                            if (!ok) return;
+                            signOut({ callbackUrl: '/' });
+                        }}
+                    >
+                        <LogOut size={18} />
+                        {showRailLabels && <span>LOGOUT</span>}
                     </button>
                 </div>
             </aside>
@@ -240,7 +316,48 @@ function DashboardLayoutContent({ children }) {
                         <div className="window-toolbar-right">
                             <div className="bc-search-container">
                                 <Search size={16} className="bc-search-icon" />
-                                <input type="text" placeholder="" className="bc-search-input" />
+                                <input
+                                    type="text"
+                                    placeholder="Search views..."
+                                    className="bc-search-input"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setIsSearchOpen(true);
+                                    }}
+                                    onFocus={() => setIsSearchOpen(true)}
+                                    onBlur={() => {
+                                        window.setTimeout(() => setIsSearchOpen(false), 120);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && searchResults.length > 0) {
+                                            e.preventDefault();
+                                            navigateFromSearch(searchResults[0]);
+                                        }
+                                        if (e.key === 'Escape') {
+                                            setIsSearchOpen(false);
+                                        }
+                                    }}
+                                />
+                                {isSearchOpen && (
+                                    <div className="bc-search-results">
+                                        {searchResults.length === 0 ? (
+                                            <div className="bc-search-empty">No matching views</div>
+                                        ) : (
+                                            searchResults.map((item) => (
+                                                <button
+                                                    key={item.view}
+                                                    type="button"
+                                                    className={`bc-search-result-item ${currentView === item.view ? 'active' : ''}`}
+                                                    onClick={() => navigateFromSearch(item)}
+                                                >
+                                                    <span className="bc-search-result-icon">{item.icon}</span>
+                                                    <span className="bc-search-result-name">{item.name}</span>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="bc-user-avatar">
@@ -266,18 +383,6 @@ function DashboardLayoutContent({ children }) {
                                 {children}
                             </motion.section>
                         </AnimatePresence>
-                        <AnimatePresence>
-                            {isViewTransitioning && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.15 }}
-                                >
-                                    <DashboardLoader overlay label="LOADING MODULE" subLabel={`Opening ${activeItem?.name || 'Dashboard'}...`} />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
                     </div>
                 </div>
             </main>
@@ -299,6 +404,64 @@ function DashboardLayoutContent({ children }) {
                 .dashboard-shell h4 {
                     font-family: 'Sora', 'Space Grotesk', system-ui, -apple-system, sans-serif !important;
                     letter-spacing: 0.2px;
+                }
+
+                .dashboard-content-container .dashboard-view button:not(.glow-button) {
+                    border-radius: 10px !important;
+                    border: 1px solid var(--border) !important;
+                    font-size: 11px !important;
+                    font-weight: 900 !important;
+                    letter-spacing: 0.1em !important;
+                    transition: filter 0.2s ease, border-color 0.2s ease !important;
+                }
+
+                .dashboard-content-container .dashboard-view button:not(.glow-button):hover {
+                    border-color: rgba(255, 255, 255, 0.2) !important;
+                    filter: brightness(1.08);
+                }
+
+                .dashboard-content-container .dashboard-view input,
+                .dashboard-content-container .dashboard-view select,
+                .dashboard-content-container .dashboard-view textarea {
+                    border-radius: 10px !important;
+                    border: 1px solid var(--border) !important;
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    color: #fff !important;
+                    font-size: 12px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.02em !important;
+                }
+
+                .dashboard-content-container .dashboard-view input:focus,
+                .dashboard-content-container .dashboard-view select:focus,
+                .dashboard-content-container .dashboard-view textarea:focus {
+                    border-color: rgba(255, 255, 255, 0.25) !important;
+                    background: rgba(255, 255, 255, 0.06) !important;
+                    outline: none !important;
+                }
+
+                .dashboard-content-container .dashboard-view table {
+                    border-collapse: separate !important;
+                    border-spacing: 0 !important;
+                    border: 1px solid var(--border) !important;
+                    border-radius: 12px !important;
+                    overflow: hidden !important;
+                    background: rgba(255, 255, 255, 0.02) !important;
+                }
+
+                .dashboard-content-container .dashboard-view th {
+                    background: #141414 !important;
+                    color: #9ca3af !important;
+                    font-size: 10px !important;
+                    letter-spacing: 0.12em !important;
+                    border-bottom: 1px solid var(--border) !important;
+                    text-transform: uppercase !important;
+                }
+
+                .dashboard-content-container .dashboard-view td {
+                    color: #d1d5db !important;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+                    font-size: 12px !important;
                 }
 
                 nav.glass {
@@ -323,16 +486,23 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .rail-top {
-                    padding: 24px 10px;
+                    padding: 16px 12px 10px;
                     display: flex;
                     flex-direction: column;
+                    align-items: stretch;
+                    gap: 12px;
+                    border-bottom: 1px solid var(--border);
+                }
+
+                .rail-user-head {
+                    display: flex;
                     align-items: center;
-                    gap: 16px;
+                    gap: 10px;
                 }
 
                 .rail-user-avatar {
-                    width: 36px;
-                    height: 36px;
+                    width: 40px;
+                    height: 40px;
                     border-radius: 50%;
                     overflow: hidden;
                     border: 2px solid var(--border);
@@ -342,6 +512,7 @@ function DashboardLayoutContent({ children }) {
                     font-size: 14px;
                     font-weight: 800;
                     color: var(--text);
+                    flex-shrink: 0;
                 }
 
                 .rail-user-avatar img {
@@ -350,22 +521,95 @@ function DashboardLayoutContent({ children }) {
                     object-fit: cover;
                 }
 
-                .rail-nav {
-                    flex: 1;
-                    padding: 12px 10px;
+                .rail-user-meta {
+                    min-width: 0;
                     display: flex;
                     flex-direction: column;
-                    align-items: center;
-                    gap: 16px;
+                    gap: 2px;
+                }
+
+                .rail-user-name {
+                    color: #fff;
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.08em;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    text-transform: uppercase;
+                }
+
+                .rail-user-role {
+                    color: var(--muted);
+                    font-size: 10px;
+                    font-weight: 700;
+                    letter-spacing: 0.06em;
+                }
+
+                .rail-mode-switch {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 6px;
+                }
+
+                .rail-mode-btn {
+                    height: 30px;
+                    border-radius: 8px;
+                    border: 1px solid var(--border);
+                    background: transparent;
+                    color: var(--muted);
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0.09em;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .rail-mode-btn:hover {
+                    color: #fff;
+                    border-color: rgba(255, 255, 255, 0.2);
+                }
+
+                .rail-mode-btn.active {
+                    color: #fff;
+                    background: rgba(255, 255, 255, 0.09);
+                    border-color: rgba(255, 255, 255, 0.22);
+                }
+
+                .rail-nav {
+                    flex: 1;
+                    padding: 10px 8px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                }
+
+                .rail-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .rail-section-label {
+                    margin: 6px 8px 4px;
+                    color: var(--muted);
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0.12em;
+                    text-transform: uppercase;
                 }
 
                 .rail-item {
-                    width: 42px;
-                    height: 42px;
+                    width: 100%;
+                    min-height: 40px;
                     border-radius: 12px;
                     display: flex;
                     align-items: center;
-                    justify-content: center;
+                    justify-content: flex-start;
+                    gap: 10px;
+                    padding: 0 10px;
                     text-decoration: none;
                     color: var(--muted);
                     background: transparent;
@@ -386,27 +630,45 @@ function DashboardLayoutContent({ children }) {
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    width: 18px;
+                    height: 18px;
+                    flex-shrink: 0;
+                }
+
+                .rail-item-label {
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.08em;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
 
                 .rail-footer {
-                    padding: 24px 0;
+                    padding: 10px 8px 14px;
                     display: flex;
                     flex-direction: column;
-                    align-items: center;
+                    gap: 8px;
+                    border-top: 1px solid var(--border);
                 }
 
                 .rail-footer-btn {
-                    width: 42px;
-                    height: 42px;
+                    width: 100%;
+                    height: 40px;
                     border-radius: 12px;
                     display: flex;
                     align-items: center;
-                    justify-content: center;
+                    justify-content: flex-start;
+                    gap: 10px;
                     border: 0;
                     background: transparent;
                     color: var(--muted);
+                    padding: 0 10px;
                     cursor: pointer;
                     transition: all 0.2s ease;
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.08em;
                 }
 
                 .rail-footer-btn:hover {
@@ -461,6 +723,79 @@ function DashboardLayoutContent({ children }) {
                 .bc-search-input:focus {
                     background: rgba(255, 255, 255, 0.06);
                     border-color: var(--accent);
+                }
+
+                .bc-search-results {
+                    position: absolute;
+                    top: calc(100% + 8px);
+                    left: 0;
+                    right: 0;
+                    background: #101010;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
+                    padding: 6px;
+                    z-index: 40;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .bc-search-result-item {
+                    width: 100%;
+                    min-height: 38px;
+                    border-radius: 8px;
+                    border: 1px solid transparent;
+                    background: transparent;
+                    color: #fff;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 0 10px;
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.08em;
+                    cursor: pointer;
+                    text-align: left;
+                    transition: all 0.16s ease;
+                }
+
+                .bc-search-result-item:hover {
+                    background: rgba(255, 255, 255, 0.06);
+                    border-color: rgba(255, 255, 255, 0.14);
+                }
+
+                .bc-search-result-item.active {
+                    background: rgba(209, 213, 219, 0.12);
+                    color: #d1d5db;
+                    border-color: rgba(209, 213, 219, 0.32);
+                }
+
+                .bc-search-result-icon {
+                    width: 14px;
+                    height: 14px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                }
+
+                .bc-search-result-name {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .bc-search-empty {
+                    min-height: 38px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    padding: 0 10px;
+                    font-size: 11px;
+                    color: var(--muted);
+                    font-weight: 700;
+                    letter-spacing: 0.06em;
                 }
 
                 .bc-user-avatar {
@@ -582,6 +917,9 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 @media (max-width: 1080px) {
+                    .bc-search-container {
+                        width: 220px;
+                    }
                     .window-user-meta {
                         display: none;
                     }
@@ -596,6 +934,14 @@ function DashboardLayoutContent({ children }) {
                 @media (max-width: 880px) {
                     .mobile-rail-toggle {
                         display: inline-flex;
+                    }
+
+                    .bc-search-container {
+                        display: none;
+                    }
+
+                    .window-toolbar-right {
+                        gap: 10px;
                     }
 
                     .dashboard-rail {
@@ -634,6 +980,10 @@ function DashboardLayoutContent({ children }) {
                     .dashboard-content-container {
                         padding: 14px 12px 16px;
                     }
+
+                    .artist-dashboard-view {
+                        padding: 16px !important;
+                    }
                 }
 
                 @media (max-width: 680px) {
@@ -651,6 +1001,15 @@ function DashboardLayoutContent({ children }) {
 
                     .window-search {
                         max-width: 180px;
+                    }
+
+                    .bc-logo-text {
+                        font-size: 14px;
+                        letter-spacing: 2px !important;
+                    }
+
+                    .artist-dashboard-view {
+                        padding: 12px !important;
                     }
                 }
 
@@ -736,6 +1095,18 @@ function DashboardLayoutContent({ children }) {
                     .earnings-form > div {
                         grid-column: auto !important;
                     }
+
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 2fr 1fr 1fr 1fr"] {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 2fr 1fr"] {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1fr 1fr"] {
+                        grid-template-columns: 1fr !important;
+                    }
                 }
 
                 ::-webkit-scrollbar {
@@ -758,9 +1129,11 @@ export default function DashboardLayout({ children }) {
     return (
         <Suspense
             fallback={
-                <div style={{ background: '#05020a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <p style={{ fontSize: '10px', letterSpacing: '4px', fontWeight: '900', color: '#555' }}>SYNCING_INTERFACE...</p>
-                </div>
+                <DashboardLoader
+                    fullScreen
+                    label="BOOTING DASHBOARD"
+                    subLabel="Workspace is being prepared..."
+                />
             }
         >
             <DashboardLayoutContent>{children}</DashboardLayoutContent>

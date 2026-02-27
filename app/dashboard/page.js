@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import ArtistView from '@/app/components/dashboard/ArtistView';
 import AdminView from '@/app/components/dashboard/AdminView';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 function DashboardContent() {
     const { data: session, status, update } = useSession();
     const router = useRouter();
     const searchParams = useSearchParams();
     const view = searchParams.get('view') || 'overview';
+    const showAuthLoader = useMinimumLoader(status === 'loading', 900);
 
     // Real-time status sync for pending/rejected users
     React.useEffect(() => {
@@ -36,8 +38,34 @@ function DashboardContent() {
         }
     }, [session, update]);
 
-    if (status === 'loading') {
-        return <DashboardLoader label="AUTHENTICATING" subLabel="Checking your dashboard access..." />;
+    React.useEffect(() => {
+        if (!session?.user || session.user.image) return;
+
+        const syncArtistAvatar = async () => {
+            try {
+                const res = await fetch('/api/profile');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data?.artistImage) {
+                    await update({
+                        user: {
+                            image: data.artistImage,
+                            stageName: data.stageName || session.user.stageName,
+                            spotifyUrl: data.spotifyUrl || session.user.spotifyUrl,
+                            status: data.status || session.user.status
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Artist avatar sync failed', error);
+            }
+        };
+
+        syncArtistAvatar();
+    }, [session, update]);
+
+    if (showAuthLoader) {
+        return <DashboardLoader fullScreen label="AUTHENTICATING" subLabel="Checking your dashboard access..." />;
     }
 
     if (!session) {
@@ -49,29 +77,16 @@ function DashboardContent() {
 
     if (accountStatus === 'pending' && role !== 'admin') {
         return (
-            <div style={{
-                minHeight: '80vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px'
-            }}>
-                <div style={{
-                    maxWidth: '500px',
-                    textAlign: 'center',
-                    background: 'rgba(255,170,0,0.05)',
-                    border: '1px solid rgba(255,170,0,0.2)',
-                    padding: '40px',
-                    borderRadius: '24px'
-                }}>
-                    <h2 style={{ fontSize: '24px', letterSpacing: '4px', color: '#ffaa00', marginBottom: '20px' }}>HESABINIZ ONAY BEKLİYOR</h2>
-                    <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.6', marginBottom: '30px' }}>
+            <div className="flex min-h-[80vh] items-center justify-center p-5">
+                <div className="w-full max-w-[500px] rounded-3xl border border-amber-400/25 bg-amber-400/5 p-10 text-center">
+                    <h2 className="mb-5 text-2xl font-black tracking-[0.24em] text-amber-400">HESABINIZ ONAY BEKLİYOR</h2>
+                    <p className="mb-8 text-sm leading-relaxed text-neutral-400">
                         Kaydınız başarıyla alındı. LOST. ekibi başvurunuzu inceledikten sonra hesabınız aktif edilecektir.<br /><br />
                         Onaylandığında e-posta ile bilgilendirileceksiniz.
                     </p>
                     <button
                         onClick={() => window.location.href = '/'}
-                        style={{ background: 'none', border: '1px solid #333', color: '#666', padding: '10px 20px', fontSize: '11px', cursor: 'pointer', borderRadius: '12px' }}
+                        className="rounded-xl border border-white/20 bg-transparent px-5 py-2.5 text-[11px] font-semibold tracking-[0.08em] text-neutral-400 transition hover:border-white/35 hover:text-white"
                     >
                         ANA SAYFAYA DÖN
                     </button>
@@ -82,10 +97,10 @@ function DashboardContent() {
 
     if (accountStatus === 'rejected' && role !== 'admin') {
         return (
-            <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ maxWidth: '500px', textAlign: 'center', background: 'rgba(255,68,68,0.05)', border: '1px solid rgba(255,68,68,0.2)', padding: '40px', borderRadius: '16px' }}>
-                    <h2 style={{ fontSize: '24px', letterSpacing: '4px', color: '#ff4444', marginBottom: '20px' }}>BAŞVURUNUZ REDDEDİLDİ</h2>
-                    <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.6' }}>
+            <div className="flex min-h-[80vh] items-center justify-center p-5">
+                <div className="w-full max-w-[500px] rounded-2xl border border-red-400/25 bg-red-400/5 p-10 text-center">
+                    <h2 className="mb-5 text-2xl font-black tracking-[0.24em] text-red-400">BAŞVURUNUZ REDDEDİLDİ</h2>
+                    <p className="text-sm leading-relaxed text-neutral-400">
                         Üzgünüz, sanatçı başvurunuz şu aşamada kabul edilemedi. Daha fazla bilgi için destek ekibiyle iletişime geçebilirsiniz.
                     </p>
                 </div>
@@ -105,7 +120,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
     return (
-        <Suspense fallback={<DashboardLoader label="LOADING DASHBOARD" subLabel="Preparing workspace..." />}>
+        <Suspense fallback={<DashboardLoader fullScreen label="LOADING DASHBOARD" subLabel="Preparing workspace..." />}>
             <DashboardContent />
         </Suspense>
     );

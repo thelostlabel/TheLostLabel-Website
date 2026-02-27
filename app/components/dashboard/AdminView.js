@@ -19,12 +19,33 @@ import WebhooksView from './admin/WebhooksView';
 import CommunicationsView from './admin/CommunicationsView';
 import SettingsView from './admin/SettingsView';
 import DashboardLoader from './DashboardLoader';
+import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 export default function AdminView() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const { showToast, showConfirm } = useToast();
-    const view = searchParams.get('view') || 'overview';
+    const rawView = searchParams.get('view') || 'overview';
+    const aliasViewMap = {
+        submit: 'submissions'
+    };
+    const normalizedView = aliasViewMap[rawView] || rawView;
+    const knownViews = new Set([
+        'overview',
+        'submissions',
+        'artists',
+        'users',
+        'requests',
+        'content',
+        'webhooks',
+        'contracts',
+        'earnings',
+        'payments',
+        'releases',
+        'settings',
+        'communications'
+    ]);
+    const view = knownViews.has(normalizedView) ? normalizedView : 'overview';
 
     const [submissions, setSubmissions] = useState([]);
     const [artists, setArtists] = useState([]);
@@ -37,6 +58,7 @@ export default function AdminView() {
     const [payments, setPayments] = useState([]);
     const [releases, setReleases] = useState([]);
     const [loading, setLoading] = useState(true);
+    const showLoading = useMinimumLoader(loading, 900);
 
     const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
 
@@ -227,21 +249,21 @@ export default function AdminView() {
         communications: 'admin_view_communications'
     };
 
-    if (!loading && !hasAdminPermission(viewToPerm[view])) {
+    if (!showLoading && !hasAdminPermission(viewToPerm[view])) {
         return (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-                <h2 style={{ color: 'var(--status-error)' }}>ACCESS_DENIED</h2>
-                <p style={{ color: '#666' }}>You do not have permission to view this section.</p>
+            <div className="dashboard-view py-10 text-center">
+                <h2 className="text-xl font-black tracking-[0.16em] text-red-400">ACCESS_DENIED</h2>
+                <p className="mt-2 text-sm text-neutral-500">You do not have permission to view this section.</p>
             </div>
         );
     }
 
-    if (loading) {
-        return <DashboardLoader label="LOADING ADMIN PANEL" subLabel={`Fetching ${view.toUpperCase()} data...`} />;
+    if (showLoading) {
+        return <DashboardLoader fullScreen label="LOADING ADMIN PANEL" subLabel={`Fetching ${view.toUpperCase()} data...`} />;
     }
 
     return (
-        <div style={{ padding: '0px' }}>
+        <div className="dashboard-view p-0">
             {view === 'overview' && <HomeView onNavigate={(v) => {
                 const params = new URLSearchParams(window.location.search);
                 params.set('view', v);

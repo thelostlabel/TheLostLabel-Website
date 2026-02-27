@@ -3,6 +3,14 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 
+function extractSpotifyArtistId(url) {
+    if (!url || typeof url !== "string") return null;
+    const parts = url.split("/").filter(Boolean);
+    const lastPart = parts.pop() || "";
+    const id = lastPart.split("?")[0]?.trim();
+    return id || null;
+}
+
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -12,62 +20,84 @@ export async function POST(req) {
     try {
         const body = await req.json();
         const { releaseId, type, details } = body;
+        const normalizedType = typeof type === "string" ? type.trim().toLowerCase() : "";
+        const normalizedDetails = typeof details === "string" ? details.trim() : "";
+
+        if (!normalizedType) {
+            return new Response(JSON.stringify({ error: "Request type is required." }), { status: 400 });
+        }
+        if (normalizedType.length > 64) {
+            return new Response(JSON.stringify({ error: "Request type is too long." }), { status: 400 });
+        }
+        if (!normalizedDetails) {
+            return new Response(JSON.stringify({ error: "Request details are required." }), { status: 400 });
+        }
+        if (normalizedDetails.length > 5000) {
+            return new Response(JSON.stringify({ error: "Request details are too long." }), { status: 400 });
+        }
 
         // Verify System Settings (optional: check if request type is enabled)
         const settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
-        if (settings) {
-            const config = JSON.parse(settings.config);
-            // e.g. if type is 'cover_art' and config.allowCoverArt is false
-            if (type === 'cover_art' && config.allowCoverArt === false) {
+        if (settings?.config) {
+            let config = {};
+            try {
+                config = JSON.parse(settings.config);
+            } catch (parseError) {
+                console.warn("Invalid system settings JSON, falling back to defaults:", parseError?.message || parseError);
+            }
+            if (normalizedType === 'cover_art' && config.allowCoverArt === false) {
                 return new Response(JSON.stringify({ error: "This request type is currently disabled by admin." }), { status: 403 });
             }
         }
 
         const request = await prisma.changeRequest.create({
             data: {
-                type,
-                details,
+                type: normalizedType,
+                details: normalizedDetails,
                 status: 'pending',
-                releaseId,
+                releaseId: releaseId || null,
                 userId: session.user.id
             }
         });
 
         const supportEmail = process.env.SUPPORT_EMAIL || 'support@thelostlabel.com';
 
-        // 1. Notify Artist (Confirmation)
-        await sendMail({
-            to: session.user.email,
-            subject: 'Support Ticket Created Successfully - LOST.',
-            html: `
-                <div style="font-family: sans-serif; color: #333;">
-                    <h2>Support Ticket Created</h2>
-                    <p>Hello <strong>${session.user.stageName || 'Artist'}</strong>,</p>
-                    <p>Your support request has been created successfully.</p>
-                    <p><strong>Type:</strong> ${type.toUpperCase().replace('_', ' ')}</p>
-                    <p><strong>Details:</strong> ${details}</p>
-                    <p>Our support team will review it shortly. You can track status from your dashboard.</p>
-                    <br>
-                    <p>Best,<br>LOST. Team</p>
-                </div>
-            `
-        });
-
-        // 2. Notify Support mailbox
-        await sendMail({
-            to: supportEmail,
-            subject: `New Support Ticket: ${type.toUpperCase()} from ${session.user.stageName || session.user.email}`,
-            html: `
-                <div style="font-family: sans-serif; color: #333;">
-                    <h2>New Support Ticket</h2>
-                    <p><strong>Artist:</strong> ${session.user.stageName || 'Unknown'} (${session.user.email})</p>
-                    <p><strong>Type:</strong> ${type.toUpperCase().replace('_', ' ')}</p>
-                    <p><strong>Details:</strong> ${details}</p>
-                    <br>
-                    <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
-                </div>
-            `
-        });
+        await Promise.allSettled([
+            sendMail({
+                to: session.user.email,
+                subject: 'Support Ticket Created Successfully - LOST.',
+                html: `
+                    <div style="font-family: sans-serif; color: #333;">
+                        <h2>Support Ticket Created</h2>
+                        <p>Hello <strong>${session.user.stageName || 'Artist'}</strong>,</p>
+                        <p>Your support request has been created successfully.</p>
+                        <p><strong>Type:</strong> ${normalizedType.toUpperCase().replace('_', ' ')}</p>
+                        <p><strong>Details:</strong> ${normalizedDetails}</p>
+                        <p>Our support team will review it shortly. You can track status from your dashboard.</p>
+                        <br>
+                        <p>Best,<br>LOST. Team</p>
+                    </div>
+                `
+            }).catch((mailError) => {
+                console.error("Artist support confirmation email failed:", mailError);
+            }),
+            sendMail({
+                to: supportEmail,
+                subject: `New Support Ticket: ${normalizedType.toUpperCase()} from ${session.user.stageName || session.user.email}`,
+                html: `
+                    <div style="font-family: sans-serif; color: #333;">
+                        <h2>New Support Ticket</h2>
+                        <p><strong>Artist:</strong> ${session.user.stageName || 'Unknown'} (${session.user.email})</p>
+                        <p><strong>Type:</strong> ${normalizedType.toUpperCase().replace('_', ' ')}</p>
+                        <p><strong>Details:</strong> ${normalizedDetails}</p>
+                        <br>
+                        <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
+                    </div>
+                `
+            }).catch((mailError) => {
+                console.error("Support mailbox notification email failed:", mailError);
+            })
+        ]);
 
         return new Response(JSON.stringify(request), { status: 201 });
     } catch (e) {
@@ -86,27 +116,26 @@ export async function GET(req) {
         // 1. Get user's Spotify ID
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            select: { spotifyUrl: true }
+            select: {
+                spotifyUrl: true,
+                artist: { select: { spotifyUrl: true } }
+            }
         });
 
-        let spotifyId = null;
-        if (user?.spotifyUrl) {
-            spotifyId = user.spotifyUrl.split('/').filter(Boolean).pop()?.split('?')[0];
+        const spotifyId = extractSpotifyArtistId(user?.artist?.spotifyUrl) || extractSpotifyArtistId(user?.spotifyUrl);
+
+        const accessConditions = [{ userId: session.user.id }];
+        if (spotifyId) {
+            accessConditions.push({
+                release: {
+                    artistsJson: { contains: spotifyId }
+                }
+            });
         }
 
-        // 2. Find requests
-        // - Requests created by user
-        // - OR Requests for releases where user is a collaborator (matching spotifyId in artistsJson)
         const requests = await prisma.changeRequest.findMany({
             where: {
-                OR: [
-                    { userId: session.user.id },
-                    spotifyId ? {
-                        release: {
-                            artistsJson: { contains: spotifyId }
-                        }
-                    } : {}
-                ]
+                OR: accessConditions
             },
             orderBy: { createdAt: 'desc' },
             include: { release: true }

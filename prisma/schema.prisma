@@ -61,6 +61,9 @@ model Demo {
   contract             Contract?
   artist               User       @relation(fields: [artistId], references: [id], onDelete: Cascade)
   files                DemoFile[]
+
+  @@index([status, createdAt])
+  @@index([artistId, createdAt])
 }
 
 model DemoFile {
@@ -165,6 +168,10 @@ model ChangeRequest {
   user         User                   @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
   release      Release?               @relation(fields: [releaseId], references: [id])
   comments     ChangeRequestComment[]
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([assignedToId, createdAt])
 }
 
 model ChangeRequestComment {
@@ -208,6 +215,11 @@ model Contract {
   user               User?          @relation(fields: [userId], references: [id])
   earnings           Earning[]
   splits             RoyaltySplit[]
+
+  @@index([userId, createdAt])
+  @@index([artistId, createdAt])
+  @@index([releaseId])
+  @@index([status, createdAt])
 }
 
 model RoyaltySplit {
@@ -239,6 +251,9 @@ model Earning {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   contract      Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId, period])
+  @@index([createdAt])
 }
 
 model Payment {
@@ -254,4 +269,7 @@ model Payment {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }

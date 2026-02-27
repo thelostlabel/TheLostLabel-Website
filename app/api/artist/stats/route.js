@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getArtistBalanceStats } from "@/lib/artist-balance";
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -13,7 +14,6 @@ export async function GET(req) {
         const userEmail = session.user.email;
         const stageName = session.user.stageName;
 
-        // 1. Fetch User and Linked Artist Profile first to get the correct identifiers
         const userProfile = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -30,37 +30,33 @@ export async function GET(req) {
             }
         });
 
-        // Determine identifiers for data fetching
         const artistId = userProfile?.artist?.id;
         const artistStageName = userProfile?.artist?.name || stageName;
 
         let spotifyId = null;
         if (userProfile?.artist?.spotifyUrl) {
-            const parts = userProfile.artist.spotifyUrl.split('/').filter(p => p.trim() !== '');
+            const parts = userProfile.artist.spotifyUrl.split('/').filter((p) => p.trim() !== '');
             const lastPart = parts.pop() || '';
             spotifyId = lastPart.split('?')[0];
         }
 
-        // 2. Fetch Fundamental Data Concurrently based on verified links
-        const [artistProfile, payments, releasesAgg, demosCount] = await Promise.all([
+        const [artistProfile, releasesAgg, demosCount, financialStats] = await Promise.all([
             prisma.artist.findFirst({
-                where: artistId ? { id: artistId } : {
-                    OR: [
-                        { userId: userId },
-                        { email: userEmail },
-                        { name: stageName }
-                    ]
-                },
+                where: artistId
+                    ? { id: artistId }
+                    : {
+                        OR: [
+                            { userId: userId },
+                            { email: userEmail },
+                            { name: stageName }
+                        ]
+                    },
                 include: {
                     statsHistory: {
-                        take: 30, // Last 30 snapshots
+                        take: 30,
                         orderBy: { date: 'desc' }
                     }
                 }
-            }),
-            prisma.payment.findMany({
-                where: { userId: userId, status: { in: ['completed', 'pending'] } },
-                select: { amount: true, status: true }
             }),
             prisma.release.aggregate({
                 _count: { id: true },
@@ -73,92 +69,16 @@ export async function GET(req) {
                     ]
                 }
             }),
-            prisma.demo.count({ where: { artistId: userId } })
+            prisma.demo.count({ where: { artistId: userId } }),
+            getArtistBalanceStats({ userId, userEmail })
         ]);
 
         const releasesCount = releasesAgg._count.id || 0;
         const totalSongs = releasesAgg._sum.totalTracks || 0;
-
         const monthlyListeners = artistProfile?.monthlyListeners || userProfile?.monthlyListeners || 0;
 
-        // 3. Fetch All Splits for this user
-        const splits = await prisma.royaltySplit.findMany({
-            where: {
-                OR: [
-                    { userId: userId },
-                    { email: userEmail }
-                ]
-            },
-            include: {
-                contract: {
-                    select: {
-                        earnings: {
-                            select: {
-                                artistAmount: true,
-                                streams: true,
-                                createdAt: true,
-                                source: true
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // 4. Process Trends and Totals
-        let totalEarnings = 0;
-        let totalStreams = 0;
-        const sourceStreams = {};
-        const monthlyTrend = {};
-        const dailyTrend = {};
-        const now = new Date();
-
-        // Initialize trends
-        for (let i = 0; i < 6; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            monthlyTrend[key] = { label: key, value: 0 };
-        }
-
-        for (let i = 0; i < 30; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-            const key = d.toISOString().slice(0, 10);
-            dailyTrend[key] = { label: key, value: 0 };
-        }
-
-        splits.forEach(split => {
-            const contract = split.contract;
-            if (contract && contract.earnings) {
-                contract.earnings.forEach(earning => {
-                    const amount = (earning.artistAmount * split.percentage) / 100;
-                    totalEarnings += amount;
-                    if (earning.streams) {
-                        totalStreams += earning.streams;
-                        const src = (earning.source || 'other').toLowerCase();
-                        sourceStreams[src] = (sourceStreams[src] || 0) + earning.streams;
-                    }
-
-                    const d = new Date(earning.createdAt);
-                    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                    if (monthlyTrend[key]) monthlyTrend[key].value += amount;
-
-                    const dailyKey = d.toISOString().slice(0, 10);
-                    if (dailyTrend[dailyKey]) dailyTrend[dailyKey].value += amount;
-                });
-            }
-        });
-
-        const totalPaid = payments
-            .filter((p) => p.status === 'completed')
-            .reduce((sum, p) => sum + p.amount, 0);
-        const totalPending = payments
-            .filter((p) => p.status === 'pending')
-            .reduce((sum, p) => sum + p.amount, 0);
-        const available = totalEarnings - totalPaid - totalPending;
-
-        // 5. Transform Listener History
         const listenerTrend = (artistProfile?.statsHistory || [])
-            .map(h => ({
+            .map((h) => ({
                 label: new Date(h.date).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' }),
                 value: h.monthlyListeners,
                 followers: h.followers || 0
@@ -170,22 +90,21 @@ export async function GET(req) {
             artistName: artistStageName,
             artistImage: artistProfile?.image || userProfile?.artist?.image,
             listeners: monthlyListeners,
-            earnings: totalEarnings,
-            streams: totalStreams,
-            withdrawn: totalPaid,
-            paid: totalPaid,
-            pending: totalPending,
-            available,
-            balance: available,
+            earnings: financialStats.totalEarnings,
+            streams: financialStats.totalStreams,
+            withdrawn: financialStats.totalPaid,
+            paid: financialStats.totalPaid,
+            pending: financialStats.totalPending,
+            available: financialStats.available,
+            balance: financialStats.available,
             releases: releasesCount,
             songs: totalSongs,
             demos: demosCount,
-            trends: Object.values(monthlyTrend).reverse(),
-            trendsDaily: Object.values(dailyTrend).reverse(),
-            listenerTrend: listenerTrend,
-            sourceStreams
+            trends: financialStats.monthlyTrend,
+            trendsDaily: financialStats.dailyTrend,
+            listenerTrend,
+            sourceStreams: financialStats.sourceStreams
         }), { status: 200 });
-
     } catch (e) {
         console.error("Artist Stats Error:", e);
         return new Response(JSON.stringify({ error: e.message }), { status: 500 });

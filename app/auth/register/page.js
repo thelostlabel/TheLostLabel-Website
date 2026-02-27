@@ -201,6 +201,9 @@ export default function Register() {
                                         required
                                         className="input-focus-glow"
                                     />
+                                    <p style={{ marginTop: '8px', fontSize: '10px', color: '#777', letterSpacing: '0.6px', fontWeight: '600' }}>
+                                        If found on Spotify, your artist profile will be linked automatically.
+                                    </p>
                                 </div>
                             </div>
 

@@ -80,35 +80,46 @@ export async function PATCH(req) {
             data: updateData
         });
 
-        // Trigger Approval Actions
+        // Trigger approval side effects without failing the main user update.
+        // This prevents local SMTP or integration issues from returning a PATCH 500.
         if (status === 'approved' && oldUser.status !== 'approved') {
-            // 1. Link to Artist Profile if exists
-            await linkUserToArtist(userId);
+            try {
+                await linkUserToArtist(userId);
+            } catch (error) {
+                console.error("[Users PATCH] Artist linking failed during approval:", error);
+            }
 
-            // 2. Send Email
-            await sendMail({
-                to: updatedUser.email,
-                subject: "Your Account Has Been Approved | LOST.",
-                html: `
-                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0d10; color: #fff; padding: 32px; border-radius: 12px; border: 1px solid #1b1f24;">
-                        <h1 style="color: #9ef01a; letter-spacing: 1px; margin: 0 0 16px 0;">Your Account Has Been Approved</h1>
-                        <p style="font-size: 16px; line-height: 1.6;">
-                            Your application to join LOST. has been approved. You can now sign in and start using your dashboard.
-                        </p>
-                        <div style="margin-top: 24px;">
-                            <a href="${process.env.NEXTAUTH_URL}/auth/login" style="background: #ffffff; color: #111; padding: 12px 20px; text-decoration: none; font-weight: 700; border-radius: 8px; display: inline-block;">Sign In to Dashboard</a>
+            try {
+                await sendMail({
+                    to: updatedUser.email,
+                    subject: "Your Account Has Been Approved | LOST.",
+                    html: `
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0d10; color: #fff; padding: 32px; border-radius: 12px; border: 1px solid #1b1f24;">
+                            <h1 style="color: #9ef01a; letter-spacing: 1px; margin: 0 0 16px 0;">Your Account Has Been Approved</h1>
+                            <p style="font-size: 16px; line-height: 1.6;">
+                                Your application to join LOST. has been approved. You can now sign in and start using your dashboard.
+                            </p>
+                            <div style="margin-top: 24px;">
+                                <a href="${process.env.NEXTAUTH_URL}/auth/login" style="background: #ffffff; color: #111; padding: 12px 20px; text-decoration: none; font-weight: 700; border-radius: 8px; display: inline-block;">Sign In to Dashboard</a>
+                            </div>
+                            <p style="margin-top: 28px; color: #97a0ab; font-size: 12px;">
+                                If this was not you, please contact our support team immediately.
+                            </p>
                         </div>
-                        <p style="margin-top: 28px; color: #97a0ab; font-size: 12px;">
-                            If this was not you, please contact our support team immediately.
-                        </p>
-                    </div>
-                `
-            });
+                    `
+                });
+            } catch (error) {
+                console.error("[Users PATCH] Approval email failed:", error);
+            }
         }
 
         // Safety net: keep approved users linked even when profile fields are edited later
         if (updatedUser.status === 'approved') {
-            await linkUserToArtist(userId);
+            try {
+                await linkUserToArtist(userId);
+            } catch (error) {
+                console.error("[Users PATCH] Artist relink failed:", error);
+            }
         }
 
         return new Response(JSON.stringify(updatedUser), { status: 200 });

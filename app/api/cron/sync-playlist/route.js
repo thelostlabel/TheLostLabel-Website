@@ -6,8 +6,23 @@ import { chromium } from 'playwright';
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
+import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
 
 const DEFAULT_PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
+const NETWORK_TIMEOUT_MS = 10000;
+const RETRY_OPTIONS = {
+    retries: 2,
+    baseDelayMs: 300,
+    maxDelayMs: 2500,
+    jitter: 0.2
+};
+
+const createTransientNetworkError = (status, context) => {
+    const error = new Error(`${context} transient status: ${status}`);
+    error.isTransient = true;
+    error.status = status;
+    return error;
+};
 
 // Sync all artists from playlists to database
 export async function POST(req) {
@@ -94,9 +109,17 @@ export async function POST(req) {
                 for (let i = 0; i < albumIdArray.length; i += 20) {
                     const chunk = albumIdArray.slice(i, i + 20);
                     try {
-                        const res = await fetch(`https://api.spotify.com/v1/albums?ids=${chunk.join(',')}`, {
-                            headers: { Authorization: `Bearer ${tokenData.access_token}` }
-                        });
+                        const res = await fetchWithRetry(async () => {
+                            const response = await fetchWithTimeout(`https://api.spotify.com/v1/albums?ids=${chunk.join(',')}`, {
+                                headers: { Authorization: `Bearer ${tokenData.access_token}` }
+                            }, NETWORK_TIMEOUT_MS);
+
+                            if (isTransientStatus(response.status)) {
+                                throw createTransientNetworkError(response.status, 'Album details fetch');
+                            }
+
+                            return response;
+                        }, RETRY_OPTIONS);
                         const data = await res.json();
                         if (data.albums) {
                             data.albums.filter(Boolean).forEach(a => albumDetailsMap.set(a.id, a));
@@ -276,17 +299,33 @@ export async function POST(req) {
                             timestamp: new Date().toISOString()
                         };
 
-                        await Promise.all(relevantWebhooks.map(wh =>
-                            fetch(wh.url, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    username: "LOST Music Bot",
-                                    avatar_url: "https://i.imgur.com/AfFp7pu.png",
-                                    embeds: [embed]
-                                })
-                            }).catch(err => logger.error('Failed to send webhook', { webhookName: wh.name, error: err.message }))
-                        ));
+                        await Promise.all(relevantWebhooks.map(async (wh) => {
+                            try {
+                                await fetchWithRetry(async () => {
+                                    const response = await fetchWithTimeout(wh.url, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            username: "LOST Music Bot",
+                                            avatar_url: "https://i.imgur.com/AfFp7pu.png",
+                                            embeds: [embed]
+                                        })
+                                    }, NETWORK_TIMEOUT_MS);
+
+                                    if (isTransientStatus(response.status)) {
+                                        throw createTransientNetworkError(response.status, 'Playlist webhook');
+                                    }
+
+                                    if (!response.ok) {
+                                        logger.error('Failed to send webhook', { webhookName: wh.name, status: response.status });
+                                    }
+
+                                    return response;
+                                }, RETRY_OPTIONS);
+                            } catch (err) {
+                                logger.error('Failed to send webhook', { webhookName: wh.name, error: err.message });
+                            }
+                        }));
                     }
                 }
             }

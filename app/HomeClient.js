@@ -23,6 +23,7 @@ import Footer from "./components/Footer";
 import BackgroundEffects from "./components/BackgroundEffects";
 import ArtistsSection from "./components/ArtistsSection";
 import PartnersSection from "./components/PartnersSection";
+import Particles from "./components/ui/particles";
 import { usePlayer } from "./components/PlayerContext";
 
 // --- ANIMATION VARIANTS & HOOKS ---
@@ -453,6 +454,16 @@ export default function Home() {
           {/* Animated Background Mesh */}
           <div className="bg-gradient-mesh" style={{ position: "absolute", inset: 0, opacity: 0.6 }} />
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at center, transparent 0%, #0a0a0c 90%)" }} />
+          <Particles
+            className="absolute inset-0 z-[2] opacity-50"
+            quantity={58}
+            staticity={65}
+            ease={70}
+            size={0.45}
+            color="#d7dbe3"
+            vx={0.02}
+            vy={-0.01}
+          />
 
           <div className="hero-grid" style={{ position: "relative", zIndex: 10, maxWidth: "1400px", width: "100%", padding: "0 24px", display: "grid", gap: "60px", alignItems: "center" }}>
 

@@ -2,12 +2,23 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+function extractSpotifyArtistId(url) {
+    if (!url || typeof url !== "string") return null;
+    const parts = url.split('/').filter((p) => p.trim() !== '');
+    const lastPart = parts.pop() || '';
+    const id = lastPart.split('?')[0]?.trim();
+    return id || null;
+}
+
 function hasExactArtistId(artistsJson, artistId) {
     if (!artistId || !artistsJson) return false;
     try {
         const parsed = JSON.parse(artistsJson);
         if (!Array.isArray(parsed)) return false;
-        return parsed.some((artist) => artist?.id === artistId);
+        return parsed.some((artist) => {
+            if (typeof artist === "string") return artist === artistId;
+            return artist?.id === artistId;
+        });
     } catch {
         return false;
     }
@@ -26,22 +37,7 @@ export async function GET(req) {
     });
 
     // Extract Artist ID
-    let spotifyId = null;
-
-    // Priority 1: Linked Artist Profile
-    if (user?.artist?.spotifyUrl) {
-        const rawUrl = user.artist.spotifyUrl;
-        const parts = rawUrl.split('/').filter(p => p.trim() !== '');
-        const lastPart = parts.pop() || '';
-        spotifyId = lastPart.split('?')[0];
-    }
-    // Priority 2: User-provided Spotify URL in settings (Legacy / Unlinked)
-    else if (user?.spotifyUrl) {
-        const rawUrl = user.spotifyUrl;
-        const parts = rawUrl.split('/').filter(p => p.trim() !== '');
-        const lastPart = parts.pop() || '';
-        spotifyId = lastPart.split('?')[0];
-    }
+    const spotifyId = extractSpotifyArtistId(user?.artist?.spotifyUrl) || extractSpotifyArtistId(user?.spotifyUrl);
 
     try {
         // Build OR conditions
@@ -59,7 +55,10 @@ export async function GET(req) {
             },
             orderBy: { releaseDate: 'desc' },
             include: {
-                requests: true,
+                requests: {
+                    where: { userId: session.user.id },
+                    orderBy: { updatedAt: 'desc' }
+                },
                 contracts: {
                     where: { userId: session.user.id },
                     select: { id: true }
