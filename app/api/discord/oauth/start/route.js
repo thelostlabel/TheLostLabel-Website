@@ -9,36 +9,45 @@ function isExpired(dateValue) {
     return Number.isNaN(date.getTime()) || date.getTime() < Date.now();
 }
 
-function buildDashboardRedirect(req, code) {
-    const url = new URL("/dashboard", req.url);
+function resolvePublicBaseUrl(bridgeConfig, req) {
+    const fromConfig = String(bridgeConfig?.publicBaseUrl || "").trim();
+    const fromEnv = String(process.env.NEXTAUTH_URL || "").trim();
+    const selected = fromConfig || fromEnv || new URL(req.url).origin;
+    return selected.replace(/\/+$/, "");
+}
+
+function buildDashboardRedirect(baseUrl, code) {
+    const url = new URL("/dashboard", baseUrl);
     url.searchParams.set("view", "my-profile");
     url.searchParams.set("discord", code);
     return url;
 }
 
-function buildLoginRedirect(req, callbackPath) {
-    const loginUrl = new URL("/auth/login", req.url);
+function buildLoginRedirect(baseUrl, callbackPath) {
+    const loginUrl = new URL("/auth/login", baseUrl);
     loginUrl.searchParams.set("callbackUrl", callbackPath);
     return loginUrl;
 }
 
 export async function GET(req) {
+    const bridgeConfig = await getDiscordBridgeConfig();
+    const baseUrl = resolvePublicBaseUrl(bridgeConfig, req);
     const url = new URL(req.url);
     const state = String(url.searchParams.get("state") || "").trim();
 
     if (!state) {
-        return Response.redirect(buildDashboardRedirect(req, "missing-state"));
+        return Response.redirect(buildDashboardRedirect(baseUrl, "missing-state"));
     }
 
     const stateRow = await getDiscordOauthState(state);
     if (!stateRow || stateRow.consumed_at || isExpired(stateRow.expires_at)) {
-        return Response.redirect(buildDashboardRedirect(req, "invalid-state"));
+        return Response.redirect(buildDashboardRedirect(baseUrl, "invalid-state"));
     }
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
         const callbackPath = `/api/discord/oauth/start?state=${encodeURIComponent(state)}`;
-        return Response.redirect(buildLoginRedirect(req, callbackPath));
+        return Response.redirect(buildLoginRedirect(baseUrl, callbackPath));
     }
 
     await attachUserToDiscordOauthState({
@@ -46,13 +55,12 @@ export async function GET(req) {
         userId: session.user.id
     });
 
-    const bridgeConfig = await getDiscordBridgeConfig();
     if (!bridgeConfig.enabled) {
-        return Response.redirect(buildDashboardRedirect(req, "bridge-disabled"));
+        return Response.redirect(buildDashboardRedirect(baseUrl, "bridge-disabled"));
     }
 
     if (!bridgeConfig.oauthClientId || !bridgeConfig.oauthRedirectUri) {
-        return Response.redirect(buildDashboardRedirect(req, "oauth-not-configured"));
+        return Response.redirect(buildDashboardRedirect(baseUrl, "oauth-not-configured"));
     }
 
     const authorizeUrl = new URL("https://discord.com/oauth2/authorize");
