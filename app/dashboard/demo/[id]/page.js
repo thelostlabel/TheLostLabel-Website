@@ -55,6 +55,8 @@ export default function DemoReviewPage({ params }) {
     const [activeFile, setActiveFile] = useState(null);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState("");
 
     const fetchDemo = useCallback(async () => {
         try {
@@ -79,13 +81,7 @@ export default function DemoReviewPage({ params }) {
         fetchDemo();
     }, [fetchDemo]);
 
-    const handleStatusUpdate = async (status) => {
-        let reason = null;
-        if (status === 'rejected') {
-            reason = prompt("Please provide a reason for rejection (Visible to Artist):");
-            if (reason === null) return; // Cancelled
-        }
-
+    const handleStatusUpdate = async (status, reason = null) => {
         setProcessing(true);
         try {
             // Simple status update (Reviewing, Approved, Rejected)
@@ -250,12 +246,45 @@ export default function DemoReviewPage({ params }) {
                             {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
                         </button>
                         <button
-                            onClick={() => handleStatusUpdate('rejected')}
+                            onClick={() => {
+                                setRejectionReason(demo.rejectionReason || "");
+                                setShowRejectModal(true);
+                            }}
                             disabled={processing}
                             style={{ ...btnStyle, background: demo.status === 'rejected' ? 'rgba(239,68,68,0.18)' : 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)', opacity: processing ? 0.5 : 1 }}
                         >
                             {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
                         </button>
+
+                        {demo.rejectionReason && (
+                            <div style={{
+                                marginTop: '12px',
+                                padding: '12px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(239,68,68,0.25)',
+                                background: 'rgba(239,68,68,0.08)'
+                            }}>
+                                <p style={{
+                                    margin: 0,
+                                    marginBottom: '6px',
+                                    fontSize: '9px',
+                                    letterSpacing: '1px',
+                                    fontWeight: 900,
+                                    color: '#fca5a5'
+                                }}>
+                                    REJECTION REASON
+                                </p>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: '12px',
+                                    lineHeight: 1.5,
+                                    color: '#fee2e2',
+                                    whiteSpace: 'pre-wrap'
+                                }}>
+                                    {demo.rejectionReason}
+                                </p>
+                            </div>
+                        )}
 
                         {demo.status === 'approved' && (
                             <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
@@ -298,6 +327,61 @@ export default function DemoReviewPage({ params }) {
                     </div>
                 </aside>
             </div>
+
+            <AnimatePresence>
+                {showRejectModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="reject-modal-backdrop"
+                        onClick={() => !processing && setShowRejectModal(false)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                            transition={{ duration: 0.18 }}
+                            className="reject-modal-card"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <p className="kicker" style={{ marginBottom: '8px' }}>REJECTION REASON</p>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, marginBottom: '12px' }}>Reason visible to artist</h3>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                placeholder="Write a clear rejection reason..."
+                                rows={5}
+                                className="reject-textarea"
+                                disabled={processing}
+                            />
+                            <div className="reject-modal-actions">
+                                <button
+                                    className="secondary-btn"
+                                    style={{ padding: '10px 12px', fontSize: '10px', background: 'transparent', cursor: processing ? 'not-allowed' : 'pointer' }}
+                                    onClick={() => setShowRejectModal(false)}
+                                    disabled={processing}
+                                >
+                                    CANCEL
+                                </button>
+                                <button
+                                    className="primary-btn"
+                                    style={{ padding: '10px 12px', fontSize: '10px', border: 'none' }}
+                                    disabled={processing || !rejectionReason.trim()}
+                                    onClick={async () => {
+                                        const reason = rejectionReason.trim();
+                                        if (!reason) return;
+                                        await handleStatusUpdate('rejected', reason);
+                                        setShowRejectModal(false);
+                                    }}
+                                >
+                                    {processing ? "SAVING..." : "REJECT DEMO"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <style jsx>{`
                 .demo-review-shell {
@@ -439,6 +523,47 @@ export default function DemoReviewPage({ params }) {
                     text-decoration: none;
                     font-weight: 800;
                     letter-spacing: 1px;
+                }
+                .reject-modal-backdrop {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0,0,0,0.62);
+                    backdrop-filter: blur(3px);
+                    display: grid;
+                    place-items: center;
+                    z-index: 200;
+                    padding: 18px;
+                }
+                .reject-modal-card {
+                    width: 100%;
+                    max-width: 560px;
+                    border-radius: 14px;
+                    border: 1px solid var(--border);
+                    background: #0e0e0e;
+                    box-shadow: 0 26px 70px rgba(0,0,0,0.45);
+                    padding: 18px;
+                }
+                .reject-textarea {
+                    width: 100%;
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                    background: #121212;
+                    color: #f3f4f6;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    padding: 12px;
+                    resize: vertical;
+                    min-height: 110px;
+                    outline: none;
+                    margin-bottom: 14px;
+                }
+                .reject-textarea:focus {
+                    border-color: #6b7280;
+                }
+                .reject-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
                 }
                 @media (max-width: 980px) {
                     .demo-review-grid {

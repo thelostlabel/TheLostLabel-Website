@@ -61,7 +61,7 @@ export default function AdminView() {
     const [releases, setReleases] = useState([]);
     const [discordBridge, setDiscordBridge] = useState(null);
     const [loading, setLoading] = useState(true);
-    const showLoading = useMinimumLoader(loading, 900);
+    const showLoading = useMinimumLoader(loading, 250);
 
     const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
 
