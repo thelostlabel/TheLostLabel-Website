@@ -48,7 +48,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV LOG_LEVEL=warn
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_INSTALL_ON_STARTUP=0
+ENV PLAYWRIGHT_INSTALL_ON_STARTUP=1
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -108,6 +108,12 @@ RUN chmod +x /app/docker-entrypoint.sh
 
 # Browser cache path used by Playwright.
 RUN mkdir -p /ms-playwright && chown -R nextjs:nodejs /ms-playwright
+
+# Install Playwright Chromium during build to ensure it's always available.
+# We use the playwright CLI directly from the copied node_modules.
+RUN [ -f /app/node_modules/playwright/cli.js ] && \
+    node /app/node_modules/playwright/cli.js install chromium && \
+    chown -R nextjs:nodejs /ms-playwright
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
