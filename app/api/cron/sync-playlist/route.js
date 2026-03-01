@@ -160,13 +160,19 @@ export async function POST(req) {
                     try {
                         if (!browser) {
                             try {
-                                browser = await chromium.launch({ headless: true });
+                                logger.info('Launching Chromium for prerelease scraping...', { url: prereleaseUrl });
+                                browser = await chromium.launch({
+                                    headless: true,
+                                    args: [
+                                        '--no-sandbox',
+                                        '--disable-setuid-sandbox',
+                                        '--disable-blink-features=AutomationControlled'
+                                    ]
+                                });
                             } catch (launchError) {
                                 scrapeEnabled = false;
                                 scrapeDisabledReason = `Chromium launch failed: ${launchError.message}`;
-                                logger.warn('Disabling scraping because Chromium could not start', {
-                                    error: launchError.message
-                                });
+                                logger.error('Disabling scraping because Chromium could not start', launchError);
                             }
                         }
 
@@ -367,13 +373,19 @@ export async function POST(req) {
         if (scrapeEnabled) {
             if (!browser) {
                 try {
-                    browser = await chromium.launch({ headless: true });
+                    logger.info('Launching Chromium for artist scraping...');
+                    browser = await chromium.launch({
+                        headless: true,
+                        args: [
+                            '--no-sandbox',
+                            '--disable-setuid-sandbox',
+                            '--disable-blink-features=AutomationControlled'
+                        ]
+                    });
                 } catch (launchError) {
                     scrapeEnabled = false;
                     scrapeDisabledReason = `Chromium launch failed: ${launchError.message}`;
-                    logger.warn('Skipping listener scrape because Chromium could not start', {
-                        error: launchError.message
-                    });
+                    logger.error('Skipping listener scrape because Chromium could not start', launchError);
                 }
             }
         }
@@ -465,9 +477,9 @@ export async function POST(req) {
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        logger.info('Sync process completed', { 
-            duration: `${duration}s`, 
-            newReleases: totalNewReleases, 
+        logger.info('Sync process completed', {
+            duration: `${duration}s`,
+            newReleases: totalNewReleases,
             artistsScraped: successCount,
             retries: retryCount,
             errors: errorCount,
