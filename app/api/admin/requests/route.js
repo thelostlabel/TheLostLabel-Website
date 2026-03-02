@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateSupportStatusEmail } from "@/lib/mail-templates";
 import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
+import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 
 const WEBHOOK_TIMEOUT_MS = 10000;
 const RETRY_OPTIONS = {
@@ -135,6 +136,35 @@ export async function PATCH(req) {
             });
         } catch (emailError) {
             console.error("Email Error:", emailError);
+        }
+
+        // --- DISCORD DM NOTIFICATION ---
+        try {
+            const colors = {
+                reviewing: 0xffaa00,
+                processing: 0x00aaff,
+                needs_action: 0xfff000,
+                approved: 0x00ff88,
+                completed: 0x00ff88,
+                rejected: 0xff4444
+            };
+
+            const releaseName = updated.release?.name || "General";
+            const requestType = updated.type.toUpperCase().replace("_", " ");
+
+            await queueDiscordNotification(updated.userId, DISCORD_NOTIFY_TYPES.SUPPORT_RESPONSE, {
+                title: `Support Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+                description: `Your **${requestType}** request${releaseName !== "General" ? ` for **${releaseName}**` : ""} has been updated to **${status.toUpperCase()}**.${adminNote ? `\n\n**Admin Note:** ${adminNote}` : ""}`,
+                color: colors[status] || 0xcccccc,
+                fields: [
+                    { name: "Type", value: requestType, inline: true },
+                    { name: "Status", value: status.toUpperCase(), inline: true },
+                    { name: "Release", value: releaseName, inline: true }
+                ],
+                footer: "LOST. Support"
+            });
+        } catch (dmError) {
+            console.error("[Admin Requests PATCH] Failed to queue Discord DM notification:", dmError);
         }
         // -----------------------
 

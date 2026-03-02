@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateEarningsNotificationEmail } from "@/lib/mail-templates";
+import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 
 // GET: Fetch earnings
 // GET: Fetch earnings with pagination
@@ -200,6 +201,29 @@ export async function POST(req) {
                 });
             } catch (mailError) {
                 console.error("Failed to send earnings notification email:", mailError);
+            }
+        }
+
+        // Queue Discord DM notification to the artist
+        if (contract.userId) {
+            try {
+                const artistName = contract.user?.stageName || contract.user?.fullName || "Artist";
+                const releaseName = contract.release?.name || "Your Release";
+
+                await queueDiscordNotification(contract.userId, DISCORD_NOTIFY_TYPES.EARNINGS_UPDATE, {
+                    title: "New Earnings Received 💰",
+                    description: `New earnings have been added for **${releaseName}**.`,
+                    color: 0x00ff88,
+                    fields: [
+                        { name: "Release", value: releaseName, inline: true },
+                        { name: "Period", value: earning.period, inline: true },
+                        { name: "Your Share", value: `$${earning.artistAmount.toFixed(2)} ${earning.currency}`, inline: true },
+                        { name: "Streams", value: earning.streams ? earning.streams.toLocaleString() : "N/A", inline: true }
+                    ],
+                    footer: "LOST. Earnings"
+                });
+            } catch (dmError) {
+                console.error("[Earnings POST] Failed to queue Discord DM notification:", dmError);
             }
         }
 

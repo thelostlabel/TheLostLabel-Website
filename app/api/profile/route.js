@@ -29,6 +29,8 @@ export async function GET() {
                 notifyEarnings: true,
                 notifySupport: true,
                 notifyContracts: true,
+                discordNotifyEnabled: true,
+                discordId: true,
                 artist: {
                     select: {
                         id: true,
@@ -50,7 +52,8 @@ export async function GET() {
             stageName: user.stageName || user.artist?.name || null,
             spotifyUrl: user.spotifyUrl || user.artist?.spotifyUrl || null,
             monthlyListeners: user.monthlyListeners ?? user.artist?.monthlyListeners ?? 0,
-            artistImage: user.artist?.image || null
+            artistImage: user.artist?.image || null,
+            discordLinked: Boolean(user.discordId)
         };
 
         return new Response(JSON.stringify(profile), { status: 200 });
@@ -77,7 +80,8 @@ export async function PATCH(req) {
             notifyDemos,
             notifyEarnings,
             notifySupport,
-            notifyContracts
+            notifyContracts,
+            discordNotifyEnabled
         } = body;
 
         // Create update object
@@ -90,7 +94,8 @@ export async function PATCH(req) {
             notifyDemos: notifyDemos !== undefined ? notifyDemos : undefined,
             notifyEarnings: notifyEarnings !== undefined ? notifyEarnings : undefined,
             notifySupport: notifySupport !== undefined ? notifySupport : undefined,
-            notifyContracts: notifyContracts !== undefined ? notifyContracts : undefined
+            notifyContracts: notifyContracts !== undefined ? notifyContracts : undefined,
+            discordNotifyEnabled: discordNotifyEnabled !== undefined ? Boolean(discordNotifyEnabled) : undefined
         };
 
         // stageName and spotifyUrl are intentionally NOT updateable via this endpoint.

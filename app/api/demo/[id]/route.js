@@ -6,6 +6,7 @@ import { generateDemoApprovalEmail, generateDemoRejectionEmail } from "@/lib/mai
 import { notifyDemoApproval } from "@/lib/discord";
 import { randomUUID } from "crypto";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
+import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 
 function normalizeReleaseDate(value) {
     if (!value) return null;
@@ -240,6 +241,41 @@ export async function PATCH(req, { params }) {
                 );
             } catch (outboxError) {
                 console.error("[Demo PATCH] Failed to enqueue Discord outbox event:", outboxError);
+            }
+
+            // Queue Discord DM notification to the artist
+            try {
+                const artistName = updatedDemo.artist?.stageName || updatedDemo.artist?.fullName || "Artist";
+                const notifyType = status === "rejected"
+                    ? DISCORD_NOTIFY_TYPES.DEMO_REJECTED
+                    : status === "contract_sent"
+                        ? DISCORD_NOTIFY_TYPES.DEMO_CONTRACT_SENT
+                        : DISCORD_NOTIFY_TYPES.DEMO_APPROVED;
+
+                const colors = {
+                    approved: 0x00ff88,
+                    rejected: 0xff4444,
+                    contract_sent: 0x00aaff
+                };
+
+                const descriptions = {
+                    approved: `Your demo **${updatedDemo.title}** has been approved! 🎉`,
+                    rejected: `Your demo **${updatedDemo.title}** was not accepted.${rejectionReason ? `\n\n**Reason:** ${rejectionReason}` : ""}`,
+                    contract_sent: `A contract has been sent for your demo **${updatedDemo.title}**. Please check your dashboard.`
+                };
+
+                await queueDiscordNotification(updatedDemo.artistId, notifyType, {
+                    title: `Demo ${status === "contract_sent" ? "Contract Sent" : status.charAt(0).toUpperCase() + status.slice(1)}`,
+                    description: descriptions[status],
+                    color: colors[status] || 0x7c3aed,
+                    fields: [
+                        { name: "Demo", value: updatedDemo.title, inline: true },
+                        { name: "Artist", value: artistName, inline: true }
+                    ],
+                    footer: "LOST. Demo Review"
+                });
+            } catch (dmError) {
+                console.error("[Demo PATCH] Failed to queue Discord DM notification:", dmError);
             }
         }
 
