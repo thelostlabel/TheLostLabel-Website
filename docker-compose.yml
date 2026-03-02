@@ -9,6 +9,9 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    volumes:
+      - lost_site_uploads:/app/private
+      - playwright_data:/ms-playwright
 
   lost-bot:
     build:
@@ -33,3 +36,5 @@ services:
 
 volumes:
   bot_data:
+  lost_site_uploads:
+  playwright_data:
