@@ -29,10 +29,12 @@ model User {
   legalName        String?
   phoneNumber      String?
   address          String?
+  discordId        String?                @unique
   notifyDemos      Boolean                @default(true)
   notifyEarnings   Boolean                @default(true)
   notifySupport    Boolean                @default(true)
   notifyContracts  Boolean                @default(true)
+  discordNotifyEnabled Boolean            @default(false)
   artist           Artist?
   assignedRequests ChangeRequest[]        @relation("AssignedRequests")
   requests         ChangeRequest[]        @relation("UserRequests")

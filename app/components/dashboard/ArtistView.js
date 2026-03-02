@@ -2572,6 +2572,7 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
     const [notifyEarnings, setNotifyEarnings] = useState(true);
     const [notifySupport, setNotifySupport] = useState(true);
     const [notifyContracts, setNotifyContracts] = useState(true);
+    const [discordNotifyEnabled, setDiscordNotifyEnabled] = useState(true);
     const [linking, setLinking] = useState(false);
     const [unlinking, setUnlinking] = useState(false);
     const [oauthStatus, setOauthStatus] = useState(null);
@@ -2635,6 +2636,7 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
             setNotifyEarnings(data.notifyEarnings !== false);
             setNotifySupport(data.notifySupport !== false);
             setNotifyContracts(data.notifyContracts !== false);
+            setDiscordNotifyEnabled(data.discordNotifyEnabled !== false);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -2668,6 +2670,30 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
             console.error(e);
             notify('Failed to save profile', 'error');
         } finally { setSaving(false); }
+    };
+
+    const handleDiscordNotifyToggle = async () => {
+        if (!discordLink?.linked) {
+            notify('Link Discord to enable notifications', 'warning');
+            return;
+        }
+        try {
+            const newValue = !discordNotifyEnabled;
+            const res = await fetch('/api/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ discordNotifyEnabled: newValue })
+            });
+            if (res.ok) {
+                setDiscordNotifyEnabled(newValue);
+                notify(`Discord notifications ${newValue ? 'enabled' : 'disabled'}!`, 'success');
+            } else {
+                notify('Failed to update notification settings', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            notify('Failed to update notification settings', 'error');
+        }
     };
 
     const handlePasswordChange = async () => {
@@ -2938,6 +2964,41 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
                                 <Unlink size={13} /> {unlinking ? 'UNLINKING...' : 'UNLINK'}
                             </button>
                         </div>
+
+                        {/* Discord Notifications Toggle */}
+                        <div 
+                            onClick={handleDiscordNotifyToggle}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                marginTop: '14px', padding: '12px 14px', borderRadius: '8px',
+                                background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`,
+                                cursor: discordLink?.linked ? 'pointer' : 'not-allowed',
+                                opacity: discordLink?.linked ? 1 : 0.5
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Bell size={14} style={{ color: discordNotifyEnabled ? DASHBOARD_THEME.success : DASHBOARD_THEME.muted }} />
+                                <span style={{ fontSize: '12px', fontWeight: '800', color: DASHBOARD_THEME.muted }}>
+                                    DISCORD DM NOTIFICATIONS
+                                </span>
+                            </div>
+                            <div style={{
+                                width: '36px', height: '20px', borderRadius: '12px',
+                                background: discordNotifyEnabled ? 'var(--status-success)' : 'rgba(255,255,255,0.1)',
+                                position: 'relative', transition: 'background 0.2s'
+                            }}>
+                                <div style={{
+                                    position: 'absolute', top: '2px', left: discordNotifyEnabled ? '18px' : '2px',
+                                    width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
+                                    transition: 'left 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                }} />
+                            </div>
+                        </div>
+                        {!discordLink?.linked && (
+                            <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, marginTop: '8px', textAlign: 'center' }}>
+                                Link Discord to enable DM notifications
+                            </p>
+                        )}
                     </motion.div>
 
                     {/* Security Section */}
