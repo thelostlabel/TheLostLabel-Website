@@ -126,6 +126,11 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
 
     return (
         <div>
+            <style jsx>{`
+                .table-row-hover:hover {
+                    background-color: rgba(255,255,255,0.02) !important;
+                }
+            `}</style>
             <div className="earnings-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
@@ -235,7 +240,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                         {spendBySource.map((s, i) => {
                             const pct = totalExpense ? Math.round((s.spend / totalExpense) * 100) : 0;
                             return (
-                                <motion.div whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }} key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 40px', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '6px', transition: 'background-color 0.2s' }}>
+                                <motion.div className="table-row-hover" key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 40px', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '6px', transition: 'background-color 0.15s ease' }}>
                                     <div style={{ color: '#fff', fontWeight: '900', fontSize: '11px', letterSpacing: '1px' }}>{s.source}</div>
                                     <div style={{ color: 'var(--accent)', fontWeight: '950', textAlign: 'right', fontSize: '12px' }}>${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                                     <div style={{ fontSize: '10px', color: '#888', fontWeight: '900', textAlign: 'right' }}>{pct}%</div>
@@ -362,14 +367,14 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                            className="table-row-hover"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1fr 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr',
                                 padding: '20px 24px',
                                 borderBottom: idx === filteredEarnings.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
                                 alignItems: 'center',
-                                transition: 'background-color 0.2s',
+                                transition: 'background-color 0.15s ease',
                                 gap: '15px'
                             }}
                         >

@@ -3229,7 +3229,7 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
                         {spendByRelease.map((r, i) => {
                             const pct = totalSpend ? Math.round((r.spend / totalSpend) * 100) : 0;
                             return (
-                                <motion.div whileHover={{ scale: 1.01 }} key={i} style={{ padding: '16px', background: earningsTone.panelSoft, borderRadius: '10px', border: `1px solid ${earningsTone.panelBorder}` }}>
+                                <motion.div className="artist-card-hover" key={i} style={{ padding: '16px', background: earningsTone.panelSoft, borderRadius: '10px', border: `1px solid ${earningsTone.panelBorder}`, transition: 'transform 0.15s ease, background-color 0.15s ease' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                         <div style={{ color: '#fff', fontWeight: '900', fontSize: '13px' }}>{r.name}</div>
                                         <div style={{ color: earningsTone.info, fontWeight: '900', fontSize: '13px' }}>${r.spend.toLocaleString()}</div>
@@ -3256,7 +3256,7 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
                         {spendBySource.map((s, i) => {
                             const pct = totalSpend ? Math.round((s.spend / totalSpend) * 100) : 0;
                             return (
-                                <motion.div whileHover={{ scale: 1.02 }} key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 40px', gap: '8px', alignItems: 'center', padding: '12px 16px', background: earningsTone.panelSoft, border: `1px solid ${earningsTone.panelBorder}`, borderRadius: '10px' }}>
+                                <motion.div className="artist-card-hover" key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 40px', gap: '8px', alignItems: 'center', padding: '12px 16px', background: earningsTone.panelSoft, border: `1px solid ${earningsTone.panelBorder}`, borderRadius: '10px', transition: 'transform 0.15s ease, background-color 0.15s ease' }}>
                                     <div style={{ color: '#fff', fontWeight: '900', fontSize: '12px' }}>{s.source}</div>
                                     <div style={{ color: earningsTone.info, fontWeight: '900', textAlign: 'right', fontSize: '12px' }}>${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                                     <div style={{ fontSize: '12px', color: mutedText, fontWeight: '800', textAlign: 'right' }}>{pct}%</div>
@@ -3272,7 +3272,12 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
                     </div>
                 </motion.div>
             </div>
-
+            <style jsx>{`
+                .artist-card-hover:hover {
+                    transform: scale(1.01);
+                    background-color: rgba(255,255,255,0.03) !important;
+                }
+            `}</style>
             <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', marginBottom: '24px' }}>
                 <div style={{ ...glassStyle, background: panelStyle.background, border: panelStyle.border }}>
                     <div style={{ padding: '20px 25px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
