@@ -458,6 +458,11 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
 
     return (
         <div>
+            <style jsx>{`
+                .table-row-hover:hover {
+                    background-color: rgba(255,255,255,0.02) !important;
+                }
+            `}</style>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                     onClick={() => {
@@ -881,14 +886,14 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                            className="table-row-hover"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr',
                                 padding: '20px 24px',
                                 borderBottom: idx === contracts.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
                                 alignItems: 'center',
-                                transition: 'background-color 0.2s',
+                                transition: 'background-color 0.15s ease',
                                 gap: '15px'
                             }}
                         >

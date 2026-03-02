@@ -351,6 +351,11 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
 
     return (
         <div>
+            <style jsx>{`
+                .table-row-hover:hover {
+                    background-color: rgba(255,255,255,0.02) !important;
+                }
+            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
                 <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
                     <input
@@ -501,14 +506,14 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                            className="table-row-hover"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1.5fr 1fr 1fr 1.5fr 1fr',
                                 padding: '20px 24px',
                                 borderBottom: idx === filteredArtists.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
                                 alignItems: 'center',
-                                transition: 'background-color 0.2s',
+                                transition: 'background-color 0.15s ease',
                                 cursor: 'pointer',
                                 gap: '15px'
                             }}

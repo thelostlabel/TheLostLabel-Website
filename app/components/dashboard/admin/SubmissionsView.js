@@ -34,6 +34,11 @@ export default function SubmissionsView({ demos, onDelete }) {
 
     return (
         <div>
+            <style jsx>{`
+                .table-row-hover:hover {
+                    background-color: rgba(255,255,255,0.02) !important;
+                }
+            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
                 <div style={{ display: 'flex', gap: '8px', background: 'var(--glass)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     {['pending', 'reviewing', 'approved', 'rejected'].map(tab => (
@@ -88,15 +93,16 @@ export default function SubmissionsView({ demos, onDelete }) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                            className="table-row-hover"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1.5fr 2fr 3fr 1.5fr 1fr',
                                 padding: '20px 24px',
                                 borderBottom: idx === filteredDemos.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
                                 alignItems: 'center',
-                                transition: 'background-color 0.2s',
-                                gap: '15px'
+                                transition: 'background-color 0.15s ease',
+                                gap: '15px',
+                                cursor: 'pointer'
                             }}
                         >
                             <div style={{ fontSize: '11px', color: '#888', fontWeight: '800' }}>
