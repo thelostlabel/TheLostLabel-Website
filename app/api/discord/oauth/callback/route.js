@@ -16,9 +16,9 @@ function isExpired(dateValue) {
 }
 
 function resolvePublicBaseUrl(bridgeConfig, req) {
-    const fromConfig = String(bridgeConfig?.publicBaseUrl || "").trim();
     const fromEnv = String(process.env.NEXTAUTH_URL || "").trim();
-    const selected = fromConfig || fromEnv || new URL(req.url).origin;
+    const fromConfig = String(bridgeConfig?.publicBaseUrl || "").trim();
+    const selected = fromEnv || fromConfig || (req ? new URL(req.url).origin : "");
     return selected.replace(/\/+$/, "");
 }
 

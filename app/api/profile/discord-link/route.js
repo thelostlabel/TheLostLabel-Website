@@ -75,7 +75,11 @@ export async function POST() {
             userId: session.user.id
         });
 
-        const publicBaseUrl = normalizeBaseUrl(bridgeConfig.publicBaseUrl);
+        const fromEnv = String(process.env.NEXTAUTH_URL || "").trim();
+        const fromConfig = String(bridgeConfig?.publicBaseUrl || "").trim();
+        const fromOrigin = new URL(req.url).origin;
+        const publicBaseUrl = (fromEnv || fromConfig || fromOrigin).replace(/\/+$/, "");
+
         const authorizeUrl = `${publicBaseUrl}/api/discord/oauth/start?state=${encodeURIComponent(state)}`;
 
         return json({
