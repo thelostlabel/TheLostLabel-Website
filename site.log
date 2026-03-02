@@ -12,3 +12,4 @@
  POST /api/internal/discord/demo-submit 200 in 16.0s (compile: 118ms, render: 15.8s)
   Reload env: .env
   Reload env: .env.local
+  Reload env: .env
