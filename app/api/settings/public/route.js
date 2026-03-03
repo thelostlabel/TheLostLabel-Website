@@ -15,6 +15,7 @@ export async function GET() {
 
         const config = JSON.parse(settings.config);
         return new Response(JSON.stringify({
+            ...config,
             genres: config.genres || ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Other'],
             siteName: config.siteName || 'LOST MUSIC',
             heroText: config.heroText || 'THE NEW ORDER',
