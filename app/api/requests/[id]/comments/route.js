@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateSupportUpdateEmail } from "@/lib/mail-templates";
+import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 
 function extractSpotifyArtistId(url) {
     if (!url || typeof url !== "string") return null;
@@ -188,6 +189,19 @@ export async function POST(req, { params }) {
                 });
             } catch (emailError) {
                 console.error("Email Notification Error:", emailError);
+            }
+
+            // Discord DM — mirror the support reply email
+            try {
+                const reqType = request.type.toUpperCase().replace('_', ' ');
+                await queueDiscordNotification(request.userId, DISCORD_NOTIFY_TYPES.SUPPORT_RESPONSE, {
+                    artist: request.user.stageName || request.user.email || 'Artist',
+                    type: request.type,
+                    content,
+                    requestId: id
+                });
+            } catch (dmError) {
+                console.error("Discord DM Notification Error (support reply):", dmError);
             }
         }
 

@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { sendMail } from "@/lib/mail";
 import { generatePayoutStatusEmail } from "@/lib/mail-templates";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
+import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 
 // GET: Fetch payments
 export async function GET(req) {
@@ -181,6 +182,18 @@ export async function PATCH(req) {
                 });
             } catch (emailError) {
                 logger.error('Failed to send payout status email', emailError);
+            }
+
+            // Discord DM — mirror the payout status email
+            try {
+                await queueDiscordNotification(existing.userId, DISCORD_NOTIFY_TYPES.PAYOUT_UPDATE, {
+                    artist: existing.user.stageName || 'Artist',
+                    amount: existing.amount,
+                    status,
+                    adminNote: adminNote || null
+                });
+            } catch (dmError) {
+                logger.error('Failed to send payout Discord DM', dmError);
             }
         }
 
