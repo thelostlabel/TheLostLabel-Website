@@ -14,6 +14,7 @@ export default function Navbar() {
 
     const [siteName, setSiteName] = useState('LOST');
     const [socials, setSocials] = useState({});
+    const [features, setFeatures] = useState({});
 
     useEffect(() => {
         fetch('/api/settings/public')
@@ -31,9 +32,14 @@ export default function Navbar() {
                     spotify: data.spotify,
                     youtube: data.youtube
                 });
+                if (data.features) {
+                    setFeatures(data.features);
+                }
             })
             .catch(err => console.error(err));
     }, []);
+
+    const hasFeature = (key) => features[key] ?? true;
 
     // Hide Navbar on Dashboard and Auth pages
     if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/auth')) {
@@ -93,10 +99,10 @@ export default function Navbar() {
                         letterSpacing: '1.5px',
                         color: 'rgba(255,255,255,0.85)'
                     }}>
-                        <Link href="/releases" style={{ transition: 'var(--transition)' }}>RELEASES</Link>
-                        <Link href="/artists" style={{ transition: 'var(--transition)' }}>ARTISTS</Link>
+                        {hasFeature('earningsTracking') && <Link href="/releases" style={{ transition: 'var(--transition)' }}>RELEASES</Link>}
+                        {hasFeature('contractManagement') && <Link href="/artists" style={{ transition: 'var(--transition)' }}>ARTISTS</Link>}
                         <Link href="/faq" style={{ transition: 'var(--transition)' }}>FAQ</Link>
-                        <Link href="/join" style={{ transition: 'var(--transition)', color: '#fff' }}>JOIN US</Link>
+                        {hasFeature('demoSubmission') && <Link href="/join" style={{ transition: 'var(--transition)', color: '#fff' }}>JOIN US</Link>}
                     </div>
 
                     {/* Right Side Actions */}
@@ -155,7 +161,7 @@ export default function Navbar() {
                                 }}>
                                     LOGIN
                                 </Link>
-                                {registrationsOpen && (
+                                {registrationsOpen && hasFeature('demoSubmission') && (
                                     <Link href="/auth/register" className="glow-button animate-pulse-glow" style={{ fontSize: '10px', padding: '10px 24px', borderRadius: '50px' }}>
                                         JOIN NOW
                                     </Link>
