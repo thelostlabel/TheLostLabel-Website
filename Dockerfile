@@ -109,11 +109,10 @@ RUN chmod +x /app/docker-entrypoint.sh
 # Browser cache path used by Playwright.
 RUN mkdir -p /ms-playwright && chown -R nextjs:nodejs /ms-playwright
 
-# Install Playwright Chromium during build to ensure it's always available.
-# We use the playwright CLI directly from the copied node_modules.
-RUN [ -f /app/node_modules/playwright/cli.js ] && \
-    node /app/node_modules/playwright/cli.js install chromium && \
-    chown -R nextjs:nodejs /ms-playwright
+# NOTE: Playwright Chromium is intentionally NOT installed at build time.
+# The docker-entrypoint.sh handles installation at first startup only,
+# using the persistent /ms-playwright volume mount to avoid re-downloading
+# 167MB on every deploy. See PLAYWRIGHT_INSTALL_ON_STARTUP env var.
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \

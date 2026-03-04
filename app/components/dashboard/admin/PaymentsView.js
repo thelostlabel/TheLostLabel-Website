@@ -133,6 +133,21 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                 .table-row-hover:hover {
                     background-color: rgba(255,255,255,0.02) !important;
                 }
+                .pay-form-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 24px;
+                    position: relative;
+                    z-index: 1;
+                }
+                @media (max-width: 768px) {
+                    .pay-form-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .pay-form-span-2, .pay-form-span-3 {
+                        grid-column: span 1 !important;
+                    }
+                }
             `}</style>
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', position: 'relative', zIndex: 1 }}>
                 <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
@@ -179,8 +194,8 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                         <h3 style={{ fontSize: '14px', letterSpacing: '3px', fontWeight: '950', color: '#fff', margin: 0 }}>{editingPayment ? 'EDIT PAYMENT' : 'NEW PAYMENT'}</h3>
                     </div>
 
-                    <form onSubmit={handleSubmitPayment} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', position: 'relative', zIndex: 1 }}>
-                        <div style={{ gridColumn: 'span 2' }}>
+                    <form onSubmit={handleSubmitPayment} className="pay-form-grid">
+                        <div className="pay-form-span-2" style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>ARTIST RECIPIENT *</label>
                             <select
                                 value={form.userId}
@@ -241,7 +256,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                                 <option value="failed" style={{ color: '#000' }}>FAILED</option>
                             </select>
                         </div>
-                        <div style={{ gridColumn: 'span 3', display: 'flex', gap: '16px', justifyContent: 'flex-end', marginTop: '16px' }}>
+                        <div className="pay-form-span-3" style={{ gridColumn: 'span 3', display: 'flex', gap: '16px', justifyContent: 'flex-end', marginTop: '16px' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={{ ...btnStyle, height: 'auto', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', padding: '16px 32px' }}>CANCEL</button>
                             <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000', border: 'none', height: 'auto', borderRadius: '8px', fontWeight: '950', fontSize: '11px', letterSpacing: '1px', padding: '16px 32px' }}>
                                 {saving ? 'SAVING...' : editingPayment ? 'UPDATE PAYMENT' : 'RECORD PAYMENT'}
@@ -353,7 +368,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
             )}
 
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr 1.5fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'var(--glass)' }}>
+                <div className="pay-header-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr 1.5fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'var(--glass)' }}>
                     <div>DATE</div>
                     <div>RECIPIENT</div>
                     <div>AMOUNT</div>
@@ -370,7 +385,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            className="table-row-hover"
+                            className={`table-row-hover pay-row-grid`}
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr 1.5fr',
@@ -416,7 +431,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                                 </span>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <div className="pay-row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                 {p.status === 'pending' && (
                                     <>
                                         <button

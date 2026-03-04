@@ -15,6 +15,11 @@ const MIME_BY_EXT = {
   ".png": "image/png",
 };
 
+const ALLOWED_PREFIXES = [
+  "private/uploads/demos/",
+  "uploads/demos/",
+];
+
 const getCandidatePaths = (filepath) => {
   if (!filepath) return [];
   const normalized = filepath.replace(/^\/+/, "");
@@ -22,15 +27,26 @@ const getCandidatePaths = (filepath) => {
   const appRoot = "/app";
   const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
 
-  // Security: never allow arbitrary absolute/parent traversal paths from DB.
+  // Security: never allow path traversal
   if (normalized.includes("..")) return [];
-  if (!normalized.startsWith("private/uploads/demos/")) return [];
 
-  return [
+  // Accept known safe prefixes
+  const isAllowed = ALLOWED_PREFIXES.some(p => normalized.startsWith(p));
+  if (!isAllowed) {
+    console.warn(`[demo-file] Rejected path (no allowed prefix): ${normalized}`);
+    return [];
+  }
+
+  const candidates = [
     join(root, normalized),
     join(appRoot, normalized),
     join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
+    // Also try stripping 'private/' prefix directly against storage root
+    join(configuredPrivateRoot, normalized.replace(/^private\/uploads\/demos\//, "uploads/demos/")),
   ];
+
+  console.info(`[demo-file] Trying paths for "${normalized}":`, candidates);
+  return candidates;
 };
 
 export async function GET(req, { params }) {

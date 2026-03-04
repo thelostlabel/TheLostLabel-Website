@@ -338,6 +338,90 @@ section {
   background: #ffffff;
 }
 
+/* --- Admin Dashboard Responsive --- */
+
+/* Card-based responsive table for all admin views */
+@media (max-width: 768px) {
+
+  /* Tables convert to card layout */
+  .admin-responsive-table thead {
+    display: none;
+  }
+
+  .admin-responsive-table tr {
+    display: block;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 4px 0;
+  }
+
+  .admin-responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border: none;
+    font-size: 12px;
+  }
+
+  .admin-responsive-table td::before {
+    content: attr(data-label);
+    font-size: 9px;
+    font-weight: 900;
+    color: #555;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Generic grid overrides for dashboard forms/layouts */
+  .dash-2col {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dash-3col {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dash-col-span-2 {
+    grid-column: span 1 !important;
+  }
+
+  .dash-col-span-3 {
+    grid-column: span 1 !important;
+  }
+
+  /* Communications two-panel layout */
+  .comm-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Payments / Earnings row grids */
+  .pay-row-grid,
+  .earn-row-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 16px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .pay-row-grid>*,
+  .earn-row-grid>* {
+    width: 100% !important;
+  }
+
+  .pay-header-grid,
+  .earn-header-grid {
+    display: none !important;
+  }
+
+  .pay-row-actions,
+  .earn-row-actions {
+    justify-content: flex-start !important;
+  }
+}
+
 /* --- Responsive Layouts --- */
 .hero-grid {
   grid-template-columns: 1fr 1fr;
