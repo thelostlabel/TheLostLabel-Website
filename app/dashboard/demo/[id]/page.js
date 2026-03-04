@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import StudioPlayer from '@/app/components/dashboard/StudioPlayer';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 const glassStyle = {
@@ -171,16 +172,11 @@ export default function DemoReviewPage({ params }) {
 
                         {activeFile ? (
                             <div>
-                                <div className="player-box">
-                                    <p style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
-                                        NOW PLAYING: <span style={{ color: '#fff', fontWeight: 800 }}>{activeFile.filename.toUpperCase()}</span>
-                                    </p>
-                                    <audio controls key={activeFileUrl} style={{ width: '100%', height: '52px' }}>
-                                        <source src={activeFileUrl} type="audio/wav" />
-                                        <source src={activeFileUrl} type="audio/mpeg" />
-                                        Your browser does not support the audio element.
-                                    </audio>
-                                </div>
+                                <StudioPlayer
+                                    key={activeFileUrl}
+                                    src={activeFileUrl}
+                                    filename={activeFile.filename}
+                                />
                                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
                                     <a href={`${activeFileUrl}?download=1`} download className="secondary-btn" style={{ padding: '10px 16px', fontSize: '10px' }}>
                                         DOWNLOAD SOURCE FILE
