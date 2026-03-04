@@ -110,7 +110,8 @@ export default function UsersView({ users, onRefresh }) {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         style={{
-                            width: '850px',
+                            width: '95vw',
+                            maxWidth: '850px',
                             maxHeight: '90vh',
                             overflowY: 'auto',
                             padding: '40px',
@@ -128,7 +129,15 @@ export default function UsersView({ users, onRefresh }) {
                             <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '24px' }}>×</button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }} className="users-modal-grid">
+                            <style jsx>{`
+                                @media (max-width: 640px) {
+                                    .users-modal-grid {
+                                        grid-template-columns: 1fr !important;
+                                        gap: 24px !important;
+                                    }
+                                }
+                            `}</style>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 <div>
                                     <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>EMAIL_ADDRESS</label>
@@ -243,7 +252,7 @@ export default function UsersView({ users, onRefresh }) {
                     placeholder="Search users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ ...inputStyle, width: '300px', background: 'var(--glass)', borderRadius: '2px' }}
+                    style={{ ...inputStyle, width: '100%', maxWidth: '300px', background: 'var(--glass)', borderRadius: '2px' }}
                 />
                 <div style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>
                     {users.filter(u => u.status === 'pending').length} PENDING REGISTRATIONS

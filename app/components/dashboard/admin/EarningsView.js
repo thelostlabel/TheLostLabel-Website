@@ -130,6 +130,19 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                 .table-row-hover:hover {
                     background-color: rgba(255,255,255,0.02) !important;
                 }
+                .earn-form-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 15px;
+                }
+                @media (max-width: 768px) {
+                    .earn-form-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .earn-form-span-2, .earn-form-span-3 {
+                        grid-column: span 1 !important;
+                    }
+                }
             `}</style>
             <div className="earnings-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
@@ -266,8 +279,8 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                     <div style={{ marginBottom: '15px', color: editingId ? 'var(--accent)' : '#fff', fontWeight: '900', fontSize: '11px', letterSpacing: '2px' }}>
                         {editingId ? 'EDITING EARNING RECORD' : 'NEW EARNING RECORD'}
                     </div>
-                    <form className="earnings-form" onSubmit={handleAdd} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-                        <div style={{ gridColumn: 'span 2' }}>
+                    <form className="earn-form-grid" onSubmit={handleAdd}>
+                        <div className="earn-form-span-2" style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>CONTRACT (RELEASE + ARTIST)</label>
                             <select
                                 value={form.contractId}
@@ -338,7 +351,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                                 <option value="other">Other</option>
                             </select>
                         </div>
-                        <div style={{ gridColumn: 'span 3', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                        <div className="earn-form-span-3" style={{ gridColumn: 'span 3', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                             <button type="button" onClick={() => setShowAdd(false)} style={{ ...btnStyle, height: 'auto' }}>CANCEL</button>
                             <button type="submit" disabled={saving} style={{ ...btnStyle, background: '#fff', color: '#000', height: 'auto' }}>
                                 {saving ? 'SAVING...' : (editingId ? 'UPDATE RECORD' : 'ADD RECORD')}
@@ -349,7 +362,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
             )}
 
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
+                <div className="earn-header-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
                     <div>PERIOD</div>
                     <div>RELEASE / ARTIST</div>
                     <div>GROSS</div>
@@ -367,7 +380,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            className="table-row-hover"
+                            className={`table-row-hover earn-row-grid`}
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1fr 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr',
@@ -412,7 +425,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                                 </span>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            <div className="earn-row-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                                 <button onClick={() => handleEdit(e)} style={{ ...btnStyle, fontSize: '9px', padding: '6px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>
                                     EDIT
                                 </button>

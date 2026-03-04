@@ -149,7 +149,7 @@ function SplitRow({ split, index, onUpdate, onRemove, onMakePrimary, artists, ef
                     )}
                 </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 0.8fr 1fr 40px', gap: '10px', alignItems: 'center' }}>
+            <div className="split-row-inner">
                 <input
                     placeholder="Artist Name"
                     value={split.name}
@@ -462,6 +462,28 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                 .table-row-hover:hover {
                     background-color: rgba(255,255,255,0.02) !important;
                 }
+                .contract-form-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                }
+                .split-row-inner {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr 0.8fr 1fr 40px;
+                    gap: 10px;
+                    align-items: center;
+                }
+                @media (max-width: 768px) {
+                    .contract-form-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .contract-col-span-2 {
+                        grid-column: span 1 !important;
+                    }
+                    .split-row-inner {
+                        grid-template-columns: 1fr 1fr !important;
+                    }
+                }
             `}</style>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
@@ -506,8 +528,8 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     animate={{ opacity: 1, y: 0 }}
                     style={{ ...glassStyle, padding: '25px', marginBottom: '30px', border: '1px solid var(--accent)' }}
                 >
-                    <form onSubmit={handleSubmitContract} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '12px 14px' }}>
+                    <form onSubmit={handleSubmitContract} className="contract-form-grid">
+                        <div className="contract-col-span-2" style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '12px 14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                 <div style={{ fontSize: '11px', fontWeight: 900, color: '#f1f1f1', letterSpacing: '0.04em' }}>
                                     CONTRACT BUILDER
@@ -766,7 +788,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
-                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle }}>
+                        <div className="contract-col-span-2" style={{ gridColumn: 'span 2', ...sectionCardStyle }}>
                             <label style={{ fontSize: '10px', color: '#666', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SONG TITLE(S)</label>
                             <input
                                 value={form.contractDetails.songTitles}
@@ -775,7 +797,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 style={{ width: '100%', padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', color: '#fff', borderRadius: '2px' }}
                             />
                         </div>
-                        <div style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '20px' }}>
+                        <div className="contract-col-span-2" style={{ gridColumn: 'span 2', ...sectionCardStyle, padding: '20px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                                 <label style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>ALL CONTRIBUTORS & SPLITS</label>
                                 <button

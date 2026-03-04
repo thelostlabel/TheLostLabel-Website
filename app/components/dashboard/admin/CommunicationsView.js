@@ -78,7 +78,14 @@ export default function CommunicationsView({ artists }) {
     }, [artistsWithEmail, searchTerm]);
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px', alignItems: 'start' }}>
+        <div className="comm-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px', alignItems: 'start' }}>
+            <style jsx>{`
+                @media (max-width: 768px) {
+                    .comm-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+            `}</style>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={glassStyle}>
                 <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <h2 style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '4px', color: '#fff' }}>COMPOSE_BROADCAST</h2>

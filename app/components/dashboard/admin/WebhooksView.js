@@ -101,7 +101,8 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         style={{
-                            width: '500px',
+                            width: '95vw',
+                            maxWidth: '500px',
                             padding: '40px',
                             background: 'rgba(255, 255, 255, 0.03)',
                             backdropFilter: 'blur(30px)',
