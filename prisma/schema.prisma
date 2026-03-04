@@ -275,9 +275,3 @@ model Payment {
   @@index([userId, createdAt])
   @@index([status, createdAt])
 }
-
-model SystemSettings {
-  id        String   @id @default("default")
-  config    String
-  updatedAt DateTime @updatedAt
-}
