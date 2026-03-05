@@ -477,22 +477,23 @@ function DashboardLayoutContent({ children }) {
                     z-index: 100;
                     display: flex;
                     flex-direction: column;
-                    background: #0a0a0a;
-                    border: 1px solid var(--border);
+                    background: linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 50%, #080808 100%);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
                     border-radius: 20px;
-                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(20px);
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+                    backdrop-filter: blur(24px);
                     overflow: hidden;
                     transition: width 0.28s ease;
                 }
 
                 .rail-top {
-                    padding: 16px 12px 10px;
+                    padding: 20px 14px 14px;
                     display: flex;
                     flex-direction: column;
                     align-items: stretch;
-                    gap: 12px;
-                    border-bottom: 1px solid var(--border);
+                    gap: 14px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                    background: rgba(255, 255, 255, 0.01);
                 }
 
                 .rail-user-head {
@@ -502,18 +503,19 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .rail-user-avatar {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
+                    width: 42px;
+                    height: 42px;
+                    border-radius: 14px;
                     overflow: hidden;
-                    border: 2px solid var(--border);
-                    background: var(--surface-2);
+                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    background: linear-gradient(135deg, #1a1a1a, #111);
                     display: grid;
                     place-items: center;
                     font-size: 14px;
                     font-weight: 800;
                     color: var(--text);
                     flex-shrink: 0;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
                 }
 
                 .rail-user-avatar img {
@@ -554,27 +556,29 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .rail-mode-btn {
-                    height: 30px;
+                    height: 32px;
                     border-radius: 8px;
-                    border: 1px solid var(--border);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
                     background: transparent;
-                    color: var(--muted);
+                    color: rgba(255, 255, 255, 0.35);
                     font-size: 10px;
                     font-weight: 800;
                     letter-spacing: 0.09em;
                     cursor: pointer;
-                    transition: all 0.2s ease;
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
                 .rail-mode-btn:hover {
-                    color: #fff;
-                    border-color: rgba(255, 255, 255, 0.2);
+                    color: rgba(255, 255, 255, 0.7);
+                    border-color: rgba(255, 255, 255, 0.12);
+                    background: rgba(255, 255, 255, 0.03);
                 }
 
                 .rail-mode-btn.active {
                     color: #fff;
-                    background: rgba(255, 255, 255, 0.09);
-                    border-color: rgba(255, 255, 255, 0.22);
+                    background: rgba(255, 255, 255, 0.1);
+                    border-color: rgba(255, 255, 255, 0.18);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
                 }
 
                 .rail-nav {
@@ -594,37 +598,51 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .rail-section-label {
-                    margin: 6px 8px 4px;
-                    color: var(--muted);
-                    font-size: 10px;
-                    font-weight: 800;
-                    letter-spacing: 0.12em;
+                    margin: 8px 12px 4px;
+                    color: rgba(255, 255, 255, 0.2);
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.16em;
                     text-transform: uppercase;
                 }
 
                 .rail-item {
                     width: 100%;
                     min-height: 40px;
-                    border-radius: 12px;
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
                     justify-content: flex-start;
                     gap: 10px;
-                    padding: 0 10px;
+                    padding: 0 12px;
                     text-decoration: none;
-                    color: var(--muted);
+                    color: rgba(255, 255, 255, 0.4);
                     background: transparent;
-                    transition: all 0.2s ease;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative;
                 }
 
                 .rail-item:hover {
-                    background: rgba(255, 255, 255, 0.05);
-                    color: #fff;
+                    background: rgba(255, 255, 255, 0.04);
+                    color: rgba(255, 255, 255, 0.8);
                 }
 
                 .rail-item.active {
-                    background: rgba(255, 255, 255, 0.08);
-                    color: var(--accent);
+                    background: rgba(255, 255, 255, 0.07);
+                    color: #fff;
+                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+                }
+
+                .rail-item.active::before {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 3px;
+                    height: 18px;
+                    background: #fff;
+                    border-radius: 0 4px 4px 0;
                 }
 
                 .rail-item-icon {
@@ -646,35 +664,36 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .rail-footer {
-                    padding: 10px 8px 14px;
+                    padding: 10px 8px 16px;
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
-                    border-top: 1px solid var(--border);
+                    gap: 4px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.04);
+                    background: rgba(0, 0, 0, 0.15);
                 }
 
                 .rail-footer-btn {
                     width: 100%;
-                    height: 40px;
-                    border-radius: 12px;
+                    height: 38px;
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
                     justify-content: flex-start;
                     gap: 10px;
                     border: 0;
                     background: transparent;
-                    color: var(--muted);
-                    padding: 0 10px;
+                    color: rgba(255, 255, 255, 0.3);
+                    padding: 0 12px;
                     cursor: pointer;
-                    transition: all 0.2s ease;
-                    font-size: 11px;
-                    font-weight: 800;
-                    letter-spacing: 0.08em;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    font-size: 10px;
+                    font-weight: 700;
+                    letter-spacing: 0.1em;
                 }
 
                 .rail-footer-btn:hover {
-                    background: rgba(255, 255, 255, 0.05);
-                    color: #fff;
+                    background: rgba(255, 255, 255, 0.04);
+                    color: rgba(255, 255, 255, 0.7);
                 }
 
                 .bc-logo {
@@ -689,9 +708,15 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .bc-logo-text {
-                    font-size: 18px;
-                    font-weight: 800;
-                    letter-spacing: -0.5px;
+                    font-size: 16px;
+                    font-weight: 900;
+                    letter-spacing: 3px;
+                    color: rgba(255, 255, 255, 0.9);
+                }
+
+                .bc-logo-img {
+                    opacity: 0.9;
+                    border-radius: 8px;
                 }
 
                 .bc-search-container {
@@ -710,20 +735,28 @@ function DashboardLayoutContent({ children }) {
 
                 .bc-search-input {
                     width: 100%;
-                    height: 42px;
-                    background: rgba(255, 255, 255, 0.04);
-                    border: 1px solid var(--border);
-                    border-radius: 21px;
+                    height: 40px;
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    border-radius: 12px;
                     padding: 0 16px 0 44px;
                     color: #fff;
-                    font-size: 13px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    letter-spacing: 0.02em;
                     outline: none;
-                    transition: all 0.2s ease;
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+
+                .bc-search-input::placeholder {
+                    color: rgba(255, 255, 255, 0.2);
+                    font-weight: 500;
                 }
 
                 .bc-search-input:focus {
-                    background: rgba(255, 255, 255, 0.06);
-                    border-color: var(--accent);
+                    background: rgba(255, 255, 255, 0.05);
+                    border-color: rgba(255, 255, 255, 0.15);
+                    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.03);
                 }
 
                 .bc-search-results {
@@ -731,15 +764,16 @@ function DashboardLayoutContent({ children }) {
                     top: calc(100% + 8px);
                     left: 0;
                     right: 0;
-                    background: #101010;
-                    border: 1px solid var(--border);
-                    border-radius: 12px;
-                    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
+                    background: #111;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 14px;
+                    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
                     padding: 6px;
                     z-index: 40;
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 2px;
+                    backdrop-filter: blur(20px);
                 }
 
                 .bc-search-result-item {
@@ -800,16 +834,22 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .bc-user-avatar {
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 50%;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 12px;
                     overflow: hidden;
-                    background: var(--surface-2);
+                    background: linear-gradient(135deg, #1a1a1a, #111);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
                     display: grid;
                     place-items: center;
                     font-size: 12px;
                     font-weight: 800;
                     color: var(--text);
+                    transition: border-color 0.2s ease;
+                }
+
+                .bc-user-avatar:hover {
+                    border-color: rgba(255, 255, 255, 0.15);
                 }
 
                 .bc-user-avatar img {
@@ -830,10 +870,10 @@ function DashboardLayoutContent({ children }) {
 
                 .dashboard-window {
                     min-height: calc(100vh - 32px);
-                    border-radius: 24px;
-                    border: 1px solid var(--border);
-                    background: #0a0a0a;
-                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+                    border-radius: 20px;
+                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 100%);
+                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.03);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
@@ -842,13 +882,14 @@ function DashboardLayoutContent({ children }) {
 
 
                 .window-toolbar {
-                    min-height: 80px;
-                    padding: 0 40px;
+                    min-height: 72px;
+                    padding: 0 32px;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                     gap: 16px;
-                    background: transparent;
+                    background: rgba(255, 255, 255, 0.01);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
                 }
 
                 .window-toolbar-left {
