@@ -9,40 +9,40 @@ datasource db {
 }
 
 model User {
-  id               String                 @id @default(uuid())
-  email            String                 @unique
-  password         String
-  fullName         String?
-  stageName        String?
-  role             String                 @default("artist")
-  status           String                 @default("pending")
-  emailVerified    DateTime?
-  verificationToken String?
+  id                      String                 @id @default(uuid())
+  email                   String                 @unique
+  password                String
+  fullName                String?
+  stageName               String?
+  role                    String                 @default("artist")
+  status                  String                 @default("pending")
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  monthlyListeners        Int?
+  spotifyUrl              String?
+  permissions             String?
+  legalName               String?
+  phoneNumber             String?
+  address                 String?
+  emailVerified           DateTime?
+  verificationToken       String?
   verificationTokenExpiry DateTime?
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  monthlyListeners Int?
-  spotifyUrl       String?
-  permissions      String?
-  legalName        String?
-  phoneNumber      String?
-  address          String?
-  discordId        String?                @unique
-  notifyDemos      Boolean                @default(true)
-  notifyEarnings   Boolean                @default(true)
-  notifySupport    Boolean                @default(true)
-  notifyContracts  Boolean                @default(true)
-  discordNotifyEnabled Boolean            @default(false)
-  artist           Artist?
-  assignedRequests ChangeRequest[]        @relation("AssignedRequests")
-  requests         ChangeRequest[]        @relation("UserRequests")
-  comments         ChangeRequestComment[]
-  contracts        Contract[]
-  demos            Demo[]
-  payments         Payment[]
-  royaltySplits    RoyaltySplit[]
+  notifyContracts         Boolean                @default(true)
+  notifyDemos             Boolean                @default(true)
+  notifyEarnings          Boolean                @default(true)
+  notifySupport           Boolean                @default(true)
+  resetToken              String?
+  resetTokenExpiry        DateTime?
+  discordId               String?
+  discordNotifyEnabled    Boolean                @default(false)
+  artist                  Artist?
+  assignedRequests        ChangeRequest[]        @relation("AssignedRequests")
+  requests                ChangeRequest[]        @relation("UserRequests")
+  comments                ChangeRequestComment[]
+  contracts               Contract[]
+  demos                   Demo[]
+  payments                Payment[]
+  royaltySplits           RoyaltySplit[]
 }
 
 model Demo {
@@ -64,8 +64,8 @@ model Demo {
   artist               User       @relation(fields: [artistId], references: [id], onDelete: Cascade)
   files                DemoFile[]
 
-  @@index([status, createdAt])
-  @@index([artistId, createdAt])
+  @@index([artistId, createdAt(sort: Desc)], map: "idx_demo_artist_id_created_at")
+  @@index([status, createdAt(sort: Desc)], map: "idx_demo_status_created_at")
 }
 
 model DemoFile {
@@ -98,25 +98,25 @@ model Webhook {
 }
 
 model Artist {
-  id               String         @id @default(uuid())
+  id               String               @id @default(uuid())
   name             String
   image            String?
   spotifyUrl       String?
   email            String?
-  status           String         @default("active")
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  userId           String?        @unique
-  followers        Int?           @default(0)
-  popularity       Int?           @default(0)
+  status           String               @default("active")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  userId           String?              @unique
+  followers        Int?                 @default(0)
   genres           String?
   lastSyncedAt     DateTime?
-  monthlyListeners Int?           @default(0)
-  verified         Boolean?       @default(false)
+  monthlyListeners Int?                 @default(0)
+  verified         Boolean?             @default(false)
+  popularity       Int?                 @default(0)
   user             User?                @relation(fields: [userId], references: [id])
+  statsHistory     ArtistStatsHistory[]
   contracts        Contract[]
   royaltySplits    RoyaltySplit[]
-  statsHistory     ArtistStatsHistory[]
 }
 
 model ArtistStatsHistory {
@@ -124,8 +124,8 @@ model ArtistStatsHistory {
   artistId         String
   monthlyListeners Int
   followers        Int?
-  popularity       Int?
   date             DateTime @default(now())
+  popularity       Int?
   artist           Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
 
   @@index([artistId, date])
@@ -134,8 +134,6 @@ model ArtistStatsHistory {
 model Release {
   id              String          @id @default(uuid())
   name            String
-  baseTitle       String?
-  versionName     String?
   artistName      String?
   image           String?
   spotifyUrl      String?
@@ -145,10 +143,12 @@ model Release {
   updatedAt       DateTime        @updatedAt
   popularity      Int?
   streamCountText String?
-  type            String          @default("album") // album, single, ep
+  type            String          @default("album")
   totalTracks     Int             @default(1)
-  requests        ChangeRequest[]
   previewUrl      String?
+  baseTitle       String?
+  versionName     String?
+  requests        ChangeRequest[]
   contracts       Contract[]
 
   @@index([baseTitle])
@@ -167,13 +167,13 @@ model ChangeRequest {
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   assignedTo   User?                  @relation("AssignedRequests", fields: [assignedToId], references: [id])
-  user         User                   @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
   release      Release?               @relation(fields: [releaseId], references: [id])
+  user         User                   @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
   comments     ChangeRequestComment[]
 
-  @@index([status, createdAt])
-  @@index([userId, createdAt])
-  @@index([assignedToId, createdAt])
+  @@index([assignedToId, createdAt(sort: Desc)], map: "idx_change_request_assigned_to_created_at")
+  @@index([status, createdAt(sort: Desc)], map: "idx_change_request_status_created_at")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_change_request_user_id_created_at")
 }
 
 model ChangeRequestComment {
@@ -182,8 +182,8 @@ model ChangeRequestComment {
   userId    String
   content   String
   createdAt DateTime      @default(now())
-  user      User          @relation(fields: [userId], references: [id])
   request   ChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id])
 }
 
 model SystemSettings {
@@ -211,17 +211,17 @@ model Contract {
   updatedAt          DateTime       @updatedAt
   pdfUrl             String?
   featuredArtists    String?
+  artist             Artist?        @relation(fields: [artistId], references: [id])
   demo               Demo?          @relation(fields: [demoId], references: [id])
   release            Release?       @relation(fields: [releaseId], references: [id])
-  artist             Artist?        @relation(fields: [artistId], references: [id])
   user               User?          @relation(fields: [userId], references: [id])
   earnings           Earning[]
   splits             RoyaltySplit[]
 
-  @@index([userId, createdAt])
-  @@index([artistId, createdAt])
-  @@index([releaseId])
-  @@index([status, createdAt])
+  @@index([artistId, createdAt(sort: Desc)], map: "idx_contract_artist_id_created_at")
+  @@index([releaseId], map: "idx_contract_release_id")
+  @@index([status, createdAt(sort: Desc)], map: "idx_contract_status_created_at")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_contract_user_id_created_at")
 }
 
 model RoyaltySplit {
@@ -233,8 +233,8 @@ model RoyaltySplit {
   artistId   String?
   email      String?
   artist     Artist?  @relation(fields: [artistId], references: [id])
-  user       User?    @relation(fields: [userId], references: [id])
   contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
 }
 
 model Earning {
@@ -254,8 +254,8 @@ model Earning {
   updatedAt     DateTime  @updatedAt
   contract      Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
-  @@index([contractId, period])
-  @@index([createdAt])
+  @@index([contractId, period(sort: Desc)], map: "idx_earning_contract_id_period")
+  @@index([createdAt(sort: Desc)], map: "idx_earning_created_at")
 }
 
 model Payment {
@@ -272,6 +272,78 @@ model Payment {
   updatedAt   DateTime  @updatedAt
   user        User      @relation(fields: [userId], references: [id])
 
-  @@index([userId, createdAt])
-  @@index([status, createdAt])
+  @@index([status, createdAt(sort: Desc)], map: "idx_payment_status_created_at")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_payment_user_id_created_at")
+}
+
+model discord_account_links {
+  user_id          String   @id
+  discord_user_id  String   @unique
+  discord_username String?
+  discord_avatar   String?
+  guild_id         String?
+  linked_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([discord_user_id], map: "idx_discord_account_links_discord_user_id")
+}
+
+model discord_event_outbox {
+  id              BigInt   @id @default(autoincrement())
+  event_type      String
+  aggregate_id    String?
+  payload         Json
+  status          String   @default("pending")
+  attempts        Int      @default(0)
+  next_attempt_at DateTime @default(now()) @db.Timestamptz(6)
+  last_error      String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status, next_attempt_at, created_at], map: "idx_discord_event_outbox_pending")
+}
+
+model discord_internal_audit {
+  id              BigInt   @id @default(autoincrement())
+  request_id      String?
+  endpoint        String
+  method          String
+  discord_user_id String?
+  guild_id        String?
+  success         Boolean  @default(false)
+  status_code     Int?
+  signature       String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at(sort: Desc)], map: "idx_discord_internal_audit_created_at")
+  @@index([request_id], map: "idx_discord_internal_audit_request_id")
+  @@index([signature], map: "idx_discord_internal_audit_signature")
+}
+
+model discord_oauth_states {
+  state            String    @id
+  user_id          String?
+  discord_user_id  String?
+  discord_username String?
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at       DateTime  @db.Timestamptz(6)
+  consumed_at      DateTime? @db.Timestamptz(6)
+
+  @@index([expires_at], map: "idx_discord_oauth_states_expires_at")
+}
+
+model discord_role_sync_queue {
+  id                     BigInt   @id @default(autoincrement())
+  user_id                String
+  discord_user_id        String?
+  target_role            String
+  target_discord_role_id String?
+  status                 String   @default("pending")
+  attempts               Int      @default(0)
+  last_error             String?
+  guild_id               String?
+  created_at             DateTime @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status, created_at], map: "idx_discord_role_sync_queue_pending")
 }

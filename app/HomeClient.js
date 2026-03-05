@@ -24,6 +24,11 @@ import BackgroundEffects from "./components/BackgroundEffects";
 import ArtistsSection from "./components/ArtistsSection";
 import PartnersSection from "./components/PartnersSection";
 import Particles from "./components/ui/particles";
+import ShimmerButton from "./components/ui/shimmer-button";
+import BorderBeam from "./components/ui/border-beam";
+import AnimatedShinyText from "./components/ui/animated-shiny-text";
+import Ripple from "./components/ui/ripple";
+import NumberTicker from "./components/ui/number-ticker";
 import { usePlayer } from "./components/PlayerContext";
 
 // --- ANIMATION VARIANTS & HOOKS ---
@@ -108,14 +113,14 @@ const FeatureCard = ({ icon: Icon, title, body, badge, index }) => {
         gap: "24px",
         minHeight: "320px",
         position: "relative",
-        background: isHovered ? "rgba(255,255,255,0.03)" : "transparent",
+        background: isHovered ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0)",
         border: "1px solid rgba(255,255,255,0.1)",
         transition: "background 0.3s ease",
       }}
     >
       <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <motion.div
-          animate={isHovered ? { backgroundColor: "rgba(229,231,235,0.95)" } : { backgroundColor: "transparent" }}
+          animate={isHovered ? { backgroundColor: "rgba(229,231,235,0.95)" } : { backgroundColor: "rgba(0,0,0,0)" }}
           transition={{ duration: 0.2 }}
           style={{
             padding: "16px",
@@ -140,6 +145,17 @@ const FeatureCard = ({ icon: Icon, title, body, badge, index }) => {
         <h3 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-1px", marginBottom: "16px", lineHeight: "1.1", textTransform: "uppercase" }}>{title}</h3>
         <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.5)", lineHeight: "1.6" }}>{body}</p>
       </div>
+
+      {/* Magic UI border beam — visible on hover */}
+      {isHovered && (
+        <BorderBeam
+          size={180}
+          duration={4}
+          colorFrom="rgba(255,255,255,0.9)"
+          colorTo="rgba(255,255,255,0)"
+          borderWidth={1}
+        />
+      )}
     </motion.div>
   );
 };
@@ -216,7 +232,7 @@ const StatItem = ({ label, value, delay }) => (
       textShadow: "0 10px 40px rgba(0,0,0,0.8)",
       whiteSpace: "nowrap"
     }}>
-      <AnimatedNumber value={value} />
+      <NumberTicker value={value} />
     </div>
     <div style={{
       fontSize: "12px",
@@ -476,7 +492,9 @@ export default function Home() {
                 style={{ display: "inline-flex", alignItems: "center", gap: "10px", padding: "8px 16px", borderRadius: "50px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "30px" }}
               >
                 <span style={{ width: "8px", height: "8px", background: "#E5E7EB", borderRadius: "50%", boxShadow: "0 0 10px rgba(229,231,235,0.5)" }} />
-                <span style={{ fontSize: "11px", fontWeight: "800", letterSpacing: "2px" }}>ACCEPTING NEW ARTISTS</span>
+                <AnimatedShinyText style={{ fontSize: "11px", fontWeight: "800", letterSpacing: "2px" }}>
+                  ACCEPTING NEW ARTISTS
+                </AnimatedShinyText>
               </motion.div>
 
               <KineticText
@@ -503,17 +521,33 @@ export default function Home() {
                 style={{ display: "flex", gap: "16px", flexWrap: "wrap", zIndex: 20, position: "relative" }}
               >
                 <MagneticEffect>
-                  <Link href="/auth/register" style={{ display: "inline-block", padding: "18px 36px", fontSize: "14px", fontWeight: "900", letterSpacing: "2px", backgroundColor: "#fff", color: "#000", border: "1px solid #fff", transition: "background 0.3s, color 0.3s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#fff"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.color = "#000"; }}>
-                    START YOUR RELEASE
+                  <Link href="/auth/register">
+                    <ShimmerButton
+                      background="#ffffff"
+                      color="#000000"
+                      shimmerColor="rgba(0,0,0,0.12)"
+                      shimmerDuration="2s"
+                      style={{ padding: "18px 36px", fontSize: "14px" }}
+                    >
+                      START YOUR RELEASE
+                    </ShimmerButton>
                   </Link>
                 </MagneticEffect>
                 <MagneticEffect>
-                  <Link href="/artists" style={{ display: "inline-block", padding: "18px 36px", fontSize: "14px", fontWeight: "900", letterSpacing: "2px", backgroundColor: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", transition: "border 0.3s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.border = "1px solid #fff"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.2)"; }}>
-                    VIEW ROSTER
+                  <Link href="/artists">
+                    <ShimmerButton
+                      background="transparent"
+                      color="#ffffff"
+                      shimmerColor="rgba(255,255,255,0.08)"
+                      shimmerDuration="3s"
+                      style={{
+                        padding: "18px 36px",
+                        fontSize: "14px",
+                        border: "1px solid rgba(255,255,255,0.2)",
+                      }}
+                    >
+                      VIEW ROSTER
+                    </ShimmerButton>
                   </Link>
                 </MagneticEffect>
               </motion.div>
@@ -615,6 +649,7 @@ export default function Home() {
 
         {/* --- CTA SECTION --- */}
         <section className="snap-section" style={{ padding: "140px 24px", minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", overflow: "hidden", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <Ripple numRipples={6} mainCircleSize={180} mainCircleOpacity={0.18} duration={4} />
           <div style={{ position: "relative", zIndex: 10, maxWidth: "800px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <KineticText
               as="h2"
@@ -628,16 +663,17 @@ export default function Home() {
             </TextReveal>
 
             <MagneticEffect>
-              <motion.div
-                whileHover={{ backgroundColor: "#fff", color: "#000", scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                style={{ border: "1px solid #fff", display: "inline-block" }}
-              >
-                <Link href="/auth/register" style={{ display: "inline-block", padding: "24px 64px", fontSize: "16px", fontWeight: "900", letterSpacing: "2px", textTransform: "uppercase" }}>
+              <Link href="/auth/register">
+                <ShimmerButton
+                  background="#ffffff"
+                  color="#000000"
+                  shimmerColor="rgba(0,0,0,0.12)"
+                  shimmerDuration="1.8s"
+                  style={{ padding: "24px 64px", fontSize: "16px" }}
+                >
                   SUBMIT DEMO
-                </Link>
-              </motion.div>
+                </ShimmerButton>
+              </Link>
             </MagneticEffect>
           </div>
         </section>
