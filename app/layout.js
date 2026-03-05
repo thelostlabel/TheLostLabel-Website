@@ -5,23 +5,6 @@ import SmoothScroll from "./components/SmoothScroll";
 import { ToastProvider } from "./components/ToastContext";
 import { PlayerProvider } from "./components/PlayerContext";
 import Player from "./components/Player";
-import prisma from "@/lib/prisma";
-import { BRAND, BRAND_THEME_VARS } from "@/lib/brand";
-import BrandHydrator from "./components/BrandHydrator";
-
-async function getSystemConfig() {
-  try {
-    const settings = await prisma.systemSettings.findUnique({
-      where: { id: "default" },
-    });
-    if (settings && settings.config) {
-      return JSON.parse(settings.config);
-    }
-  } catch (e) {
-    console.warn("Could not fetch system settings from database");
-  }
-  return null;
-}
 
 export const metadata = {
   metadataBase: new URL('https://thelostlabel.com'), // Using new domain for absolute image paths
@@ -82,25 +65,7 @@ export const viewport = {
   initialScale: 1,
 };
 
-
-export default async function RootLayout({ children }) {
-  const dbConfig = await getSystemConfig();
-
-  const themeVars = { ...BRAND_THEME_VARS };
-  if (dbConfig?.theme) {
-    const theme = dbConfig.theme;
-    if (theme.primaryColor) {
-      themeVars["--primary"] = theme.primaryColor;
-      themeVars["--primary-dim"] = theme.primaryColor + "22";
-      themeVars["--primary-faint"] = theme.primaryColor + "12";
-      themeVars["--primary-glow"] = theme.primaryColor + "55";
-    }
-    if (theme.bgColor) themeVars["--bg"] = theme.bgColor;
-    if (theme.accentColor) themeVars["--accent"] = theme.accentColor;
-    if (theme.surfaceColor) themeVars["--bg-surface"] = theme.surfaceColor;
-    if (theme.borderColor) themeVars["--border"] = theme.borderColor;
-  }
-
+export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
@@ -108,8 +73,7 @@ export default async function RootLayout({ children }) {
         <link rel="shortcut icon" href="/logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
-      <body style={themeVars}>
-        <BrandHydrator dbConfig={dbConfig} />
+      <body>
         <SmoothScroll />
         <AuthProvider>
           <ToastProvider>
