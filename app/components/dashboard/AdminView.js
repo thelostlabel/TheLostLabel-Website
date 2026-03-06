@@ -48,6 +48,22 @@ export default function AdminView() {
         'discord-bridge'
     ]);
     const view = knownViews.has(normalizedView) ? normalizedView : 'overview';
+    const viewDisplayNames = {
+        overview: 'Overview',
+        submissions: 'Submissions',
+        artists: 'Artists',
+        users: 'Users',
+        requests: 'Requests',
+        content: 'Content',
+        webhooks: 'Webhooks',
+        contracts: 'Contracts',
+        earnings: 'Earnings',
+        payments: 'Payments',
+        releases: 'Releases',
+        settings: 'Settings',
+        communications: 'Communications',
+        'discord-bridge': 'Discord Bridge'
+    };
 
     const [submissions, setSubmissions] = useState([]);
     const [artists, setArtists] = useState([]);
@@ -277,7 +293,13 @@ export default function AdminView() {
     }
 
     if (showLoading) {
-        return <DashboardLoader fullScreen label="LOADING ADMIN PANEL" subLabel={`Fetching ${view.toUpperCase()} data...`} />;
+        return (
+            <DashboardLoader
+                fullScreen
+                label="Admin Panel"
+                subLabel={`Preparing ${viewDisplayNames[view] || 'Dashboard'} module...`}
+            />
+        );
     }
 
     return (
