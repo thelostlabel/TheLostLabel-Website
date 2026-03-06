@@ -21,12 +21,12 @@ import { BRANDING } from '@/lib/branding';
 
 
 const DASHBOARD_THEME = {
-    bg: '#0a0a0a',
-    surface: '#141414',
-    surfaceElevated: '#1c1c1c',
-    surfaceSoft: '#2a2a2a',
-    border: '#2a2a2a',
-    borderStrong: 'rgba(209,213,219,0.3)',
+    bg: 'transparent',
+    surface: 'rgba(255,255,255,0.03)',
+    surfaceElevated: 'rgba(255,255,255,0.05)',
+    surfaceSoft: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.08)',
+    borderStrong: 'rgba(255,255,255,0.15)',
     text: '#FFFFFF',
     muted: '#888888',
     accent: '#D1D5DB',
@@ -1273,7 +1273,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         className="overview-welcome" style={{
-                            background: 'linear-gradient(130deg, #111111 0%, #171717 60%, #101010 100%)',
+                            background: 'linear-gradient(130deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
                             borderRadius: '20px',
                             padding: '30px',
                             display: 'flex',
@@ -3190,11 +3190,11 @@ function ArtistEarningsView({ earnings, payments, session, pagination, onPageCha
     }, {})).sort((a, b) => b.spend - a.spend).slice(0, 5);
 
     const earningsTone = {
-        shellGlowA: 'rgba(209,213,219,0.1)',
-        shellGlowB: 'rgba(156,163,175,0.1)',
-        panel: '#141414',
-        panelSoft: '#1c1c1c',
-        panelBorder: '#2a2a2a',
+        shellGlowA: 'rgba(209,213,219,0.06)',
+        shellGlowB: 'rgba(156,163,175,0.06)',
+        panel: 'rgba(255,255,255,0.03)',
+        panelSoft: 'rgba(255,255,255,0.05)',
+        panelBorder: 'rgba(255,255,255,0.08)',
         muted: '#888888',
         accent: '#D1D5DB',
         info: '#60A5FA'

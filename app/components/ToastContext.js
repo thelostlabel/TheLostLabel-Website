@@ -1,7 +1,7 @@
 "use client";
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle, Sparkles } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -14,6 +14,39 @@ export const useToast = () => {
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
     const [confirm, setConfirm] = useState(null);
+    const [changelog, setChangelog] = useState(null);
+
+    // Changelog verileri - siteye özel değişiklikler buraya eklenecek
+    const changelogData = {
+        id: 'changelog-2026-03-06',
+        title: '🎉 Yeni Özellikler!',
+        items: [
+            '💰 Artık kazançlarınızı kolayca takip edebilirsiniz',
+            '🎵 Yeni demo yükleme sistemi eklendi',
+            '📊 Gelişmiş istatistikler paneli',
+            '🔔 Discord entegrasyonu iyileştirildi'
+        ]
+    };
+
+    // Component mount olduğunda changelog göster
+    useEffect(() => {
+        const lastSeenChangelog = localStorage.getItem('lastSeenChangelog');
+        
+        // Eğer daha önce görülmemiş veya yeni bir changelog varsa göster
+        if (!lastSeenChangelog || lastSeenChangelog !== changelogData.id) {
+            // Kısa bir gecikme ile göster ki kullanıcı siteyi açtığında hemen gelmesin
+            const timer = setTimeout(() => {
+                setChangelog(changelogData);
+            }, 1500);
+            
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    const closeChangelog = useCallback(() => {
+        setChangelog(null);
+        localStorage.setItem('lastSeenChangelog', changelogData.id);
+    }, []);
 
     const showToast = useCallback((message, type = 'info', duration = 5000) => {
         const id = Math.random().toString(36).substring(2, 9);
@@ -47,6 +80,14 @@ export const ToastProvider = ({ children }) => {
     return (
         <ToastContext.Provider value={{ showToast, removeToast, showConfirm }}>
             {children}
+            <AnimatePresence>
+                {changelog && (
+                    <ChangelogCard 
+                        {...changelog} 
+                        onClose={closeChangelog}
+                    />
+                )}
+            </AnimatePresence>
             <AnimatePresence>
                 {confirm && (
                     <ConfirmModal
@@ -262,5 +303,188 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel }) => {
                 </div>
             </motion.div>
         </div>
+    );
+};
+
+// Changelog Kartı Bileşeni - Son yapılan değişiklikleri gösterir
+const ChangelogCard = ({ title, items, onClose }) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            style={{
+                position: 'fixed',
+                bottom: '30px',
+                left: '30px',
+                zIndex: 9998,
+                background: 'linear-gradient(135deg, rgba(20, 20, 25, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)',
+                backdropFilter: 'blur(30px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '24px',
+                padding: '28px',
+                maxWidth: '400px',
+                width: '90vw',
+                boxShadow: '0 30px 60px rgba(0,0,0,0.5), 0 0 40px rgba(139, 92, 246, 0.1)',
+                pointerEvents: 'auto'
+            }}
+        >
+            {/* Gradient border effect */}
+            <div style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '24px',
+                padding: '1px',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(59, 130, 246, 0.3) 100%)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude',
+                pointerEvents: 'none'
+            }} />
+
+            {/* Header */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '20px'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                }}>
+                    <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '14px',
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Sparkles size={22} color="#a78bfa" />
+                    </div>
+                    <h3 style={{
+                        fontSize: '18px',
+                        fontWeight: '900',
+                        color: '#fff',
+                        margin: 0,
+                        letterSpacing: '-0.5px'
+                    }}>
+                        {title}
+                    </h3>
+                </div>
+                <button
+                    onClick={onClose}
+                    style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: 'none',
+                        color: '#666',
+                        cursor: 'pointer',
+                        padding: '8px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        e.currentTarget.style.color = '#666';
+                    }}
+                >
+                    <X size={18} />
+                </button>
+            </div>
+
+            {/* Items */}
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+            }}>
+                {items.map((item, index) => (
+                    <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + index * 0.1 }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '12px 16px',
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(255,255,255,0.03)'
+                        }}
+                    >
+                        <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
+                            flexShrink: 0
+                        }} />
+                        <span style={{
+                            fontSize: '13px',
+                            color: 'rgba(255,255,255,0.85)',
+                            lineHeight: '1.4'
+                        }}>
+                            {item}
+                        </span>
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+                marginTop: '20px',
+                paddingTop: '16px',
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+            }}>
+                <span style={{
+                    fontSize: '11px',
+                    color: '#444',
+                    letterSpacing: '0.5px'
+                }}>
+                    THE LOST LABEL
+                </span>
+                <button
+                    onClick={onClose}
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%)',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        padding: '10px 20px',
+                        borderRadius: '10px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        letterSpacing: '0.5px',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(139, 92, 246, 0.3)';
+                    }}
+                >
+                    TAMAM
+                </button>
+            </div>
+        </motion.div>
     );
 };

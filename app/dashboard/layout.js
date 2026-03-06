@@ -454,7 +454,7 @@ function DashboardLayoutContent({ children }) {
                 }
 
                 .dashboard-content-container .dashboard-view th {
-                    background: #141414 !important;
+                    background: rgba(255, 255, 255, 0.03) !important;
                     color: #9ca3af !important;
                     font-size: 10px !important;
                     letter-spacing: 0.12em !important;
@@ -480,11 +480,12 @@ function DashboardLayoutContent({ children }) {
                     z-index: 1100;
                     display: flex;
                     flex-direction: column;
-                    background: linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 50%, #080808 100%);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
+                    background: rgba(14, 14, 18, 0.82);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
                     border-radius: 20px;
-                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-                    backdrop-filter: blur(24px);
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(40px) saturate(130%);
+                    -webkit-backdrop-filter: blur(40px) saturate(130%);
                     overflow: hidden;
                     transition: width 0.28s ease;
                 }
@@ -767,16 +768,17 @@ function DashboardLayoutContent({ children }) {
                     top: calc(100% + 8px);
                     left: 0;
                     right: 0;
-                    background: #111;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: rgba(16, 16, 20, 0.88);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
                     border-radius: 14px;
-                    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+                    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
                     padding: 6px;
                     z-index: 40;
                     display: flex;
                     flex-direction: column;
                     gap: 2px;
-                    backdrop-filter: blur(20px);
+                    backdrop-filter: blur(32px) saturate(130%);
+                    -webkit-backdrop-filter: blur(32px) saturate(130%);
                 }
 
                 .bc-search-result-item {
@@ -874,9 +876,11 @@ function DashboardLayoutContent({ children }) {
                 .dashboard-window {
                     min-height: calc(100vh - 32px);
                     border-radius: 20px;
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    background: linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 100%);
-                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+                    border: 1px solid rgba(255, 255, 255, 0.07);
+                    background: rgba(12, 12, 16, 0.78);
+                    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+                    backdrop-filter: blur(40px) saturate(130%);
+                    -webkit-backdrop-filter: blur(40px) saturate(130%);
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
@@ -891,8 +895,8 @@ function DashboardLayoutContent({ children }) {
                     align-items: center;
                     justify-content: space-between;
                     gap: 16px;
-                    background: rgba(255, 255, 255, 0.01);
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+                    background: rgba(255, 255, 255, 0.02);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
                 }
 
                 .window-toolbar-left {
@@ -1190,6 +1194,9 @@ function DashboardLayoutContent({ children }) {
                 ::-webkit-scrollbar-thumb {
                     background: rgba(144, 156, 176, 0.3);
                     border-radius: 999px;
+                }
+                ::-webkit-scrollbar-thumb:hover {
+                    background: rgba(144, 156, 176, 0.5);
                 }
             `}</style>
         </div>

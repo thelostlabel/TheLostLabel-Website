@@ -83,7 +83,7 @@ export default function AdminView() {
 
     useEffect(() => {
         if (view === 'submissions') fetchSubmissions();
-        else if (view === 'artists') { fetchArtists(); fetchUsers(); }
+        else if (view === 'artists') { fetchArtists(); fetchUsers(); fetchReleases(); fetchContracts(); }
         else if (view === 'users') fetchUsers();
         else if (view === 'requests') fetchRequests();
         else if (view === 'content') fetchContent();
@@ -133,9 +133,11 @@ export default function AdminView() {
         try {
             const res = await fetch('/api/admin/artists');
             const data = await res.json();
+            console.log("[AdminView] Fetched Artists:", data.artists?.length);
             setArtists(data.artists || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
+
     };
 
     const fetchUsers = async () => {
@@ -161,11 +163,13 @@ export default function AdminView() {
     const fetchContracts = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/contracts');
+            const res = await fetch('/api/contracts?all=true');
             const data = await res.json();
+            console.log("[AdminView] Fetched Contracts:", data.contracts?.length);
             setContracts(data.contracts || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
+
     };
 
     const fetchEarnings = async (page = 1) => {
@@ -194,9 +198,11 @@ export default function AdminView() {
         try {
             const res = await fetch('/api/admin/releases');
             const data = await res.json();
+            console.log("[AdminView] Fetched Releases:", data.length);
             setReleases(Array.isArray(data) ? data : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
+
     };
 
     const fetchDiscordBridge = async () => {
@@ -329,8 +335,9 @@ export default function AdminView() {
                 window.dispatchEvent(new Event('popstate'));
             }} />}
             {view === 'submissions' && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} />}
-            {view === 'artists' && <ArtistsView artists={artists} users={users} onSync={handleSyncStats} onRefresh={fetchArtists} />}
+            {view === 'artists' && <ArtistsView artists={artists} users={users} releases={releases} contracts={contracts} onSync={handleSyncStats} onRefresh={fetchArtists} />}
             {view === 'users' && <UsersView users={users} onRefresh={fetchUsers} />}
+
             {view === 'requests' && <RequestsView requests={requests} />}
             {view === 'contracts' && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
             {view === 'earnings' && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} pagination={earningsPagination} />}
