@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Disc, Edit3, Trash2, Edit2, Search } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, inputStyle } from './styles';
+import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import Portal from '@/app/components/Portal';
+
 
 export default function ReleasesView({ releases }) {
     const actionBtnStyle = (typeof btnStyle !== 'undefined' && btnStyle)
@@ -285,106 +288,112 @@ export default function ReleasesView({ releases }) {
             </div>
 
             {editingRelease && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        style={{
-                            width: '550px',
-                            padding: '40px',
-                            background: 'var(--surface)',
-                            borderRadius: '16px',
-                            border: '1px solid var(--border)',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                            position: 'relative',
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '250px', height: '250px', background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.05, pointerEvents: 'none', zIndex: 0 }} />
+                <Portal>
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '32px', position: 'relative', zIndex: 1 }}>
-                            <div style={{ width: '32px', height: '2px', background: 'var(--accent)' }}></div>
-                            <h3 style={{ fontSize: '14px', letterSpacing: '3px', fontWeight: '950', color: '#fff', margin: 0 }}>EDIT RELEASE DATA</h3>
-                        </div>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            style={{
+                                width: '550px',
+                                padding: '40px',
+                                background: 'var(--surface)',
+                                borderRadius: '16px',
+                                border: '1px solid var(--border)',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {saving && <DashboardLoader overlay label="SAVING" subLabel="Updating release data..." />}
+                            <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '250px', height: '250px', background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.05, pointerEvents: 'none', zIndex: 0 }} />
 
-                        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative', zIndex: 1 }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '32px', position: 'relative', zIndex: 1 }}>
+                                <div style={{ width: '32px', height: '2px', background: 'var(--accent)' }}></div>
+                                <h3 style={{ fontSize: '14px', letterSpacing: '3px', fontWeight: '950', color: '#fff', margin: 0 }}>EDIT RELEASE DATA</h3>
+                            </div>
+
+                            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative', zIndex: 1 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>RELEASE TITLE</label>
+                                        <input
+                                            value={editingRelease.name || ''}
+                                            onChange={e => setEditingRelease({ ...editingRelease, name: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>ARTIST NAME</label>
+                                        <input
+                                            value={editingRelease.artistName || ''}
+                                            onChange={e => setEditingRelease({ ...editingRelease, artistName: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>RELEASE DATE</label>
+                                        <input
+                                            type="date"
+                                            value={new Date(editingRelease.releaseDate).toISOString().split('T')[0]}
+                                            onChange={e => setEditingRelease({ ...editingRelease, releaseDate: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>TOTAL STREAMS</label>
+                                        <input
+                                            value={editingRelease.streamCountText || ''}
+                                            onChange={e => setEditingRelease({ ...editingRelease, streamCountText: e.target.value })}
+                                            style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                            placeholder="e.g. 1.2M"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div>
-                                    <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>RELEASE TITLE</label>
+                                    <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>POPULARITY (0-100)</label>
                                     <input
-                                        value={editingRelease.name || ''}
-                                        onChange={e => setEditingRelease({ ...editingRelease, name: e.target.value })}
+                                        type="number"
+                                        value={editingRelease.popularity || 0}
+                                        onChange={e => setEditingRelease({ ...editingRelease, popularity: parseInt(e.target.value) })}
                                         style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>ARTIST NAME</label>
-                                    <input
-                                        value={editingRelease.artistName || ''}
-                                        onChange={e => setEditingRelease({ ...editingRelease, artistName: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
-                                </div>
-                            </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <div>
-                                    <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>RELEASE DATE</label>
-                                    <input
-                                        type="date"
-                                        value={new Date(editingRelease.releaseDate).toISOString().split('T')[0]}
-                                        onChange={e => setEditingRelease({ ...editingRelease, releaseDate: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
+                                    <button type="submit" disabled={saving} style={{ ...actionBtnStyle, flex: 2, padding: '16px', background: '#fff', color: '#000', border: 'none', borderRadius: '8px', height: 'auto', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', display: 'flex', justifyContent: 'center' }}>
+                                        {saving ? 'UPDATING...' : 'SAVE CHANGES'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingRelease(null)}
+                                        style={{
+                                            flex: 1,
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid var(--border)',
+                                            color: '#fff',
+                                            borderRadius: '8px',
+                                            fontSize: '11px',
+                                            fontWeight: '950',
+                                            letterSpacing: '1px',
+                                            cursor: 'pointer',
+                                            padding: '16px'
+                                        }}
+                                    >
+                                        CANCEL
+                                    </button>
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>TOTAL STREAMS</label>
-                                    <input
-                                        value={editingRelease.streamCountText || ''}
-                                        onChange={e => setEditingRelease({ ...editingRelease, streamCountText: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                        placeholder="e.g. 1.2M"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>POPULARITY (0-100)</label>
-                                <input
-                                    type="number"
-                                    value={editingRelease.popularity || 0}
-                                    onChange={e => setEditingRelease({ ...editingRelease, popularity: parseInt(e.target.value) })}
-                                    style={{ ...inputStyle, width: '100%', padding: '16px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
-                                <button type="submit" disabled={saving} style={{ ...actionBtnStyle, flex: 2, padding: '16px', background: '#fff', color: '#000', border: 'none', borderRadius: '8px', height: 'auto', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', display: 'flex', justifyContent: 'center' }}>
-                                    {saving ? 'UPDATING...' : 'SAVE CHANGES'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingRelease(null)}
-                                    style={{
-                                        flex: 1,
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid var(--border)',
-                                        color: '#fff',
-                                        borderRadius: '8px',
-                                        fontSize: '11px',
-                                        fontWeight: '950',
-                                        letterSpacing: '1px',
-                                        cursor: 'pointer',
-                                        padding: '16px'
-                                    }}
-                                >
-                                    CANCEL
-                                </button>
-                            </div>
-                        </form>
-                    </motion.div>
-                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                </Portal>
             )}
+
         </div>
     );
 }

@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { MessageSquare, Target, DollarSign, FileText } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, glassStyle } from './styles';
+import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+
 
 export default function ContentView({ content, onRefresh }) {
     const { showToast } = useToast();
@@ -131,9 +133,13 @@ export default function ContentView({ content, onRefresh }) {
                                         padding: '30px',
                                         borderRadius: '20px',
                                         border: '1px solid var(--border)',
-                                        marginTop: '20px'
+                                        marginTop: '20px',
+                                        position: 'relative',
+                                        overflow: 'hidden'
                                     }}
                                 >
+                                    {saving && <DashboardLoader overlay label="PUBLISHING" subLabel="Updating site content..." />}
+
                                     <div style={{ marginBottom: '25px' }}>
                                         <label style={{ display: 'block', fontSize: '9px', fontWeight: '900', color: '#444', letterSpacing: '2px', marginBottom: '8px' }}>DISPLAY TITLE</label>
                                         <input

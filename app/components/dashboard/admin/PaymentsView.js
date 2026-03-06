@@ -185,7 +185,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.98, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    style={{ ...glassStyle, padding: '32px', marginBottom: '32px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}
+                    style={{ ...glassStyle, padding: '32px', marginBottom: '32px', position: 'relative' }}
                 >
                     <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '250px', height: '250px', background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', opacity: 0.05, pointerEvents: 'none', zIndex: 0 }} />
 
@@ -284,14 +284,12 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         style={{
+                            ...glassStyle,
+                            background: 'rgba(15,15,15,0.95)',
+                            border: '1px solid rgba(255,255,255,0.1)',
                             width: '560px',
                             padding: '40px',
-                            background: 'var(--surface)',
-                            borderRadius: '16px',
-                            border: '1px solid var(--border)',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                            position: 'relative',
-                            overflow: 'hidden'
+                            position: 'relative'
                         }}
                     >
                         <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '250px', height: '250px', background: `radial-gradient(circle, ${decisionModal.status === 'completed' ? 'var(--accent)' : '#ff4444'} 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 0 }} />
@@ -367,7 +365,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                 </div>
             )}
 
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
+            <div style={{ ...glassStyle, padding: 0 }}>
                 <div className="pay-header-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr 1fr 1.5fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'var(--glass)' }}>
                     <div>DATE</div>
                     <div>RECIPIENT</div>

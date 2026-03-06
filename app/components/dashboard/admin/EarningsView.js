@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
-import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
+import { btnStyle, glassStyle, statCardStyle, inputStyle } from './styles';
 
 export default function EarningsView({ earnings, contracts, onRefresh }) {
     const { showToast, showConfirm } = useToast();
@@ -145,34 +145,34 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                 }
             `}</style>
             <div className="earnings-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }} style={{ ...statCardStyle }}>
                     <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
                     <div style={{ position: 'relative', zIndex: 2 }}>
-                        <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>GROSS_VOLUME</div>
+                        <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: '800', letterSpacing: '2px', marginBottom: '8px' }}>GROSS_VOLUME</div>
                         <div style={{ fontSize: '24px', fontWeight: '950', color: '#fff', letterSpacing: '-0.5px' }}>${totalGross.toLocaleString(undefined, { minimumFractionDigits: 0 })}</div>
                     </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} whileHover={{ y: -2 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`, opacity: 0.1, pointerEvents: 'none', zIndex: 1 }} />
+                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} whileHover={{ y: -2 }} style={{ ...statCardStyle }}>
+                    <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`, opacity: 0.08, pointerEvents: 'none', zIndex: 1 }} />
                     <div style={{ position: 'relative', zIndex: 2 }}>
-                        <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>ARTIST_PAYOUTS</div>
+                        <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: '800', letterSpacing: '2px', marginBottom: '8px' }}>ARTIST_PAYOUTS</div>
                         <div style={{ fontSize: '24px', fontWeight: '950', color: 'var(--accent)', letterSpacing: '-0.5px' }}>${totalArtist.toLocaleString(undefined, { minimumFractionDigits: 0 })}</div>
                     </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} whileHover={{ y: -2 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} whileHover={{ y: -2 }} style={{ ...statCardStyle }}>
                     <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
                     <div style={{ position: 'relative', zIndex: 2 }}>
-                        <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>LABEL_EARNINGS</div>
+                        <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: '800', letterSpacing: '2px', marginBottom: '8px' }}>LABEL_EARNINGS</div>
                         <div style={{ fontSize: '24px', fontWeight: '950', color: '#fff', letterSpacing: '-0.5px' }}>${totalLabel.toLocaleString(undefined, { minimumFractionDigits: 0 })}</div>
                     </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} whileHover={{ y: -2 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} whileHover={{ y: -2 }} style={{ ...statCardStyle }}>
                     <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: `radial-gradient(circle, #ff4444 0%, transparent 70%)`, opacity: 0.05, pointerEvents: 'none', zIndex: 1 }} />
                     <div style={{ position: 'relative', zIndex: 2 }}>
-                        <div style={{ fontSize: '9px', color: '#666', fontWeight: '900', letterSpacing: '2px', marginBottom: '8px' }}>AD_SPEND</div>
+                        <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', fontWeight: '800', letterSpacing: '2px', marginBottom: '8px' }}>AD_SPEND</div>
                         <div style={{ fontSize: '24px', fontWeight: '950', color: '#fff', letterSpacing: '-0.5px' }}>${totalExpense.toLocaleString(undefined, { minimumFractionDigits: 0 })}</div>
                     </div>
                 </motion.div>
@@ -212,7 +212,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
 
             {/* Spend analytics */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-                <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} style={{ ...glassStyle, padding: '32px', position: 'relative' }}>
                     <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '250px', height: '250px', background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`, opacity: 0.03, pointerEvents: 'none', zIndex: 1 }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 2 }}>
                         <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>TOP RELEASES BY AD SPEND</h3>
@@ -243,7 +243,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                     </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '32px', position: 'relative', overflow: 'hidden' }}>
+                <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} style={{ ...glassStyle, padding: '32px', position: 'relative' }}>
                     <div style={{ position: 'absolute', bottom: '-100px', left: '-100px', width: '250px', height: '250px', background: `radial-gradient(circle, #fff 0%, transparent 70%)`, opacity: 0.03, pointerEvents: 'none', zIndex: 1 }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 2 }}>
                         <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>SPEND BY SOURCE</h3>
@@ -361,8 +361,8 @@ export default function EarningsView({ earnings, contracts, onRefresh }) {
                 </motion.div>
             )}
 
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                <div className="earn-header-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
+            <div style={{ ...glassStyle, padding: 0 }}>
+                <div className="earn-header-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1.5fr 1fr 1fr 1fr', padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '800', color: 'rgba(255,255,255,0.35)', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.02)' }}>
                     <div>PERIOD</div>
                     <div>RELEASE / ARTIST</div>
                     <div>GROSS</div>
