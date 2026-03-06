@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+import { BRANDING } from '@/lib/branding';
+
 
 function DashboardLayoutContent({ children }) {
     const { data: session, status } = useSession();
@@ -309,10 +311,11 @@ function DashboardLayoutContent({ children }) {
                     <header className="window-toolbar">
                         <div className="window-toolbar-left">
                             <div className="bc-logo">
-                                <Image src="/logo.png" alt="LOST" width={32} height={32} className="bc-logo-img" />
-                                <span className="bc-logo-text" style={{ textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '950' }}>LOST</span>
+                                <Image src="/logo.png" alt={BRANDING.shortName} width={32} height={32} className="bc-logo-img" />
+                                <span className="bc-logo-text" style={{ textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '950' }}>{BRANDING.shortName}</span>
                             </div>
                         </div>
+
 
                         <div className="window-toolbar-right">
                             <div className="bc-search-container">
@@ -474,7 +477,7 @@ function DashboardLayoutContent({ children }) {
                     left: 16px;
                     top: 16px;
                     bottom: 16px;
-                    z-index: 100;
+                    z-index: 1100;
                     display: flex;
                     flex-direction: column;
                     background: linear-gradient(180deg, #0c0c0c 0%, #0a0a0a 50%, #080808 100%);

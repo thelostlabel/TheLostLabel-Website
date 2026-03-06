@@ -17,6 +17,8 @@ import ProjectView from './ProjectView';
 import DashboardLoader from './DashboardLoader';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+import { BRANDING } from '@/lib/branding';
+
 
 const DASHBOARD_THEME = {
     bg: '#0a0a0a',
@@ -293,8 +295,9 @@ export default function ArtistView() {
         loading: true
     });
     const [loading, setLoading] = useState(true);
-    const showLoading = useMinimumLoader(loading, 900);
+    const showLoading = useMinimumLoader(loading, 250);
     const [actionRequiredContract, setActionRequiredContract] = useState(null);
+
 
     // Submit form state
     // Submit form state
@@ -331,6 +334,18 @@ export default function ArtistView() {
         trendsDaily: []
     });
     const [payments, setPayments] = useState([]);
+
+    const hasData = {
+        overview: releases.length > 0 || stats.releases > 0,
+        demos: demos.length > 0,
+        contracts: contracts.length > 0,
+        earnings: earnings.length > 0,
+        releases: releases.length > 0,
+        support: requests.length > 0,
+        submit: true,
+        profile: true
+    };
+
 
     // Withdrawal Modal State
     const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
@@ -651,23 +666,20 @@ export default function ArtistView() {
 
     const hasDiscordLink = Boolean(discordLink?.linked && discordLink?.discordUserId);
 
-    if (!showLoading && !hasPermission(viewToPerm[view])) {
+    if (showLoading && !hasData[view]) {
         return (
-            <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
-                <div style={{ padding: '30px', ...glassStyle, textAlign: 'center', maxWidth: '400px' }}>
-                    <AlertCircle size={32} style={{ color: 'var(--status-error)', marginBottom: '15px' }} />
-                    <h3 style={{ fontSize: '14px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>ACCESS_RESTRICTED</h3>
-                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, lineHeight: '1.6' }}>
-                        You do not have the required permissions to access this module. If you believe this is an error, please contact the label administration.
-                    </p>
-                </div>
-            </div>
+            <DashboardLoader
+                fullScreen
+                label="Artist Portal"
+                subLabel={`Preparing ${String(viewTitles[view] || 'dashboard').toLowerCase()} module...`}
+            />
         );
     }
 
     return (
         <div
             className="artist-dashboard-view dashboard-view"
+
             style={{
                 flex: 1,
                 padding: '30px',
@@ -706,12 +718,7 @@ export default function ArtistView() {
                 />
             )}
 
-            {showLoading ? (
-                <DashboardLoader
-                    label="LOADING"
-                    subLabel={`Refreshing ${String(viewTitles[view] || 'dashboard').toLowerCase()} data...`}
-                />
-            ) : view === 'overview' ? (
+            {view === 'overview' ? (
                 <OverviewView
                     stats={stats}
                     recentReleases={releases.slice(0, 4)}
@@ -3576,15 +3583,19 @@ function ArtistContractsView({ contracts, session }) {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '12px', color: DASHBOARD_THEME.muted, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '950', letterSpacing: '0.8px' }}>
-                                <span>SINCE: {new Date(c.createdAt).toLocaleDateString()}</span>
+                            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: DASHBOARD_THEME.muted, fontWeight: '950', letterSpacing: '0.8px' }}>
+                                    <span>SINCE: {new Date(c.createdAt).toLocaleDateString()}</span>
+                                    <span>{BRANDING.shortName}_COMPLIANCE_ACTIVE</span>
+                                </div>
                                 {c.pdfUrl && (
-                                    <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, padding: '8px 15px', background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>
+                                    <a href={`/api/files/contract/${c.id}`} target="_blank" rel="noopener noreferrer"
+                                        style={{ ...btnStyle, width: '100%', padding: '12px', background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '950' }}>
                                         VIEW_AGREEMENT
                                     </a>
                                 )}
-                                <span>LOST_COMPLIANCE_ACTIVE</span>
                             </div>
+
                         </div>
                     );
                 })}

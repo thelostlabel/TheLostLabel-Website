@@ -58,21 +58,28 @@ export async function POST(req) {
             const pdfData = await pdf(Buffer.from(bytes));
             parsedText = pdfData.text || "";
 
-            // Simple RegExp to look for 50/50, 60/40 or percentage assignments
-            const artistShareMatch = parsedText.match(/(?:artist|contributor)(?:\s+share)?\D*(\d{2,3})\s*%/i);
-            const labelShareMatch = parsedText.match(/(?:label|company)(?:\s+share)?\D*(\d{2,3})\s*%/i);
+            // Try "Revenue Share: X% Artist / Y% Label" first (our contract format)
+            const revenueShareMatch = parsedText.match(/Revenue Share:\s*(\d+)%\s*Artist\s*\/\s*(\d+)%\s*Label/i);
+            if (revenueShareMatch) {
+                guessedArtistShare = parseInt(revenueShareMatch[1], 10) / 100;
+                guessedLabelShare = parseInt(revenueShareMatch[2], 10) / 100;
+            } else {
+                // Fallback: generic percentage extraction
+                const artistShareMatch = parsedText.match(/(?:artist|contributor)(?:\s+share)?\D*(\d{2,3})\s*%/i);
+                const labelShareMatch = parsedText.match(/(?:label|company)(?:\s+share)?\D*(\d{2,3})\s*%/i);
 
-            if (artistShareMatch && artistShareMatch[1]) {
-                const foundShare = parseInt(artistShareMatch[1], 10);
-                if (foundShare > 0 && foundShare <= 100) {
-                    guessedArtistShare = foundShare / 100;
-                    guessedLabelShare = 1 - guessedArtistShare;
-                }
-            } else if (labelShareMatch && labelShareMatch[1]) {
-                const foundLabelShare = parseInt(labelShareMatch[1], 10);
-                if (foundLabelShare > 0 && foundLabelShare <= 100) {
-                    guessedLabelShare = foundLabelShare / 100;
-                    guessedArtistShare = 1 - guessedLabelShare;
+                if (artistShareMatch && artistShareMatch[1]) {
+                    const foundShare = parseInt(artistShareMatch[1], 10);
+                    if (foundShare > 0 && foundShare <= 100) {
+                        guessedArtistShare = foundShare / 100;
+                        guessedLabelShare = 1 - guessedArtistShare;
+                    }
+                } else if (labelShareMatch && labelShareMatch[1]) {
+                    const foundLabelShare = parseInt(labelShareMatch[1], 10);
+                    if (foundLabelShare > 0 && foundLabelShare <= 100) {
+                        guessedLabelShare = foundLabelShare / 100;
+                        guessedArtistShare = 1 - guessedLabelShare;
+                    }
                 }
             }
         } catch (parseError) {

@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Instagram, Disc, Youtube, Twitter, Facebook, ArrowUpRight } from 'lucide-react';
+import { BRANDING } from '@/lib/branding';
+
 
 const Footer = () => {
     const [socials, setSocials] = useState({});
@@ -73,8 +75,9 @@ const Footer = () => {
                             marginBottom: '20px',
                             fontFamily: 'Inter, sans-serif'
                         }}>
-                            LOST.
+                            {BRANDING.dotName}
                         </div>
+
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <div style={{ width: '40px', height: '1px', background: '#fff' }}></div>
@@ -119,8 +122,9 @@ const Footer = () => {
                         </div>
                         {/* Secondary Logo in right column as shown in ref image */}
                         <div style={{ marginTop: '60px', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.05em', opacity: 0.5 }}>
-                            LOST.
+                            {BRANDING.dotName}
                         </div>
+
                     </div>
 
                     {/* Legal Column */}

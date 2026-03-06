@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
+import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import Portal from '@/app/components/Portal';
+
 
 export default function WebhooksView({ webhooks, onRefresh }) {
     const { showToast, showConfirm } = useToast();
@@ -96,110 +99,118 @@ export default function WebhooksView({ webhooks, onRefresh }) {
         <div>
             {/* Add/Edit Modal */}
             {(showAdd || editingWebhook) && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        style={{
-                            width: '95vw',
-                            maxWidth: '500px',
-                            padding: '40px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            backdropFilter: 'blur(30px)',
-                            borderRadius: '32px',
-                            border: '1px solid var(--border)',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
-                                <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>
-                                    {editingWebhook ? 'EDIT_WEBHOOK' : 'ADD_NEW_WEBHOOK'}
-                                </h3>
-                            </div>
-                            <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '24px' }}>×</button>
-                        </div>
+                <Portal>
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div>
-                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>WEBHOOK_NAME</label>
-                                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                    placeholder="e.g., Discord Notifications"
-                                    style={{ ...inputStyle, width: '100%', padding: '15px' }} />
-                            </div>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            style={{
+                                width: '95vw',
+                                maxWidth: '500px',
+                                padding: '40px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                backdropFilter: 'blur(30px)',
+                                borderRadius: '32px',
+                                border: '1px solid var(--border)',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {saving && <DashboardLoader overlay label="PROCESSING" subLabel="Updating webhook config..." />}
 
-                            <div>
-                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ENDPOINT_URL</label>
-                                <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
-                                    placeholder="https://discord.com/api/webhooks/..."
-                                    style={{ ...inputStyle, width: '100%', padding: '15px' }} />
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SUBSCRIBE_EVENTS</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', background: 'var(--glass)', padding: '15px', borderRadius: '20px', border: '1px solid var(--border)' }}>
-                                    {eventOptions.map(opt => {
-                                        const isSelected = form.events.includes(opt.value);
-                                        return (
-                                            <button
-                                                key={opt.value}
-                                                type="button"
-                                                onClick={() => {
-                                                    const currentEvents = form.events ? form.events.split(',').filter(e => e) : [];
-                                                    if (isSelected) {
-                                                        setForm({ ...form, events: currentEvents.filter(e => e !== opt.value).join(',') });
-                                                    } else {
-                                                        setForm({ ...form, events: [...currentEvents, opt.value].join(',') });
-                                                    }
-                                                }}
-                                                style={{
-                                                    padding: '8px 16px',
-                                                    fontSize: '9px',
-                                                    fontWeight: '900',
-                                                    borderRadius: '12px',
-                                                    background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
-                                                    color: isSelected ? '#000' : '#444',
-                                                    border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.05)',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                {opt.label.toUpperCase()}
-                                            </button>
-                                        );
-                                    })}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ width: '30px', height: '1px', background: 'var(--accent)' }}></div>
+                                    <h3 style={{ fontSize: '12px', letterSpacing: '4px', fontWeight: '900', color: '#fff', margin: 0 }}>
+                                        {editingWebhook ? 'EDIT_WEBHOOK' : 'ADD_NEW_WEBHOOK'}
+                                    </h3>
                                 </div>
+                                <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: '24px' }}>×</button>
                             </div>
 
-                            {form.events?.includes('playlist_update') && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 <div>
-                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>TARGET_PLAYLIST_ID</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Spotify Playlist ID"
-                                        value={form.config ? JSON.parse(form.config).playlistId || '' : ''}
-                                        onChange={(e) => {
-                                            const currentConfig = form.config ? JSON.parse(form.config) : {};
-                                            setForm({ ...form, config: JSON.stringify({ ...currentConfig, playlistId: e.target.value }) });
-                                        }}
-                                        style={{ ...inputStyle, width: '100%', padding: '15px' }}
-                                    />
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>WEBHOOK_NAME</label>
+                                    <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                        placeholder="e.g., Discord Notifications"
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }} />
                                 </div>
-                            )}
-                        </div>
 
-                        <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
-                            <button onClick={handleSave} disabled={saving || !form.name || !form.url} className="glow-button" style={{ flex: 2, padding: '18px', fontWeight: '900', height: 'auto' }}>
-                                {saving ? 'PROCESSING...' : (editingWebhook ? 'UPDATE_WEBHOOK' : 'CREATE_WEBHOOK')}
-                            </button>
-                            <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
-                                CANCEL
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
+                                <div>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ENDPOINT_URL</label>
+                                    <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })}
+                                        placeholder="https://discord.com/api/webhooks/..."
+                                        style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SUBSCRIBE_EVENTS</label>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', background: 'var(--glass)', padding: '15px', borderRadius: '20px', border: '1px solid var(--border)' }}>
+                                        {eventOptions.map(opt => {
+                                            const isSelected = form.events.includes(opt.value);
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const currentEvents = form.events ? form.events.split(',').filter(e => e) : [];
+                                                        if (isSelected) {
+                                                            setForm({ ...form, events: currentEvents.filter(e => e !== opt.value).join(',') });
+                                                        } else {
+                                                            setForm({ ...form, events: [...currentEvents, opt.value].join(',') });
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        padding: '8px 16px',
+                                                        fontSize: '9px',
+                                                        fontWeight: '900',
+                                                        borderRadius: '12px',
+                                                        background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+                                                        color: isSelected ? '#000' : '#444',
+                                                        border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {opt.label.toUpperCase()}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {form.events?.includes('playlist_update') && (
+                                    <div>
+                                        <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>TARGET_PLAYLIST_ID</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Spotify Playlist ID"
+                                            value={form.config ? JSON.parse(form.config).playlistId || '' : ''}
+                                            onChange={(e) => {
+                                                const currentConfig = form.config ? JSON.parse(form.config) : {};
+                                                setForm({ ...form, config: JSON.stringify({ ...currentConfig, playlistId: e.target.value }) });
+                                            }}
+                                            style={{ ...inputStyle, width: '100%', padding: '15px' }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
+                                <button onClick={handleSave} disabled={saving || !form.name || !form.url} className="glow-button" style={{ flex: 2, padding: '18px', fontWeight: '900', height: 'auto' }}>
+                                    {saving ? 'PROCESSING...' : (editingWebhook ? 'UPDATE_WEBHOOK' : 'CREATE_WEBHOOK')}
+                                </button>
+                                <button onClick={() => { setShowAdd(false); setEditingWebhook(null); }} style={{ flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', fontWeight: '900', fontSize: '10px', borderRadius: '16px' }}>
+                                    CANCEL
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                </Portal>
             )}
+
 
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>

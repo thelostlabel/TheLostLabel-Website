@@ -30,6 +30,8 @@ import AnimatedShinyText from "./components/ui/animated-shiny-text";
 import Ripple from "./components/ui/ripple";
 import NumberTicker from "./components/ui/number-ticker";
 import { usePlayer } from "./components/PlayerContext";
+import { BRANDING } from "@/lib/branding";
+
 
 // --- ANIMATION VARIANTS & HOOKS ---
 const containerVar = {
@@ -307,8 +309,9 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
         <div style={{ position: "absolute", bottom: "0", left: "0", right: "0", padding: "24px", background: "linear-gradient(to top, rgba(0,0,0,0.9), transparent)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: "16px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "1px", textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>{heroRelease?.name || "LATEST TRANSMISSION"}</div>
-            <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "800", marginTop: "4px" }}>{heroRelease?.artist || "LOST HQ"}</div>
+            <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "2px", fontWeight: "800", marginTop: "4px" }}>{heroRelease?.artist || `${BRANDING.shortName} HQ`}</div>
           </div>
+
           <motion.div
             whileHover={{ scale: 1.1, backgroundColor: "#E5E7EB" }}
             whileTap={{ scale: 0.95 }}
@@ -449,7 +452,7 @@ export default function Home() {
               transition={{ duration: 0.8, ease: "easeOut" }}
               style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "#FFFFFF" }}
             >
-              LOST.
+              {BRANDING.dotName}
             </motion.div>
             <motion.div
               initial={{ width: 0 }}
@@ -658,7 +661,7 @@ export default function Home() {
             />
 
             <TextReveal style={{ fontSize: "18px", color: "var(--text-secondary)", marginBottom: "50px", lineHeight: "1.6" }}>
-              Join 100+ artists scaling their career with LOST.<br />
+              Join 100+ artists scaling their career with {BRANDING.shortName}.<br />
               Transparent splits. Fast delivery. Zero headaches.
             </TextReveal>
 
