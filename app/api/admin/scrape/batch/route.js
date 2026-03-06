@@ -22,6 +22,10 @@ export async function POST(req) {
         const offset = Number.isFinite(requestedOffset)
             ? Math.max(0, requestedOffset)
             : 0;
+        const configuredDelayMs = Number(process.env.SCRAPE_INTER_ITEM_DELAY_MS || '500');
+        const interItemDelayMs = Number.isFinite(configuredDelayMs)
+            ? Math.max(0, Math.min(configuredDelayMs, 10_000))
+            : 500;
 
         // Fetch ALL artists (or just those needing update)
         // For now, let's process all artists with a Spotify URL
@@ -78,8 +82,10 @@ export async function POST(req) {
                     results.push({ name: artist.name, status: 'failed', reason: 'No data' });
                 }
 
-                // Small delay to be polite to Spotify
-                await new Promise(r => setTimeout(r, 2000));
+                // Small configurable delay to reduce scrape wall-time while avoiding bursts.
+                if (interItemDelayMs > 0) {
+                    await new Promise(r => setTimeout(r, interItemDelayMs));
+                }
 
             } catch (err) {
                 console.error(`[Batch Scrape] Error syncing ${artist.name}:`, err);
