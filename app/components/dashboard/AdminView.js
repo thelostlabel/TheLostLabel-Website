@@ -292,7 +292,25 @@ export default function AdminView() {
         );
     }
 
-    if (showLoading) {
+    // Only show full-screen loader if it's the very first load for that view
+    const hasData = {
+        overview: true,
+        submissions: submissions.length > 0,
+        artists: artists.length > 0,
+        users: users.length > 0,
+        requests: requests.length > 0,
+        contracts: contracts.length > 0,
+        earnings: earnings.length > 0,
+        payments: payments.length > 0,
+        releases: releases.length > 0,
+        webhooks: webhooks.length > 0,
+        content: siteContent.length > 0,
+        communications: artists.length > 0,
+        'discord-bridge': discordBridge !== null,
+        settings: true
+    };
+
+    if (showLoading && !hasData[view]) {
         return (
             <DashboardLoader
                 fullScreen

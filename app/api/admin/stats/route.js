@@ -31,7 +31,8 @@ export async function GET(req) {
                 topArtists,
                 listenerTotals,
                 payoutTrendRows,
-                listenerTrendRows
+                listenerTrendRows,
+                topReleases
             ] = await Promise.all([
                 prisma.user.count(),
                 prisma.artist.count(),
@@ -100,7 +101,12 @@ export async function GET(req) {
                     GROUP BY TO_CHAR(date, 'YYYY-MM-DD')
                     ORDER BY label ASC
                     LIMIT 365
-                `
+                `,
+                prisma.release.findMany({
+                    take: 5,
+                    orderBy: { popularity: 'desc' },
+                    select: { id: true, name: true, image: true, artistsJson: true, popularity: true }
+                })
             ]);
 
             const albumCount = asNumber(uniqueAlbumsRows?.[0]?.count);
@@ -154,7 +160,8 @@ export async function GET(req) {
                 payoutTrends,
                 listenerTrends,
                 platforms,
-                topArtists
+                topArtists,
+                topReleases
             };
         });
 

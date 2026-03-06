@@ -141,6 +141,28 @@ export default function ProjectView({ projectId, onBack, user }) {
                 </div>
             </div>
 
+            {/* Audio Player ALWAYS VISIBLE IF IT HAS A FILE OR LINK */}
+            {(project.files?.[0] || project.trackLink) && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '10px' }}>
+                    <button
+                        onClick={() => handlePlay(demoFileUrl || project.trackLink)}
+                        style={{ ...btnStyle, background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+                    >
+                        {playing ? <Pause size={14} /> : <Play size={14} />}
+                        {playing ? 'PAUSE RECORDING' : 'PLAY RECORDING'}
+                    </button>
+                    {playing && (
+                        <div style={{ marginLeft: '10px', display: 'flex', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '3px', alignItems: 'center', height: '14px' }}>
+                                <motion.div animate={{ height: [4, 14, 4] }} transition={{ repeat: Infinity, duration: 0.8 }} style={{ width: '3px', background: 'var(--accent)', borderRadius: '2px' }} />
+                                <motion.div animate={{ height: [8, 14, 8] }} transition={{ repeat: Infinity, duration: 0.6 }} style={{ width: '3px', background: 'var(--accent)', borderRadius: '2px' }} />
+                                <motion.div animate={{ height: [4, 10, 4] }} transition={{ repeat: Infinity, duration: 0.9 }} style={{ width: '3px', background: 'var(--accent)', borderRadius: '2px' }} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Timeline Stepper */}
             <div style={{ ...glassStyle, padding: '30px', position: 'relative' }}>
                 <div style={{ position: 'absolute', top: '50%', left: '80px', right: '80px', height: '2px', background: 'rgba(255,255,255,0.05)' }}>
@@ -199,16 +221,6 @@ export default function ProjectView({ projectId, onBack, user }) {
                         <p style={{ fontSize: '12px', color: '#666', maxWidth: '400px', margin: '0 auto 30px', lineHeight: '1.6' }}>
                             Our A&R team is currently listening to your demo. You will be notified via email once a decision has been made.
                         </p>
-                        {/* Audio Player if pending */}
-                        {project.files?.[0] && (
-                            <button
-                                onClick={() => handlePlay(demoFileUrl || project.trackLink)}
-                                style={{ ...btnStyle, background: 'rgba(255,255,255,0.1)', color: '#fff' }}
-                            >
-                                {playing ? <Pause size={14} /> : <Play size={14} />}
-                                {playing ? 'PAUSE DEMO' : 'PLAY DEMO'}
-                            </button>
-                        )}
                     </div>
                 )}
 

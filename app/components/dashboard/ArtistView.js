@@ -599,10 +599,7 @@ export default function ArtistView() {
             setMessage('');
             setFiles([]);
 
-            const url = new URL(window.location);
-            url.searchParams.set('view', 'demos');
-            window.history.pushState({}, '', url);
-            window.dispatchEvent(new Event('popstate'));
+            navigateToView('demos');
             fetchDemos();
         } catch (err) {
             showToast(err.message, 'error');
@@ -639,7 +636,11 @@ export default function ArtistView() {
 
     const navigateToView = useCallback((nextView, extraParams = {}) => {
         const params = new URLSearchParams(window.location.search);
-        params.set('view', nextView);
+        let targetView = nextView;
+        if (!targetView.startsWith('my-')) {
+            targetView = 'my-' + targetView;
+        }
+        params.set('view', targetView);
         Object.entries(extraParams).forEach(([key, value]) => {
             if (value === null || value === undefined || value === '') params.delete(key);
             else params.set(key, String(value));
@@ -732,11 +733,7 @@ export default function ArtistView() {
                         />
                     )}
                     <DemosView demos={demos} onNavigate={(id) => {
-                        const url = new URL(window.location);
-                        url.searchParams.set('view', 'project');
-                        url.searchParams.set('id', id);
-                        window.history.pushState({}, '', url);
-                        window.dispatchEvent(new Event('popstate'));
+                        navigateToView('project', { id });
                     }} />
                 </>
             ) : view === 'releases' ? (
@@ -808,11 +805,7 @@ export default function ArtistView() {
                     projectId={selectedRequestId}
                     user={session?.user}
                     onBack={() => {
-                        const url = new URL(window.location);
-                        url.searchParams.set('view', 'demos');
-                        url.searchParams.delete('id');
-                        window.history.pushState({}, '', url);
-                        window.dispatchEvent(new Event('popstate'));
+                        navigateToView('demos', { id: null });
                     }}
                 />
             ) : view === 'profile' ? (
@@ -1273,17 +1266,17 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         className="overview-welcome" style={{
-                        background: 'linear-gradient(130deg, #111111 0%, #171717 60%, #101010 100%)',
-                        borderRadius: '20px',
-                        padding: '30px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        minHeight: '180px',
-                        border: '1px solid rgba(255,255,255,0.06)'
-                    }}>
+                            background: 'linear-gradient(130deg, #111111 0%, #171717 60%, #101010 100%)',
+                            borderRadius: '20px',
+                            padding: '30px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            minHeight: '180px',
+                            border: '1px solid rgba(255,255,255,0.06)'
+                        }}>
                         <div className="overview-welcome-main" style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
                             <div className="overview-welcome-avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
                                 <NextImage
@@ -3012,7 +3005,7 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
                         </div>
 
                         {/* Discord Notifications Toggle */}
-                        <div 
+                        <div
                             onClick={handleDiscordNotifyToggle}
                             style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
