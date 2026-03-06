@@ -675,21 +675,27 @@ export default function ArtistView() {
                 borderRadius: '0px'
             }}
         >
-            <div
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 style={{
                     marginBottom: '18px',
-                    padding: '18px 16px',
-                    borderRadius: '14px',
-                    border: `1px solid ${DASHBOARD_THEME.border}`,
+                    padding: '20px 20px',
+                    borderRadius: '16px',
+                    border: `1px solid rgba(255,255,255,0.06)`,
                     background: `linear-gradient(180deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
-                    boxShadow: '0 14px 32px rgba(3, 8, 18, 0.35)'
+                    boxShadow: '0 14px 32px rgba(0, 0, 0, 0.35)',
+                    position: 'relative',
+                    overflow: 'hidden'
                 }}
             >
-                <p style={{ margin: 0, fontSize: '11px', color: DASHBOARD_THEME.muted, letterSpacing: '1.1px', fontWeight: '900' }}>ARTIST DASHBOARD</p>
-                <h2 style={{ fontSize: '22px', margin: '8px 0 0', letterSpacing: '0.8px', fontWeight: '900', color: DASHBOARD_THEME.text }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
+                <p style={{ margin: 0, fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', fontWeight: '700' }}>ARTIST DASHBOARD</p>
+                <h2 style={{ fontSize: '22px', margin: '8px 0 0', letterSpacing: '0.5px', fontWeight: '900', color: DASHBOARD_THEME.text }}>
                     {viewTitles[view] || 'DASHBOARD'}
                 </h2>
-            </div>
+            </motion.div>
 
             {!loading && view === 'overview' && (
                 <ArtistQuickAccessBar
@@ -701,8 +707,7 @@ export default function ArtistView() {
 
             {showLoading ? (
                 <DashboardLoader
-                    fullScreen
-                    label="LOADING ARTIST PANEL"
+                    label="LOADING"
                     subLabel={`Refreshing ${String(viewTitles[view] || 'dashboard').toLowerCase()} data...`}
                 />
             ) : view === 'overview' ? (
@@ -1229,14 +1234,32 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     { label: 'Total Tracks', value: totalTracks },
                     { label: 'Total Streams', value: totalStreams },
                 ].map((s, i) => (
-                    <div key={i} className="overview-kpi-card" style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, margin: 0 }}>{s.label}</p>
-                        <p style={{ fontSize: '22px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: 0 }}>{(s.value || 0).toLocaleString()}</p>
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                        className="overview-kpi-card"
+                        style={{
+                            padding: '18px 20px',
+                            background: DASHBOARD_THEME.surface,
+                            border: `1px solid rgba(255,255,255,0.06)`,
+                            borderRadius: '14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)' }} />
+                        <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.3)', margin: 0, letterSpacing: '1px' }}>{s.label}</p>
+                        <p style={{ fontSize: '24px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: 0 }}>{(s.value || 0).toLocaleString()}</p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>Updated now</span>
-                            <TrendingUp size={13} color="#9ca3af" />
+                            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.15)', fontWeight: '600' }}>Updated now</span>
+                            <TrendingUp size={13} color="rgba(255,255,255,0.15)" />
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
@@ -1245,7 +1268,11 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
                     {/* Welcome Banner */}
-                    <div className="overview-welcome" style={{
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className="overview-welcome" style={{
                         background: 'linear-gradient(130deg, #111111 0%, #171717 60%, #101010 100%)',
                         borderRadius: '20px',
                         padding: '30px',
@@ -1255,7 +1282,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         position: 'relative',
                         overflow: 'hidden',
                         minHeight: '180px',
-                        border: `1px solid ${DASHBOARD_THEME.border}`
+                        border: '1px solid rgba(255,255,255,0.06)'
                     }}>
                         <div className="overview-welcome-main" style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
                             <div className="overview-welcome-avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
@@ -1281,7 +1308,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '700', marginTop: '10px' }}>Monthly listeners: {Number(stats.listeners || 0).toLocaleString()}</p>
                         </div>
                         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(255,255,255,0.09), transparent 42%)' }} />
-                    </div>
+                    </motion.div>
 
                     {/* Action Cards */}
                     <div className="overview-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -1289,7 +1316,26 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             { title: 'Create Release', desc: 'Add a release to your catalog', icon: <Disc size={20} />, action: () => onNavigate('submit') },
                             { title: 'Support', desc: 'Open a request and talk with admin', icon: <Users size={20} />, action: () => onNavigate('support') },
                         ].map((a, i) => (
-                            <div key={i} className="overview-action-card" onClick={a.action} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4, delay: 0.35 + (i * 0.08), ease: [0.16, 1, 0.3, 1] }}
+                                whileHover={{ scale: 1.015, transition: { duration: 0.2 } }}
+                                className="overview-action-card"
+                                onClick={a.action}
+                                style={{
+                                    padding: '24px',
+                                    background: DASHBOARD_THEME.surface,
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    borderRadius: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '16px',
+                                    cursor: 'pointer',
+                                    transition: 'border-color 0.2s ease, background 0.2s ease'
+                                }}
+                            >
                                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
                                     {a.icon}
                                 </div>
@@ -1298,7 +1344,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                     <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
                                 </div>
                                 <ChevronRight size={18} color={DASHBOARD_THEME.accent} />
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
 

@@ -375,10 +375,10 @@ function DashboardLayoutContent({ children }) {
                         <AnimatePresence mode="popLayout">
                             <motion.section
                                 key={currentView}
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -4 }}
-                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                                initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }}
+                                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
                                 className="dashboard-content-container"
                             >
                                 {children}

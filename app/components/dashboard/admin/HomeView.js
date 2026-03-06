@@ -10,16 +10,16 @@ import {
 } from 'recharts';
 import NextImage from 'next/image';
 
-const DASHBOARD_THEME = {
+const T = {
     bg: '#0a0a0a',
-    surface: '#141414',
-    surfaceElevated: '#1c1c1c',
-    surfaceSoft: '#2a2a2a',
-    border: '#2a2a2a',
+    surface: '#111111',
+    surfaceAlt: 'linear-gradient(135deg, #111111 0%, #151515 100%)',
+    border: 'rgba(255,255,255,0.06)',
+    borderHover: 'rgba(255,255,255,0.1)',
     text: '#FFFFFF',
-    muted: '#888888',
+    muted: '#666666',
+    sub: '#888888',
     accent: '#D1D5DB',
-    accentCyan: '#9CA3AF',
     success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444'
@@ -50,10 +50,12 @@ const handleImageError = (event) => {
     img.src = FALLBACK_IMAGE;
 };
 
-const formatTrendLabel = (label) => {
+const formatAxisDate = (label, granularity) => {
     if (!label) return '';
     const d = new Date(label);
     if (Number.isNaN(d.getTime())) return label;
+    if (granularity === 'monthly') return d.toLocaleDateString('en-US', { month: 'short' });
+    if (granularity === 'weekly') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
@@ -66,18 +68,9 @@ const formatMonthLabel = (label) => {
     return d.toLocaleDateString('en-US', { month: 'short' });
 };
 
-const formatListenerAxisLabel = (label, granularity) => {
-    if (!label) return '';
-    const d = new Date(label);
-    if (Number.isNaN(d.getTime())) return label;
-    if (granularity === 'monthly') return d.toLocaleDateString('en-US', { month: 'short' });
-    if (granularity === 'weekly') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
 const startOfWeek = (date) => {
     const d = new Date(date);
-    const day = (d.getDay() + 6) % 7; // monday-based
+    const day = (d.getDay() + 6) % 7;
     d.setDate(d.getDate() - day);
     d.setHours(0, 0, 0, 0);
     return d;
@@ -142,324 +135,286 @@ const aggregateRevenueSeries = (data, granularity) => {
     return Array.from(quarterly.entries()).map(([label, v]) => ({ label, ...v }));
 };
 
-const CircularProgress = ({ value, label, subtitle, size = 60 }) => {
-    const strokeWidth = 5;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (value / 100) * circumference;
-
-    return (
-        <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>{label}</h4>
-                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.accent, marginTop: '4px' }}>{subtitle}</p>
-                </div>
-                <div style={{ position: 'relative', width: size, height: size }}>
-                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
-                        <circle
-                            cx={size / 2}
-                            cy={size / 2}
-                            r={radius}
-                            fill="none"
-                            stroke={DASHBOARD_THEME.accent}
-                            strokeWidth={strokeWidth}
-                            strokeDasharray={circumference}
-                            strokeDashoffset={offset}
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                </div>
-            </div>
-            <div>
-                <p style={{ fontSize: '10px', fontWeight: '600', color: DASHBOARD_THEME.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>CURRENT</p>
-                <p style={{ fontSize: '18px', fontWeight: '800', color: DASHBOARD_THEME.accent, margin: '2px 0 0 0' }}>{compactNumber(value)} <span style={{ fontSize: '12px', fontWeight: '500', color: `${DASHBOARD_THEME.accent}b2` }}>8% <TrendingUp size={12} /></span></p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '10px', fontWeight: '600', color: DASHBOARD_THEME.muted, letterSpacing: '0.05em', textTransform: 'uppercase' }}>% OF GLOBAL</p>
-                <p style={{ fontSize: '18px', fontWeight: '900', color: '#fff', margin: '2px 0 0 0' }}>{Math.round(value / 20)}%</p>
-            </div>
-        </div>
-
-    );
-};
-
-const GlowChart = ({ data, color, height = 140 }) => {
-    const containerRef = useRef(null);
-    const [canRenderChart, setCanRenderChart] = useState(false);
+/* ── Responsive chart wrapper with ResizeObserver ── */
+const ChartContainer = ({ children, height = 220 }) => {
+    const ref = useRef(null);
+    const [dims, setDims] = useState({ w: 0, h: 0 });
 
     useEffect(() => {
-        const node = containerRef.current;
+        const node = ref.current;
         if (!node) return;
-
-        const updateReady = () => {
+        const measure = () => {
             const rect = node.getBoundingClientRect();
-            setCanRenderChart(rect.width > 0 && rect.height > 0);
+            if (rect.width > 10 && rect.height > 10) {
+                setDims({ w: Math.floor(rect.width), h: Math.floor(rect.height) });
+            }
         };
-
-        updateReady();
-
-        if (typeof ResizeObserver === 'undefined') {
-            const raf = requestAnimationFrame(updateReady);
-            return () => cancelAnimationFrame(raf);
+        // Delay initial measure to ensure parent is laid out
+        const timer = setTimeout(measure, 50);
+        if (typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(measure);
+            observer.observe(node);
+            return () => { clearTimeout(timer); observer.disconnect(); };
         }
-
-        const observer = new ResizeObserver(() => updateReady());
-        observer.observe(node);
-        return () => observer.disconnect();
+        return () => clearTimeout(timer);
     }, []);
 
     return (
-        <div ref={containerRef} style={{ width: '100%', height: `${height}px`, minWidth: 0, minHeight: `${height}px` }}>
-            {canRenderChart && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
-                    <AreaChart data={data} margin={{ top: 10, right: 8, left: 8, bottom: 2 }}>
-                        <defs>
-                            <linearGradient id="glowGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={color} stopOpacity={0.2} />
-                                <stop offset="95%" stopColor={color} stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                        <XAxis
-                            dataKey="label"
-                            tickFormatter={formatTrendLabel}
-                            tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }}
-                            axisLine={false}
-                            tickLine={false}
-                            minTickGap={20}
-                        />
-                        <YAxis
-                            tickFormatter={compactNumber}
-                            tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={36}
-                        />
-                        <Tooltip
-                            cursor={{ stroke: 'rgba(255,255,255,0.12)', strokeWidth: 1 }}
-                            contentStyle={{
-                                background: '#111',
-                                border: `1px solid ${DASHBOARD_THEME.border}`,
-                                borderRadius: 10,
-                                color: '#fff',
-                                fontSize: 11,
-                                fontWeight: 700
-                            }}
-                            labelFormatter={(value) => formatTrendLabel(value)}
-                            formatter={(value) => [Number(value || 0).toLocaleString(), 'Listeners']}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="value"
-                            stroke={color}
-                            strokeWidth={3}
-                            fill="url(#glowGradient)"
-                            isAnimationActive={true}
-                            dot={false}
-                            activeDot={{ r: 4, fill: color, stroke: '#0a0a0a', strokeWidth: 2 }}
-                        />
-                    </AreaChart>
+        <div ref={ref} style={{ width: '100%', height, minWidth: 100, minHeight: height }}>
+            {dims.w > 10 && dims.h > 10 && (
+                <ResponsiveContainer width={dims.w} height={dims.h} minWidth={0} minHeight={1}>
+                    {children}
                 </ResponsiveContainer>
             )}
         </div>
     );
 };
 
+/* ── Custom Tooltip ── */
+const ChartTooltip = ({ active, payload, label, formatLabel, formatValue }) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: 'rgba(10,10,10,0.95)',
+            border: `1px solid rgba(255,255,255,0.1)`,
+            borderRadius: 12,
+            padding: '10px 14px',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+        }}>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: '#888', letterSpacing: '0.5px', marginBottom: 6 }}>
+                {formatLabel ? formatLabel(label) : label}
+            </p>
+            {payload.map((entry, i) => (
+                <p key={i} style={{ margin: '3px 0', fontSize: 12, fontWeight: 800, color: entry.color || '#fff' }}>
+                    {formatValue ? formatValue(entry.value, entry.name) : entry.value}
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: '#666' }}>{entry.name}</span>
+                </p>
+            ))}
+        </div>
+    );
+};
+
+/* ── Listener Scale Chart ── */
 const ListenerScaleChart = ({ data, height = 220, granularity = 'daily' }) => {
-    const containerRef = useRef(null);
-    const [canRenderChart, setCanRenderChart] = useState(false);
-
-    useEffect(() => {
-        const node = containerRef.current;
-        if (!node) return;
-
-        const updateReady = () => {
-            const rect = node.getBoundingClientRect();
-            setCanRenderChart(rect.width > 0 && rect.height > 0);
-        };
-
-        updateReady();
-
-        if (typeof ResizeObserver === 'undefined') {
-            const raf = requestAnimationFrame(updateReady);
-            return () => cancelAnimationFrame(raf);
-        }
-
-        const observer = new ResizeObserver(() => updateReady());
-        observer.observe(node);
-        return () => observer.disconnect();
-    }, []);
-
+    const tickCount = granularity === 'daily' ? 6 : granularity === 'weekly' ? 6 : undefined;
     return (
-        <div ref={containerRef} style={{ width: '100%', height: `${height}px`, minWidth: 0, minHeight: `${height}px` }}>
-            {canRenderChart && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
-                    <ComposedChart data={data} margin={{ top: 8, right: 12, left: 6, bottom: 2 }}>
-                        <defs>
-                            <linearGradient id="listenerCompareGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#E5E7EB" stopOpacity={0.22} />
-                                <stop offset="95%" stopColor="#E5E7EB" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                        <XAxis
-                            dataKey="label"
-                            tickFormatter={(value) => formatListenerAxisLabel(value, granularity)}
-                            tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }}
-                            axisLine={false}
-                            tickLine={false}
-                            minTickGap={20}
-                        />
-                        <YAxis
-                            yAxisId="listeners"
-                            tickFormatter={compactNumber}
-                            tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={38}
-                        />
-                        <YAxis
-                            yAxisId="counts"
-                            orientation="right"
-                            allowDecimals={false}
-                            tick={{ fill: '#555', fontSize: 10, fontWeight: 700 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={30}
-                        />
-                        <Tooltip
-                            cursor={{ stroke: 'rgba(255,255,255,0.12)', strokeWidth: 1 }}
-                            contentStyle={{
-                                background: '#111',
-                                border: `1px solid ${DASHBOARD_THEME.border}`,
-                                borderRadius: 10,
-                                color: '#fff',
-                                fontSize: 11,
-                                fontWeight: 700
-                            }}
-                            labelFormatter={(value) => formatListenerAxisLabel(value, granularity)}
-                            formatter={(value, name) => {
-                                const raw = Number(value || 0);
-                                if (name === 'value') return [raw.toLocaleString(), 'Monthly Listeners'];
-                                if (name === 'avgPerArtist') return [raw.toLocaleString(), 'Listeners / Artist'];
-                                if (name === 'artistCount') return [raw.toLocaleString(), 'Artist Count'];
-                                if (name === 'releaseCount') return [raw.toLocaleString(), 'Release Count'];
-                                return [raw.toLocaleString(), name];
-                            }}
-                        />
-                        <Area
-                            yAxisId="listeners"
-                            type="monotone"
-                            dataKey="value"
-                            stroke="#E5E7EB"
-                            strokeWidth={2.6}
-                            fill="url(#listenerCompareGradient)"
-                            dot={false}
-                            activeDot={{ r: 4, fill: '#E5E7EB', stroke: '#0a0a0a', strokeWidth: 2 }}
-                        />
-                        <Line
-                            yAxisId="listeners"
-                            type="monotone"
-                            dataKey="avgPerArtist"
-                            stroke="#9CA3AF"
-                            strokeWidth={2}
-                            strokeDasharray="4 4"
-                            dot={false}
-                        />
-                        <Line
-                            yAxisId="counts"
-                            type="monotone"
-                            dataKey="artistCount"
-                            stroke="#6B7280"
-                            strokeWidth={1.8}
-                            dot={false}
-                        />
-                        <Line
-                            yAxisId="counts"
-                            type="monotone"
-                            dataKey="releaseCount"
-                            stroke="#4B5563"
-                            strokeWidth={1.8}
-                            dot={false}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
-            )}
-        </div>
-    );
-};
-
-const RevenueFlowChart = ({ data, height = 250, granularity = 'monthly' }) => {
-    const chartData = (data || []).slice(-8);
-
-    return (
-        <div style={{ width: '100%', height }}>
-            <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id="labelRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#E5E7EB" stopOpacity={0.24} />
-                            <stop offset="95%" stopColor="#E5E7EB" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="artistShareFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#9CA3AF" stopOpacity={0.22} />
-                            <stop offset="95%" stopColor="#9CA3AF" stopOpacity={0} />
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis
-                        dataKey="label"
-                        tickFormatter={(value) => (granularity === 'quarterly' ? String(value).replace('-', ' ') : formatMonthLabel(value))}
-                        tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }}
-                        axisLine={false}
-                        tickLine={false}
-                    />
-                    <YAxis
-                        tickFormatter={compactNumber}
-                        tick={{ fill: '#666', fontSize: 10, fontWeight: 700 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={38}
-                    />
-                    <Tooltip
-                        cursor={{ stroke: 'rgba(255,255,255,0.12)', strokeWidth: 1 }}
-                        contentStyle={{
-                            background: '#111',
-                            border: `1px solid ${DASHBOARD_THEME.border}`,
-                            borderRadius: 10,
-                            color: '#fff',
-                            fontSize: 11,
-                            fontWeight: 700
+        <ChartContainer height={height}>
+            <ComposedChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+                <defs>
+                    <linearGradient id="listenerFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#E5E7EB" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="#E5E7EB" stopOpacity={0} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 6" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                <XAxis
+                    dataKey="label"
+                    tickFormatter={(v) => formatAxisDate(v, granularity)}
+                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                    tickCount={tickCount}
+                />
+                <YAxis
+                    yAxisId="listeners"
+                    tickFormatter={compactNumber}
+                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                />
+                <YAxis
+                    yAxisId="counts"
+                    orientation="right"
+                    allowDecimals={false}
+                    tick={{ fill: '#444', fontSize: 10, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
+                />
+                <Tooltip
+                    content={<ChartTooltip
+                        formatLabel={(v) => formatAxisDate(v, granularity)}
+                        formatValue={(v, name) => {
+                            const num = Number(v || 0).toLocaleString();
+                            return num;
                         }}
-                        labelFormatter={(value) => (granularity === 'quarterly' ? String(value).replace('-', ' ') : formatMonthLabel(value))}
-                        formatter={(value, name) => [`$${Number(value || 0).toLocaleString()}`, name === 'revenue' ? 'Label Revenue' : 'Artist Share']}
-                    />
-                    <Area
-                        type="monotone"
-                        dataKey="artistShare"
-                        stroke="#9CA3AF"
-                        strokeWidth={2}
-                        fill="url(#artistShareFill)"
-                        dot={false}
-                        activeDot={{ r: 4, fill: '#9CA3AF', stroke: '#0a0a0a', strokeWidth: 2 }}
-                    />
-                    <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#E5E7EB"
-                        strokeWidth={2.6}
-                        fill="url(#labelRevenueFill)"
-                        dot={false}
-                        activeDot={{ r: 4, fill: '#E5E7EB', stroke: '#0a0a0a', strokeWidth: 2 }}
-                    />
-                </AreaChart>
-            </ResponsiveContainer>
-        </div>
+                    />}
+                    cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1 }}
+                />
+                <Area
+                    yAxisId="listeners"
+                    type="monotone"
+                    dataKey="value"
+                    name="Monthly Listeners"
+                    stroke="#E5E7EB"
+                    strokeWidth={2}
+                    fill="url(#listenerFill)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#E5E7EB', stroke: '#0a0a0a', strokeWidth: 2 }}
+                />
+                <Line
+                    yAxisId="listeners"
+                    type="monotone"
+                    dataKey="avgPerArtist"
+                    name="Per Artist"
+                    stroke="#9CA3AF"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                />
+                <Line
+                    yAxisId="counts"
+                    type="monotone"
+                    dataKey="artistCount"
+                    name="Artists"
+                    stroke="#6B7280"
+                    strokeWidth={1.5}
+                    dot={false}
+                />
+                <Line
+                    yAxisId="counts"
+                    type="monotone"
+                    dataKey="releaseCount"
+                    name="Releases"
+                    stroke="#4B5563"
+                    strokeWidth={1.5}
+                    dot={false}
+                />
+            </ComposedChart>
+        </ChartContainer>
     );
 };
 
+/* ── Revenue Flow Chart ── */
+const RevenueFlowChart = ({ data, height = 220, granularity = 'monthly' }) => {
+    const chartData = (data || []).slice(-8);
+    return (
+        <ChartContainer height={height}>
+            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+                <defs>
+                    <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#E5E7EB" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="#E5E7EB" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="artFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#9CA3AF" stopOpacity={0.15} />
+                        <stop offset="100%" stopColor="#9CA3AF" stopOpacity={0} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 6" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                <XAxis
+                    dataKey="label"
+                    tickFormatter={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))}
+                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                />
+                <YAxis
+                    tickFormatter={compactNumber}
+                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                />
+                <Tooltip
+                    content={<ChartTooltip
+                        formatLabel={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))}
+                        formatValue={(v, name) => `$${Number(v || 0).toLocaleString()}`}
+                    />}
+                    cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1 }}
+                />
+                <Area
+                    type="monotone"
+                    dataKey="artistShare"
+                    name="Artist Share"
+                    stroke="#9CA3AF"
+                    strokeWidth={1.5}
+                    fill="url(#artFill)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#9CA3AF', stroke: '#0a0a0a', strokeWidth: 2 }}
+                />
+                <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    name="Label Revenue"
+                    stroke="#E5E7EB"
+                    strokeWidth={2}
+                    fill="url(#revFill)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#E5E7EB', stroke: '#0a0a0a', strokeWidth: 2 }}
+                />
+            </AreaChart>
+        </ChartContainer>
+    );
+};
+
+/* ── Pill Toggle ── */
+const PillToggle = ({ options, value, onChange }) => (
+    <div style={{ display: 'inline-flex', gap: 2, padding: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${T.border}` }}>
+        {options.map((opt) => {
+            const active = value === opt.key;
+            return (
+                <button
+                    key={opt.key}
+                    onClick={() => onChange(opt.key)}
+                    style={{
+                        border: 'none',
+                        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        color: active ? '#fff' : '#666',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.3px',
+                        borderRadius: 8,
+                        padding: '5px 10px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    {opt.label}
+                </button>
+            );
+        })}
+    </div>
+);
+
+/* ── Chart Legend ── */
+const Legend = ({ items }) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginTop: 12 }}>
+        {items.map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {item.dashed ? (
+                    <span style={{ width: 14, height: 0, borderTop: `2px dashed ${item.color}` }} />
+                ) : item.line ? (
+                    <span style={{ width: 14, height: 2, borderRadius: 1, background: item.color }} />
+                ) : (
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
+                )}
+                <span style={{ fontSize: 10, fontWeight: 700, color: item.color }}>{item.label}</span>
+            </div>
+        ))}
+    </div>
+);
+
+/* ── Card wrapper ── */
+const Card = ({ children, style, ...props }) => (
+    <div style={{
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        borderRadius: 16,
+        padding: '20px',
+        position: 'relative',
+        overflow: 'hidden',
+        ...style
+    }} {...props}>
+        {children}
+    </div>
+);
+
+/* ── Main component ── */
 export default function HomeView({ onNavigate }) {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -499,27 +454,34 @@ export default function HomeView({ onNavigate }) {
         releaseCount: Number(stats?.counts?.releases || 0),
         avgPerArtist: Number(stats?.counts?.artists || 0) > 0 ? Math.round((Number(point.value || 0) / Number(stats?.counts?.artists || 0))) : 0
     }));
-    const miniStats = [
+
+    const kpiCards = [
+        {
+            label: 'Monthly Listeners',
+            value: stats?.counts?.listenersTotal || 0,
+            sub: 'All artists combined',
+            icon: <BarChart3 size={16} />,
+            wide: true
+        },
         {
             label: 'Total Releases',
             value: Number(stats?.counts?.releases || 0),
-            helper: 'Catalog count',
+            sub: 'Catalog count',
             icon: <Disc size={14} />
         },
         {
             label: 'Total Tracks',
             value: Number(stats?.counts?.songs || 0),
-            helper: 'Across all releases',
+            sub: 'Across all releases',
             icon: <Music2 size={14} />
         },
         {
             label: 'Total Artists',
             value: Number(stats?.counts?.artists || 0),
-            helper: 'Signed profiles',
+            sub: 'Signed profiles',
             icon: <Users size={14} />
         }
     ];
-    const miniMax = Math.max(1, ...miniStats.map((item) => item.value));
 
     if (loading) {
         return (
@@ -528,303 +490,309 @@ export default function HomeView({ onNavigate }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.35 }}
-                    style={{
-                        background: DASHBOARD_THEME.surface,
-                        border: `1px solid ${DASHBOARD_THEME.border}`,
-                        borderRadius: '20px',
-                        padding: '26px',
-                        marginBottom: '12px'
-                    }}
+                    style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 26, marginBottom: 12 }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                         <div>
-                            <p style={{ margin: 0, fontSize: '11px', letterSpacing: '2px', fontWeight: 800, color: DASHBOARD_THEME.muted }}>ADMIN DASHBOARD</p>
-                            <p style={{ margin: '8px 0 0 0', fontSize: '16px', fontWeight: 900, color: '#fff' }}>Loading analytics...</p>
+                            <p style={{ margin: 0, fontSize: 11, letterSpacing: '2px', fontWeight: 800, color: T.muted }}>ADMIN DASHBOARD</p>
+                            <p style={{ margin: '8px 0 0', fontSize: 16, fontWeight: 900, color: '#fff' }}>Loading analytics...</p>
                         </div>
                         <motion.div
                             animate={{ rotate: 360 }}
                             transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                            style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: '50%',
-                                border: `2px solid ${DASHBOARD_THEME.border}`,
-                                borderTopColor: DASHBOARD_THEME.accent
-                            }}
+                            style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${T.border}`, borderTopColor: T.accent }}
                         />
                     </div>
                 </motion.div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '12px' }}>
-                    {[1, 2, 3].map((item) => (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+                    {[1, 2, 3, 4].map((item) => (
                         <motion.div
                             key={item}
-                            initial={{ opacity: 0.35 }}
-                            animate={{ opacity: [0.35, 0.7, 0.35] }}
+                            initial={{ opacity: 0.3 }}
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
                             transition={{ repeat: Infinity, duration: 1.2, delay: item * 0.08 }}
-                            style={{ height: 76, borderRadius: 12, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
+                            style={{ height: 100, borderRadius: 16, background: '#131313', border: `1px solid ${T.border}` }}
                         />
                     ))}
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
-                    <div style={{ display: 'grid', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {[1, 2].map((item) => (
                         <motion.div
-                            initial={{ opacity: 0.35 }}
-                            animate={{ opacity: [0.35, 0.7, 0.35] }}
-                            transition={{ repeat: Infinity, duration: 1.3 }}
-                            style={{ height: 220, borderRadius: 20, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
+                            key={item}
+                            initial={{ opacity: 0.3 }}
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ repeat: Infinity, duration: 1.4, delay: item * 0.1 }}
+                            style={{ height: 380, borderRadius: 16, background: '#131313', border: `1px solid ${T.border}` }}
                         />
-                        <motion.div
-                            initial={{ opacity: 0.35 }}
-                            animate={{ opacity: [0.35, 0.7, 0.35] }}
-                            transition={{ repeat: Infinity, duration: 1.3, delay: 0.1 }}
-                            style={{ height: 300, borderRadius: 20, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
-                        />
-                    </div>
-                    <div style={{ display: 'grid', gap: '12px' }}>
-                        {[1, 2, 3, 4].map((item) => (
-                            <motion.div
-                                key={item}
-                                initial={{ opacity: 0.35 }}
-                                animate={{ opacity: [0.35, 0.7, 0.35] }}
-                                transition={{ repeat: Infinity, duration: 1.1, delay: item * 0.06 }}
-                                style={{ height: item === 4 ? 220 : 120, borderRadius: 20, background: '#151515', border: `1px solid ${DASHBOARD_THEME.border}` }}
-                            />
-                        ))}
-                    </div>
+                    ))}
                 </div>
             </div>
         );
     }
+
     if (!stats) return null;
 
     return (
         <div style={{ padding: '0 0 40px 0', fontFamily: 'Space Grotesk, sans-serif' }}>
-            {/* Header Mini Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                <div style={{ padding: '16px 20px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px' }}>
-                    <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, marginBottom: '4px' }}>Monthly Listeners</p>
-                    <p style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: 0 }}>{(stats.counts.listenersTotal || 0).toLocaleString()}</p>
-                    <p style={{ fontSize: '10px', fontWeight: '800', color: DASHBOARD_THEME.accent, marginTop: '6px', marginBottom: 0 }}>All artists combined</p>
-                </div>
-                {miniStats.map((s, i) => (
-                    <div key={i} style={{ padding: '14px 16px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <p style={{ fontSize: '11px', fontWeight: '800', color: DASHBOARD_THEME.muted, margin: 0 }}>{s.label}</p>
-                            <span style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: `1px solid ${DASHBOARD_THEME.border}`, display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.accent }}>
-                                {s.icon}
-                            </span>
-                        </div>
-                        <p style={{ fontSize: '21px', fontWeight: '900', color: '#fff', margin: 0 }}>{compactNumber(s.value)}</p>
-                        <p style={{ fontSize: '10px', fontWeight: '700', color: '#7d7d7d', margin: 0 }}>{s.helper}</p>
-                        <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginTop: '2px' }}>
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${Math.max(8, (s.value / miniMax) * 100)}%` }}
-                                transition={{ duration: 0.55, delay: 0.05 * i, ease: 'easeOut' }}
-                                style={{ height: '100%', borderRadius: 999, background: i === 0 ? '#E5E7EB' : i === 1 ? '#9CA3AF' : '#6B7280' }}
-                            />
-                        </div>
-                        <p style={{ margin: 0, fontSize: '10px', fontWeight: 800, color: DASHBOARD_THEME.accent }}>
-                            {Math.round((s.value / miniMax) * 100)}% of top metric
-                        </p>
-                    </div>
+
+            {/* ── KPI Row ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+                {kpiCards.map((card, i) => (
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <Card style={{ height: '100%' }}>
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)` }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: '1.2px', textTransform: 'uppercase' }}>{card.label}</p>
+                                <span style={{
+                                    width: 28, height: 28, borderRadius: 10,
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${T.border}`,
+                                    display: 'grid', placeItems: 'center',
+                                    color: T.sub
+                                }}>
+                                    {card.icon}
+                                </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: card.wide ? 28 : 24, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
+                                {compactNumber(card.value)}
+                            </p>
+                            <p style={{ margin: '8px 0 0', fontSize: 10, fontWeight: 600, color: T.muted }}>{card.sub}</p>
+                        </Card>
+                    </motion.div>
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', alignItems: 'start' }}>
-                {/* LEFT COLUMN */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* ── Charts Row ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
 
-                    {/* Top Analytics */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div style={{
-                            background: 'linear-gradient(120deg, #121212 0%, #181818 60%, #1f1f1f 100%)',
-                            borderRadius: '20px',
-                            padding: '24px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            minHeight: '320px',
-                            border: `1px solid ${DASHBOARD_THEME.border}`
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px', position: 'relative', zIndex: 2 }}>
-                                <div>
-                                    <p style={{ margin: 0, fontSize: '10px', color: DASHBOARD_THEME.muted, fontWeight: 800, letterSpacing: '1.5px' }}>REVENUE FLOW</p>
-                                    <h2 style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: 900, color: '#fff' }}>
-                                        ${(stats.counts.gross || 0).toLocaleString()}
-                                    </h2>
-                                    <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: '#999', fontWeight: 700 }}>Gross earnings trend</p>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <p style={{ margin: 0, fontSize: '10px', color: DASHBOARD_THEME.muted, fontWeight: 800, letterSpacing: '1.5px' }}>PAYOUTS</p>
-                                    <p style={{ margin: '6px 0 0 0', fontSize: '16px', color: '#fff', fontWeight: 900 }}>${(stats.counts.payouts || 0).toLocaleString()}</p>
-                                    <p style={{ margin: '6px 0 0 0', fontSize: '10px', color: DASHBOARD_THEME.accent, fontWeight: 800 }}>
-                                        Label: ${(stats.counts.revenue || 0).toLocaleString()}
-                                    </p>
-                                    <div style={{ display: 'inline-flex', gap: '6px', marginTop: '8px' }}>
-                                        {[
-                                            { key: 'monthly', label: 'Monthly' },
-                                            { key: 'quarterly', label: 'Quarterly' }
-                                        ].map((opt) => {
-                                            const active = revenueGranularity === opt.key;
-                                            return (
-                                                <button
-                                                    key={opt.key}
-                                                    onClick={() => setRevenueGranularity(opt.key)}
-                                                    style={{
-                                                        border: `1px solid ${active ? '#4b5563' : DASHBOARD_THEME.border}`,
-                                                        background: active ? 'rgba(156,163,175,0.16)' : 'rgba(255,255,255,0.03)',
-                                                        color: active ? '#fff' : '#888',
-                                                        fontSize: '10px',
-                                                        fontWeight: 800,
-                                                        letterSpacing: '0.5px',
-                                                        borderRadius: 8,
-                                                        padding: '5px 9px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            );
-                                        })}
+                {/* Revenue Flow */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                >
+                    <Card style={{ padding: 24 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>REVENUE FLOW</p>
+                                <h2 style={{ margin: '8px 0 0', fontSize: 24, fontWeight: 900, color: '#fff' }}>
+                                    ${(stats.counts.gross || 0).toLocaleString()}
+                                </h2>
+                                <p style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>Gross earnings</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+                                    <div>
+                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700, letterSpacing: '1px' }}>PAYOUTS</p>
+                                        <p style={{ margin: '2px 0 0', fontSize: 15, color: '#fff', fontWeight: 800 }}>${(stats.counts.payouts || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700, letterSpacing: '1px' }}>LABEL</p>
+                                        <p style={{ margin: '2px 0 0', fontSize: 15, color: T.accent, fontWeight: 800 }}>${(stats.counts.revenue || 0).toLocaleString()}</p>
                                     </div>
                                 </div>
+                                <PillToggle
+                                    options={[{ key: 'monthly', label: 'Monthly' }, { key: 'quarterly', label: 'Quarterly' }]}
+                                    value={revenueGranularity}
+                                    onChange={setRevenueGranularity}
+                                />
                             </div>
-
-                            <div style={{ position: 'relative', zIndex: 2 }}>
-                                <RevenueFlowChart data={revenueSeriesData} granularity={revenueGranularity} />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '8px', position: 'relative', zIndex: 2 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E5E7EB' }} />
-                                    <span style={{ fontSize: '11px', color: '#d1d5db', fontWeight: 700 }}>Label Revenue</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#9CA3AF' }} />
-                                    <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 700 }}>Artist Share</span>
-                                </div>
-                            </div>
-
-                            <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '70%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', transform: 'rotate(-20deg)' }} />
                         </div>
 
-                        <div style={{ background: 'linear-gradient(120deg, #121212 0%, #181818 60%, #1f1f1f 100%)', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', minHeight: '320px', position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', position: 'relative', zIndex: 2 }}>
-                                <div>
-                                    <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listener Scale</h4>
-                                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '4px' }}>Compared with artist and release counts</p>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <p style={{ fontSize: '18px', fontWeight: '900', color: '#fff', margin: 0 }}>{latestListeners.toLocaleString()}</p>
-                                    <p style={{ fontSize: '10px', fontWeight: '800', marginTop: '2px', color: listenerDeltaPct >= 0 ? '#d1d5db' : '#9ca3af' }}>
-                                        {listenerDeltaPct >= 0 ? '+' : ''}{listenerDeltaPct.toFixed(1)}% vs previous
-                                    </p>
-                                    <div style={{ display: 'inline-flex', gap: '6px', marginTop: '8px' }}>
-                                        {[
-                                            { key: 'daily', label: 'Daily' },
-                                            { key: 'weekly', label: 'Weekly' },
-                                            { key: 'monthly', label: 'Monthly' }
-                                        ].map((opt) => {
-                                            const active = listenerGranularity === opt.key;
-                                            return (
-                                                <button
-                                                    key={opt.key}
-                                                    onClick={() => setListenerGranularity(opt.key)}
-                                                    style={{
-                                                        border: `1px solid ${active ? '#4b5563' : DASHBOARD_THEME.border}`,
-                                                        background: active ? 'rgba(209,213,219,0.14)' : 'rgba(255,255,255,0.03)',
-                                                        color: active ? '#fff' : '#888',
-                                                        fontSize: '10px',
-                                                        fontWeight: 800,
-                                                        letterSpacing: '0.5px',
-                                                        borderRadius: 8,
-                                                        padding: '5px 9px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            );
-                                        })}
+                        <RevenueFlowChart data={revenueSeriesData} height={220} granularity={revenueGranularity} />
+
+                        <Legend items={[
+                            { color: '#E5E7EB', label: 'Label Revenue' },
+                            { color: '#9CA3AF', label: 'Artist Share' }
+                        ]} />
+                    </Card>
+                </motion.div>
+
+                {/* Listener Scale */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                >
+                    <Card style={{ padding: 24 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>LISTENER SCALE</p>
+                                <h2 style={{ margin: '8px 0 0', fontSize: 24, fontWeight: 900, color: '#fff' }}>
+                                    {latestListeners.toLocaleString()}
+                                </h2>
+                                <p style={{
+                                    margin: '4px 0 0', fontSize: 11, fontWeight: 700,
+                                    color: listenerDeltaPct >= 0 ? T.accent : T.sub
+                                }}>
+                                    {listenerDeltaPct >= 0 ? '+' : ''}{listenerDeltaPct.toFixed(1)}% vs previous
+                                </p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+                                    <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Artists</p>
+                                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>{Number(stats.counts.artists || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Releases</p>
+                                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>{Number(stats.counts.releases || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Per Artist</p>
+                                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>
+                                            {(Number(stats.counts.artists || 0) ? Math.round(latestListeners / Number(stats.counts.artists || 0)) : 0).toLocaleString()}
+                                        </p>
                                     </div>
                                 </div>
+                                <PillToggle
+                                    options={[
+                                        { key: 'daily', label: 'Daily' },
+                                        { key: 'weekly', label: 'Weekly' },
+                                        { key: 'monthly', label: 'Monthly' }
+                                    ]}
+                                    value={listenerGranularity}
+                                    onChange={setListenerGranularity}
+                                />
                             </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px', position: 'relative', zIndex: 2 }}>
-                                <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#111' }}>
-                                    <p style={{ margin: 0, fontSize: 10, color: '#666', fontWeight: 800 }}>Artists</p>
-                                    <p style={{ margin: '3px 0 0 0', fontSize: 14, fontWeight: 900, color: '#fff' }}>{Number(stats.counts.artists || 0).toLocaleString()}</p>
-                                </div>
-                                <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#111' }}>
-                                    <p style={{ margin: 0, fontSize: 10, color: '#666', fontWeight: 800 }}>Releases</p>
-                                    <p style={{ margin: '3px 0 0 0', fontSize: 14, fontWeight: 900, color: '#fff' }}>{Number(stats.counts.releases || 0).toLocaleString()}</p>
-                                </div>
-                                <div style={{ padding: '8px 10px', border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: 10, background: '#111' }}>
-                                    <p style={{ margin: 0, fontSize: 10, color: '#666', fontWeight: 800 }}>Listeners / Artist</p>
-                                    <p style={{ margin: '3px 0 0 0', fontSize: 14, fontWeight: 900, color: '#fff' }}>
-                                        {(Number(stats.counts.artists || 0) ? Math.round(latestListeners / Number(stats.counts.artists || 0)) : 0).toLocaleString()}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div style={{ height: '220px', width: '100%', position: 'relative', margin: '12px 0 10px', zIndex: 2 }}>
-                                <ListenerScaleChart data={compareSeriesData} height={220} granularity={listenerGranularity} />
-                            </div>
-
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', position: 'relative', zIndex: 2 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#E5E7EB' }} />
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: '#d1d5db' }}>Monthly Listeners</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                    <span style={{ width: 14, height: 2, borderRadius: 1, background: '#9CA3AF' }} />
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: '#9ca3af' }}>Listeners / Artist</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                    <span style={{ width: 14, height: 2, borderRadius: 1, background: '#6B7280' }} />
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: '#8b8b8b' }}>Artist Count</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                    <span style={{ width: 14, height: 2, borderRadius: 1, background: '#4B5563' }} />
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: '#767676' }}>Release Count</span>
-                                </div>
-                            </div>
-
-                            <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '70%', height: '200%', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', transform: 'rotate(-20deg)' }} />
                         </div>
-                    </div>
+
+                        <ListenerScaleChart data={compareSeriesData} height={220} granularity={listenerGranularity} />
+
+                        <Legend items={[
+                            { color: '#E5E7EB', label: 'Monthly Listeners' },
+                            { color: '#9CA3AF', label: 'Per Artist', dashed: true },
+                            { color: '#6B7280', label: 'Artist Count', line: true },
+                            { color: '#4B5563', label: 'Release Count', line: true }
+                        ]} />
+                    </Card>
+                </motion.div>
+            </div>
+
+            {/* ── Bottom Row: Sidebar Stats + Top Artists + Actions ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+
+                {/* Left: Stats Cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: 0.3 }}
+                    >
+                        <Card>
+                            <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP PLATFORM</p>
+                            <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 900, color: '#fff' }}>
+                                {(stats.platforms?.[0]?.label || 'N/A')}
+                            </p>
+                            <p style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
+                                ${Number(stats.platforms?.[0]?.value || 0).toLocaleString()} label revenue
+                            </p>
+                        </Card>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: 0.35 }}
+                    >
+                        <Card>
+                            <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>AVG PER ARTIST</p>
+                            <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 900, color: '#fff' }}>
+                                {stats.counts.artists ? Math.round((stats.counts.listenersTotal || 0) / stats.counts.artists).toLocaleString() : '0'}
+                            </p>
+                            <p style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
+                                monthly listeners
+                            </p>
+                        </Card>
+                    </motion.div>
 
                     {/* Action Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        {[
-                            { title: 'Create Release', desc: 'Add a release to your catalog', icon: <RefreshCw size={20} />, target: 'submissions' },
-                            { title: 'Invite Team', desc: 'Invite users to use your account', icon: <Users size={20} />, target: 'users' },
-                        ].map((a, i) => (
-                            <div key={i} onClick={() => onNavigate(a.target)} style={{ padding: '24px', background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
-                                    {a.icon}
+                    {[
+                        { title: 'Create Release', desc: 'Add to catalog', icon: <RefreshCw size={18} />, target: 'submissions' },
+                        { title: 'Invite Team', desc: 'Add new users', icon: <Users size={18} />, target: 'users' },
+                    ].map((a, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.45, delay: 0.4 + i * 0.05 }}
+                        >
+                            <Card
+                                onClick={() => onNavigate(a.target)}
+                                style={{ cursor: 'pointer', transition: 'border-color 0.2s ease' }}
+                                onMouseEnter={(e) => e.currentTarget.style.borderColor = T.borderHover}
+                                onMouseLeave={(e) => e.currentTarget.style.borderColor = T.border}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: 10,
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: `1px solid ${T.border}`,
+                                        display: 'grid', placeItems: 'center',
+                                        color: T.sub
+                                    }}>
+                                        {a.icon}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <h4 style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0 }}>{a.title}</h4>
+                                        <p style={{ fontSize: 11, color: T.muted, margin: '2px 0 0' }}>{a.desc}</p>
+                                    </div>
+                                    <ChevronRight size={16} color={T.sub} />
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>{a.title}</h4>
-                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
-                                </div>
-                                <ChevronRight size={18} color={DASHBOARD_THEME.accent} />
-                            </div>
-                        ))}
-                    </div>
+                            </Card>
+                        </motion.div>
+                    ))}
+                </div>
 
-                    {/* Recent Releases */}
-                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Top Artists</h3>
-                            <button onClick={() => onNavigate('artists')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
+                {/* Right: Top Artists */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.35 }}
+                >
+                    <Card style={{ padding: 24, height: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP ARTISTS</p>
+                                <p style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By monthly listeners</p>
+                            </div>
+                            <button
+                                onClick={() => onNavigate('artists')}
+                                style={{
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: `1px solid ${T.border}`,
+                                    color: '#fff',
+                                    fontSize: 10,
+                                    padding: '6px 14px',
+                                    borderRadius: 8,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    letterSpacing: '0.5px'
+                                }}
+                            >
+                                VIEW ALL
+                            </button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
-                            {(stats.topArtists || []).slice(0, 4).map((a, i) => (
-                                <div key={a.id || i} style={{ cursor: 'pointer' }} onClick={() => onNavigate('artists')}>
-                                    <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '8px', overflow: 'hidden', background: '#000', marginBottom: '8px', border: `1px solid ${DASHBOARD_THEME.border}` }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 16 }}>
+                            {(stats.topArtists || []).slice(0, 5).map((a, i) => (
+                                <motion.div
+                                    key={a.id || i}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.35, delay: 0.4 + i * 0.06 }}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => onNavigate('artists')}
+                                >
+                                    <div style={{
+                                        width: '100%', aspectRatio: '1/1', borderRadius: 12,
+                                        overflow: 'hidden', background: '#000', marginBottom: 10,
+                                        border: `1px solid ${T.border}`
+                                    }}>
                                         <NextImage
                                             src={normalizeImageSrc(a.image)}
                                             alt={a.name || 'Artist'}
@@ -835,41 +803,23 @@ export default function HomeView({ onNavigate }) {
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     </div>
-                                    <p style={{ fontSize: '12px', fontWeight: '800', color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
-                                    <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
-                                </div>
+                                    <p style={{ fontSize: 12, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
+                                    <p style={{ fontSize: 10, color: T.muted, margin: '3px 0 0', fontWeight: 600 }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
+                                </motion.div>
                             ))}
                             {(!stats.topArtists || stats.topArtists.length === 0) && (
-                                <p style={{ gridColumn: '1 / -1', fontSize: '11px', color: DASHBOARD_THEME.muted, margin: 0 }}>No artist data available yet.</p>
+                                <p style={{ gridColumn: '1 / -1', fontSize: 11, color: T.muted, margin: 0 }}>No artist data available yet.</p>
                             )}
                         </div>
-                    </div>
-                </div>
-
-                {/* RIGHT COLUMN */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '18px' }}>
-                        <p style={{ margin: 0, fontSize: '10px', color: DASHBOARD_THEME.muted, fontWeight: 800, letterSpacing: '1.5px' }}>TOP PLATFORM</p>
-                        <p style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: 900, color: '#fff' }}>
-                            {(stats.platforms?.[0]?.label || 'N/A')}
-                        </p>
-                        <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: DASHBOARD_THEME.accent, fontWeight: 800 }}>
-                            ${Number(stats.platforms?.[0]?.value || 0).toLocaleString()} label revenue
-                        </p>
-                    </div>
-
-                    <div style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '18px' }}>
-                        <p style={{ margin: 0, fontSize: '10px', color: DASHBOARD_THEME.muted, fontWeight: 800, letterSpacing: '1.5px' }}>AVERAGE PER ARTIST</p>
-                        <p style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: 900, color: '#fff' }}>
-                            {stats.counts.artists ? Math.round((stats.counts.listenersTotal || 0) / stats.counts.artists).toLocaleString() : '0'}
-                        </p>
-                        <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: DASHBOARD_THEME.accent, fontWeight: 800 }}>
-                            monthly listeners
-                        </p>
-                    </div>
-
-                </div>
+                    </Card>
+                </motion.div>
             </div>
+
+            <style jsx>{`
+                @media (max-width: 1100px) {
+                    div { font-family: 'Space Grotesk', sans-serif; }
+                }
+            `}</style>
         </div>
     );
 }

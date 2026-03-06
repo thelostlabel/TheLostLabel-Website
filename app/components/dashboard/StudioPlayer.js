@@ -23,6 +23,7 @@ export default function StudioPlayer({ src, filename }) {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isLoop, setIsLoop] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const [loadError, setLoadError] = useState(false);
 
     // Reset state when src changes
     useEffect(() => {
@@ -31,6 +32,7 @@ export default function StudioPlayer({ src, filename }) {
         setDuration(0);
         setIsLoaded(false);
         setIsBuffering(false);
+        setLoadError(false);
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
@@ -76,6 +78,11 @@ export default function StudioPlayer({ src, filename }) {
 
     const handleWaiting = () => setIsBuffering(true);
     const handleCanPlay = () => setIsBuffering(false);
+    const handleError = () => {
+        setLoadError(true);
+        setIsPlaying(false);
+        setIsBuffering(false);
+    };
 
     // Playback controls
     const togglePlay = () => {

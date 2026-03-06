@@ -99,7 +99,7 @@ export async function GET(req) {
                     FROM "ArtistStatsHistory"
                     GROUP BY TO_CHAR(date, 'YYYY-MM-DD')
                     ORDER BY label ASC
-                    LIMIT 30
+                    LIMIT 365
                 `
             ]);
 
