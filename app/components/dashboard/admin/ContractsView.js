@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+
 import { motion } from 'framer-motion';
 import { Plus, Trash2, CheckCircle, Upload } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
@@ -277,6 +279,36 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
     const { showToast, showConfirm } = useToast();
     const [showAdd, setShowAdd] = useState(false);
     const [editingContract, setEditingContract] = useState(null);
+    const searchParams = useSearchParams();
+
+    // Deep link to contract
+    useEffect(() => {
+        if (!editingContract && contracts.length > 0) {
+            const idFromUrl = searchParams.get('id');
+            if (idFromUrl) {
+                const contract = contracts.find(c => c.id === idFromUrl);
+                if (contract) {
+                    setEditingContract(contract);
+                    setForm({
+                        ...contract,
+                        isDemo: Boolean(contract.demoId),
+                        splits: contract.splits?.length > 0 ? contract.splits : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }],
+                        contractDetails: contract.contractDetails || {
+                            agreementReferenceNo: '',
+                            effectiveDate: '',
+                            deliveryDate: '',
+                            isrc: '',
+                            songTitles: '',
+                            artistLegalName: '',
+                            artistPhone: '',
+                            artistAddress: ''
+                        }
+                    });
+                }
+            }
+        }
+    }, [contracts, searchParams, editingContract]);
+
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         userId: '',
@@ -424,20 +456,8 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     }
                 }
 
-                // Strategy D: Fallback - search for known artist names in PDF text
-                if (artistInfoBlocks.length === 0) {
-                    for (const a of artists) {
-                        if (a.name && a.name.length > 2 && pdfText.toLowerCase().includes(a.name.toLowerCase())) {
-                            artistInfoBlocks.push({
-                                stageName: a.name,
-                                legalName: a.user?.legalName || '',
-                                email: a.user?.email || '',
-                                phone: a.user?.phoneNumber || '',
-                                address: a.user?.address || ''
-                            });
-                        }
-                    }
-                }
+                // Strategy D: REMOVED (Aggressive fallback search caused unauthorized access)
+
 
                 // ============================================================
                 // STEP 3: EXTRACT & RESOLVE SONG TITLE
@@ -490,7 +510,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     matchedRelease = (releases || []).find(r => {
                         const rNameNorm = normalize(r.name);
                         return (rNameNorm.length > 3 && targetNorm.includes(rNameNorm)) ||
-                               (targetNorm.length > 3 && rNameNorm.includes(targetNorm));
+                            (targetNorm.length > 3 && rNameNorm.includes(targetNorm));
                     });
                 }
 
@@ -1258,7 +1278,14 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 {canSubmit ? 'Form is ready to save.' : 'To save: add at least one artist, provide a selected item or custom title, and make total split exactly 100%.'}
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setShowAdd(false)} style={btnStyle}>CANCEL</button>
+                                <button type="button" onClick={() => {
+                                    setShowAdd(false);
+                                    setEditingContract(null);
+                                    const params = new URLSearchParams(window.location.search);
+                                    params.delete('id');
+                                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                }} style={btnStyle}>CANCEL</button>
+
                                 <button type="submit" disabled={saving || !canSubmit} style={{ ...btnStyle, background: '#fff', color: '#000', opacity: (saving || !canSubmit) ? 0.6 : 1 }}>
                                     {saving ? 'SAVING...' : editingContract ? 'SAVE CHANGES' : 'CREATE CONTRACT'}
                                 </button>

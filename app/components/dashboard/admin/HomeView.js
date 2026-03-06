@@ -11,11 +11,11 @@ import {
 import NextImage from 'next/image';
 
 const T = {
-    bg: '#0a0a0a',
-    surface: '#111111',
-    surfaceAlt: 'linear-gradient(135deg, #111111 0%, #151515 100%)',
-    border: 'rgba(255,255,255,0.06)',
-    borderHover: 'rgba(255,255,255,0.1)',
+    bg: 'transparent',
+    surface: 'rgba(255,255,255,0.03)',
+    surfaceAlt: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
+    border: 'rgba(255,255,255,0.08)',
+    borderHover: 'rgba(255,255,255,0.14)',
     text: '#FFFFFF',
     muted: '#666666',
     sub: '#888888',
@@ -511,7 +511,7 @@ export default function HomeView({ onNavigate }) {
                             initial={{ opacity: 0.3 }}
                             animate={{ opacity: [0.3, 0.6, 0.3] }}
                             transition={{ repeat: Infinity, duration: 1.2, delay: item * 0.08 }}
-                            style={{ height: 100, borderRadius: 16, background: '#131313', border: `1px solid ${T.border}` }}
+                            style={{ height: 100, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
                         />
                     ))}
                 </div>
@@ -522,7 +522,7 @@ export default function HomeView({ onNavigate }) {
                             initial={{ opacity: 0.3 }}
                             animate={{ opacity: [0.3, 0.6, 0.3] }}
                             transition={{ repeat: Infinity, duration: 1.4, delay: item * 0.1 }}
-                            style={{ height: 380, borderRadius: 16, background: '#131313', border: `1px solid ${T.border}` }}
+                            style={{ height: 380, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
                         />
                     ))}
                 </div>

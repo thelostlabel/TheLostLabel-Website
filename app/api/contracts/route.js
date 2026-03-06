@@ -77,15 +77,18 @@ export async function GET(req) {
             }
         };
 
-        if (role === 'admin' || role === 'a&r') {
-            // Admin/A&R can see all contracts
+        const { searchParams } = new URL(req.url);
+        const fetchAll = searchParams.get('all') === 'true';
+
+        if (fetchAll && (role === 'admin' || role === 'a&r')) {
+            // Admin/A&R explicitly requesting all contracts
             contracts = await prisma.contract.findMany({
                 include: includeOptions,
                 orderBy: { createdAt: 'desc' }
             });
         } else {
-            // Artists can see their own contracts AND contracts where they are a split contributor
-            // Also include contracts linked via their Artist profile or email
+            // Artists OR admins in personal context can only see their own contracts
+            // including where they are a split contributor or linked via email/profile.
             contracts = await prisma.contract.findMany({
                 where: {
                     OR: [

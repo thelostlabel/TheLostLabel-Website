@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
+
 import { RefreshCw, Plus, AlertCircle } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
@@ -107,7 +109,8 @@ function UserLinker({ artistId, users, artistEmail }) {
     );
 }
 
-export default function ArtistsView({ artists, users, onSync, onRefresh }) {
+export default function ArtistsView({ artists, users, releases = [], contracts = [], onSync, onRefresh }) {
+
     const { showToast, showConfirm } = useToast();
     const { data: session } = useSession();
     const canManage = session?.user?.role === 'admin' || session?.user?.permissions?.canManageArtists;
@@ -118,17 +121,38 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
     const [isCreating, setIsCreating] = useState(false);
     const [newArtist, setNewArtist] = useState({ name: '', spotifyUrl: '', email: '' });
     const [saving, setSaving] = useState(false);
+    const searchParams = useSearchParams();
+
+    // Syncing States
+    const [syncingArtistId, setSyncingArtistId] = useState(null);
+    const [isSyncingAll, setIsSyncingAll] = useState(false);
+
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fix: Prevent spam clicking
-    const [syncingArtistId, setSyncingArtistId] = useState(null);
-    const [isSyncingAll, setIsSyncingAll] = useState(false);
+    // Auto-select artist if ID is in URL
+    useEffect(() => {
+        console.log("[ArtistsView] Artists:", artists.length, "Releases:", releases.length, "Contracts:", contracts.length);
+        if (selectedArtist) {
+            console.log("[ArtistsView] Selected Artist:", selectedArtist.name);
+        }
+        if (!selectedArtist && artists.length > 0) {
+
+            const idFromUrl = searchParams.get('id');
+            if (idFromUrl) {
+                const artist = artists.find(a => a.id === idFromUrl);
+                if (artist) {
+                    setSelectedArtist(artist);
+                }
+            }
+        }
+    }, [artists, searchParams, selectedArtist]);
 
     // Filter artists based on search
+
     const filteredArtists = useMemo(() => {
         return artists.filter(artist =>
             artist.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
@@ -177,7 +201,14 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
 
         return (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ ...glassStyle, padding: '40px', background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}>
-                <button onClick={() => setSelectedArtist(null)} style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', padding: '10px 20px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>← BACK TO LIST</button>
+                <button onClick={() => {
+                    setSelectedArtist(null);
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('id');
+                    const newUrl = `${window.location.pathname}?${params.toString()}`;
+                    window.history.pushState({}, '', newUrl);
+                }} style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', padding: '10px 20px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>← BACK TO LIST</button>
+
 
                 <div style={{ display: 'flex', gap: '30px', alignItems: 'center', marginBottom: '40px' }}>
                     <div style={{ width: '120px', height: '120px', borderRadius: '16px', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
@@ -232,50 +263,99 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.15fr) minmax(0,0.85fr)', gap: '24px', alignItems: 'start' }}>
-                    <div style={{ padding: '30px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                        <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '24px', letterSpacing: '1px' }}>LINKED SYSTEM ACCOUNT</h3>
-                        {selectedArtist.user ? (
-                            <div>
-                                <div style={{ fontSize: '18px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{selectedArtist.user.stageName || selectedArtist.user.fullName || 'NO NAME'}</div>
-                                <div style={{ fontSize: '13px', color: '#aaa', marginTop: '6px', fontWeight: '800' }}>{selectedArtist.user.email}</div>
-                                <div style={{ marginTop: '20px', fontSize: '10px', color: '#fff', background: 'rgba(255,255,255,0.1)', display: 'inline-block', padding: '6px 12px', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>✓ ACCOUNT VERIFIED</div>
-                                <div style={{ marginTop: '30px' }}>
-                                    <button
-                                        onClick={() => {
-                                            showConfirm(
-                                                "UNLINK ACCOUNT?",
-                                                "Are you sure you want to unlink this user from the artist profile? They will lose access to their stats and dashboard.",
-                                                async () => {
-                                                    try {
-                                                        const res = await fetch('/api/admin/artists', {
-                                                            method: 'PUT',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ id: selectedArtist.id, userId: null })
-                                                        });
-                                                        if (res.ok) {
-                                                            showToast("Account unlinked successfully", "success");
-                                                            window.location.reload();
-                                                        } else {
-                                                            showToast("Failed to unlink account", "error");
-                                                        }
-                                                    } catch (e) { showToast('Error unlinking account', "error"); }
-                                                }
-                                            );
-                                        }}
-                                        style={{ ...btnStyle, color: '#ff4444', borderColor: 'rgba(255,68,68,0.2)', background: 'rgba(255,68,68,0.05)', width: '100%', justifyContent: 'center', height: 'auto', padding: '14px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px' }}
-                                    >
-                                        UNLINK ACCOUNT
-                                    </button>
+                    <div style={{ display: 'grid', gap: '24px' }}>
+                        <div style={{ padding: '30px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                            <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '24px', letterSpacing: '1px' }}>LINKED SYSTEM ACCOUNT</h3>
+                            {selectedArtist.user ? (
+                                <div>
+                                    <div style={{ fontSize: '18px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{selectedArtist.user.stageName || selectedArtist.user.fullName || 'NO NAME'}</div>
+                                    <div style={{ fontSize: '13px', color: '#aaa', marginTop: '6px', fontWeight: '800' }}>{selectedArtist.user.email}</div>
+                                    <div style={{ marginTop: '20px', fontSize: '10px', color: '#fff', background: 'rgba(255,255,255,0.1)', display: 'inline-block', padding: '6px 12px', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>✓ ACCOUNT VERIFIED</div>
+                                    <div style={{ marginTop: '30px' }}>
+                                        <button
+                                            onClick={() => {
+                                                showConfirm(
+                                                    "UNLINK ACCOUNT?",
+                                                    "Are you sure you want to unlink this user from the artist profile? They will lose access to their stats and dashboard.",
+                                                    async () => {
+                                                        try {
+                                                            const res = await fetch('/api/admin/artists', {
+                                                                method: 'PUT',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ id: selectedArtist.id, userId: null })
+                                                            });
+                                                            if (res.ok) {
+                                                                showToast("Account unlinked successfully", "success");
+                                                                window.location.reload();
+                                                            } else {
+                                                                showToast("Failed to unlink account", "error");
+                                                            }
+                                                        } catch (e) { showToast('Error unlinking account', "error"); }
+                                                    }
+                                                );
+                                            }}
+                                            style={{ ...btnStyle, color: '#ff4444', borderColor: 'rgba(255,68,68,0.2)', background: 'rgba(255,68,68,0.05)', width: '100%', justifyContent: 'center', height: 'auto', padding: '14px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px' }}
+                                        >
+                                            UNLINK ACCOUNT
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <UserLinker artistId={selectedArtist.id} users={users} artistEmail={selectedArtist.email} />
-                        )}
+                            ) : (
+                                <UserLinker artistId={selectedArtist.id} users={users} artistEmail={selectedArtist.email} />
+                            )}
+                        </div>
+
+                        <div style={{ padding: '30px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                            <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '24px', letterSpacing: '1px' }}>RELEASES</h3>
+                            {releases.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '40px', color: '#444', fontSize: '10px', fontWeight: '900', letterSpacing: '1px' }}>LOADING RELEASES...</div>
+                            ) : (() => {
+                                const artistReleases = releases.filter(r => {
+                                    const nameMatch = r.artistName?.toLowerCase().includes(selectedArtist.name?.toLowerCase());
+                                    const titleMatch = r.name?.toLowerCase().includes(selectedArtist.name?.toLowerCase());
+
+                                    // Check JSON if available
+                                    let jsonMatch = false;
+                                    if (r.artistsJson) {
+                                        try {
+                                            const artists = JSON.parse(r.artistsJson);
+                                            jsonMatch = artists.some(a =>
+                                                a.id === selectedArtist.id ||
+                                                a.name?.toLowerCase() === selectedArtist.name?.toLowerCase() ||
+                                                (selectedArtist.userId && a.id === selectedArtist.userId)
+                                            );
+                                        } catch (e) { }
+                                    }
+
+                                    return nameMatch || jsonMatch || titleMatch;
+                                });
+
+                                return artistReleases.length > 0 ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '16px' }}>
+                                        {artistReleases.slice(0, 12).map(release => (
+                                            <div key={release.id} style={{ textAlign: 'center' }}>
+                                                <div style={{ width: '100%', aspectRatio: '1/1', background: '#111', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: '8px' }}>
+                                                    {release.image ? <NextImage src={release.image} alt={release.name} width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>💿</div>}
+                                                </div>
+                                                <div style={{ fontSize: '11px', fontWeight: '900', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.name}</div>
+                                                <div style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>{release.releaseDate}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '40px', color: '#444', fontSize: '10px', fontWeight: '900', letterSpacing: '1px' }}>NO RELEASES FOUND IN SYSTEM</div>
+                                );
+                            })()
+                            }
+                        </div>
+
+
                     </div>
 
                     <div style={{ display: 'grid', gap: '16px' }}>
                         <div style={{ padding: '24px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                             <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '18px', letterSpacing: '1px' }}>PLATFORM HEALTH</h3>
+                            {/* ... existing health grid ... */}
                             <div style={{ display: 'grid', gap: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
                                     <span style={{ color: '#aaa', fontWeight: '800' }}>Profile Completeness</span>
@@ -299,8 +379,48 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                             </div>
                         </div>
 
+                        {/* Recent Contracts Section */}
+                        <div style={{ padding: '24px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                            <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '18px', letterSpacing: '1px' }}>CONTRACTS</h3>
+                            {contracts.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '20px', color: '#444', fontSize: '10px', fontWeight: '900' }}>LOADING CONTRACTS...</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {(() => {
+                                        const artistContracts = contracts.filter(c =>
+                                            c.artistId === selectedArtist.id ||
+                                            (selectedArtist.userId && c.userId === selectedArtist.userId) ||
+                                            (selectedArtist.email && c.primaryArtistEmail?.toLowerCase() === selectedArtist.email?.toLowerCase()) ||
+                                            (c.splits?.some(s =>
+                                                s.artistId === selectedArtist.id ||
+                                                (selectedArtist.userId && s.userId === selectedArtist.userId) ||
+                                                (selectedArtist.email && s.email?.toLowerCase() === selectedArtist.email?.toLowerCase())
+                                            ))
+                                        );
+
+                                        if (artistContracts.length === 0) {
+                                            return <div style={{ textAlign: 'center', padding: '20px', color: '#444', fontSize: '10px', fontWeight: '900' }}>NO CONTRACTS FOUND</div>;
+                                        }
+
+                                        return artistContracts.map(contract => (
+                                            <div key={contract.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                                <div style={{ fontSize: '12px', fontWeight: '900', color: '#fff', marginBottom: '2px' }}>{contract.title || contract.release?.name || 'Untitled Contract'}</div>
+                                                <div style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>REF: {contract.contractDetails?.agreementReferenceNo || 'N/A'}</div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '8px', padding: '2px 6px', background: 'rgba(0,255,136,0.1)', color: '#00ff88', borderRadius: '2px', fontWeight: '950' }}>{contract.status?.toUpperCase()}</span>
+                                                    <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '950' }}>{Math.round(contract.artistShare * 100)}% SHARE</span>
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            )}
+                        </div>
+
+
                         <div style={{ padding: '24px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                             <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '18px', letterSpacing: '1px' }}>QUICK ACTIONS</h3>
+                            {/* ... buttons ... */}
                             <div style={{ display: 'grid', gap: '10px' }}>
                                 <button
                                     type="button"
@@ -345,6 +465,7 @@ export default function ArtistsView({ artists, users, onSync, onRefresh }) {
                         </div>
                     </div>
                 </div>
+
             </motion.div>
         )
     }

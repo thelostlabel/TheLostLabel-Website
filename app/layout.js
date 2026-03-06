@@ -6,6 +6,7 @@ import { ToastProvider } from "./components/ToastContext";
 import { PlayerProvider } from "./components/PlayerContext";
 import Player from "./components/Player";
 
+
 export const metadata = {
   metadataBase: new URL('https://thelostlabel.com'), // Using new domain for absolute image paths
   title: {
@@ -79,7 +80,7 @@ export default function RootLayout({ children }) {
           <ToastProvider>
             <PlayerProvider>
               <Navbar />
-              <main>{children}</main>
+              <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
               <Player />
             </PlayerProvider>
           </ToastProvider>

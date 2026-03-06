@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
@@ -12,6 +14,21 @@ export default function UsersView({ users, onRefresh }) {
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const searchParams = useSearchParams();
+
+    // Deep link to user
+    useEffect(() => {
+        if (!editingUser && users.length > 0) {
+            const idFromUrl = searchParams.get('id');
+            if (idFromUrl) {
+                const user = users.find(u => u.id === idFromUrl);
+                if (user) {
+                    openEdit(user);
+                }
+            }
+        }
+    }, [users, searchParams, editingUser]);
+
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -126,7 +143,13 @@ export default function UsersView({ users, onRefresh }) {
                                 <div style={{ width: '40px', height: '2px', background: 'var(--accent)' }}></div>
                                 <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '950', color: '#fff', margin: 0 }}>USER_ACCESS_CONTROL</h3>
                             </div>
-                            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '24px' }}>×</button>
+                            <button onClick={() => {
+                                setEditingUser(null);
+                                const params = new URLSearchParams(window.location.search);
+                                params.delete('id');
+                                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                            }} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '24px' }}>×</button>
+
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }} className="users-modal-grid">
@@ -238,9 +261,15 @@ export default function UsersView({ users, onRefresh }) {
                             <button onClick={() => handleSave()} disabled={saving} style={{ ...btnStyle, flex: 2, padding: '18px', background: 'var(--accent)', color: '#000', border: 'none', height: 'auto' }}>
                                 {saving ? 'APPLYING_CHANGES...' : 'SAVE_USER_PERMISSIONS'}
                             </button>
-                            <button onClick={() => setEditingUser(null)} style={{ ...btnStyle, flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', height: 'auto' }}>
+                            <button onClick={() => {
+                                setEditingUser(null);
+                                const params = new URLSearchParams(window.location.search);
+                                params.delete('id');
+                                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                            }} style={{ ...btnStyle, flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', height: 'auto' }}>
                                 CANCEL
                             </button>
+
                         </div>
                     </motion.div>
                 </div>

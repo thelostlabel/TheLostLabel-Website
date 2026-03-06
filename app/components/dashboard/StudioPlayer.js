@@ -288,7 +288,7 @@ export default function StudioPlayer({ src, filename }) {
 
             <style jsx>{`
                 .studio-player {
-                    background: linear-gradient(145deg, #0a0a0a 0%, #111111 50%, #0d0d0d 100%);
+                    background: rgba(255,255,255,0.03);
                     border: 1px solid rgba(255,255,255,0.06);
                     border-radius: 16px;
                     padding: 24px;

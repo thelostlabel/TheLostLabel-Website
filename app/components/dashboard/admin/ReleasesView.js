@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Disc, Edit3, Trash2, Edit2, Search } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, inputStyle } from './styles';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
@@ -28,9 +30,24 @@ export default function ReleasesView({ releases }) {
     const [activeTab, setActiveTab] = useState('all'); // 'upcoming', 'all', 'released'
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [expandedReleaseId, setExpandedReleaseId] = useState(null);
     const [editingRelease, setEditingRelease] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [expandedReleaseId, setExpandedReleaseId] = useState(null);
+    const searchParams = useSearchParams();
+
+    // Deep link to release
+    useEffect(() => {
+        if (!editingRelease && releases.length > 0) {
+            const idFromUrl = searchParams.get('id');
+            if (idFromUrl) {
+                const release = releases.find(r => r.id === idFromUrl);
+                if (release) {
+                    setEditingRelease(release);
+                }
+            }
+        }
+    }, [releases, searchParams, editingRelease]);
+
     const { showToast, showConfirm } = useToast();
 
     useEffect(() => {
@@ -371,7 +388,12 @@ export default function ReleasesView({ releases }) {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setEditingRelease(null)}
+                                        onClick={() => {
+                                            setEditingRelease(null);
+                                            const params = new URLSearchParams(window.location.search);
+                                            params.delete('id');
+                                            window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                        }}
                                         style={{
                                             flex: 1,
                                             background: 'rgba(255,255,255,0.05)',

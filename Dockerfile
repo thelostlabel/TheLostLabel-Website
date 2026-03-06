@@ -5,12 +5,13 @@ FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml* ./
 
-# Install dependencies
+# Install pnpm and dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ ca-certificates openssl \
-    && npm ci --prefer-offline --no-audit --no-fund \
+    && npm install -g pnpm \
+    && pnpm install --frozen-lockfile --config.node-linker=hoisted \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================
@@ -23,7 +24,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy source code
-COPY package.json package-lock.json* ./
+COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./prisma
 COPY . .
 
@@ -32,8 +33,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 # Generate Prisma Client and build
-RUN npx prisma generate \
-    && npm run build
+RUN npm install -g pnpm \
+    && pnpm exec prisma generate \
+    && pnpm build
 
 # ============================================
 # STAGE 3: Runner (Production)
