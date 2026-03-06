@@ -674,8 +674,8 @@ export default function HomeView({ onNavigate }) {
                 </motion.div>
             </div>
 
-            {/* ── Bottom Row: Sidebar Stats + Top Artists + Actions ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+            {/* ── Bottom Row: Sidebar Stats + Top Artists + Top Releases + Actions ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1.5fr', gap: 14 }}>
 
                 {/* Left: Stats Cards */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -749,7 +749,7 @@ export default function HomeView({ onNavigate }) {
                     ))}
                 </div>
 
-                {/* Right: Top Artists */}
+                {/* Middle: Top Artists */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -778,37 +778,114 @@ export default function HomeView({ onNavigate }) {
                                 VIEW ALL
                             </button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 16 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
                             {(stats.topArtists || []).slice(0, 5).map((a, i) => (
                                 <motion.div
                                     key={a.id || i}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.35, delay: 0.4 + i * 0.06 }}
-                                    style={{ cursor: 'pointer' }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                                     onClick={() => onNavigate('artists')}
                                 >
                                     <div style={{
-                                        width: '100%', aspectRatio: '1/1', borderRadius: 12,
-                                        overflow: 'hidden', background: '#000', marginBottom: 10,
+                                        width: 48, height: 48, borderRadius: 8,
+                                        overflow: 'hidden', background: '#000', flexShrink: 0,
                                         border: `1px solid ${T.border}`
                                     }}>
                                         <NextImage
                                             src={normalizeImageSrc(a.image)}
                                             alt={a.name || 'Artist'}
-                                            width={320}
-                                            height={320}
+                                            width={100}
+                                            height={100}
                                             unoptimized
                                             onError={handleImageError}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     </div>
-                                    <p style={{ fontSize: 12, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
-                                    <p style={{ fontSize: 10, color: T.muted, margin: '3px 0 0', fontWeight: 600 }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
+                                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                                        <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
+                                        <p style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
+                                    </div>
+                                    <div style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
+                                        #{i + 1}
+                                    </div>
                                 </motion.div>
                             ))}
                             {(!stats.topArtists || stats.topArtists.length === 0) && (
-                                <p style={{ gridColumn: '1 / -1', fontSize: 11, color: T.muted, margin: 0 }}>No artist data available yet.</p>
+                                <p style={{ fontSize: 11, color: T.muted, margin: 0 }}>No artist data available yet.</p>
+                            )}
+                        </div>
+                    </Card>
+                </motion.div>
+
+                {/* Right: Top Releases */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                    <Card style={{ padding: 24, height: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div>
+                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP RELEASES</p>
+                                <p style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By stream count / popularity</p>
+                            </div>
+                            <button
+                                onClick={() => onNavigate('releases')}
+                                style={{
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: `1px solid ${T.border}`,
+                                    color: '#fff',
+                                    fontSize: 10,
+                                    padding: '6px 14px',
+                                    borderRadius: 8,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    letterSpacing: '0.5px'
+                                }}
+                            >
+                                VIEW ALL
+                            </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                            {(stats.topReleases || []).slice(0, 5).map((r, i) => (
+                                <motion.div
+                                    key={r.id || i}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.35, delay: 0.45 + i * 0.06 }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+                                    onClick={() => onNavigate('releases')}
+                                >
+                                    <div style={{
+                                        width: 48, height: 48, borderRadius: 8,
+                                        overflow: 'hidden', background: '#000', flexShrink: 0,
+                                        border: `1px solid ${T.border}`
+                                    }}>
+                                        <NextImage
+                                            src={normalizeImageSrc(r.image)}
+                                            alt={r.name || 'Release'}
+                                            width={100}
+                                            height={100}
+                                            unoptimized
+                                            onError={handleImageError}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                                        <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
+                                        <p style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>
+                                            {r.popularity ? `${r.popularity} Popularity` : 'No data'}
+                                        </p>
+                                    </div>
+                                    <div style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
+                                        #{i + 1}
+                                    </div>
+                                </motion.div>
+                            ))}
+                            {(!stats.topReleases || stats.topReleases.length === 0) && (
+                                <p style={{ fontSize: 11, color: T.muted, margin: 0 }}>No release data available yet.</p>
                             )}
                         </div>
                     </Card>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Upload } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, tdStyle, thStyle, glassStyle, inputStyle } from './styles';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
@@ -286,7 +286,207 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
         splits: [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
     });
     const [uploadingPdf, setUploadingPdf] = useState(false);
+    const [batchProcessing, setBatchProcessing] = useState(false);
     const pdfInputRef = useRef(null);
+
+    const handleBatchAutoUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        setBatchProcessing(true);
+        showToast(`Processing ${files.length} contracts...`, "info");
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const file of files) {
+            try {
+                // 1. Upload and Parse PDF
+                const formData = new FormData();
+                formData.append('file', file);
+                const uploadRes = await fetch('/api/contracts/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadData = await uploadRes.json();
+                if (!uploadData.success) throw new Error(uploadData.error || 'Upload failed');
+
+                const meta = uploadData.parsedMetadata || {};
+                const pdfText = meta.parsedText || "";
+
+                // --- STEP 1: EXTRACT ARTISTS FIRST ---
+                const artistInfoBlocks = [];
+                const blockRegex = /Primary Artist - (.+?)\nName:\s*(.+?)\nAddress:\s*(.+?)\nCity\/Town:\s*(.+?)\nCountry:\s*(.+?)\nEmail:\s*(.+?)\nPhone:\s*(.+?)/gi;
+                let m;
+                while ((m = blockRegex.exec(pdfText)) !== null) {
+                    artistInfoBlocks.push({
+                        stageName: m[1].trim(),
+                        legalName: m[2].trim(),
+                        address: `${m[3].trim()}, ${m[4].trim()}, ${m[5].trim()}`,
+                        email: m[6].trim(),
+                        phone: m[7].trim()
+                    });
+                }
+
+                if (artistInfoBlocks.length === 0) {
+                    const sch = pdfText.match(/Shares\s*\n\s*(.+?)\s+(.+?)\s+(\d+)%/i);
+                    if (sch) sch[2].split(',').forEach(sn => artistInfoBlocks.push({ stageName: sn.trim() }));
+                }
+
+                // --- STEP 2: EXTRACT & CLEAN TITLE ---
+                const docIdMatch = pdfText.match(/Document ID:\s*(.+?)(?=\n|Prepared:)/i);
+                const agreementRef = docIdMatch ? docIdMatch[1].trim() : '';
+
+                let guessedTitle = "";
+                const scheduleTitleMatch = pdfText.match(/Shares\s*\n\s*([^\s,]+)/i);
+                if (scheduleTitleMatch) {
+                    guessedTitle = scheduleTitleMatch[1].trim();
+                } else {
+                    const fallbackMatch = pdfText.match(/Song Title\(s\)\s*(.+?)(?=Name of Artist)/i);
+                    guessedTitle = fallbackMatch ? fallbackMatch[1].trim() : file.name.replace(/\.[^/.]+$/, "").replace(/(_| )/g, '_').replace(/_+/g, '_').trim();
+                }
+
+                // FIX: If PDF merges "TitleArtistName", strip the artist part
+                artistInfoBlocks.forEach(a => {
+                    const sn = a.stageName;
+                    if (sn && guessedTitle.toLowerCase().endsWith(sn.toLowerCase())) {
+                        guessedTitle = guessedTitle.substring(0, guessedTitle.length - sn.length).trim();
+                    }
+                });
+
+                guessedTitle = guessedTitle.replace(/__\d+_?$/, '').replace(/_+$/, '');
+
+                // b. Auto-link to Release (Fuzzy Matching)
+                const normalize = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, '');
+                const targetNorm = normalize(guessedTitle);
+                const refNorm = normalize(agreementRef);
+
+                let matchedRelease = (releases || []).find(r => {
+                    const rNameNorm = normalize(r.name);
+                    return rNameNorm === targetNorm || rNameNorm === refNorm || targetNorm.startsWith(rNameNorm);
+                });
+
+                if (matchedRelease) guessedTitle = matchedRelease.name;
+
+                console.log(`[AUTO_MATCH_DEBUG] FinalTitle: ${guessedTitle}, Ref: ${agreementRef}, Linked to: ${matchedRelease?.name || 'Nothing'}`);
+
+                // --- STEP 3: RESOLVE ARTISTS ---
+
+                // c. Resolve/Create Artists
+                const resolutionResults = [];
+                for (const block of artistInfoBlocks) {
+                    let existing = artists.find(a =>
+                        a.name.toLowerCase() === block.stageName.toLowerCase() ||
+                        (block.legalName && a.user?.legalName?.toLowerCase() === block.legalName.toLowerCase())
+                    );
+
+                    if (!existing && block.stageName) {
+                        // Auto-create artist if missing
+                        const createArtistRes = await fetch('/api/admin/artists', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: block.stageName,
+                                email: block.email || null,
+                                status: 'active'
+                            })
+                        });
+                        if (createArtistRes.ok) {
+                            existing = await createArtistRes.json();
+                            artists.push(existing); // Cache it
+                        }
+                    }
+
+                    if (existing || block.stageName) {
+                        resolutionResults.push({
+                            id: existing?.id || null,
+                            userId: existing?.userId || null,
+                            name: block.stageName || existing?.name || 'Unknown',
+                            legalName: block.legalName || existing?.user?.legalName || '',
+                            email: block.email || existing?.user?.email || '',
+                            phone: block.phone || existing?.user?.phoneNumber || '',
+                            address: block.address || existing?.user?.address || ''
+                        });
+                    }
+                }
+
+                // No artists found even with smart parsing? Try standard keyword search
+                if (resolutionResults.length === 0) {
+                    for (const a of artists) {
+                        if (pdfText.toLowerCase().includes(a.name.toLowerCase())) {
+                            resolutionResults.push({ id: a.id, userId: a.userId, name: a.name });
+                            break;
+                        }
+                    }
+                }
+
+                const primary = resolutionResults[0];
+                const artistShare = meta.artistShare || 0.50;
+                const labelShare = meta.labelShare || 0.50;
+
+                const body = {
+                    releaseId: matchedRelease?.id || null,
+                    artistId: primary?.id || '',
+                    userId: primary?.userId || '',
+                    primaryArtistName: primary?.name || 'Unknown Artist',
+                    title: guessedTitle,
+                    isDemo: false,
+                    artistShare,
+                    labelShare,
+                    pdfUrl: uploadData.pdfUrl,
+                    status: 'active',
+                    contractDetails: {
+                        agreementReferenceNo: agreementRef,
+                        effectiveDate: new Date().toISOString().split('T')[0],
+                        deliveryDate: new Date().toISOString().split('T')[0],
+                        isrc: matchedRelease?.isrc || '',
+                        songTitles: guessedTitle,
+                        artistLegalName: primary?.legalName || '',
+                        artistPhone: primary?.phone || '',
+                        artistAddress: primary?.address || ''
+                    },
+                    splits: resolutionResults.map((a, i) => ({
+                        name: a.name,
+                        percentage: Math.floor(100 / resolutionResults.length),
+                        userId: a.userId || '',
+                        artistId: a.id || '',
+                        legalName: a.legalName,
+                        phoneNumber: a.phone,
+                        address: a.address,
+                        email: a.email,
+                        role: i === 0 ? 'primary' : 'featured'
+                    })),
+                    featuredArtists: resolutionResults.map((a, i) => ({
+                        name: a.name,
+                        percentage: 100,
+                        userId: a.userId || null,
+                        artistId: a.id || null,
+                        legalName: a.legalName,
+                        phoneNumber: a.phone,
+                        address: a.address,
+                        email: a.email,
+                        role: i === 0 ? 'primary' : 'featured'
+                    }))
+                };
+
+                const createRes = await fetch('/api/contracts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (createRes.ok) successCount++;
+                else failCount++;
+            } catch (err) {
+                console.error("[BATCH_UPLOAD_ERROR]", err);
+                failCount++;
+            }
+        }
+
+        onRefresh();
+        showToast(`Batch complete: ${successCount} added, ${failCount} failed.`, successCount > 0 ? "success" : "error");
+        setBatchProcessing(false);
+        if (e.target) e.target.value = '';
+    };
 
     const handlePdfUpload = async (e) => {
         const file = e.target.files[0];
@@ -485,7 +685,22 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     }
                 }
             `}</style>
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <input
+                    type="file"
+                    multiple
+                    accept="application/pdf"
+                    id="batch-upload-pdf"
+                    style={{ display: 'none' }}
+                    onChange={handleBatchAutoUpload}
+                />
+                <button
+                    onClick={() => document.getElementById('batch-upload-pdf').click()}
+                    disabled={batchProcessing}
+                    style={{ ...btnStyle, background: 'var(--surface)', color: '#fff', border: '1px solid var(--border)', cursor: batchProcessing ? 'wait' : 'pointer' }}
+                >
+                    <Upload size={14} /> {batchProcessing ? 'PROCESSING...' : 'BATCH AUTO-UPLOAD'}
+                </button>
                 <button
                     onClick={() => {
                         if (!showAdd) {
@@ -984,7 +1199,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                             </div>
 
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                <button onClick={() => {
+                                <button type="button" onClick={() => {
                                     const { details, userNotes } = extractContractMetaAndNotes(c.notes || '');
                                     let featuredArtists = [];
                                     try {
@@ -1021,8 +1236,8 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                         primaryArtistName: c.primaryArtistName || '',
                                         releaseId: c.releaseId || '',
                                         isDemo: !c.releaseId,
-                                        artistShare: c.artistShare * 100,
-                                        labelShare: c.labelShare * 100,
+                                        artistShare: c.artistShare,
+                                        labelShare: c.labelShare,
                                         notes: userNotes || '',
                                         pdfUrl: c.pdfUrl || '',
                                         contractDetails: {
@@ -1040,7 +1255,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                     });
                                     setShowAdd(true);
                                 }} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>EDIT</button>
-                                <button onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', color: '#ff4444', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>DEL</button>
+                                <button type="button" onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', color: '#ff4444', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>DEL</button>
                             </div>
                         </motion.div>
                     ))}
