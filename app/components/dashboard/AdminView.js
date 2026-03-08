@@ -4,6 +4,11 @@ import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/app/components/ToastContext';
 
+const FEATURES = {
+    discordBridge: process.env.NEXT_PUBLIC_FEATURE_DISCORD !== 'false',
+    wisePayouts: process.env.NEXT_PUBLIC_FEATURE_WISE === 'true',
+};
+
 // Import View Components
 import HomeView from './admin/HomeView';
 import SubmissionsView from './admin/SubmissionsView';
@@ -45,7 +50,8 @@ export default function AdminView() {
         'releases',
         'settings',
         'communications',
-        'discord-bridge'
+        ...(FEATURES.discordBridge ? ['discord-bridge'] : []),
+        ...(FEATURES.wisePayouts ? ['wise-payouts'] : []),
     ]);
     const view = knownViews.has(normalizedView) ? normalizedView : 'overview';
     const viewDisplayNames = {
@@ -62,7 +68,8 @@ export default function AdminView() {
         releases: 'Releases',
         settings: 'Settings',
         communications: 'Communications',
-        'discord-bridge': 'Discord Bridge'
+        ...(FEATURES.discordBridge ? { 'discord-bridge': 'Discord Bridge' } : {}),
+        ...(FEATURES.wisePayouts ? { 'wise-payouts': 'Wise Payouts' } : {}),
     };
 
     const [submissions, setSubmissions] = useState([]);
@@ -347,7 +354,7 @@ export default function AdminView() {
             {view === 'releases' && <ReleasesView releases={releases} />}
             {view === 'communications' && <CommunicationsView artists={artists} />}
             {view === 'settings' && <SettingsView />}
-            {view === 'discord-bridge' && <DiscordBridgeView data={discordBridge} onRefresh={fetchDiscordBridge} />}
+            {view === 'discord-bridge' && FEATURES.discordBridge && <DiscordBridgeView data={discordBridge} onRefresh={fetchDiscordBridge} />}
         </div>
     );
 }
