@@ -147,8 +147,19 @@ export async function POST(req) {
         const contract = await prisma.contract.findUnique({
             where: { id: contractId },
             include: {
-                splits: true,
-                user: { select: { email: true, stageName: true, fullName: true } },
+                splits: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                stageName: true,
+                                fullName: true
+                            }
+                        }
+                    }
+                },
+                user: { select: { id: true, email: true, stageName: true, fullName: true } },
                 release: { select: { name: true } }
             }
         });
@@ -160,11 +171,10 @@ export async function POST(req) {
         const expenses = parseFloat(body.expenseAmount) || 0;
         const gross = parseFloat(grossAmount);
 
-        // Net Receipts Deal: Expenses come off the top
-        const netReceipts = Math.max(0, gross - expenses);
-
-        const labelAmount = netReceipts * contract.labelShare;
-        const totalArtistPool = netReceipts * contract.artistShare;
+        // Label-only expense model:
+        // Expense is deducted only from label share; artist pool remains untouched.
+        const totalArtistPool = gross * contract.artistShare;
+        const labelAmount = (gross * contract.labelShare) - expenses;
 
         // Create the main earning record
         const earning = await prisma.earning.create({
@@ -181,49 +191,83 @@ export async function POST(req) {
             }
         });
 
-        // NOTE: In a more complex system, we might want an 'EarningSplit' table 
-        // to track exactly how much each collaborator got from THIS specific payment.
-        // For now, the 'artistAmount' represents the total pool shared by splits.
+        // Distribute notifications to split recipients.
+        // If split total is below 100%, the remainder is assigned to primary artist.
+        const recipients = new Map();
+        const releaseName = contract.release?.name || "Your Release";
 
-        // Send notification to primary artist if email exists
-        const recipientEmail = contract.user?.email || contract.primaryArtistEmail;
-        if (recipientEmail) {
+        for (const split of contract.splits || []) {
+            const recipientEmail = (split.user?.email || split.email || "").trim().toLowerCase();
+            if (!recipientEmail) continue;
+
+            const splitShare = (earning.artistAmount * Number(split.percentage || 0)) / 100;
+            const existing = recipients.get(recipientEmail);
+
+            if (existing) {
+                existing.amount += splitShare;
+                if (!existing.userId && split.user?.id) {
+                    existing.userId = split.user.id;
+                }
+            } else {
+                recipients.set(recipientEmail, {
+                    email: recipientEmail,
+                    userId: split.user?.id || split.userId || null,
+                    name: split.user?.stageName || split.user?.fullName || split.name || "Artist",
+                    amount: splitShare
+                });
+            }
+        }
+
+        const distributedAmount = Array.from(recipients.values()).reduce((sum, recipient) => sum + Number(recipient.amount || 0), 0);
+        const remainingForPrimary = Math.max(0, Number(earning.artistAmount) - distributedAmount);
+
+        const primaryEmail = (contract.user?.email || contract.primaryArtistEmail || "").trim().toLowerCase();
+        if (primaryEmail && remainingForPrimary > 0) {
+            if (recipients.has(primaryEmail)) {
+                recipients.get(primaryEmail).amount += remainingForPrimary;
+            } else {
+                recipients.set(primaryEmail, {
+                    email: primaryEmail,
+                    userId: contract.user?.id || contract.userId || null,
+                    name: contract.user?.stageName || contract.user?.fullName || contract.primaryArtistName || "Artist",
+                    amount: remainingForPrimary
+                });
+            }
+        }
+
+        for (const recipient of recipients.values()) {
             try {
                 await sendMail({
-                    to: recipientEmail,
-                    subject: `NEW EARNINGS RECEIVED: ${contract.release?.name || earning.period}`,
+                    to: recipient.email,
+                    subject: `NEW EARNINGS RECEIVED: ${releaseName}`,
                     html: generateEarningsNotificationEmail(
-                        contract.user?.stageName || contract.user?.fullName || "Artist",
-                        contract.release?.name || "Your Release",
-                        earning.artistAmount,
+                        recipient.name,
+                        releaseName,
+                        recipient.amount,
                         earning.period
                     )
                 });
             } catch (mailError) {
                 console.error("Failed to send earnings notification email:", mailError);
             }
-        }
 
-        // Queue Discord DM notification to the artist
-        if (contract.userId) {
-            try {
-                const artistName = contract.user?.stageName || contract.user?.fullName || "Artist";
-                const releaseName = contract.release?.name || "Your Release";
-
-                await queueDiscordNotification(contract.userId, DISCORD_NOTIFY_TYPES.EARNINGS_UPDATE, {
-                    title: "New Earnings Received 💰",
-                    description: `New earnings have been added for **${releaseName}**.`,
-                    color: 0x00ff88,
-                    fields: [
-                        { name: "Release", value: releaseName, inline: true },
-                        { name: "Period", value: earning.period, inline: true },
-                        { name: "Your Share", value: `$${earning.artistAmount.toFixed(2)} ${earning.currency}`, inline: true },
-                        { name: "Streams", value: earning.streams ? earning.streams.toLocaleString() : "N/A", inline: true }
-                    ],
-                    footer: "LOST. Earnings"
-                });
-            } catch (dmError) {
-                console.error("[Earnings POST] Failed to queue Discord DM notification:", dmError);
+            if (recipient.userId) {
+                try {
+                    await queueDiscordNotification(recipient.userId, DISCORD_NOTIFY_TYPES.EARNINGS_UPDATE, {
+                        title: "New Earnings Received 💰",
+                        description: `New earnings have been added for **${releaseName}**.`,
+                        color: 0x00ff88,
+                        fields: [
+                            { name: "Release", value: releaseName, inline: true },
+                            { name: "Period", value: earning.period, inline: true },
+                            { name: "Your Share", value: `$${Number(recipient.amount || 0).toFixed(2)} ${earning.currency}`, inline: true },
+                            { name: "Streams", value: earning.streams ? earning.streams.toLocaleString() : "N/A", inline: true }
+                        ],
+                        footer: "LOST. Earnings"
+                    });
+                } catch (dmError) {
+                    console.error("[Earnings POST] Failed to queue Discord DM notification:", dmError);
+                }
             }
         }
 

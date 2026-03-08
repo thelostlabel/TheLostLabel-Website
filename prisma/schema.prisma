@@ -43,6 +43,8 @@ model User {
   demos                   Demo[]
   payments                Payment[]
   royaltySplits           RoyaltySplit[]
+  balanceAdjustments      BalanceAdjustment[]    @relation("BalanceAdjustmentUser")
+  createdBalanceAdjustments BalanceAdjustment[]  @relation("BalanceAdjustmentAdmin")
 }
 
 model Demo {
@@ -117,6 +119,7 @@ model Artist {
   statsHistory     ArtistStatsHistory[]
   contracts        Contract[]
   royaltySplits    RoyaltySplit[]
+  balanceAdjustments BalanceAdjustment[]
 }
 
 model ArtistStatsHistory {
@@ -274,6 +277,24 @@ model Payment {
 
   @@index([status, createdAt(sort: Desc)], map: "idx_payment_status_created_at")
   @@index([userId, createdAt(sort: Desc)], map: "idx_payment_user_id_created_at")
+}
+
+model BalanceAdjustment {
+  id          String   @id @default(uuid())
+  artistId    String
+  userId      String?
+  amount      Float
+  currency    String   @default("USD")
+  reason      String?
+  createdById String
+  createdAt   DateTime @default(now())
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  user        User?    @relation("BalanceAdjustmentUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy   User     @relation("BalanceAdjustmentAdmin", fields: [createdById], references: [id])
+
+  @@index([artistId, createdAt(sort: Desc)], map: "idx_balance_adjustment_artist_id_created_at")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_balance_adjustment_user_id_created_at")
+  @@index([createdById, createdAt(sort: Desc)], map: "idx_balance_adjustment_created_by_created_at")
 }
 
 model discord_account_links {

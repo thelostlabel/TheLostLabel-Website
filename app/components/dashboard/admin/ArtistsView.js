@@ -126,6 +126,12 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
     // Syncing States
     const [syncingArtistId, setSyncingArtistId] = useState(null);
     const [isSyncingAll, setIsSyncingAll] = useState(false);
+    const [balanceLoading, setBalanceLoading] = useState(false);
+    const [balanceStats, setBalanceStats] = useState(null);
+    const [balanceAdjustments, setBalanceAdjustments] = useState([]);
+    const [adjustAmount, setAdjustAmount] = useState('');
+    const [adjustReason, setAdjustReason] = useState('');
+    const [adjustSaving, setAdjustSaving] = useState(false);
 
 
     useEffect(() => {
@@ -159,6 +165,80 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
             artist.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
         );
     }, [artists, debouncedSearch]);
+
+    const fetchArtistBalance = async (artistId) => {
+        if (!artistId) return;
+        setBalanceLoading(true);
+        try {
+            const res = await fetch(`/api/admin/artist-balance?artistId=${artistId}`);
+            const data = await res.json();
+            if (res.ok) {
+                setBalanceStats(data.stats || null);
+                setBalanceAdjustments(data.adjustments || []);
+            } else {
+                setBalanceStats(null);
+                setBalanceAdjustments([]);
+                showToast(data.error || 'Failed to fetch artist balance', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            setBalanceStats(null);
+            setBalanceAdjustments([]);
+            showToast('Failed to fetch artist balance', 'error');
+        } finally {
+            setBalanceLoading(false);
+        }
+    };
+
+    const handleApplyAdjustment = async () => {
+        const amount = Number(adjustAmount);
+        if (!Number.isFinite(amount) || amount === 0) {
+            showToast('Enter a non-zero amount', 'warning');
+            return;
+        }
+        if (!selectedArtist?.id) return;
+
+        setAdjustSaving(true);
+        try {
+            const res = await fetch('/api/admin/artist-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    artistId: selectedArtist.id,
+                    amount,
+                    reason: adjustReason
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.error || 'Failed to apply balance adjustment', 'error');
+                return;
+            }
+
+            setAdjustAmount('');
+            setAdjustReason('');
+            showToast('Balance adjustment applied', 'success');
+            await fetchArtistBalance(selectedArtist.id);
+        } catch (e) {
+            console.error(e);
+            showToast('Failed to apply balance adjustment', 'error');
+        } finally {
+            setAdjustSaving(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!selectedArtist?.id) {
+            setBalanceStats(null);
+            setBalanceAdjustments([]);
+            setAdjustAmount('');
+            setAdjustReason('');
+            return;
+        }
+        setAdjustAmount('');
+        setAdjustReason('');
+        fetchArtistBalance(selectedArtist.id);
+    }, [selectedArtist?.id]);
 
     const handleCreate = async () => {
         if (!newArtist.name) return showToast('Name Required', "warning");
@@ -414,6 +494,96 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                         ));
                                     })()}
                                 </div>
+                            )}
+                        </div>
+
+                        <div style={{ padding: '24px', background: 'rgba(255,255,255,0.024)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                            <h3 style={{ fontSize: '12px', color: '#888', fontWeight: '950', marginBottom: '18px', letterSpacing: '1px' }}>BALANCE MANAGEMENT</h3>
+
+                            {balanceLoading ? (
+                                <div style={{ textAlign: 'center', padding: '18px', color: '#666', fontSize: '10px', fontWeight: '900', letterSpacing: '1px' }}>LOADING BALANCE...</div>
+                            ) : (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}>
+                                            <div style={{ fontSize: '9px', color: '#777', fontWeight: '900', letterSpacing: '1px' }}>AVAILABLE</div>
+                                            <div style={{ fontSize: '16px', color: '#fff', fontWeight: '950', marginTop: '4px' }}>
+                                                ${Number(balanceStats?.available || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}>
+                                            <div style={{ fontSize: '9px', color: '#777', fontWeight: '900', letterSpacing: '1px' }}>TOTAL EARNINGS</div>
+                                            <div style={{ fontSize: '16px', color: '#fff', fontWeight: '950', marginTop: '4px' }}>
+                                                ${Number(balanceStats?.totalEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}>
+                                            <div style={{ fontSize: '9px', color: '#777', fontWeight: '900', letterSpacing: '1px' }}>PAID</div>
+                                            <div style={{ fontSize: '14px', color: '#fff', fontWeight: '900', marginTop: '4px' }}>
+                                                ${Number(balanceStats?.totalPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}>
+                                            <div style={{ fontSize: '9px', color: '#777', fontWeight: '900', letterSpacing: '1px' }}>PENDING</div>
+                                            <div style={{ fontSize: '14px', color: '#fff', fontWeight: '900', marginTop: '4px' }}>
+                                                ${Number(balanceStats?.totalPending || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}>
+                                            <div style={{ fontSize: '9px', color: '#777', fontWeight: '900', letterSpacing: '1px' }}>MANUAL ADJUSTMENTS</div>
+                                            <div style={{ fontSize: '14px', color: '#fff', fontWeight: '900', marginTop: '4px' }}>
+                                                ${Number(balanceStats?.manualAdjustments || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={adjustAmount}
+                                            onChange={(e) => setAdjustAmount(e.target.value)}
+                                            placeholder="Adjustment amount (e.g. +100 or -50)"
+                                            style={{ ...inputStyle, width: '100%', padding: '10px 12px', fontSize: '12px' }}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={adjustReason}
+                                            onChange={(e) => setAdjustReason(e.target.value)}
+                                            placeholder="Reason (optional)"
+                                            style={{ ...inputStyle, width: '100%', padding: '10px 12px', fontSize: '12px' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleApplyAdjustment}
+                                            disabled={adjustSaving}
+                                            style={{ ...btnStyle, justifyContent: 'center', height: 'auto', padding: '10px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: '950', letterSpacing: '1px', background: '#fff', color: '#000', border: 'none', opacity: adjustSaving ? 0.7 : 1 }}
+                                        >
+                                            {adjustSaving ? 'APPLYING...' : 'APPLY BALANCE ADJUSTMENT'}
+                                        </button>
+                                    </div>
+
+                                    <div style={{ maxHeight: '180px', overflowY: 'auto', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px' }}>
+                                        {balanceAdjustments.length === 0 ? (
+                                            <div style={{ fontSize: '10px', color: '#666', fontWeight: '800' }}>No manual adjustments yet.</div>
+                                        ) : balanceAdjustments.map((item) => (
+                                            <div key={item.id} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '11px', fontWeight: '900', color: Number(item.amount) >= 0 ? '#00ff88' : '#ff7373' }}>
+                                                        {Number(item.amount) >= 0 ? '+' : ''}${Number(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                    <span style={{ fontSize: '9px', color: '#666', fontWeight: '800' }}>
+                                                        {new Date(item.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                {item.reason && <div style={{ fontSize: '10px', color: '#aaa', marginTop: '4px' }}>{item.reason}</div>}
+                                                <div style={{ fontSize: '9px', color: '#666', marginTop: '3px' }}>
+                                                    by {item.createdBy?.stageName || item.createdBy?.fullName || item.createdBy?.email || 'admin'}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
                             )}
                         </div>
 

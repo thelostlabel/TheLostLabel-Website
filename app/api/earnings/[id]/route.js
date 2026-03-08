@@ -62,10 +62,9 @@ export async function PATCH(req, { params }) {
         const gross = grossAmount !== undefined ? parseFloat(grossAmount) : currentEarning.grossAmount;
         const expense = expenseAmount !== undefined ? parseFloat(expenseAmount) : currentEarning.expenseAmount;
 
-        // Recalculate
-        const netReceipts = Math.max(0, gross - expense);
-        const labelAmount = netReceipts * contract.labelShare;
-        const artistAmount = netReceipts * contract.artistShare;
+        // Recalculate using label-only expense model
+        const artistAmount = gross * contract.artistShare;
+        const labelAmount = (gross * contract.labelShare) - expense;
 
         const updated = await prisma.earning.update({
             where: { id },
