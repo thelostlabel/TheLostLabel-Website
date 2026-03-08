@@ -18,27 +18,27 @@ export const ToastProvider = ({ children }) => {
 
     // Changelog verileri - siteye özel değişiklikler buraya eklenecek
     const changelogData = {
-        id: 'changelog-2026-03-06',
-        title: '🎉 Yeni Özellikler!',
+        id: 'changelog-2026-03-06-v2',
+        title: '🔒 Güvenlik ve Sistem Güncellemesi',
         items: [
-            '💰 Artık kazançlarınızı kolayca takip edebilirsiniz',
-            '🎵 Yeni demo yükleme sistemi eklendi',
-            '📊 Gelişmiş istatistikler paneli',
-            '🔔 Discord entegrasyonu iyileştirildi'
+            '🛡️ Kontrat erişim yetkileri sıkılaştırıldı (Güvenlik Paketi)',
+            '📄 Akıllı PDF işleme sistemi iyileştirildi',
+            '🚀 Dağıtım (Deployment) sistemi pnpm desteğiyle optimize edildi',
+            '⚙️ Yönetici paneli veri filtreleme özellikleri güncellendi'
         ]
     };
 
     // Component mount olduğunda changelog göster
     useEffect(() => {
         const lastSeenChangelog = localStorage.getItem('lastSeenChangelog');
-        
+
         // Eğer daha önce görülmemiş veya yeni bir changelog varsa göster
         if (!lastSeenChangelog || lastSeenChangelog !== changelogData.id) {
             // Kısa bir gecikme ile göster ki kullanıcı siteyi açtığında hemen gelmesin
             const timer = setTimeout(() => {
                 setChangelog(changelogData);
             }, 1500);
-            
+
             return () => clearTimeout(timer);
         }
     }, []);
@@ -82,8 +82,8 @@ export const ToastProvider = ({ children }) => {
             {children}
             <AnimatePresence>
                 {changelog && (
-                    <ChangelogCard 
-                        {...changelog} 
+                    <ChangelogCard
+                        {...changelog}
                         onClose={closeChangelog}
                     />
                 )}

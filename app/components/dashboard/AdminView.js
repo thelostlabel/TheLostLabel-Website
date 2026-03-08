@@ -5,8 +5,15 @@ import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/app/components/ToastContext';
 
 const FEATURES = {
-    discordBridge: process.env.NEXT_PUBLIC_FEATURE_DISCORD !== 'false',
-    wisePayouts: process.env.NEXT_PUBLIC_FEATURE_WISE === 'true',
+    discordBridge:  process.env.NEXT_PUBLIC_FEATURE_DISCORD     !== 'false',
+    wisePayouts:    process.env.NEXT_PUBLIC_FEATURE_WISE         === 'true',
+    submissions:    process.env.NEXT_PUBLIC_FEATURE_SUBMISSIONS  !== 'false',
+    contracts:      process.env.NEXT_PUBLIC_FEATURE_CONTRACTS    !== 'false',
+    earnings:       process.env.NEXT_PUBLIC_FEATURE_EARNINGS     !== 'false',
+    payments:       process.env.NEXT_PUBLIC_FEATURE_PAYMENTS     !== 'false',
+    releases:       process.env.NEXT_PUBLIC_FEATURE_RELEASES     !== 'false',
+    communications: process.env.NEXT_PUBLIC_FEATURE_COMMS        !== 'false',
+    spotifySync:    process.env.NEXT_PUBLIC_FEATURE_SPOTIFY_SYNC !== 'false',
 };
 
 // Import View Components
@@ -38,36 +45,36 @@ export default function AdminView() {
     const normalizedView = aliasViewMap[rawView] || rawView;
     const knownViews = new Set([
         'overview',
-        'submissions',
         'artists',
         'users',
         'requests',
         'content',
         'webhooks',
-        'contracts',
-        'earnings',
-        'payments',
-        'releases',
         'settings',
-        'communications',
-        ...(FEATURES.discordBridge ? ['discord-bridge'] : []),
-        ...(FEATURES.wisePayouts ? ['wise-payouts'] : []),
+        ...(FEATURES.submissions    ? ['submissions']    : []),
+        ...(FEATURES.contracts      ? ['contracts']      : []),
+        ...(FEATURES.earnings       ? ['earnings']       : []),
+        ...(FEATURES.payments       ? ['payments']       : []),
+        ...(FEATURES.releases       ? ['releases']       : []),
+        ...(FEATURES.communications ? ['communications'] : []),
+        ...(FEATURES.discordBridge  ? ['discord-bridge'] : []),
+        ...(FEATURES.wisePayouts    ? ['wise-payouts']   : []),
     ]);
     const view = knownViews.has(normalizedView) ? normalizedView : 'overview';
     const viewDisplayNames = {
         overview: 'Overview',
-        submissions: 'Submissions',
         artists: 'Artists',
         users: 'Users',
         requests: 'Requests',
         content: 'Content',
         webhooks: 'Webhooks',
-        contracts: 'Contracts',
-        earnings: 'Earnings',
-        payments: 'Payments',
-        releases: 'Releases',
         settings: 'Settings',
-        communications: 'Communications',
+        ...(FEATURES.submissions    ? { submissions: 'Submissions' }       : {}),
+        ...(FEATURES.contracts      ? { contracts: 'Contracts' }           : {}),
+        ...(FEATURES.earnings       ? { earnings: 'Earnings' }             : {}),
+        ...(FEATURES.payments       ? { payments: 'Payments' }             : {}),
+        ...(FEATURES.releases       ? { releases: 'Releases' }             : {}),
+        ...(FEATURES.communications ? { communications: 'Communications' } : {}),
         ...(FEATURES.discordBridge ? { 'discord-bridge': 'Discord Bridge' } : {}),
         ...(FEATURES.wisePayouts ? { 'wise-payouts': 'Wise Payouts' } : {}),
     };
@@ -341,20 +348,20 @@ export default function AdminView() {
                 window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
                 window.dispatchEvent(new Event('popstate'));
             }} />}
-            {view === 'submissions' && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} />}
-            {view === 'artists' && <ArtistsView artists={artists} users={users} releases={releases} contracts={contracts} onSync={handleSyncStats} onRefresh={fetchArtists} />}
-            {view === 'users' && <UsersView users={users} onRefresh={fetchUsers} />}
-
-            {view === 'requests' && <RequestsView requests={requests} />}
-            {view === 'contracts' && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
-            {view === 'earnings' && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} pagination={earningsPagination} />}
-            {view === 'payments' && <PaymentsView payments={payments} users={users} onRefresh={fetchPayments} />}
-            {view === 'content' && <ContentView content={siteContent} onRefresh={fetchContent} />}
-            {view === 'webhooks' && <WebhooksView webhooks={webhooks} onRefresh={fetchWebhooks} />}
-            {view === 'releases' && <ReleasesView releases={releases} />}
-            {view === 'communications' && <CommunicationsView artists={artists} />}
-            {view === 'settings' && <SettingsView />}
-            {view === 'discord-bridge' && FEATURES.discordBridge && <DiscordBridgeView data={discordBridge} onRefresh={fetchDiscordBridge} />}
+            {view === 'submissions'   && FEATURES.submissions    && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} />}
+            {view === 'artists'       && <ArtistsView artists={artists} users={users} releases={releases} contracts={contracts} onSync={handleSyncStats} onRefresh={fetchArtists} />}
+            {view === 'users'         && <UsersView users={users} onRefresh={fetchUsers} />}
+            {view === 'requests'      && <RequestsView requests={requests} />}
+            {view === 'contracts'     && FEATURES.contracts      && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
+            {view === 'earnings'      && FEATURES.earnings       && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} pagination={earningsPagination} />}
+            {view === 'payments'      && FEATURES.payments       && <PaymentsView payments={payments} users={users} onRefresh={fetchPayments} />}
+            {view === 'content'       && <ContentView content={siteContent} onRefresh={fetchContent} />}
+            {view === 'webhooks'      && <WebhooksView webhooks={webhooks} onRefresh={fetchWebhooks} />}
+            {view === 'releases'      && FEATURES.releases       && <ReleasesView releases={releases} />}
+            {view === 'communications'&& FEATURES.communications && <CommunicationsView artists={artists} />}
+            {view === 'settings'      && <SettingsView />}
+            {view === 'discord-bridge'&& FEATURES.discordBridge  && <DiscordBridgeView data={discordBridge} onRefresh={fetchDiscordBridge} />}
+            {view === 'wise-payouts'  && FEATURES.wisePayouts    && <WisePayoutsView />}
         </div>
     );
 }
