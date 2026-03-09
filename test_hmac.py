@@ -1,10 +1,13 @@
-import hmac, hashlib, time, uuid, json
+import hmac, hashlib, time, uuid, json, os, sys
 import urllib.request
 import urllib.error
 
 url = "http://localhost:3000/api/internal/discord/demo-submit"
-token = "Ms6w3UPVJQ9MZP4433mJAtvWLzivhMGn-I93B6ZgdtXON0h3"
-secret = "7c184cb959fe35d33f1e17d75f8d20725a15447a1e37be9ee67f69c8366c4add"
+token = os.environ.get("BOT_INTERNAL_TOKEN", "")
+secret = os.environ.get("BOT_INTERNAL_SIGNING_SECRET", "")
+
+if not token or not secret:
+    sys.exit("BOT_INTERNAL_TOKEN and BOT_INTERNAL_SIGNING_SECRET must be set in the environment.")
 
 payload = {"empty": True}
 body = json.dumps(payload).encode("utf-8")

@@ -11,13 +11,13 @@ This file is designed for AI agents to understand and manage the server infrastr
 
 ## 🗄️ Database (PostgreSQL)
 - **Hostname (Internal):** `the-lost-label-lost-website-ccwwn5`
-- **Verified Password:** `7jlO3s6HUxET7MhLn28x7Z4sWXgbX8IHqvNMNlOpPPk5TQl7DcaKmuCo7JVTMeUJ`
-- **Connection URL:** `postgresql://postgres:7jlO3s6HUxET7MhLn28x7Z4sWXgbX8IHqvNMNlOpPPk5TQl7DcaKmuCo7JVTMeUJ@the-lost-label-lost-website-ccwwn5:5432/postgres`
+- **Verified Password:** Stored only in Dokploy/host secrets. Do not commit it here.
+- **Connection URL:** Stored only in `DATABASE_URL` runtime secret.
 
 ## ⏰ Cron Jobs (Host Machine)
 Automated tasks are set in the root crontab. They target the active container dynamically.
-- **Sync Playlist (04:00):** Hits `/api/cron/sync-playlist?secret=lost_sync_secret_12345`
-- **Sync Listeners (05:00):** Hits `/api/cron/sync-listeners?secret=lost_sync_secret_12345`
+- **Sync Playlist (04:00):** Calls `/api/cron/sync-playlist` with `Authorization: Bearer $CRON_SECRET`
+- **Sync Listeners (05:00):** Calls `/api/cron/sync-listeners` with `Authorization: Bearer $CRON_SECRET`
 
 ## 🏗️ Docker & Deployment
 - **Dockerfile:** Bakes Playwright Chromium into the production image.
@@ -41,4 +41,4 @@ docker exec $(docker ps -q --filter name=the-lost-label-website-mwaq2s.1 --filte
 ```
 
 ---
-*Note to future AI: Always check `.env` in the host project path if credentials fail. The Dokploy UI overrides may be present.*
+*Note to future AI: Secrets must stay in Dokploy/host environment variables only. Never commit them into repository docs or helper scripts.*

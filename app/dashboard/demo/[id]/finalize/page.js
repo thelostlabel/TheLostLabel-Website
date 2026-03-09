@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, Plus, X, Upload, Info, CheckCircle, Music, FileText, Calendar } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { canFinalizeDemos, canViewAllDemos } from '@/lib/permissions';
 
 const glassStyle = {
     background: 'rgba(255, 255, 255, 0.03)',
@@ -48,6 +49,8 @@ export default function FinalizeReleasePage({ params }) {
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [step, setStep] = useState(1);
+    const canFinalizeDemo = canFinalizeDemos(session?.user);
+    const canViewDemo = canViewAllDemos(session?.user);
 
     // Artist Selection State
     const [artists, setArtists] = useState([]);
@@ -70,7 +73,12 @@ export default function FinalizeReleasePage({ params }) {
     const fetchDemo = useCallback(async () => {
         try {
             const res = await fetch(`/api/demo/${id}`);
-            const data = await res.json();
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                showToast(data?.error || "Access denied", "error");
+                return;
+            }
+
             if (data) {
                 setDemo(data);
                 setFinalizeData(prev => ({
@@ -96,7 +104,7 @@ export default function FinalizeReleasePage({ params }) {
         } finally {
             setLoading(false);
         }
-    }, [id]);
+    }, [id, showToast]);
 
     const fetchArtists = useCallback(async () => {
         try {
@@ -107,9 +115,14 @@ export default function FinalizeReleasePage({ params }) {
     }, []);
 
     useEffect(() => {
+        if (!canFinalizeDemo) {
+            setLoading(false);
+            return;
+        }
+
         fetchDemo();
         fetchArtists();
-    }, [fetchDemo, fetchArtists]);
+    }, [fetchDemo, fetchArtists, canFinalizeDemo]);
 
     if (loading) return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d' }}>
@@ -120,6 +133,19 @@ export default function FinalizeReleasePage({ params }) {
             >
                 SYNCING_PROJECT_DATA...
             </motion.p>
+        </div>
+    );
+
+    if (!canFinalizeDemo) return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d' }}>
+            <div style={{ textAlign: 'center', ...glassStyle, padding: '40px', maxWidth: '480px' }}>
+                <Info size={32} style={{ color: '#ffb347', marginBottom: '20px', opacity: 0.7 }} />
+                <h2 style={{ color: '#fff', fontSize: '14px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>FINALIZATION_LOCKED</h2>
+                <p style={{ color: '#888', fontSize: '12px', lineHeight: 1.7, marginBottom: '22px' }}>
+                    Your account can view this demo flow, but contract/finalization authority is disabled.
+                </p>
+                <Link href={canViewDemo ? `/dashboard/demo/${id}` : '/dashboard'} style={{ color: 'var(--accent)', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textDecoration: 'none' }}>RETURN</Link>
+            </div>
         </div>
     );
 

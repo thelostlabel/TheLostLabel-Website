@@ -8,6 +8,14 @@ import { ChevronRight, ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import StudioPlayer from '@/app/components/dashboard/StudioPlayer';
+import {
+    canApproveDemos,
+    canDeleteDemos,
+    canFinalizeDemos,
+    canRejectDemos,
+    canReviewDemos,
+    canViewAllDemos
+} from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
 const glassStyle = {
@@ -58,11 +66,22 @@ export default function DemoReviewPage({ params }) {
     const [processing, setProcessing] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
+    const canViewDemo = canViewAllDemos(session?.user);
+    const canReviewDemo = canReviewDemos(session?.user);
+    const canApproveDemo = canApproveDemos(session?.user);
+    const canRejectDemo = canRejectDemos(session?.user);
+    const canFinalizeDemo = canFinalizeDemos(session?.user);
+    const canDeleteDemo = canDeleteDemos(session?.user);
 
     const fetchDemo = useCallback(async () => {
         try {
             const res = await fetch(`/api/demo/${id}`);
-            const data = await res.json();
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+                setError(data?.error || "Access denied");
+                return;
+            }
+
             if (data) {
                 setDemo(data);
                 if (data.files?.length > 0) {
@@ -96,10 +115,11 @@ export default function DemoReviewPage({ params }) {
                 const updated = await res.json();
                 setDemo(updated);
             } else {
-                alert("Failed to update status");
+                const data = await res.json().catch(() => null);
+                showToast(data?.error || "Failed to update status", "error");
             }
         } catch (e) {
-            alert("Error updating status");
+            showToast("Error updating status", "error");
         } finally {
             setProcessing(false);
         }
@@ -124,7 +144,7 @@ export default function DemoReviewPage({ params }) {
     return (
         <div className="demo-review-shell">
             <div className="demo-review-head">
-                <Link href="/dashboard?view=submissions" className="subtle-link">
+                <Link href={canViewDemo ? "/dashboard?view=submissions" : "/dashboard?view=my-demos"} className="subtle-link">
                     ← BACK TO SUBMISSIONS
                 </Link>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -219,38 +239,51 @@ export default function DemoReviewPage({ params }) {
                     <div className="panel" style={{ marginTop: '14px' }}>
                         <h4 className="kicker" style={{ marginBottom: '14px' }}>A&R DECISION</h4>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                            <button
-                                onClick={() => handleStatusUpdate('reviewing')}
-                                disabled={processing}
-                                style={{ ...btnStyle, background: demo.status === 'reviewing' ? 'rgba(245,158,11,0.14)' : 'transparent', color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)', opacity: processing ? 0.5 : 1 }}
-                            >
-                                REVIEWING
-                            </button>
-                            <button
-                                onClick={() => handleStatusUpdate('pending')}
-                                disabled={processing}
-                                style={{ ...btnStyle, background: demo.status === 'pending' ? 'rgba(255,255,255,0.06)' : 'transparent', color: '#ddd', borderColor: 'rgba(255,255,255,0.12)', opacity: processing ? 0.5 : 1 }}
-                            >
-                                PENDING
-                            </button>
+                            {canReviewDemo && (
+                                <>
+                                    <button
+                                        onClick={() => handleStatusUpdate('reviewing')}
+                                        disabled={processing}
+                                        style={{ ...btnStyle, background: demo.status === 'reviewing' ? 'rgba(245,158,11,0.14)' : 'transparent', color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)', opacity: processing ? 0.5 : 1 }}
+                                    >
+                                        REVIEWING
+                                    </button>
+                                    <button
+                                        onClick={() => handleStatusUpdate('pending')}
+                                        disabled={processing}
+                                        style={{ ...btnStyle, background: demo.status === 'pending' ? 'rgba(255,255,255,0.06)' : 'transparent', color: '#ddd', borderColor: 'rgba(255,255,255,0.12)', opacity: processing ? 0.5 : 1 }}
+                                    >
+                                        PENDING
+                                    </button>
+                                </>
+                            )}
                         </div>
-                        <button
-                            onClick={() => handleStatusUpdate('approved')}
-                            disabled={processing}
-                            style={{ ...btnStyle, background: demo.status === 'approved' ? 'rgba(209,213,219,0.18)' : 'transparent', color: '#d1d5db', borderColor: 'rgba(209,213,219,0.35)', marginBottom: '8px', opacity: processing ? 0.5 : 1 }}
-                        >
-                            {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setRejectionReason(demo.rejectionReason || "");
-                                setShowRejectModal(true);
-                            }}
-                            disabled={processing}
-                            style={{ ...btnStyle, background: demo.status === 'rejected' ? 'rgba(239,68,68,0.18)' : 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)', opacity: processing ? 0.5 : 1 }}
-                        >
-                            {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
-                        </button>
+                        {canApproveDemo && (
+                            <button
+                                onClick={() => handleStatusUpdate('approved')}
+                                disabled={processing}
+                                style={{ ...btnStyle, background: demo.status === 'approved' ? 'rgba(209,213,219,0.18)' : 'transparent', color: '#d1d5db', borderColor: 'rgba(209,213,219,0.35)', marginBottom: '8px', opacity: processing ? 0.5 : 1 }}
+                            >
+                                {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
+                            </button>
+                        )}
+                        {canRejectDemo && (
+                            <button
+                                onClick={() => {
+                                    setRejectionReason(demo.rejectionReason || "");
+                                    setShowRejectModal(true);
+                                }}
+                                disabled={processing}
+                                style={{ ...btnStyle, background: demo.status === 'rejected' ? 'rgba(239,68,68,0.18)' : 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)', opacity: processing ? 0.5 : 1 }}
+                            >
+                                {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
+                            </button>
+                        )}
+                        {!canReviewDemo && !canApproveDemo && !canRejectDemo && (
+                            <p style={{ margin: '6px 0 0', fontSize: '10px', color: '#666', lineHeight: 1.5 }}>
+                                This submission is visible to you, but review actions are disabled for your account.
+                            </p>
+                        )}
 
                         {demo.rejectionReason && (
                             <div style={{
@@ -282,7 +315,7 @@ export default function DemoReviewPage({ params }) {
                             </div>
                         )}
 
-                        {demo.status === 'approved' && (
+                        {demo.status === 'approved' && canFinalizeDemo && (
                             <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
                                 <Link href={`/dashboard/demo/${id}/finalize`} className="primary-btn" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: '12px 14px' }}>
                                     PROCEED TO FINALIZATION
@@ -299,27 +332,29 @@ export default function DemoReviewPage({ params }) {
                             </p>
                         )}
 
-                        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-                            <button
-                                onClick={() => {
-                                    showConfirm(
-                                        "DELETE RECORD?",
-                                        "Are you absolutely sure you want to PERMANENTLY delete this demo? This action is irreversible.",
-                                        () => {
-                                            fetch(`/api/demo/${id}`, { method: 'DELETE' })
-                                                .then(() => {
-                                                    showToast("Demo deleted successfully", "success");
-                                                    router.push('/dashboard?view=submissions');
-                                                })
-                                                .catch(() => showToast("Failed to delete demo", "error"));
-                                        }
-                                    );
-                                }}
-                                style={{ background: 'none', border: 'none', color: '#555', fontSize: '10px', fontWeight: 800, cursor: 'pointer', width: '100%' }}
-                            >
-                                DELETE RECORD
-                            </button>
-                        </div>
+                        {canDeleteDemo && (
+                            <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                                <button
+                                    onClick={() => {
+                                        showConfirm(
+                                            "DELETE RECORD?",
+                                            "Are you absolutely sure you want to PERMANENTLY delete this demo? This action is irreversible.",
+                                            () => {
+                                                fetch(`/api/demo/${id}`, { method: 'DELETE' })
+                                                    .then(() => {
+                                                        showToast("Demo deleted successfully", "success");
+                                                        router.push('/dashboard?view=submissions');
+                                                    })
+                                                    .catch(() => showToast("Failed to delete demo", "error"));
+                                            }
+                                        );
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: '#555', fontSize: '10px', fontWeight: 800, cursor: 'pointer', width: '100%' }}
+                                >
+                                    DELETE RECORD
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </aside>
             </div>

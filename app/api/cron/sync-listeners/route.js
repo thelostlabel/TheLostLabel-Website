@@ -2,16 +2,15 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { scrapeSpotifyStats } from "@/lib/scraper";
+import { hasValidCronAuthorization } from "@/lib/cron-auth";
 
 // This endpoint syncs monthly listeners for all artists with Spotify URLs
 // Can be called manually or via cron job
 export async function POST(req) {
     const session = await getServerSession(authOptions);
 
-    // Allow cron job with secret OR admin access
-    const { searchParams } = new URL(req.url);
-    const cronSecret = searchParams.get('secret');
-    const isValidCron = cronSecret === process.env.CRON_SECRET;
+    // Allow authenticated cron job via Authorization header OR admin access
+    const isValidCron = hasValidCronAuthorization(req);
     const isAdmin = session?.user?.role === 'admin';
 
     if (!isValidCron && !isAdmin) {

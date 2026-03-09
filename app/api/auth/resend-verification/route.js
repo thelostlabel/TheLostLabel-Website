@@ -1,13 +1,25 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import crypto from 'crypto';
 import { sendMail } from '@/lib/mail';
 import { generateVerificationEmail } from '@/lib/mail-templates';
+import rateLimit from '@/lib/rate-limit';
+import { buildRateLimitKey, generateOpaqueToken, hashOpaqueToken, normalizeEmail, passesRateLimit } from '@/lib/security';
+
+const resendVerificationLimiter = rateLimit({
+    interval: 15 * 60 * 1000,
+    uniqueTokenPerInterval: 4000
+});
 
 export async function POST(req) {
     try {
-        const { email } = await req.json();
+        const body = await req.json();
+        const email = normalizeEmail(body?.email);
+
+        const allowed = await passesRateLimit(resendVerificationLimiter, 5, buildRateLimitKey(req, 'resend-verification', email));
+        if (!allowed) {
+            return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+        }
 
         if (!email) {
             return NextResponse.json({ error: "Missing email" }, { status: 400 });
@@ -17,22 +29,18 @@ export async function POST(req) {
             where: { email }
         });
 
-        if (!user) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
-        }
-
-        if (user.emailVerified) {
-            return NextResponse.json({ error: "Email already verified" }, { status: 400 });
+        if (!user || user.emailVerified) {
+            return NextResponse.json({ success: true, message: "If the account can receive a verification link, it has been sent" });
         }
 
         // Generate new token
-        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationToken = generateOpaqueToken();
         const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
         await prisma.user.update({
             where: { id: user.id },
             data: {
-                verificationToken,
+                verificationToken: hashOpaqueToken(verificationToken),
                 verificationTokenExpiry
             }
         });
@@ -45,7 +53,7 @@ export async function POST(req) {
             html: generateVerificationEmail(verificationLink)
         });
 
-        return NextResponse.json({ success: true, message: "Verification email sent" });
+        return NextResponse.json({ success: true, message: "If the account can receive a verification link, it has been sent" });
 
     } catch (error) {
         console.error("Resend Verification Error:", error);

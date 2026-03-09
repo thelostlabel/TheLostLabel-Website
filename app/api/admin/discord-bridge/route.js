@@ -4,6 +4,7 @@ import { ensureDiscordBridgeTables } from "@/lib/discord-bridge-db";
 import {
     DEFAULT_BRIDGE_CONFIG,
     getDiscordBridgeConfig,
+    sanitizeBridgeConfigForClient,
     saveDiscordBridgeConfig
 } from "@/lib/discord-bridge-config";
 import { getDiscordBridgeAdminSnapshot } from "@/lib/discord-bridge-service";
@@ -59,7 +60,7 @@ export async function GET() {
         }
 
         return json({
-            config,
+            config: sanitizeBridgeConfigForClient(config),
             snapshot
         }, 200);
     } catch (error) {
@@ -116,7 +117,7 @@ export async function PATCH(req) {
 
         return json({
             success: true,
-            config: saved.discordBridge
+            config: sanitizeBridgeConfigForClient(saved.discordBridge)
         }, 200);
     } catch (error) {
         console.error("Discord bridge PATCH failed:", error);

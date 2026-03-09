@@ -28,6 +28,8 @@ export default function Login() {
                 return 'E-posta dogrulamaniz tamam, hesabiniz su an admin onayi bekliyor.';
             case 'INVALID EMAIL OR PASSWORD':
                 return 'E-posta veya sifre hatali.';
+            case 'TOO MANY ATTEMPTS':
+                return 'Cok fazla deneme yapildi. Lutfen biraz sonra tekrar deneyin.';
             case 'REGISTRATIONS CLOSED':
                 return 'Kayitlar su an kapali.';
             default:

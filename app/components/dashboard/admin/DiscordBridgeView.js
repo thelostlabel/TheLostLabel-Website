@@ -8,10 +8,10 @@ const EMPTY_CONFIG = {
     outboxEnabled: true,
     publicBaseUrl: "http://localhost:3000",
     oauthClientId: "",
-    oauthClientSecret: "",
     oauthRedirectUri: "",
-    internalToken: "",
-    internalSigningSecret: "",
+    oauthClientSecretConfigured: false,
+    internalTokenConfigured: false,
+    internalSigningSecretConfigured: false,
     defaultGuildId: "",
     supportChannelId: "",
     eventsChannelId: "",
@@ -79,8 +79,8 @@ export default function DiscordBridgeView({ data, onRefresh }) {
 
     const statusLabel = useMemo(() => {
         if (!config.enabled) return "DISABLED";
-        if (!config.internalToken || !config.internalSigningSecret) return "MISSING INTERNAL AUTH";
-        if (!config.oauthClientId || !config.oauthClientSecret) return "MISSING OAUTH";
+        if (!config.internalTokenConfigured || !config.internalSigningSecretConfigured) return "MISSING INTERNAL AUTH";
+        if (!config.oauthClientId || !config.oauthClientSecretConfigured) return "MISSING OAUTH";
         return "READY";
     }, [config]);
 
@@ -145,7 +145,7 @@ export default function DiscordBridgeView({ data, onRefresh }) {
                     <p style={panelLabelStyle}>OAUTH2</p>
                     <div style={{ display: "grid", gap: "10px" }}>
                         <input style={inputStyle} placeholder="Discord Client ID" value={config.oauthClientId || ""} onChange={(e) => setConfig((p) => ({ ...p, oauthClientId: e.target.value }))} />
-                        <input style={inputStyle} placeholder="Discord Client Secret" value={config.oauthClientSecret || ""} onChange={(e) => setConfig((p) => ({ ...p, oauthClientSecret: e.target.value }))} />
+                        <input style={{ ...inputStyle, opacity: 0.75 }} type="password" disabled value={config.oauthClientSecretConfigured ? "Configured via environment" : "Missing: set DISCORD_CLIENT_SECRET"} />
                         <input style={inputStyle} placeholder="OAuth Redirect URI" value={config.oauthRedirectUri || ""} onChange={(e) => setConfig((p) => ({ ...p, oauthRedirectUri: e.target.value }))} />
                     </div>
                 </section>
@@ -153,8 +153,8 @@ export default function DiscordBridgeView({ data, onRefresh }) {
                 <section style={{ ...glassStyle, padding: "16px" }}>
                     <p style={panelLabelStyle}>INTERNAL API</p>
                     <div style={{ display: "grid", gap: "10px" }}>
-                        <input style={inputStyle} placeholder="BOT_INTERNAL_TOKEN" value={config.internalToken || ""} onChange={(e) => setConfig((p) => ({ ...p, internalToken: e.target.value }))} />
-                        <input style={inputStyle} placeholder="BOT_INTERNAL_SIGNING_SECRET" value={config.internalSigningSecret || ""} onChange={(e) => setConfig((p) => ({ ...p, internalSigningSecret: e.target.value }))} />
+                        <input style={{ ...inputStyle, opacity: 0.75 }} type="password" disabled value={config.internalTokenConfigured ? "Configured via environment" : "Missing: set BOT_INTERNAL_TOKEN"} />
+                        <input style={{ ...inputStyle, opacity: 0.75 }} type="password" disabled value={config.internalSigningSecretConfigured ? "Configured via environment" : "Missing: set BOT_INTERNAL_SIGNING_SECRET"} />
                         <input style={inputStyle} placeholder="Default Guild ID" value={config.defaultGuildId || ""} onChange={(e) => setConfig((p) => ({ ...p, defaultGuildId: e.target.value }))} />
                     </div>
                 </section>

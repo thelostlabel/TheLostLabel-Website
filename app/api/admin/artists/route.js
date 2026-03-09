@@ -1,11 +1,16 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { canFinalizeDemos, hasAdminViewPermission } from "@/lib/permissions";
 import prisma from "@/lib/prisma";
+
+function canAccessArtists(user) {
+    return hasAdminViewPermission(user, "admin_view_artists") || canFinalizeDemos(user);
+}
 
 // GET: List all artists
 export async function GET(req) {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
+    if (!session || !canAccessArtists(session.user)) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 
@@ -48,7 +53,7 @@ export async function GET(req) {
 // POST: Create a new Artist Profile
 export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
+    if (!session || !canAccessArtists(session.user)) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 
@@ -91,7 +96,7 @@ export async function POST(req) {
 // PUT: Update an Artist (e.g. Link User)
 export async function PUT(req) {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
+    if (!session || !canAccessArtists(session.user)) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 

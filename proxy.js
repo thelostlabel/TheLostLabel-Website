@@ -16,7 +16,7 @@ export async function proxy(req) {
     if (isProtectedRoute) {
         const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-        if (!token) {
+        if (!token || token.secureVersion !== 1) {
             const url = new URL('/auth/login', req.url);
             url.searchParams.set('callbackUrl', path);
             return NextResponse.redirect(url);

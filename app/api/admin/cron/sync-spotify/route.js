@@ -1,23 +1,20 @@
 import { getArtistsDetails } from "@/lib/spotify";
 import prisma from "@/lib/prisma";
 import { scrapeSpotifyStats } from "@/lib/scraper";
+import { hasValidCronAuthorization } from "@/lib/cron-auth";
 
 /**
  * GET /api/admin/cron/sync-spotify
  * Periodic task to update monthly listeners for all curated artists.
- * Usage: curl -X GET "http://localhost:3000/api/admin/cron/sync-spotify?key=YOUR_CRON_SECRET"
+ * Usage: curl -H "Authorization: Bearer YOUR_CRON_SECRET" -X GET "http://localhost:3000/api/admin/cron/sync-spotify"
  */
 export async function GET(req) {
-    // ... existing searchParams and key check ...
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
-
     if (!process.env.CRON_SECRET) {
         return new Response(JSON.stringify({ error: "CRON_SECRET is not configured" }), { status: 500 });
     }
 
     // Security check
-    if (key !== process.env.CRON_SECRET) {
+    if (!hasValidCronAuthorization(req)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 

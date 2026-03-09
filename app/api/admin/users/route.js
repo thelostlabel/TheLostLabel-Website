@@ -2,6 +2,16 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import {
+    canDeleteUsers,
+    canEditUsers,
+    canManageUserPermissions,
+    canManageUserRoles,
+    canManageUserStatus,
+    canViewUsers,
+    parsePermissions,
+    stringifyPermissions
+} from "@/lib/permissions";
 import { linkUserToArtist } from "@/lib/userArtistLink";
 import { enqueueRoleSync, getDiscordLinkByUserId } from "@/lib/discord-bridge-service";
 
@@ -9,7 +19,7 @@ import { enqueueRoleSync, getDiscordLinkByUserId } from "@/lib/discord-bridge-se
 export async function GET(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!session || !canViewUsers(session.user)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -42,7 +52,7 @@ export async function GET(req) {
 export async function PATCH(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!session) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -54,19 +64,46 @@ export async function PATCH(req) {
             return new Response(JSON.stringify({ error: "Missing userId" }), { status: 400 });
         }
 
+        const canEditProfile = canEditUsers(session.user);
+        const canManageStatus = canManageUserStatus(session.user);
+        const canManageRoles = canManageUserRoles(session.user);
+        const canManagePermissions = canManageUserPermissions(session.user);
+
         const oldUser = await prisma.user.findUnique({ where: { id: userId } });
         if (!oldUser) return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
 
         // Build update object with only provided fields
         const updateData = {};
 
-        if (email !== undefined) updateData.email = email;
-        if (fullName !== undefined) updateData.fullName = fullName;
-        if (stageName !== undefined) updateData.stageName = stageName;
-        if (spotifyUrl !== undefined) updateData.spotifyUrl = spotifyUrl;
-        if (status !== undefined) updateData.status = status;
+        if (email !== undefined || fullName !== undefined || stageName !== undefined || spotifyUrl !== undefined) {
+            if (!canEditProfile) {
+                return new Response(JSON.stringify({ error: "You do not have permission to edit user profiles." }), { status: 403 });
+            }
+
+            if (email !== undefined) updateData.email = email;
+            if (fullName !== undefined) updateData.fullName = fullName;
+            if (stageName !== undefined) updateData.stageName = stageName;
+            if (spotifyUrl !== undefined) updateData.spotifyUrl = spotifyUrl;
+        }
+
+        if (status !== undefined) {
+            if (!canManageStatus) {
+                return new Response(JSON.stringify({ error: "You do not have permission to change account status." }), { status: 403 });
+            }
+
+            const validStatuses = ['pending', 'approved', 'rejected'];
+            if (!validStatuses.includes(status)) {
+                return new Response(JSON.stringify({ error: "Invalid status" }), { status: 400 });
+            }
+
+            updateData.status = status;
+        }
 
         if (role !== undefined) {
+            if (!canManageRoles) {
+                return new Response(JSON.stringify({ error: "You do not have permission to change roles." }), { status: 403 });
+            }
+
             const validRoles = ['artist', 'a&r', 'admin'];
             if (!validRoles.includes(role)) {
                 return new Response(JSON.stringify({ error: "Invalid role" }), { status: 400 });
@@ -74,7 +111,21 @@ export async function PATCH(req) {
             updateData.role = role;
         }
 
-        if (body.permissions !== undefined) updateData.permissions = body.permissions;
+        if (body.permissions !== undefined) {
+            if (!canManagePermissions) {
+                return new Response(JSON.stringify({ error: "You do not have permission to edit permissions." }), { status: 403 });
+            }
+
+            const normalizedPermissions = typeof body.permissions === "string"
+                ? parsePermissions(body.permissions)
+                : parsePermissions(body.permissions);
+
+            updateData.permissions = stringifyPermissions(normalizedPermissions);
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return new Response(JSON.stringify({ error: "No allowed changes provided" }), { status: 400 });
+        }
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },
@@ -150,7 +201,7 @@ export async function PATCH(req) {
 export async function DELETE(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!session || !canDeleteUsers(session.user)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 

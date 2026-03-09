@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import { stat } from "fs/promises";
 import { createReadStream } from "fs";
 import { extname, join } from "path";
@@ -45,8 +46,12 @@ export async function GET(req, { params }) {
 
         if (!demoFile) return new Response("Not found", { status: 404 });
 
-        const isAdminOrAR = session.user.role === "admin" || session.user.role === "a&r";
-        if (!isAdminOrAR && demoFile.demo?.artistId !== session.user.id) {
+        const canViewAll = canViewAllDemos(session.user);
+        const isOwner = demoFile.demo?.artistId === session.user.id;
+        if (!canViewAll && !isOwner) {
+            return new Response("Forbidden", { status: 403 });
+        }
+        if (isOwner && !hasPortalPermission(session.user, "view_demos")) {
             return new Response("Forbidden", { status: 403 });
         }
 

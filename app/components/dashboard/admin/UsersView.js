@@ -1,12 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import {
+    canDeleteUsers,
+    canEditUsers,
+    canManageUserPermissions,
+    canManageUserRoles,
+    canManageUserStatus,
+    DEMO_PERMISSION_OPTIONS,
+    MANAGEMENT_VIEW_PERMISSION_OPTIONS,
+    parsePermissions,
+    PORTAL_PERMISSION_OPTIONS,
+    USER_PERMISSION_OPTIONS
+} from '@/lib/permissions';
 import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
 
 export default function UsersView({ users, onRefresh }) {
+    const { data: session } = useSession();
     const { showToast, showConfirm } = useToast();
     const roles = ['artist', 'a&r', 'admin'];
     const [editingUser, setEditingUser] = useState(null);
@@ -15,10 +29,22 @@ export default function UsersView({ users, onRefresh }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const searchParams = useSearchParams();
+    const canEditProfile = canEditUsers(session?.user);
+    const canManageStatus = canManageUserStatus(session?.user);
+    const canManageRoles = canManageUserRoles(session?.user);
+    const canManagePermissions = canManageUserPermissions(session?.user);
+    const canDeleteUser = canDeleteUsers(session?.user);
+    const canOpenEditor = canEditProfile || canManageStatus || canManageRoles || canManagePermissions;
+    const permissionSections = [
+        { title: 'PORTAL_PERMISSIONS', options: PORTAL_PERMISSION_OPTIONS, enabledByDefault: true },
+        { title: 'MANAGEMENT_VIEWS', options: MANAGEMENT_VIEW_PERMISSION_OPTIONS, enabledByDefault: false },
+        { title: 'DEMO_WORKFLOW', options: DEMO_PERMISSION_OPTIONS, enabledByDefault: false },
+        { title: 'USER_MANAGEMENT', options: USER_PERMISSION_OPTIONS, enabledByDefault: false }
+    ];
 
     // Deep link to user
     useEffect(() => {
-        if (!editingUser && users.length > 0) {
+        if (canOpenEditor && !editingUser && users.length > 0) {
             const idFromUrl = searchParams.get('id');
             if (idFromUrl) {
                 const user = users.find(u => u.id === idFromUrl);
@@ -27,7 +53,7 @@ export default function UsersView({ users, onRefresh }) {
                 }
             }
         }
-    }, [users, searchParams, editingUser]);
+    }, [users, searchParams, editingUser, canOpenEditor]);
 
 
     useEffect(() => {
@@ -45,8 +71,7 @@ export default function UsersView({ users, onRefresh }) {
 
     const openEdit = (user) => {
         setEditingUser(user);
-        let perms = {};
-        try { perms = user.permissions ? JSON.parse(user.permissions) : {}; } catch (e) { }
+        const perms = parsePermissions(user.permissions);
 
         setEditForm({
             email: user.email || '',
@@ -60,12 +85,24 @@ export default function UsersView({ users, onRefresh }) {
     };
 
     const handleSave = async (overrideData = null) => {
+        if (!overrideData && !canOpenEditor) {
+            showToast('You do not have permission to edit users.', "error");
+            return;
+        }
+
         setSaving(true);
         try {
             const data = overrideData || {
                 userId: editingUser.id,
-                ...editForm,
-                permissions: JSON.stringify(editForm.permissions)
+                ...(canEditProfile ? {
+                    email: editForm.email,
+                    fullName: editForm.fullName,
+                    stageName: editForm.stageName,
+                    spotifyUrl: editForm.spotifyUrl
+                } : {}),
+                ...(canManageRoles ? { role: editForm.role } : {}),
+                ...(canManageStatus ? { status: editForm.status } : {}),
+                ...(canManagePermissions ? { permissions: JSON.stringify(editForm.permissions) } : {})
             };
 
             const res = await fetch('/api/admin/users', {
@@ -90,6 +127,11 @@ export default function UsersView({ users, onRefresh }) {
     };
 
     const handleApprove = (userId) => {
+        if (!canManageStatus) {
+            showToast('You do not have permission to approve users.', "error");
+            return;
+        }
+
         showConfirm(
             "APPROVE USER?",
             "Are you sure you want to approve this artist request? They will gain access to the dashboard.",
@@ -101,6 +143,11 @@ export default function UsersView({ users, onRefresh }) {
     };
 
     const handleDelete = (userId) => {
+        if (!canDeleteUser) {
+            showToast('You do not have permission to delete users.', "error");
+            return;
+        }
+
         showConfirm(
             "DELETE USER?",
             "Are you sure you want to PERMANENTLY delete this user? This cannot be undone.",
@@ -165,31 +212,36 @@ export default function UsersView({ users, onRefresh }) {
                                 <div>
                                     <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>EMAIL_ADDRESS</label>
                                     <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                        disabled={!canEditProfile}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px', opacity: canEditProfile ? 1 : 0.6 }} />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div>
                                         <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>FULL_NAME</label>
                                         <input type="text" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
-                                            style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                            disabled={!canEditProfile}
+                                            style={{ ...inputStyle, width: '100%', padding: '15px', opacity: canEditProfile ? 1 : 0.6 }} />
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>STAGE_NAME</label>
                                         <input type="text" value={editForm.stageName} onChange={(e) => setEditForm({ ...editForm, stageName: e.target.value })}
-                                            style={{ ...inputStyle, width: '100%', padding: '15px' }} />
+                                            disabled={!canEditProfile}
+                                            style={{ ...inputStyle, width: '100%', padding: '15px', opacity: canEditProfile ? 1 : 0.6 }} />
                                     </div>
                                 </div>
                                 <div>
                                     <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>SYSTEM_ROLE</label>
                                     <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', padding: '15px', background: 'rgba(0,0,0,0.5)' }}>
+                                        disabled={!canManageRoles}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px', background: 'rgba(0,0,0,0.5)', opacity: canManageRoles ? 1 : 0.6 }}>
                                         {roles.map(r => <option key={r} value={r}>{r.toUpperCase()}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>ACCOUNT_STATUS</label>
                                     <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                        style={{ ...inputStyle, width: '100%', padding: '15px', background: 'rgba(0,0,0,0.5)', color: editForm.status === 'approved' ? '#00ff88' : '#ff4444' }}>
+                                        disabled={!canManageStatus}
+                                        style={{ ...inputStyle, width: '100%', padding: '15px', background: 'rgba(0,0,0,0.5)', color: editForm.status === 'approved' ? '#00ff88' : '#ff4444', opacity: canManageStatus ? 1 : 0.6 }}>
                                         <option value="pending">PENDING APPROVAL</option>
                                         <option value="approved">APPROVED</option>
                                         <option value="rejected">REJECTED</option>
@@ -198,67 +250,47 @@ export default function UsersView({ users, onRefresh }) {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                                <div>
-                                    <p style={{ fontSize: '10px', color: '#555', marginBottom: '15px', fontWeight: '950', letterSpacing: '2px' }}>PORTAL_PERMISSIONS</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
-                                        {[
-                                            { key: 'view_overview', label: 'OVERVIEW' },
-                                            { key: 'view_support', label: 'SUPPORT' },
-                                            { key: 'view_releases', label: 'RELEASES' },
-                                            { key: 'view_demos', label: 'DEMOS' },
-                                            { key: 'view_earnings', label: 'EARNINGS' },
-                                            { key: 'view_contracts', label: 'CONTRACTS' },
-                                            { key: 'view_profile', label: 'PROFILE' },
-                                            { key: 'submit_demos', label: 'SUBMIT_DEMO' },
-                                            { key: 'request_changes', label: 'REQUEST_CHANGE' }
-                                        ].map(p => (
-                                            <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', color: editForm.permissions?.[p.key] !== false ? '#fff' : '#333' }}>
-                                                <input type="checkbox"
-                                                    checked={editForm.permissions?.[p.key] !== false}
-                                                    onChange={(e) => setEditForm({ ...editForm, permissions: { ...editForm.permissions, [p.key]: e.target.checked } })}
-                                                    style={{ accentColor: 'var(--accent)' }}
-                                                />
-                                                {p.label}
-                                            </label>
-                                        ))}
+                                {!canManagePermissions && (
+                                    <div style={{ padding: '14px 16px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '10px', color: '#777', letterSpacing: '0.6px', lineHeight: 1.6 }}>
+                                        Some controls are read-only for your account. Advanced access toggles unlock only if your own user grants permission management rights.
                                     </div>
-                                </div>
+                                )}
+                                {permissionSections.map((section) => (
+                                    <div key={section.title}>
+                                        <p style={{ fontSize: '10px', color: '#555', marginBottom: '15px', fontWeight: '950', letterSpacing: '2px' }}>{section.title}</p>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                                            {section.options.map((p) => {
+                                                const isEnabled = section.enabledByDefault
+                                                    ? editForm.permissions?.[p.key] !== false
+                                                    : editForm.permissions?.[p.key] === true;
 
-                                <div>
-                                    <p style={{ fontSize: '10px', color: '#555', marginBottom: '15px', fontWeight: '950', letterSpacing: '2px' }}>ADMIN_PERMISSIONS</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
-                                        {[
-                                            { key: 'admin_view_overview', label: 'STATS' },
-                                            { key: 'admin_view_submissions', label: 'DEMOS' },
-                                            { key: 'admin_view_artists', label: 'ARTISTS' },
-                                            { key: 'admin_view_contracts', label: 'CONTRACTS' },
-                                            { key: 'admin_view_earnings', label: 'EARNINGS' },
-                                            { key: 'admin_view_payments', label: 'PAYMENTS' },
-                                            { key: 'admin_view_requests', label: 'REQUESTS' },
-                                            { key: 'admin_view_users', label: 'USERS' },
-                                            { key: 'admin_view_communications', label: 'COMMUNICATIONS' },
-                                            { key: 'admin_view_content', label: 'CONTENT' },
-                                            { key: 'admin_view_webhooks', label: 'WEBHOOKS' },
-                                            { key: 'admin_view_discord_bridge', label: 'DISCORD BRIDGE' },
-                                            { key: 'admin_view_settings', label: 'SETTINGS' }
-                                        ].map(p => (
-                                            <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', color: editForm.permissions?.[p.key] === true ? 'var(--accent)' : '#333' }}>
-                                                <input type="checkbox"
-                                                    disabled={editForm.role === 'artist'}
-                                                    checked={editForm.permissions?.[p.key] === true}
-                                                    onChange={(e) => setEditForm({ ...editForm, permissions: { ...editForm.permissions, [p.key]: e.target.checked } })}
-                                                    style={{ accentColor: 'var(--accent)' }}
-                                                />
-                                                {p.label}
-                                            </label>
-                                        ))}
+                                                return (
+                                                    <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: canManagePermissions ? 'pointer' : 'not-allowed', fontSize: '9px', fontWeight: '800', color: isEnabled ? (section.enabledByDefault ? '#fff' : 'var(--accent)') : '#333', opacity: canManagePermissions ? 1 : 0.7 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            disabled={!canManagePermissions}
+                                                            checked={isEnabled}
+                                                            onChange={(e) => setEditForm({
+                                                                ...editForm,
+                                                                permissions: {
+                                                                    ...editForm.permissions,
+                                                                    [p.key]: e.target.checked
+                                                                }
+                                                            })}
+                                                            style={{ accentColor: 'var(--accent)' }}
+                                                        />
+                                                        {p.label}
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
-                            <button onClick={() => handleSave()} disabled={saving} style={{ ...btnStyle, flex: 2, padding: '18px', background: 'var(--accent)', color: '#000', border: 'none', height: 'auto' }}>
+                            <button onClick={() => handleSave()} disabled={saving || !canOpenEditor} style={{ ...btnStyle, flex: 2, padding: '18px', background: 'var(--accent)', color: '#000', border: 'none', height: 'auto', opacity: saving || !canOpenEditor ? 0.6 : 1 }}>
                                 {saving ? 'APPLYING_CHANGES...' : 'SAVE_USER_PERMISSIONS'}
                             </button>
                             <button onClick={() => {
@@ -347,11 +379,18 @@ export default function UsersView({ users, onRefresh }) {
                                 </td>
                                 <td data-label="ACTIONS" style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                        {user.status === 'pending' && (
+                                        {user.status === 'pending' && canManageStatus && (
                                             <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto' }}>APPROVE</button>
                                         )}
-                                        <button onClick={() => openEdit(user)} style={{ ...btnStyle, background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto' }}>EDIT</button>
-                                        <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: '#ff4444', background: 'rgba(255,68,68,0.05)', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto', borderColor: 'rgba(255,68,68,0.2)' }}>DELETE</button>
+                                        {canOpenEditor && (
+                                            <button onClick={() => openEdit(user)} style={{ ...btnStyle, background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto' }}>EDIT</button>
+                                        )}
+                                        {canDeleteUser && (
+                                            <button onClick={() => handleDelete(user.id)} style={{ ...btnStyle, color: '#ff4444', background: 'rgba(255,68,68,0.05)', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto', borderColor: 'rgba(255,68,68,0.2)' }}>DELETE</button>
+                                        )}
+                                        {!canManageStatus && !canOpenEditor && !canDeleteUser && (
+                                            <span style={{ fontSize: '9px', color: '#555', fontWeight: '800', letterSpacing: '1px' }}>READ_ONLY</span>
+                                        )}
                                     </div>
                                 </td>
                             </tr>

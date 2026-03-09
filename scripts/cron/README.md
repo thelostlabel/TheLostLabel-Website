@@ -2,9 +2,9 @@
 
 ## Daily Spotify monthly listeners sync
 
-1) Set a cron secret in your environment (same as `CRON_SECRET` in the app).
+1. Set a cron secret in your environment (same as `CRON_SECRET` in the app).
    `CRON_SECRET` is required; there is no default fallback.
-2) Add a cron entry:
+2. Add a cron entry:
 
 ```
 0 3 * * * BASE_URL=http://localhost:3000 CRON_SECRET=YOUR_SECRET /path/to/repo/scripts/cron/sync-listeners.sh >> /var/log/lost-cron.log 2>&1
@@ -19,5 +19,6 @@ BASE_URL=http://localhost:3000 CRON_SECRET=YOUR_SECRET /path/to/repo/scripts/cro
 If you host on Vercel, you can set a scheduled cron to call:
 
 ```
-POST /api/cron/sync-listeners?secret=YOUR_SECRET
+POST /api/cron/sync-listeners
+Header: `Authorization: Bearer YOUR_SECRET`
 ```

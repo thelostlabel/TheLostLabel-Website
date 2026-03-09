@@ -1,13 +1,25 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import crypto from 'crypto';
 import { sendMail } from '@/lib/mail';
 import { generatePasswordResetEmail } from '@/lib/mail-templates';
+import rateLimit from '@/lib/rate-limit';
+import { buildRateLimitKey, generateOpaqueToken, hashOpaqueToken, normalizeEmail, passesRateLimit } from '@/lib/security';
+
+const forgotPasswordLimiter = rateLimit({
+    interval: 15 * 60 * 1000,
+    uniqueTokenPerInterval: 4000
+});
 
 export async function POST(req) {
     try {
-        const { email } = await req.json();
+        const body = await req.json();
+        const email = normalizeEmail(body?.email);
+
+        const allowed = await passesRateLimit(forgotPasswordLimiter, 6, buildRateLimitKey(req, 'forgot-password', email));
+        if (!allowed) {
+            return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+        }
 
         if (!email) {
             return NextResponse.json({ error: "Missing email" }, { status: 400 });
@@ -23,13 +35,13 @@ export async function POST(req) {
         }
 
         // Generate reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetToken = generateOpaqueToken();
         const resetTokenExpiry = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
 
         await prisma.user.update({
             where: { id: user.id },
             data: {
-                resetToken,
+                resetToken: hashOpaqueToken(resetToken),
                 resetTokenExpiry
             }
         });

@@ -4,9 +4,20 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateDemoApprovalEmail, generateDemoRejectionEmail } from "@/lib/mail-templates";
 import { notifyDemoApproval } from "@/lib/discord";
+import {
+    canApproveDemos,
+    canDeleteDemos,
+    canFinalizeDemos,
+    canRejectDemos,
+    canReviewDemos,
+    canViewAllDemos,
+    hasPortalPermission
+} from "@/lib/permissions";
 import { randomUUID } from "crypto";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+
+const REVIEWABLE_STATUSES = new Set(["pending", "reviewing"]);
 
 function normalizeReleaseDate(value) {
     if (!value) return null;
@@ -48,10 +59,13 @@ export async function GET(req, { params }) {
             return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
         }
 
-        const isAdminOrAR = session.user.role === 'admin' || session.user.role === 'a&r';
+        const canViewAll = canViewAllDemos(session.user);
         const isOwner = demo.artistId === session.user.id;
-        if (!isAdminOrAR && !isOwner) {
+        if (!canViewAll && !isOwner) {
             return new Response("Forbidden", { status: 403 });
+        }
+        if (isOwner && !hasPortalPermission(session.user, "view_demos")) {
+            return new Response(JSON.stringify({ error: "You do not have permission to view demos." }), { status: 403 });
         }
 
         return new Response(JSON.stringify(demo), { status: 200 });
@@ -62,15 +76,15 @@ export async function GET(req, { params }) {
 
 export async function PATCH(req, { params }) {
     const session = await getServerSession(authOptions);
-    const isAdminOrAR = session?.user?.role === 'admin' || session?.user?.role === 'a&r';
-
-    if (!session || !isAdminOrAR) {
+    if (!session) {
         return new Response("Unauthorized", { status: 401 });
     }
 
     const { id } = await params;
     const body = await req.json();
     const { status, rejectionReason, finalizeData } = body;
+    const nextStatus = typeof status === "string" ? status.trim().toLowerCase() : null;
+    const canViewAll = canViewAllDemos(session.user);
 
     // Fetch existing demo to check ownership
     const existingDemo = await prisma.demo.findUnique({
@@ -93,21 +107,49 @@ export async function PATCH(req, { params }) {
 
     const isOwner = existingDemo.artistId === session.user.id;
 
-    if (!isAdminOrAR && !isOwner) {
+    if (!canViewAll && !isOwner) {
         return new Response("Unauthorized", { status: 401 });
     }
 
-    // Artists can only update assets and scheduled date, not status
-    if (!isAdminOrAR && isOwner) {
-        if (status) return new Response(JSON.stringify({ error: "Only admins can change status" }), { status: 403 });
+    if (isOwner && !hasPortalPermission(session.user, "view_demos")) {
+        return new Response(JSON.stringify({ error: "You do not have permission to access this demo." }), { status: 403 });
+    }
+
+    const isStaffAction = canViewAll;
+
+    // Artists can only update assets and scheduled date, not review state
+    if (!isStaffAction && isOwner) {
+        if (nextStatus || finalizeData || rejectionReason) {
+            return new Response(JSON.stringify({ error: "Only staff can change review status" }), { status: 403 });
+        }
+    }
+
+    if (isStaffAction) {
+        if (nextStatus && REVIEWABLE_STATUSES.has(nextStatus) && !canReviewDemos(session.user)) {
+            return new Response(JSON.stringify({ error: "You do not have permission to move demos through review." }), { status: 403 });
+        }
+
+        if (nextStatus === "approved" && !canApproveDemos(session.user) && !finalizeData) {
+            return new Response(JSON.stringify({ error: "You do not have permission to approve demos." }), { status: 403 });
+        }
+
+        if (nextStatus === "rejected" && !canRejectDemos(session.user)) {
+            return new Response(JSON.stringify({ error: "You do not have permission to reject demos." }), { status: 403 });
+        }
+
+        if ((nextStatus === "contract_sent" || finalizeData || body.scheduledReleaseDate || body.coverArtUrl) && !canFinalizeDemos(session.user)) {
+            return new Response(JSON.stringify({ error: "You do not have permission to finalize demos." }), { status: 403 });
+        }
+    } else if ((body.scheduledReleaseDate || body.coverArtUrl) && !hasPortalPermission(session.user, "view_demos")) {
+        return new Response(JSON.stringify({ error: "You do not have permission to update this demo." }), { status: 403 });
     }
 
     try {
         const updateData = {};
 
-        if (isAdminOrAR) {
-            if (status) {
-                updateData.status = status;
+        if (isStaffAction) {
+            if (nextStatus) {
+                updateData.status = nextStatus;
                 updateData.reviewedBy = session.user.email;
                 updateData.reviewedAt = new Date();
             }
@@ -121,7 +163,7 @@ export async function PATCH(req, { params }) {
 
         const updatedDemo = await prisma.$transaction(async (tx) => {
             // NEW: If "Finalize & Send Contract" was clicked
-            if (isAdminOrAR && finalizeData) {
+            if (isStaffAction && finalizeData) {
                 const { releaseName, artistShare, labelShare, notes, contractPdf, splits, artistId: finalizedArtistId } = finalizeData;
 
                 await tx.contract.create({
@@ -198,9 +240,15 @@ export async function PATCH(req, { params }) {
             }
             return d;
         });
+        const shouldNotifyStatusChange = Boolean(nextStatus || finalizeData);
+        const notifiedStatus = shouldNotifyStatusChange && ["approved", "rejected", "contract_sent"].includes(updatedDemo.status)
+            ? updatedDemo.status
+            : shouldNotifyStatusChange
+                ? nextStatus
+                : null;
 
         // If status changed to approved, we might want to notify
-        if ((status === 'approved' || status === 'contract_sent') && updatedDemo.artist?.email) {
+        if ((notifiedStatus === 'approved' || notifiedStatus === 'contract_sent') && updatedDemo.artist?.email) {
             try {
                 await sendMail({
                     to: updatedDemo.artist.email,
@@ -217,16 +265,16 @@ export async function PATCH(req, { params }) {
             await notifyDemoApproval(
                 updatedDemo.artist.stageName || updatedDemo.artist.fullName,
                 updatedDemo.title,
-                status === 'contract_sent' ? "Contract Sent" : "Pending Deal Configuration"
+                notifiedStatus === 'contract_sent' ? "Contract Sent" : "Pending Deal Configuration"
             );
         }
 
-        if (status && ["approved", "rejected", "contract_sent"].includes(status)) {
+        if (notifiedStatus && ["approved", "rejected", "contract_sent"].includes(notifiedStatus)) {
             try {
                 await insertDiscordOutboxEvent(
-                    status === "approved"
+                    notifiedStatus === "approved"
                         ? "demo_approved"
-                        : status === "rejected"
+                        : notifiedStatus === "rejected"
                             ? "demo_rejected"
                             : "demo_contract_sent",
                     {
@@ -235,7 +283,7 @@ export async function PATCH(req, { params }) {
                         status: updatedDemo.status,
                         artistId: updatedDemo.artistId,
                         artistName: updatedDemo.artist?.stageName || updatedDemo.artist?.fullName || null,
-                        rejectionReason: status === "rejected" ? rejectionReason || null : null
+                        rejectionReason: notifiedStatus === "rejected" ? rejectionReason || null : null
                     },
                     updatedDemo.id
                 );
@@ -246,9 +294,9 @@ export async function PATCH(req, { params }) {
             // Queue Discord DM notification to the artist
             try {
                 const artistName = updatedDemo.artist?.stageName || updatedDemo.artist?.fullName || "Artist";
-                const notifyType = status === "rejected"
+                const notifyType = notifiedStatus === "rejected"
                     ? DISCORD_NOTIFY_TYPES.DEMO_REJECTED
-                    : status === "contract_sent"
+                    : notifiedStatus === "contract_sent"
                         ? DISCORD_NOTIFY_TYPES.DEMO_CONTRACT_SENT
                         : DISCORD_NOTIFY_TYPES.DEMO_APPROVED;
 
@@ -265,9 +313,9 @@ export async function PATCH(req, { params }) {
                 };
 
                 await queueDiscordNotification(updatedDemo.artistId, notifyType, {
-                    title: `Demo ${status === "contract_sent" ? "Contract Sent" : status.charAt(0).toUpperCase() + status.slice(1)}`,
-                    description: descriptions[status],
-                    color: colors[status] || 0x7c3aed,
+                    title: `Demo ${notifiedStatus === "contract_sent" ? "Contract Sent" : notifiedStatus.charAt(0).toUpperCase() + notifiedStatus.slice(1)}`,
+                    description: descriptions[notifiedStatus],
+                    color: colors[notifiedStatus] || 0x7c3aed,
                     fields: [
                         { name: "Demo", value: updatedDemo.title, inline: true },
                         { name: "Artist", value: artistName, inline: true }
@@ -280,7 +328,7 @@ export async function PATCH(req, { params }) {
         }
 
         // If status changed to rejected, notify artist
-        if (status === 'rejected' && updatedDemo.artist?.email) {
+        if (notifiedStatus === 'rejected' && updatedDemo.artist?.email) {
             const userPrefs = await prisma.user.findUnique({
                 where: { id: updatedDemo.artistId }, // artistId in Demo is UserId
                 select: { notifyDemos: true }
@@ -311,7 +359,7 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'admin') {
+    if (!session || !canDeleteDemos(session.user)) {
         return new Response("Unauthorized", { status: 401 });
     }
 

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { notifyDemoSubmission } from "@/lib/discord";
 import { sendMail } from "@/lib/mail";
 import { generateDemoReceivedEmail } from "@/lib/mail-templates";
+import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import { z } from "zod";
 import rateLimit from "@/lib/rate-limit";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
@@ -37,6 +38,9 @@ const demoSchema = z.object({
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session) return new Response("Unauthorized", { status: 401 });
+    if (!hasPortalPermission(session.user, "submit_demos")) {
+        return new Response(JSON.stringify({ error: "You do not have permission to submit demos." }), { status: 403 });
+    }
 
     try {
         await limiter.check(null, 10, session.user.id);
@@ -175,9 +179,13 @@ export async function GET(req) {
     try {
         const { searchParams } = new URL(req.url);
         const filterMine = searchParams.get('filter') === 'mine';
-        const isAdminOrAR = session.user.role === 'admin' || session.user.role === 'a&r';
+        const canViewAll = canViewAllDemos(session.user);
 
-        if (isAdminOrAR && !filterMine) {
+        if (filterMine && !hasPortalPermission(session.user, "view_demos")) {
+            return new Response(JSON.stringify({ error: "You do not have permission to view demos." }), { status: 403 });
+        }
+
+        if (canViewAll && !filterMine) {
             const demos = await prisma.demo.findMany({
                 include: {
                     artist: {
@@ -189,6 +197,10 @@ export async function GET(req) {
             });
             return new Response(JSON.stringify(demos), { status: 200 });
         } else {
+            if (!hasPortalPermission(session.user, "view_demos")) {
+                return new Response(JSON.stringify({ error: "You do not have permission to view demos." }), { status: 403 });
+            }
+
             const demos = await prisma.demo.findMany({
                 where: { artistId: session.user.id },
                 include: { files: true },

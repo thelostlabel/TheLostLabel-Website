@@ -1,11 +1,10 @@
 import prisma from "@/lib/prisma";
 import { scrapeSpotifyStats } from "@/lib/scraper";
+import { hasValidCronAuthorization } from "@/lib/cron-auth";
 
 // GET /api/cron/sync-artists
 // Securely triggered by external cron services (Vercel Cron, GitHub Actions, etc.)
 export async function GET(req) {
-    const { searchParams } = new URL(req.url);
-    const secret = searchParams.get('secret') || req.headers.get('Authorization')?.replace('Bearer ', '');
     const cronSecret = process.env.CRON_SECRET;
 
     if (!cronSecret) {
@@ -13,7 +12,7 @@ export async function GET(req) {
         return new Response(JSON.stringify({ error: 'CRON_SECRET is not configured' }), { status: 500 });
     }
 
-    if (secret !== cronSecret) {
+    if (!hasValidCronAuthorization(req)) {
         console.warn('[Cron-Sync] Unauthorized attempt.');
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }

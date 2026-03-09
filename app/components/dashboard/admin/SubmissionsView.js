@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { PlayCircle, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { btnStyle, glassStyle, inputStyle } from './styles';
 
-export default function SubmissionsView({ demos, onDelete }) {
+export default function SubmissionsView({ demos, onDelete, canDelete = false }) {
     const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'reviewing', 'approved', 'rejected'
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -158,9 +158,11 @@ export default function SubmissionsView({ demos, onDelete }) {
                                 >
                                     REVIEW
                                 </Link>
-                                <button onClick={() => onDelete(demo.id)} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', color: '#ff4444', height: 'auto', borderRadius: '6px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', fontWeight: '950', letterSpacing: '1px', cursor: 'pointer' }}>
-                                    DEL
-                                </button>
+                                {canDelete && (
+                                    <button onClick={() => onDelete(demo.id)} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', color: '#ff4444', height: 'auto', borderRadius: '6px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', fontWeight: '950', letterSpacing: '1px', cursor: 'pointer' }}>
+                                        DEL
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     ))}

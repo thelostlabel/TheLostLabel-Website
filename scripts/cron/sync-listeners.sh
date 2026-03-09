@@ -9,4 +9,4 @@ if [[ -z "${CRON_SECRET:-}" ]]; then
   exit 1
 fi
 
-curl -fsS "${BASE_URL}/api/cron/sync-listeners?secret=${CRON_SECRET}" -X POST
+curl -fsS "${BASE_URL}/api/cron/sync-listeners" -X POST -H "Authorization: Bearer ${CRON_SECRET}"

@@ -1,19 +1,38 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
-import crypto from 'crypto';
 import { sendMail } from '@/lib/mail';
 import { generateVerificationEmail } from '@/lib/mail-templates';
 import { extractSpotifyArtistId, findBestSpotifyArtistMatch } from '@/lib/spotify';
 import { scrapeSpotifyStats } from '@/lib/scraper';
+import rateLimit from '@/lib/rate-limit';
+import {
+    buildRateLimitKey,
+    generateOpaqueToken,
+    hashOpaqueToken,
+    hasMinimumPasswordLength,
+    MIN_PASSWORD_LENGTH,
+    normalizeEmail,
+    passesRateLimit
+} from '@/lib/security';
+
+const signupRateLimiter = rateLimit({
+    interval: 30 * 60 * 1000,
+    uniqueTokenPerInterval: 4000
+});
 
 export async function POST(req) {
     try {
         const body = await req.json();
         const fullName = typeof body?.fullName === 'string' ? body.fullName.trim() : '';
         const stageName = typeof body?.stageName === 'string' ? body.stageName.trim() : '';
-        const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+        const email = normalizeEmail(body?.email);
         const password = typeof body?.password === 'string' ? body.password : '';
+
+        const allowed = await passesRateLimit(signupRateLimiter, 6, buildRateLimitKey(req, 'signup', email));
+        if (!allowed) {
+            return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+        }
 
         // 1. Check System Settings
         const settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
@@ -33,8 +52,8 @@ export async function POST(req) {
         if (!email || !password || !fullName || !stageName) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
-        if (password.length < 6) {
-            return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+        if (!hasMinimumPasswordLength(password)) {
+            return NextResponse.json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` }, { status: 400 });
         }
 
         // 3. Check Existing User
@@ -78,7 +97,8 @@ export async function POST(req) {
 
         // 6. Create User with Verification Token
         const hashedPassword = await bcrypt.hash(password, 10);
-        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationToken = generateOpaqueToken();
+        const verificationTokenHash = hashOpaqueToken(verificationToken);
 
         // Expiry 24 hours from now
         const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -95,7 +115,7 @@ export async function POST(req) {
                     stageName,
                     role: 'artist',
                     status: 'pending',
-                    verificationToken,
+                    verificationToken: verificationTokenHash,
                     verificationTokenExpiry,
                     spotifyUrl: matchedSpotifyUrl,
                     monthlyListeners: matchedMonthlyListeners

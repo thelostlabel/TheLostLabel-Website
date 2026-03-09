@@ -32,7 +32,17 @@ import CommunicationsView from './admin/CommunicationsView';
 import SettingsView from './admin/SettingsView';
 import DiscordBridgeView from './admin/DiscordBridgeView';
 import DashboardLoader from './DashboardLoader';
+import { canDeleteDemos, canViewAllDemos, canViewUsers, hasAdminViewPermission } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+
+function WisePayoutsView() {
+    return (
+        <div className="dashboard-view py-10 text-center">
+            <h2 className="text-xl font-black tracking-[0.16em] text-neutral-200">WISE_PAYOUTS</h2>
+            <p className="mt-2 text-sm text-neutral-500">This module is not wired into the current dashboard build yet.</p>
+        </div>
+    );
+}
 
 export default function AdminView() {
     const { data: session } = useSession();
@@ -78,6 +88,22 @@ export default function AdminView() {
         ...(FEATURES.discordBridge ? { 'discord-bridge': 'Discord Bridge' } : {}),
         ...(FEATURES.wisePayouts ? { 'wise-payouts': 'Wise Payouts' } : {}),
     };
+    const viewToPerm = {
+        overview: 'admin_view_overview',
+        submissions: 'admin_view_submissions',
+        artists: 'admin_view_artists',
+        users: 'admin_view_users',
+        requests: 'admin_view_requests',
+        content: 'admin_view_content',
+        webhooks: 'admin_view_webhooks',
+        contracts: 'admin_view_contracts',
+        earnings: 'admin_view_earnings',
+        payments: 'admin_view_payments',
+        releases: 'admin_view_releases',
+        settings: 'admin_view_settings',
+        communications: 'admin_view_communications',
+        'discord-bridge': 'admin_view_discord_bridge'
+    };
 
     const [submissions, setSubmissions] = useState([]);
     const [artists, setArtists] = useState([]);
@@ -92,10 +118,21 @@ export default function AdminView() {
     const [discordBridge, setDiscordBridge] = useState(null);
     const [loading, setLoading] = useState(true);
     const showLoading = useMinimumLoader(loading, 250);
+    const canViewCurrentSection = view === 'submissions'
+        ? canViewAllDemos(session?.user)
+        : view === 'users'
+            ? canViewUsers(session?.user)
+            : hasAdminViewPermission(session?.user, viewToPerm[view]);
+    const canDeleteSubmission = canDeleteDemos(session?.user);
 
     const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
 
     useEffect(() => {
+        if (!canViewCurrentSection) {
+            setLoading(false);
+            return;
+        }
+
         if (view === 'submissions') fetchSubmissions();
         else if (view === 'artists') { fetchArtists(); fetchUsers(); fetchReleases(); fetchContracts(); }
         else if (view === 'users') fetchUsers();
@@ -110,7 +147,7 @@ export default function AdminView() {
         else if (view === 'discord-bridge') fetchDiscordBridge();
         else if (view === 'settings') setLoading(false);
         else setLoading(false);
-    }, [view]);
+    }, [view, canViewCurrentSection]);
 
     const fetchContent = async () => {
         setLoading(true);
@@ -263,6 +300,11 @@ export default function AdminView() {
     };
 
     const handleDeleteDemo = async (id) => {
+        if (!canDeleteSubmission) {
+            showToast("You do not have permission to delete demos.", "error");
+            return;
+        }
+
         showConfirm(
             "DELETE SUBMISSION?",
             "Are you sure you want to PERMANENTLY delete this submission? This action cannot be undone.",
@@ -278,32 +320,7 @@ export default function AdminView() {
         );
     };
 
-    const perms = session?.user?.permissions || {};
-    const isAdmin = session?.user?.role === 'admin';
-
-    const hasAdminPermission = (p) => {
-        if (isAdmin) return true;
-        return perms[p] === true;
-    };
-
-    const viewToPerm = {
-        overview: 'admin_view_overview',
-        submissions: 'admin_view_submissions',
-        artists: 'admin_view_artists',
-        users: 'admin_view_users',
-        requests: 'admin_view_requests',
-        content: 'admin_view_content',
-        webhooks: 'admin_view_webhooks',
-        contracts: 'admin_view_contracts',
-        earnings: 'admin_view_earnings',
-        payments: 'admin_view_payments',
-        releases: 'admin_view_releases',
-        settings: 'admin_view_settings',
-        communications: 'admin_view_communications',
-        'discord-bridge': 'admin_view_discord_bridge'
-    };
-
-    if (!showLoading && !hasAdminPermission(viewToPerm[view])) {
+    if (!showLoading && !canViewCurrentSection) {
         return (
             <div className="dashboard-view py-10 text-center">
                 <h2 className="text-xl font-black tracking-[0.16em] text-red-400">ACCESS_DENIED</h2>
@@ -348,7 +365,7 @@ export default function AdminView() {
                 window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
                 window.dispatchEvent(new Event('popstate'));
             }} />}
-            {view === 'submissions'   && FEATURES.submissions    && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} />}
+            {view === 'submissions'   && FEATURES.submissions    && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} canDelete={canDeleteSubmission} />}
             {view === 'artists'       && <ArtistsView artists={artists} users={users} releases={releases} contracts={contracts} onSync={handleSyncStats} onRefresh={fetchArtists} />}
             {view === 'users'         && <UsersView users={users} onRefresh={fetchUsers} />}
             {view === 'requests'      && <RequestsView requests={requests} />}

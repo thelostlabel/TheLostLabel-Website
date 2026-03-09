@@ -2751,8 +2751,8 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
             notify('New passwords do not match', 'warning');
             return;
         }
-        if (newPassword.length < 6) {
-            notify('New password must be at least 6 characters', 'warning');
+        if (newPassword.length < 8) {
+            notify('New password must be at least 8 characters', 'warning');
             return;
         }
 

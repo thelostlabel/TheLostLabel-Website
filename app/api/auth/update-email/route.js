@@ -1,11 +1,23 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import crypto from 'crypto';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { sendMail } from '@/lib/mail';
 import { generateVerificationEmail } from '@/lib/mail-templates';
+import rateLimit from '@/lib/rate-limit';
+import {
+    buildRateLimitKey,
+    generateOpaqueToken,
+    hashOpaqueToken,
+    normalizeEmail,
+    passesRateLimit
+} from '@/lib/security';
+
+const updateEmailLimiter = rateLimit({
+    interval: 30 * 60 * 1000,
+    uniqueTokenPerInterval: 3000
+});
 
 export async function POST(req) {
     try {
@@ -15,8 +27,14 @@ export async function POST(req) {
         }
 
         const { currentEmail, newEmail } = await req.json();
+        const normalizedNewEmail = normalizeEmail(newEmail);
 
-        if (!newEmail) {
+        const allowed = await passesRateLimit(updateEmailLimiter, 5, buildRateLimitKey(req, 'update-email', session.user.id));
+        if (!allowed) {
+            return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+        }
+
+        if (!normalizedNewEmail) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
@@ -41,22 +59,22 @@ export async function POST(req) {
 
         // 3. Check if new email is already taken
         const existingUser = await prisma.user.findUnique({
-            where: { email: newEmail }
+            where: { email: normalizedNewEmail }
         });
 
-        if (existingUser) {
-            return NextResponse.json({ error: "This email is already registered" }, { status: 400 });
+        if (existingUser && existingUser.id !== user.id) {
+            return NextResponse.json({ error: "Unable to update email" }, { status: 400 });
         }
 
         // 4. Update Email and Generate New Token
-        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationToken = generateOpaqueToken();
         const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         await prisma.user.update({
             where: { id: user.id },
             data: {
-                email: newEmail,
-                verificationToken,
+                email: normalizedNewEmail,
+                verificationToken: hashOpaqueToken(verificationToken),
                 verificationTokenExpiry
             }
         });
@@ -65,7 +83,7 @@ export async function POST(req) {
         const verificationLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/verify-email?token=${verificationToken}`;
 
         await sendMail({
-            to: newEmail,
+            to: normalizedNewEmail,
             subject: 'Confirm your collective identity (Updated) | LOST.',
             html: generateVerificationEmail(verificationLink)
         });

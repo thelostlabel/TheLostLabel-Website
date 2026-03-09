@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import prisma from "@/lib/prisma";
 import { createReadStream } from "fs";
 import { stat } from "fs/promises";
@@ -43,8 +44,12 @@ export async function GET(req, { params }) {
 
   if (!demo) return new Response("Not found", { status: 404 });
 
-  const isAdminOrAR = session.user.role === "admin" || session.user.role === "a&r";
-  if (!isAdminOrAR && demo.artistId !== session.user.id) {
+  const canViewAll = canViewAllDemos(session.user);
+  const isOwner = demo.artistId === session.user.id;
+  if (!canViewAll && !isOwner) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (isOwner && !hasPortalPermission(session.user, "view_demos")) {
     return new Response("Forbidden", { status: 403 });
   }
 

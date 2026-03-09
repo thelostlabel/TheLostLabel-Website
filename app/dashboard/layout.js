@@ -34,6 +34,7 @@ import {
     Bot
 } from 'lucide-react';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import { canViewAllDemos, canViewUsers, hasAdminViewPermission, hasManagementAccess, hasPortalPermission, isAdminUser } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 import { BRANDING } from '@/lib/branding';
 
@@ -80,20 +81,15 @@ function DashboardLayoutContent({ children }) {
         return <div className="flex h-screen items-center justify-center bg-[#0b0e14] text-sm font-semibold text-[#637089]">Access Denied</div>;
     }
 
-    const { role } = session.user;
-    const isAdmin = role === 'admin';
-    const isAR = role === 'a&r';
+    const isAdmin = isAdminUser(session.user);
 
-    const perms = session.user.permissions || {};
-    const hasPermission = (perm) => {
-        if (!perm) return true;
-        if (isAdmin) return true;
-        return perms[perm] !== false;
-    };
-
-    const hasAdminPermission = (perm) => {
-        if (role === 'admin') return true;
-        return perms[perm] === true;
+    const hasPermission = (perm) => hasPortalPermission(session.user, perm);
+    const hasAdminPermission = (perm) => hasAdminViewPermission(session.user, perm);
+    const canAccessManagement = hasManagementAccess(session.user);
+    const canAccessManagementView = (view, perm) => {
+        if (view === 'submissions') return canViewAllDemos(session.user);
+        if (view === 'users') return canViewUsers(session.user);
+        return hasAdminPermission(perm);
     };
 
     const mgmtItems = [
@@ -111,7 +107,7 @@ function DashboardLayoutContent({ children }) {
         { name: 'WEBHOOKS', view: 'webhooks', icon: <Bell size={16} />, perm: 'admin_view_webhooks' },
         { name: 'DISCORD BRIDGE', view: 'discord-bridge', icon: <Bot size={16} />, perm: 'admin_view_discord_bridge' },
         { name: 'SETTINGS', view: 'settings', icon: <Settings size={16} />, perm: 'admin_view_settings' }
-    ].filter((item) => hasAdminPermission(item.perm));
+    ].filter((item) => canAccessManagementView(item.view, item.perm));
 
     const personalItems = [
         { name: 'MY OVERVIEW', view: 'my-overview', icon: <LayoutDashboard size={16} />, perm: 'view_overview' },
@@ -124,7 +120,7 @@ function DashboardLayoutContent({ children }) {
         { name: 'MY PROFILE', view: 'my-profile', icon: <User size={16} />, perm: 'view_profile' }
     ].filter((item) => hasPermission(item.perm));
 
-    const sections = ((isAdmin || isAR)
+    const sections = (canAccessManagement
         ? [
             { label: 'MANAGEMENT', items: mgmtItems },
             { label: 'PERSONAL PORTAL', items: personalItems }
@@ -132,7 +128,7 @@ function DashboardLayoutContent({ children }) {
         : [{ label: 'ARTIST DASHBOARD', items: personalItems }]).filter((section) => section.items.length > 0);
 
     const isPersonalView = currentView.startsWith('my-');
-    const canSwitchModes = (isAdmin || isAR) && mgmtItems.length > 0 && personalItems.length > 0;
+    const canSwitchModes = canAccessManagement && mgmtItems.length > 0 && personalItems.length > 0;
     const displayedSections = canSwitchModes
         ? [isPersonalView ? { label: 'ARTIST PORTAL', items: personalItems } : { label: 'MANAGEMENT', items: mgmtItems }]
         : sections;

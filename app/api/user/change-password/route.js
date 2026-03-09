@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { hasMinimumPasswordLength, MIN_PASSWORD_LENGTH } from '@/lib/security';
 
 export async function POST(req) {
     try {
@@ -18,8 +19,8 @@ export async function POST(req) {
             return NextResponse.json({ error: "Missing fields" }, { status: 400 });
         }
 
-        if (newPassword.length < 6) {
-            return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+        if (!hasMinimumPasswordLength(newPassword)) {
+            return NextResponse.json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` }, { status: 400 });
         }
 
         const user = await prisma.user.findUnique({

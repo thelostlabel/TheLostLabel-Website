@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
 import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
 import { enqueueArtistRoleSyncForRelease, insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
+import { hasValidCronAuthorization } from "@/lib/cron-auth";
 
 const DEFAULT_PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
 const NETWORK_TIMEOUT_MS = 10000;
@@ -29,15 +30,14 @@ const createTransientNetworkError = (status, context) => {
 export async function POST(req) {
     const session = await getServerSession(authOptions);
 
-    // Allow cron job with secret OR admin access
+    // Allow authenticated cron job via Authorization header OR admin access
     const { searchParams } = new URL(req.url);
-    const cronSecret = searchParams.get('secret');
     const scrapeListeners = searchParams.get('scrape') !== 'false';
     const requestedResultsLimit = Number.parseInt(searchParams.get('resultsLimit') || '20', 10);
     const resultsLimit = Number.isFinite(requestedResultsLimit)
         ? Math.max(1, Math.min(requestedResultsLimit, 500))
         : 20;
-    const isValidCron = cronSecret === process.env.CRON_SECRET;
+    const isValidCron = hasValidCronAuthorization(req);
     const isAdmin = session?.user?.role === 'admin';
 
     if (!isValidCron && !isAdmin) {

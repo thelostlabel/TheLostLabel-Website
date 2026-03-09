@@ -5,7 +5,25 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import ArtistView from '@/app/components/dashboard/ArtistView';
 import AdminView from '@/app/components/dashboard/AdminView';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
+import { canViewAllDemos, canViewUsers, hasAdminViewPermission, hasManagementAccess, isAdminUser } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+
+const MANAGEMENT_VIEW_PERMS = {
+    overview: 'admin_view_overview',
+    submissions: 'admin_view_submissions',
+    artists: 'admin_view_artists',
+    users: 'admin_view_users',
+    requests: 'admin_view_requests',
+    content: 'admin_view_content',
+    webhooks: 'admin_view_webhooks',
+    contracts: 'admin_view_contracts',
+    earnings: 'admin_view_earnings',
+    payments: 'admin_view_payments',
+    releases: 'admin_view_releases',
+    settings: 'admin_view_settings',
+    communications: 'admin_view_communications',
+    'discord-bridge': 'admin_view_discord_bridge'
+};
 
 function DashboardContent() {
     const { data: session, status, update } = useSession();
@@ -73,9 +91,12 @@ function DashboardContent() {
         return null;
     }
 
-    const { role, status: accountStatus } = session.user;
+    const { status: accountStatus } = session.user;
 
-    if (accountStatus === 'pending' && role !== 'admin') {
+    const canAccessManagement = hasManagementAccess(session.user);
+    const canBypassApprovalGate = isAdminUser(session.user);
+
+    if (accountStatus === 'pending' && !canBypassApprovalGate) {
         return (
             <div className="flex min-h-[80vh] items-center justify-center p-5">
                 <div className="w-full max-w-[500px] rounded-3xl border border-amber-400/25 bg-amber-400/5 p-10 text-center">
@@ -95,7 +116,7 @@ function DashboardContent() {
         );
     }
 
-    if (accountStatus === 'rejected' && role !== 'admin') {
+    if (accountStatus === 'rejected' && !canBypassApprovalGate) {
         return (
             <div className="flex min-h-[80vh] items-center justify-center p-5">
                 <div className="w-full max-w-[500px] rounded-2xl border border-red-400/25 bg-red-400/5 p-10 text-center">
@@ -109,8 +130,16 @@ function DashboardContent() {
     }
 
     const isArtistView = view.startsWith('my-');
+    const canOpenRequestedManagementView = view === 'submissions'
+        ? canViewAllDemos(session.user)
+        : view === 'users'
+            ? canViewUsers(session.user)
+            : hasAdminViewPermission(session.user, MANAGEMENT_VIEW_PERMS[view]);
 
-    if (role === 'admin' || role === 'a&r') {
+    if (canAccessManagement) {
+        if (!isArtistView && view === 'overview' && !canOpenRequestedManagementView) {
+            return <ArtistView />;
+        }
         if (isArtistView) return <ArtistView />;
         return <AdminView />;
     } else {

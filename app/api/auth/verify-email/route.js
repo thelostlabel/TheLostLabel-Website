@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { linkUserToArtist } from '@/lib/userArtistLink';
+import rateLimit from '@/lib/rate-limit';
+import { buildRateLimitKey, hashOpaqueToken, passesRateLimit } from '@/lib/security';
+
+const verifyEmailLimiter = rateLimit({
+    interval: 15 * 60 * 1000,
+    uniqueTokenPerInterval: 5000
+});
 
 export async function POST(req) {
     try {
         const { token } = await req.json();
+
+        const allowed = await passesRateLimit(verifyEmailLimiter, 10, buildRateLimitKey(req, 'verify-email'));
+        if (!allowed) {
+            return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+        }
 
         if (!token) {
             return NextResponse.json({ error: "Missing token" }, { status: 400 });
@@ -12,7 +24,7 @@ export async function POST(req) {
 
         const user = await prisma.user.findFirst({
             where: {
-                verificationToken: token,
+                verificationToken: hashOpaqueToken(token),
                 verificationTokenExpiry: {
                     gt: new Date()
                 }
