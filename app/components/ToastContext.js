@@ -1,9 +1,25 @@
 "use client";
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle, Sparkles } from 'lucide-react';
 
 const ToastContext = createContext(null);
+const CHANGELOG_STORAGE_PREFIX = 'seenChangelog';
+const CHANGELOG_DELAY_MS = 1200;
+const changelogData = {
+    id: 'changelog-2026-03-10-v3',
+    eyebrow: 'Portal Update',
+    title: "What's New in the Dashboard",
+    description: 'A few improvements just shipped to make the artist portal cleaner, safer, and easier to manage.',
+    items: [
+        'Contract access rules are now stricter for better account security.',
+        'PDF viewing and document handling are more stable across the portal.',
+        'Deployment tooling was optimized for faster pnpm-based releases.',
+        'Admin-side data filters were refined for cleaner management workflows.'
+    ]
+};
 
 export const useToast = () => {
     const context = useContext(ToastContext);
@@ -12,41 +28,46 @@ export const useToast = () => {
 };
 
 export const ToastProvider = ({ children }) => {
+    const { data: session, status } = useSession();
+    const pathname = usePathname();
     const [toasts, setToasts] = useState([]);
     const [confirm, setConfirm] = useState(null);
     const [changelog, setChangelog] = useState(null);
+    const currentUserId = session?.user?.id || null;
+    const isDashboardRoute = pathname?.startsWith('/dashboard');
 
-    // Changelog verileri - siteye özel değişiklikler buraya eklenecek
-    const changelogData = {
-        id: 'changelog-2026-03-06-v2',
-        title: '🔒 Güvenlik ve Sistem Güncellemesi',
-        items: [
-            '🛡️ Kontrat erişim yetkileri sıkılaştırıldı (Güvenlik Paketi)',
-            '📄 Akıllı PDF işleme sistemi iyileştirildi',
-            '🚀 Dağıtım (Deployment) sistemi pnpm desteğiyle optimize edildi',
-            '⚙️ Yönetici paneli veri filtreleme özellikleri güncellendi'
-        ]
-    };
+    const changelogStorageKey = useMemo(() => {
+        if (!currentUserId) return null;
+        return `${CHANGELOG_STORAGE_PREFIX}:${currentUserId}:${changelogData.id}`;
+    }, [currentUserId]);
 
-    // Component mount olduğunda changelog göster
+    const activeChangelog = currentUserId && isDashboardRoute && changelog?.userId === currentUserId
+        ? changelog
+        : null;
+
     useEffect(() => {
-        const lastSeenChangelog = localStorage.getItem('lastSeenChangelog');
+        if (status === 'loading') return;
+        if (!currentUserId || !isDashboardRoute || !changelogStorageKey) return;
 
-        // Eğer daha önce görülmemiş veya yeni bir changelog varsa göster
-        if (!lastSeenChangelog || lastSeenChangelog !== changelogData.id) {
-            // Kısa bir gecikme ile göster ki kullanıcı siteyi açtığında hemen gelmesin
-            const timer = setTimeout(() => {
-                setChangelog(changelogData);
-            }, 1500);
+        const hasSeenChangelog = localStorage.getItem(changelogStorageKey) === '1';
+        if (hasSeenChangelog || activeChangelog) return;
 
-            return () => clearTimeout(timer);
-        }
-    }, []);
+        const timer = setTimeout(() => {
+            setChangelog({
+                ...changelogData,
+                userId: currentUserId
+            });
+        }, CHANGELOG_DELAY_MS);
+
+        return () => clearTimeout(timer);
+    }, [activeChangelog, changelogStorageKey, currentUserId, isDashboardRoute, status]);
 
     const closeChangelog = useCallback(() => {
         setChangelog(null);
-        localStorage.setItem('lastSeenChangelog', changelogData.id);
-    }, []);
+        if (changelogStorageKey) {
+            localStorage.setItem(changelogStorageKey, '1');
+        }
+    }, [changelogStorageKey]);
 
     const showToast = useCallback((message, type = 'info', duration = 5000) => {
         const id = Math.random().toString(36).substring(2, 9);
@@ -81,9 +102,9 @@ export const ToastProvider = ({ children }) => {
         <ToastContext.Provider value={{ showToast, removeToast, showConfirm }}>
             {children}
             <AnimatePresence>
-                {changelog && (
+                {activeChangelog && (
                     <ChangelogCard
-                        {...changelog}
+                        {...activeChangelog}
                         onClose={closeChangelog}
                     />
                 )}
@@ -306,185 +327,216 @@ const ConfirmModal = ({ title, message, onConfirm, onCancel }) => {
     );
 };
 
-// Changelog Kartı Bileşeni - Son yapılan değişiklikleri gösterir
-const ChangelogCard = ({ title, items, onClose }) => {
+const ChangelogCard = ({ eyebrow, title, description, items, onClose }) => {
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             style={{
                 position: 'fixed',
-                bottom: '30px',
-                left: '30px',
-                zIndex: 9998,
-                background: 'linear-gradient(135deg, rgba(20, 20, 25, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)',
-                backdropFilter: 'blur(30px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '24px',
-                padding: '28px',
-                maxWidth: '400px',
-                width: '90vw',
-                boxShadow: '0 30px 60px rgba(0,0,0,0.5), 0 0 40px rgba(139, 92, 246, 0.1)',
+                inset: 0,
+                zIndex: 10000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px',
+                background: 'rgba(0, 0, 0, 0.72)',
+                backdropFilter: 'blur(16px)',
                 pointerEvents: 'auto'
             }}
+            onClick={onClose}
         >
-            {/* Gradient border effect */}
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '24px',
-                padding: '1px',
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, rgba(59, 130, 246, 0.3) 100%)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-                pointerEvents: 'none'
-            }} />
-
-            {/* Header */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '20px'
-            }}>
+            <motion.div
+                initial={{ opacity: 0, y: 28, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 18, scale: 0.97 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                style={{
+                    position: 'relative',
+                    width: 'min(560px, 100%)',
+                    maxHeight: 'min(720px, calc(100vh - 48px))',
+                    overflowY: 'auto',
+                    background: 'linear-gradient(180deg, rgba(18, 18, 20, 0.98) 0%, rgba(10, 10, 11, 0.98) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '28px',
+                    padding: '28px',
+                    boxShadow: '0 40px 120px rgba(0, 0, 0, 0.55)'
+                }}
+                onClick={(event) => event.stopPropagation()}
+            >
                 <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                }}>
-                    <div style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '14px',
-                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Sparkles size={22} color="#a78bfa" />
-                    </div>
-                    <h3 style={{
-                        fontSize: '18px',
-                        fontWeight: '900',
-                        color: '#fff',
-                        margin: 0,
-                        letterSpacing: '-0.5px'
-                    }}>
-                        {title}
-                    </h3>
-                </div>
-                <button
-                    onClick={onClose}
-                    style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: 'none',
-                        color: '#666',
-                        cursor: 'pointer',
-                        padding: '8px',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                        e.currentTarget.style.color = '#fff';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                        e.currentTarget.style.color = '#666';
-                    }}
-                >
-                    <X size={18} />
-                </button>
-            </div>
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '28px',
+                    background: 'radial-gradient(circle at top right, rgba(255,255,255,0.1) 0%, transparent 36%)',
+                    pointerEvents: 'none'
+                }} />
 
-            {/* Items */}
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-            }}>
-                {items.map((item, index) => (
-                    <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 + index * 0.1 }}
-                        style={{
+                <div style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: '18px',
+                    marginBottom: '24px'
+                }}>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                        <div style={{
+                            width: '52px',
+                            height: '52px',
+                            borderRadius: '16px',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.08)',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
-                            padding: '12px 16px',
-                            background: 'rgba(255,255,255,0.02)',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                        }}>
+                            <Sparkles size={22} color="#F5F5F5" />
+                        </div>
+                        <div>
+                            <div style={{
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                color: 'rgba(255,255,255,0.48)',
+                                letterSpacing: '0.16em',
+                                textTransform: 'uppercase',
+                                marginBottom: '8px'
+                            }}>
+                                {eyebrow}
+                            </div>
+                            <h3 style={{
+                                fontSize: 'clamp(24px, 4vw, 30px)',
+                                fontWeight: '900',
+                                color: '#fff',
+                                margin: 0,
+                                lineHeight: '1.05',
+                                letterSpacing: '-0.03em'
+                            }}>
+                                {title}
+                            </h3>
+                            <p style={{
+                                margin: '12px 0 0',
+                                fontSize: '14px',
+                                lineHeight: '1.7',
+                                color: 'rgba(255,255,255,0.68)',
+                                maxWidth: '420px'
+                            }}>
+                                {description}
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            color: 'rgba(255,255,255,0.55)',
+                            cursor: 'pointer',
+                            padding: '10px',
                             borderRadius: '12px',
-                            border: '1px solid rgba(255,255,255,0.03)'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
                         }}
                     >
-                        <div style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
-                            flexShrink: 0
-                        }} />
-                        <span style={{
-                            fontSize: '13px',
-                            color: 'rgba(255,255,255,0.85)',
-                            lineHeight: '1.4'
-                        }}>
-                            {item}
-                        </span>
-                    </motion.div>
-                ))}
-            </div>
+                        <X size={18} />
+                    </button>
+                </div>
 
-            {/* Footer */}
-            <div style={{
-                marginTop: '20px',
-                paddingTop: '16px',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-            }}>
-                <span style={{
-                    fontSize: '11px',
-                    color: '#444',
-                    letterSpacing: '0.5px'
+                <div style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
                 }}>
-                    THE LOST LABEL
-                </span>
-                <button
-                    onClick={onClose}
-                    style={{
-                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%)',
-                        border: 'none',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        padding: '10px 20px',
-                        borderRadius: '10px',
+                    {items.map((item, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.08 + index * 0.07 }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '12px',
+                                padding: '14px 16px',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '16px',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                            }}
+                        >
+                            <div style={{
+                                width: '9px',
+                                height: '9px',
+                                borderRadius: '999px',
+                                background: '#FFFFFF',
+                                opacity: 0.9,
+                                marginTop: '6px',
+                                flexShrink: 0
+                            }} />
+                            <span style={{
+                                fontSize: '14px',
+                                color: 'rgba(255,255,255,0.84)',
+                                lineHeight: '1.55'
+                            }}>
+                                {item}
+                            </span>
+                        </motion.div>
+                    ))}
+                </div>
+
+                <div style={{
+                    position: 'relative',
+                    marginTop: '24px',
+                    paddingTop: '18px',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    flexWrap: 'wrap'
+                }}>
+                    <span style={{
                         fontSize: '12px',
-                        fontWeight: '700',
-                        letterSpacing: '0.5px',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(139, 92, 246, 0.3)';
-                    }}
-                >
-                    TAMAM
-                </button>
-            </div>
+                        color: 'rgba(255,255,255,0.42)',
+                        lineHeight: '1.5'
+                    }}>
+                        Once dismissed, this update will stay hidden for this account on this browser.
+                    </span>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: '#F5F5F5',
+                            border: 'none',
+                            color: '#090909',
+                            cursor: 'pointer',
+                            padding: '12px 18px',
+                            borderRadius: '14px',
+                            fontSize: '12px',
+                            fontWeight: '900',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase'
+                        }}
+                    >
+                        Got It
+                    </button>
+                </div>
+            </motion.div>
         </motion.div>
     );
 };
