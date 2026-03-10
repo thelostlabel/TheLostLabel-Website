@@ -2,13 +2,33 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+const PUBLIC_CONTENT_KEYS = new Set([
+    "faq",
+    "join_genres",
+    "join_commissions",
+    "terms",
+    "privacy",
+    "commission_rules"
+]);
+
+function isAdminSession(session) {
+    return Boolean(session?.user?.role === "admin");
+}
+
 // GET: Fetch site content by key
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
+    const key = String(searchParams.get('key') || '').trim();
 
     try {
         if (key) {
+            if (!PUBLIC_CONTENT_KEYS.has(key)) {
+                const session = await getServerSession(authOptions);
+                if (!isAdminSession(session)) {
+                    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+                }
+            }
+
             let content = await prisma.siteContent.findUnique({
                 where: { key }
             });
@@ -32,6 +52,11 @@ export async function GET(req) {
 
             return new Response(JSON.stringify(content), { status: 200 });
         } else {
+            const session = await getServerSession(authOptions);
+            if (!isAdminSession(session)) {
+                return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+            }
+
             const allContent = await prisma.siteContent.findMany();
             return new Response(JSON.stringify(allContent), { status: 200 });
         }
@@ -44,7 +69,7 @@ export async function GET(req) {
 export async function POST(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!isAdminSession(session)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 

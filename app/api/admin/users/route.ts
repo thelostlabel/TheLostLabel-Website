@@ -7,6 +7,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { getDiscordLinkByUserId, enqueueRoleSync } from "@/lib/discord-bridge-service";
 import { sendMail } from "@/lib/mail";
+import { generateAccountApprovalEmail } from "@/lib/mail-templates";
 import {
   canDeleteUsers,
   canEditUsers,
@@ -18,6 +19,7 @@ import {
   stringifyPermissions,
 } from "@/lib/permissions";
 import prisma from "@/lib/prisma";
+import { generateOpaqueToken, hashOpaqueToken } from "@/lib/security";
 import { linkUserToArtist } from "@/lib/userArtistLink";
 import type { ApiErrorResponse } from "@/types/api";
 import type { AdminUserUpdateInput } from "@/types/admin";
@@ -212,23 +214,28 @@ export async function PATCH(req: Request) {
       }
 
       try {
+        const loginLink = `${process.env.NEXTAUTH_URL}/auth/login`;
+        let verificationLink: string | null = null;
+
+        if (!updatedUser.emailVerified) {
+          const verificationToken = generateOpaqueToken();
+          const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              verificationToken: hashOpaqueToken(verificationToken),
+              verificationTokenExpiry,
+            },
+          });
+
+          verificationLink = `${process.env.NEXTAUTH_URL}/auth/verify-email?token=${verificationToken}`;
+        }
+
         await sendMail({
           to: updatedUser.email,
           subject: "Your Account Has Been Approved | LOST.",
-          html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0d10; color: #fff; padding: 32px; border-radius: 12px; border: 1px solid #1b1f24;">
-                  <h1 style="color: #9ef01a; letter-spacing: 1px; margin: 0 0 16px 0;">Your Account Has Been Approved</h1>
-                  <p style="font-size: 16px; line-height: 1.6;">
-                      Your application to join LOST. has been approved. You can now sign in and start using your dashboard.
-                  </p>
-                  <div style="margin-top: 24px;">
-                      <a href="${process.env.NEXTAUTH_URL}/auth/login" style="background: #ffffff; color: #111; padding: 12px 20px; text-decoration: none; font-weight: 700; border-radius: 8px; display: inline-block;">Sign In to Dashboard</a>
-                  </div>
-                  <p style="margin-top: 28px; color: #97a0ab; font-size: 12px;">
-                      If this was not you, please contact our support team immediately.
-                  </p>
-              </div>
-          `,
+          html: generateAccountApprovalEmail(loginLink, verificationLink),
         });
       } catch (mailError) {
         console.error("[Users PATCH] Approval email failed:", mailError);

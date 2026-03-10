@@ -5,6 +5,7 @@ import { Readable } from "stream";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { hasContractAccess, isPrivilegedContractViewer } from "@/lib/contract-visibility";
 
 const MIME_BY_EXT = {
   ".jpg": "image/jpeg",
@@ -38,10 +39,39 @@ export async function GET(req, { params }) {
 
   const release = await prisma.release.findUnique({
     where: { id: releaseId },
-    select: { image: true },
+    select: {
+      image: true,
+      contracts: {
+        select: {
+          userId: true,
+          primaryArtistEmail: true,
+          artist: {
+            select: {
+              userId: true,
+              email: true,
+            },
+          },
+          splits: {
+            select: {
+              userId: true,
+              email: true,
+              user: {
+                select: {
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!release?.image) return new Response("Not found", { status: 404 });
+
+  const canAccess = isPrivilegedContractViewer(session.user) ||
+    release.contracts.some((contract) => hasContractAccess(session.user, contract));
+  if (!canAccess) return new Response("Forbidden", { status: 403 });
 
   try {
     const candidates = resolvePath(release.image);
@@ -71,7 +101,8 @@ export async function GET(req, { params }) {
         "Content-Type": contentType,
         "Content-Length": info.size.toString(),
         "Content-Disposition": `${isDownload ? "attachment" : "inline"}; filename="cover-${releaseId}${ext || ''}"`,
-        "Cache-Control": "public, max-age=604800, immutable",
+        "Cache-Control": "private, no-store",
+        "Vary": "Cookie",
       },
     });
   } catch (err) {

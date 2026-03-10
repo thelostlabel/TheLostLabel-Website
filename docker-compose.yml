@@ -29,7 +29,7 @@ services:
       - BOT_DATABASE_URL=${DATABASE_URL}
       - BOT_DB_SCHEMA=${BOT_DB_SCHEMA:-discord_bot}
       - LOST_SITE_INTERNAL_BASE_URL=http://lost-website:3000
-      - LOST_SITE_PUBLIC_BASE_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - LOST_SITE_PUBLIC_BASE_URL=${NEXTAUTH_URL:-https://thelostlabel.com}
       - DISCORD_COMMAND_PROFILE=${DISCORD_COMMAND_PROFILE:-artist_core}
     volumes:
       - bot_data:/app/data

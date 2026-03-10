@@ -84,7 +84,8 @@ export async function GET(req, { params }) {
                 "Content-Type": contentType,
                 "Content-Length": info.size.toString(),
                 "Accept-Ranges": "bytes",
-                "Cache-Control": "public, max-age=86400",
+                "Cache-Control": "private, no-store",
+                "Vary": "Cookie",
             },
         });
     } catch (err) {

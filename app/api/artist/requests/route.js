@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+}
+
 function extractSpotifyArtistId(url) {
     if (!url || typeof url !== "string") return null;
     const parts = url.split("/").filter(Boolean);
@@ -61,6 +65,9 @@ export async function POST(req) {
         });
 
         const supportEmail = process.env.SUPPORT_EMAIL || 'support@thelostlabel.com';
+        const safeStageName = escapeHtml(session.user.stageName || 'Artist');
+        const safeDetails = escapeHtml(normalizedDetails).replace(/\n/g, '<br>');
+        const safeEmail = escapeHtml(session.user.email || '');
 
         await Promise.allSettled([
             sendMail({
@@ -69,10 +76,10 @@ export async function POST(req) {
                 html: `
                     <div style="font-family: sans-serif; color: #333;">
                         <h2>Support Ticket Created</h2>
-                        <p>Hello <strong>${session.user.stageName || 'Artist'}</strong>,</p>
+                        <p>Hello <strong>${safeStageName}</strong>,</p>
                         <p>Your support request has been created successfully.</p>
                         <p><strong>Type:</strong> ${normalizedType.toUpperCase().replace('_', ' ')}</p>
-                        <p><strong>Details:</strong> ${normalizedDetails}</p>
+                        <p><strong>Details:</strong> ${safeDetails}</p>
                         <p>Our support team will review it shortly. You can track status from your dashboard.</p>
                         <br>
                         <p>Best,<br>LOST. Team</p>
@@ -87,9 +94,9 @@ export async function POST(req) {
                 html: `
                     <div style="font-family: sans-serif; color: #333;">
                         <h2>New Support Ticket</h2>
-                        <p><strong>Artist:</strong> ${session.user.stageName || 'Unknown'} (${session.user.email})</p>
+                        <p><strong>Artist:</strong> ${safeStageName} (${safeEmail})</p>
                         <p><strong>Type:</strong> ${normalizedType.toUpperCase().replace('_', ' ')}</p>
-                        <p><strong>Details:</strong> ${normalizedDetails}</p>
+                        <p><strong>Details:</strong> ${safeDetails}</p>
                         <br>
                         <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
                     </div>

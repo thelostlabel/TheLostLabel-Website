@@ -2,11 +2,26 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+function isAdminSession(session) {
+    return Boolean(session?.user?.role === "admin");
+}
+
+function isValidDiscordWebhookUrl(value) {
+    try {
+        const parsed = new URL(String(value || "").trim());
+        return parsed.protocol === "https:" &&
+            parsed.hostname === "discord.com" &&
+            /^\/api\/webhooks\/[^/]+\/[^/]+$/.test(parsed.pathname);
+    } catch {
+        return false;
+    }
+}
+
 // GET: Fetch all webhooks
 export async function GET(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!isAdminSession(session)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -24,23 +39,24 @@ export async function GET(req) {
 export async function POST(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!isAdminSession(session)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
     try {
         const { name, url, events, config, enabled = true } = await req.json();
+        const normalizedUrl = String(url || "").trim();
 
-        if (!name || !url) {
+        if (!name || !normalizedUrl) {
             return new Response(JSON.stringify({ error: "Name and URL are required" }), { status: 400 });
         }
 
-        if (!url.startsWith("https://discord.com/api/webhooks/")) {
+        if (!isValidDiscordWebhookUrl(normalizedUrl)) {
             return new Response(JSON.stringify({ error: "Invalid Discord Webhook URL" }), { status: 400 });
         }
 
         const webhook = await prisma.webhook.create({
-            data: { name, url, events: events || '', config: config || null, enabled }
+            data: { name, url: normalizedUrl, events: events || '', config: config || null, enabled }
         });
 
         return new Response(JSON.stringify(webhook), { status: 201 });
@@ -53,7 +69,7 @@ export async function POST(req) {
 export async function PATCH(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!isAdminSession(session)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -64,9 +80,13 @@ export async function PATCH(req) {
             return new Response(JSON.stringify({ error: "Webhook ID required" }), { status: 400 });
         }
 
+        if (url !== undefined && !isValidDiscordWebhookUrl(url)) {
+            return new Response(JSON.stringify({ error: "Invalid Discord Webhook URL" }), { status: 400 });
+        }
+
         const updateData = {};
         if (name !== undefined) updateData.name = name;
-        if (url !== undefined) updateData.url = url;
+        if (url !== undefined) updateData.url = String(url).trim();
         if (events !== undefined) updateData.events = events;
         if (config !== undefined) updateData.config = config;
         if (enabled !== undefined) updateData.enabled = enabled;
@@ -86,7 +106,7 @@ export async function PATCH(req) {
 export async function DELETE(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== 'admin') {
+    if (!isAdminSession(session)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 

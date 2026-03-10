@@ -30,25 +30,32 @@ export default function WebhooksView({ webhooks, onRefresh }) {
     const handleSave = async () => {
         setSaving(true);
         try {
+            let res;
             if (editingWebhook) {
-                await fetch('/api/admin/webhooks', {
+                res = await fetch('/api/admin/webhooks', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: editingWebhook.id, ...form })
                 });
             } else {
-                await fetch('/api/admin/webhooks', {
+                res = await fetch('/api/admin/webhooks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(form)
                 });
             }
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Save failed');
+            }
+
             resetForm();
             showToast("Webhook configuration saved", "success");
             onRefresh();
         } catch (e) {
             console.error(e);
-            showToast('Save failed', "error");
+            showToast(e.message || 'Save failed', "error");
         } finally {
             setSaving(false);
         }
@@ -60,12 +67,16 @@ export default function WebhooksView({ webhooks, onRefresh }) {
             "Are you sure you want to delete this webhook? It will stop receiving events immediately.",
             async () => {
                 try {
-                    await fetch(`/api/admin/webhooks?id=${id}`, { method: 'DELETE' });
+                    const res = await fetch(`/api/admin/webhooks?id=${id}`, { method: 'DELETE' });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.error || 'Delete failed');
+                    }
                     showToast("Webhook deleted", "success");
                     onRefresh();
                 } catch (e) {
                     console.error(e);
-                    showToast("Delete failed", "error");
+                    showToast(e.message || "Delete failed", "error");
                 }
             }
         );
@@ -73,26 +84,37 @@ export default function WebhooksView({ webhooks, onRefresh }) {
 
     const handleToggle = async (webhook) => {
         try {
-            await fetch('/api/admin/webhooks', {
+            const res = await fetch('/api/admin/webhooks', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: webhook.id, enabled: !webhook.enabled })
             });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Toggle failed');
+            }
             onRefresh();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            showToast(e.message || 'Toggle failed', "error");
+        }
     };
 
-    const testWebhook = async (url) => {
+    const testWebhook = async (webhookId) => {
         try {
-            await fetch(url, {
+            const res = await fetch('/api/webhook/test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    embeds: [{ title: '🔔 Webhook Test', description: 'This is a test notification from LOST Admin Panel.', color: 0x00ff88 }]
-                })
+                body: JSON.stringify({ webhookId })
             });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || 'Test failed');
+            }
             showToast('Test webhook sent!', "success");
-        } catch (e) { showToast('Test failed', "error"); }
+        } catch (e) {
+            showToast(e.message || 'Test failed', "error");
+        }
     };
 
     return (
@@ -266,7 +288,7 @@ export default function WebhooksView({ webhooks, onRefresh }) {
                                 </td>
                                 <td data-label="ACTIONS" style={tdStyle}>
                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button onClick={() => testWebhook(webhook.url)} style={{ ...btnStyle, fontSize: '9px', background: 'var(--glass)' }}>TEST</button>
+                                        <button onClick={() => testWebhook(webhook.id)} style={{ ...btnStyle, fontSize: '9px', background: 'var(--glass)' }}>TEST</button>
                                         <button onClick={() => {
                                             setEditingWebhook(webhook);
                                             setForm({
