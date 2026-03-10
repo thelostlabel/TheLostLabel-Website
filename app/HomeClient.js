@@ -475,7 +475,7 @@ export default function Home() {
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at center, transparent 0%, #0a0a0c 90%)" }} />
           <Particles
             className="absolute inset-0 z-[2] opacity-50"
-            quantity={58}
+            quantity={24}
             staticity={65}
             ease={70}
             size={0.45}

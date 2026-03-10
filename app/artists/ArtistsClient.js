@@ -248,7 +248,7 @@ export default function ArtistsPage() {
                 </div>
             </div>
 
-            <style jsx>{`
+            <style jsx global>{`
                 .artists-page {
                     background: transparent;
                     color: #fff;

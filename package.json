@@ -36,8 +36,12 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "prisma": "^6.19.2"
+    "prisma": "^6.19.2",
+    "typescript": "^5.9.3"
   }
 }

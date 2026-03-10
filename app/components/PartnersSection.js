@@ -1,10 +1,14 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import {
   useScroll,
   useSpring,
   useVelocity,
   useAnimationFrame,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
 } from "framer-motion";
 
 function wrap(min, max, v) {
@@ -125,30 +129,33 @@ function LogoItem({ name, Icon }) {
 }
 
 function LogoRow({ logos, baseVelocity = 1.2, scrollFactor = 3 }) {
-  const [xPercent, setXPercent] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
   const { scrollY } = useScroll();
   const scrollVelocity = useVelocity(scrollY);
   const smoothVelocity = useSpring(scrollVelocity, { damping: 50, stiffness: 400 });
 
   const baseDir = baseVelocity >= 0 ? 1 : -1;
   const xRef = useRef(0);
+  const xPercent = useMotionValue(0);
+  const x = useTransform(xPercent, (value) => `${value}%`);
 
   useAnimationFrame((_, delta) => {
+    if (shouldReduceMotion) return;
     const rawVf = smoothVelocity.get();
     const boost = (rawVf / 1000) * scrollFactor * baseDir;
     const speed = Math.abs(baseVelocity) + Math.max(0, boost * baseDir);
     const moveBy = baseDir * speed * (delta / 1000);
     xRef.current = wrap(-50, 0, xRef.current + moveBy);
-    setXPercent(xRef.current);
+    xPercent.set(xRef.current);
   });
 
-  const repeated = [...logos, ...logos, ...logos, ...logos, ...logos, ...logos];
+  const repeated = [...logos, ...logos, ...logos];
 
   return (
     <div style={{ display: "flex", overflow: "hidden" }}>
-      <div
+      <motion.div
         style={{
-          transform: `translateX(${xPercent}%)`,
+          x,
           display: "flex",
           alignItems: "center",
           willChange: "transform",
@@ -160,7 +167,7 @@ function LogoRow({ logos, baseVelocity = 1.2, scrollFactor = 3 }) {
         {repeated.map((logo, i) => (
           <LogoItem key={`b-${i}`} name={logo.name} Icon={logo.Icon} />
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }
