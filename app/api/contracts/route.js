@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { sanitizeContractForViewer } from "@/lib/contract-visibility";
 import prisma from "@/lib/prisma";
 import { embedContractMetaInNotes, extractContractMetaAndNotes } from "@/lib/contract-template";
 
@@ -69,7 +70,7 @@ export async function GET(req) {
             artist: true,
             splits: {
                 include: {
-                    user: { select: { id: true, stageName: true } }
+                    user: { select: { id: true, email: true, stageName: true } }
                 }
             },
             _count: {
@@ -108,7 +109,8 @@ export async function GET(req) {
             });
         }
 
-        return new Response(JSON.stringify({ contracts }), { status: 200 });
+        const visibleContracts = contracts.map((contract) => sanitizeContractForViewer(contract, session.user));
+        return new Response(JSON.stringify({ contracts: visibleContracts }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

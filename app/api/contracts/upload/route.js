@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { createRequire } from 'module';
@@ -33,8 +33,10 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "PDF too large (max 25MB)." }), { status: 400 });
         }
 
-        // Create uploads directory if not exists
-        const uploadsDir = join(process.cwd(), 'private', 'uploads', 'contracts');
+        const storageRoot = process.env.PRIVATE_STORAGE_ROOT
+            ? resolve(process.env.PRIVATE_STORAGE_ROOT)
+            : join(process.cwd(), 'private');
+        const uploadsDir = join(storageRoot, 'uploads', 'contracts');
         await mkdir(uploadsDir, { recursive: true });
 
         // Generate unique filename

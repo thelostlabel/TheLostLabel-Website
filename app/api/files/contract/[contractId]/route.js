@@ -23,7 +23,11 @@ function formatDate(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
-async function buildLegacyGeneratedContractPdf(contract) {
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function buildLegacyGeneratedContractPdf(contract, { includeContacts = true } = {}) {
   const { details, userNotes } = extractContractMetaAndNotes(contract.notes || "");
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4
@@ -66,9 +70,13 @@ async function buildLegacyGeneratedContractPdf(contract) {
   drawLine("PARTIES", { bold: true, size: 12, gap: 16 });
   drawLine("Label: The Lost Label", { size: 10, gap: 14 });
   drawLine(`Artist: ${mainArtistName}`, { size: 10, gap: 14 });
-  drawLine(`Artist Legal Name: ${details.artistLegalName || contract.user?.legalName || "-"}`, { size: 10, gap: 14 });
-  drawLine(`Artist Phone: ${details.artistPhone || contract.user?.phoneNumber || "-"}`, { size: 10, gap: 14 });
-  drawLine(`Artist Address: ${details.artistAddress || contract.user?.address || "-"}`, { size: 10, gap: 22 });
+  if (includeContacts) {
+    drawLine(`Artist Legal Name: ${details.artistLegalName || contract.user?.legalName || "-"}`, { size: 10, gap: 14 });
+    drawLine(`Artist Phone: ${details.artistPhone || contract.user?.phoneNumber || "-"}`, { size: 10, gap: 14 });
+    drawLine(`Artist Address: ${details.artistAddress || contract.user?.address || "-"}`, { size: 10, gap: 22 });
+  } else {
+    drawLine("Artist Contact Details: Hidden for collaborator privacy", { size: 10, gap: 22 });
+  }
 
   drawLine("RECORDING INFORMATION", { bold: true, size: 12, gap: 16 });
   drawLine(`Release/Project: ${releaseTitle}`, { size: 10, gap: 14 });
@@ -102,12 +110,16 @@ async function buildLegacyGeneratedContractPdf(contract) {
         "-";
       const splitRole = split.role ? ` [${String(split.role).toUpperCase()}]` : "";
       drawLine(`- ${split.name}${splitRole}: ${Number(split.percentage || 0).toFixed(2)}% of artist share`, { size: 10, gap: 13 });
-      drawLine(`  Legal Name: ${splitLegalName}`, { size: 9, gap: 12, color: rgb(0.25, 0.25, 0.25) });
-      drawLine(`  Phone: ${splitPhone}`, { size: 9, gap: 12, color: rgb(0.25, 0.25, 0.25) });
-      if (split.email) {
-        drawLine(`  Email: ${split.email}`, { size: 9, gap: 12, color: rgb(0.25, 0.25, 0.25) });
+      if (includeContacts) {
+        drawLine(`  Legal Name: ${splitLegalName}`, { size: 9, gap: 12, color: rgb(0.25, 0.25, 0.25) });
+        drawLine(`  Phone: ${splitPhone}`, { size: 9, gap: 12, color: rgb(0.25, 0.25, 0.25) });
+        if (split.email) {
+          drawLine(`  Email: ${split.email}`, { size: 9, gap: 12, color: rgb(0.25, 0.25, 0.25) });
+        }
+        drawLine(`  Address: ${splitAddress}`, { size: 9, gap: 14, color: rgb(0.25, 0.25, 0.25) });
+      } else {
+        drawLine("  Contact Details: Hidden for collaborator privacy", { size: 9, gap: 14, color: rgb(0.25, 0.25, 0.25) });
       }
-      drawLine(`  Address: ${splitAddress}`, { size: 9, gap: 14, color: rgb(0.25, 0.25, 0.25) });
       if (y < 120) break;
     }
   }
@@ -133,7 +145,7 @@ async function buildLegacyGeneratedContractPdf(contract) {
   return Buffer.from(await pdfDoc.save());
 }
 
-async function buildGeneratedContractPdf(contract) {
+async function buildGeneratedContractPdf(contract, options = {}) {
   const { details } = extractContractMetaAndNotes(contract.notes || "");
   let featuredArtists = [];
   try {
@@ -258,7 +270,7 @@ async function buildGeneratedContractPdf(contract) {
     return Buffer.from(await pdfDoc.save());
   } catch (error) {
     console.warn("Contract template not found/readable, falling back to legacy PDF:", error?.message);
-    return buildLegacyGeneratedContractPdf(contract);
+    return buildLegacyGeneratedContractPdf(contract, options);
   }
 }
 
@@ -293,6 +305,7 @@ export async function GET(req, { params }) {
           user: {
             select: {
               id: true,
+              email: true,
               fullName: true,
               legalName: true,
               phoneNumber: true,
@@ -323,10 +336,15 @@ export async function GET(req, { params }) {
   if (!contract) return new Response("Not found", { status: 404 });
 
   const isAdminOrAR = session.user.role === "admin" || session.user.role === "a&r";
+  const viewerEmail = normalizeEmail(session.user.email);
   const isOwner = contract.userId && contract.userId === session.user.id;
   const isArtist = contract.artist?.userId && contract.artist.userId === session.user.id;
-  const isSplit = contract.splits?.some((s) => s.userId === session.user.id);
-  const isPrimaryEmail = contract.primaryArtistEmail && contract.primaryArtistEmail === session.user.email;
+  const isSplit = contract.splits?.some((s) =>
+    s.userId === session.user.id ||
+    normalizeEmail(s.email) === viewerEmail ||
+    normalizeEmail(s.user?.email) === viewerEmail
+  );
+  const isPrimaryEmail = normalizeEmail(contract.primaryArtistEmail) === viewerEmail;
 
   if (!isAdminOrAR && !isOwner && !isArtist && !isSplit && !isPrimaryEmail) {
     return new Response("Forbidden", { status: 403 });
@@ -336,9 +354,11 @@ export async function GET(req, { params }) {
     const url = new URL(req.url);
     const forceGenerated = url.searchParams.get("generated") === "1";
     const isDownload = url.searchParams.get("download") === "1";
+    const includeContacts = isAdminOrAR;
+    const shouldServeGenerated = forceGenerated || !contract.pdfUrl || !isAdminOrAR;
 
-    if (forceGenerated || !contract.pdfUrl) {
-      const bytes = await buildGeneratedContractPdf(contract);
+    if (shouldServeGenerated) {
+      const bytes = await buildGeneratedContractPdf(contract, { includeContacts });
       return new Response(bytes, {
         headers: {
           "Content-Type": "application/pdf",
@@ -363,7 +383,17 @@ export async function GET(req, { params }) {
       }
     }
 
-    if (!filePath || !fileStat) return new Response("Not found", { status: 404 });
+    if (!filePath || !fileStat) {
+      const bytes = await buildGeneratedContractPdf(contract, { includeContacts });
+      return new Response(bytes, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Length": bytes.length.toString(),
+          "Content-Disposition": `${isDownload ? "attachment" : "inline"}; filename="contract-${contract.id}-generated.pdf"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
 
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_BY_EXT[ext] || "application/octet-stream";

@@ -429,12 +429,27 @@ export async function POST(req) {
 
                     // Record history
                     if (monthlyListeners !== null) {
-                        await prisma.artistStatsHistory.create({
-                            data: {
-                                artistId: artist.id,
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        await prisma.artistStatsHistory.upsert({
+                            where: {
+                                artistId_date: {
+                                    artistId: artist.id,
+                                    date: today
+                                }
+                            },
+                            update: {
                                 monthlyListeners: monthlyListeners,
                                 followers: artist.followers?.total || 0,
                                 popularity: artist.popularity || 0
+                            },
+                            create: {
+                                artistId: artist.id,
+                                monthlyListeners: monthlyListeners,
+                                followers: artist.followers?.total || 0,
+                                popularity: artist.popularity || 0,
+                                date: today
                             }
                         });
                     }

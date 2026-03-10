@@ -54,14 +54,28 @@ export async function POST(req) {
                     updatedCount++;
                     results.push({ name: artist.name, status: 'success' });
 
-                    // Add to history
+                    // Add to history (upsert to avoid duplicates)
                     try {
-                        await prisma.artistStatsHistory.create({
-                            data: {
+                        // Normalize date to start of day
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        await prisma.artistStatsHistory.upsert({
+                            where: {
+                                artistId_date: {
+                                    artistId: artist.id,
+                                    date: today
+                                }
+                            },
+                            update: {
+                                monthlyListeners: stats.monthlyListeners,
+                                followers: stats.followers || 0
+                            },
+                            create: {
                                 artistId: artist.id,
                                 monthlyListeners: stats.monthlyListeners,
                                 followers: stats.followers || 0,
-                                date: new Date()
+                                date: today
                             }
                         });
                     } catch (hErr) {

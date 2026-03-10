@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { sanitizeContractForViewer } from "@/lib/contract-visibility";
 import prisma from "@/lib/prisma";
 
 function normalizeShare(value, defaultValue) {
@@ -61,7 +62,7 @@ export async function GET(req, { params }) {
             return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
         }
 
-        return new Response(JSON.stringify(contract), { status: 200 });
+        return new Response(JSON.stringify(sanitizeContractForViewer(contract, session.user)), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

@@ -115,6 +115,8 @@ async function canAccessAsset(user, normalizedPath) {
     });
 
     if (!contract) return { allowed: false, status: 404 };
+    const isAdminOrAR = user?.role === "admin" || user?.role === "a&r";
+    if (!isAdminOrAR) return { allowed: false, status: 403 };
     return hasContractAccess(user, contract)
       ? { allowed: true }
       : { allowed: false, status: 403 };

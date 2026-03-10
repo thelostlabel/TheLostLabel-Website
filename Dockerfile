@@ -89,7 +89,7 @@ RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 nextjs
 
 # Create upload directories with proper permissions
-RUN mkdir -p /app/private/uploads/{contracts,demos,releases} && \
+RUN mkdir -p /app/private/uploads/contracts /app/private/uploads/demos /app/private/uploads/releases && \
     chown -R nextjs:nodejs /app/private && \
     chmod 755 /app/private && \
     chmod 700 /app/private/uploads

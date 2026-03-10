@@ -57,12 +57,22 @@ export async function GET(req) {
                         }
                     });
 
-                    await prisma.artistStatsHistory.create({
-                        data: {
+                    await prisma.artistStatsHistory.upsert({
+                        where: {
+                            artistId_date: {
+                                artistId: artist.id,
+                                date: new Date(new Date().setHours(0, 0, 0, 0))
+                            }
+                        },
+                        update: {
+                            monthlyListeners: stats.monthlyListeners,
+                            followers: stats.followers || 0
+                        },
+                        create: {
                             artistId: artist.id,
                             monthlyListeners: stats.monthlyListeners,
                             followers: stats.followers || 0,
-                            date: new Date()
+                            date: new Date(new Date().setHours(0, 0, 0, 0))
                         }
                     });
 

@@ -110,12 +110,26 @@ export async function POST(req) {
             // 3. Save History Snapshot
             if (updatedArtist) {
                 try {
-                    await prisma.artistStatsHistory.create({
-                        data: {
+                    // Normalize date to start of day to avoid duplicates from multiple scrapes per day
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    await prisma.artistStatsHistory.upsert({
+                        where: {
+                            artistId_date: {
+                                artistId: updatedArtist.id,
+                                date: today
+                            }
+                        },
+                        update: {
+                            monthlyListeners: monthlyListeners,
+                            followers: followers || 0
+                        },
+                        create: {
                             artistId: updatedArtist.id,
                             monthlyListeners: monthlyListeners,
                             followers: followers || 0,
-                            date: new Date()
+                            date: today
                         }
                     });
                 } catch (historyError) {
