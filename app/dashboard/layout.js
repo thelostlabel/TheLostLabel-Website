@@ -169,14 +169,14 @@ function DashboardLayoutContent({ children }) {
     const railWidth = isCompact ? 220 : 240;
     const showRailLabels = true;
 
-    const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
+    const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a';
     const shellColor = isLight ? '#1F2937' : '#FFFFFF';
     const shellAccent = '#D1D5DB'; // Soft silver accent
     const shellAccent2 = '#9CA3AF'; // Cool gray secondary accent
-    const shellSurface = isLight ? '#FFFFFF' : '#141414'; // v0-ref Card Surface
-    const shellSurface2 = isLight ? '#F9FAFB' : '#1c1c1c'; // v0-ref Muted Surface
-    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : '#2a2a2a'; // v0-ref Border
-    const shellMuted = isLight ? '#6B7280' : '#888888'; // v0-ref Muted Foreground
+    const shellSurface = isLight ? '#FFFFFF' : '#141414';
+    const shellSurface2 = isLight ? '#F9FAFB' : '#1c1c1c';
+    const shellBorder = isLight ? 'rgba(0,0,0,0.08)' : '#2a2a2a';
+    const shellMuted = isLight ? '#6B7280' : '#888888';
 
     return (
         <div
