@@ -5,6 +5,8 @@ import { sendMail } from "@/lib/mail";
 import { generateSupportStatusEmail } from "@/lib/mail-templates";
 import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
+import { settleSideEffects } from "@/lib/async-effects";
 
 const WEBHOOK_TIMEOUT_MS = 10000;
 const RETRY_OPTIONS = {
@@ -28,14 +30,31 @@ export async function GET(req) {
     }
 
     try {
-        const requests = await prisma.changeRequest.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: {
-                user: { select: { email: true, stageName: true } },
-                release: true
-            }
-        });
-        return new Response(JSON.stringify(requests), { status: 200 });
+        const { searchParams } = new URL(req.url);
+        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
+        const [requests, total] = await Promise.all([
+            prisma.changeRequest.findMany({
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    user: { select: { email: true, stageName: true } },
+                    release: {
+                        select: {
+                            id: true,
+                            name: true,
+                            image: true,
+                            spotifyUrl: true
+                        }
+                    }
+                },
+                skip,
+                take: limit
+            }),
+            prisma.changeRequest.count()
+        ]);
+        return new Response(JSON.stringify({
+            requests,
+            pagination: buildOffsetPaginationMeta(total, page, limit)
+        }), { status: 200 });
     } catch (e) {
         console.error("DEBUG API ERROR:", e);
         return new Response(JSON.stringify({ error: e.message }), { status: 500 });
@@ -121,51 +140,50 @@ export async function PATCH(req) {
         }
 
         // --- EMAIL NOTIFICATION ---
-        try {
-            const releaseName = updated.release?.name || 'Unknown Release';
+        const colors = {
+            reviewing: 0xffaa00,
+            processing: 0x00aaff,
+            needs_action: 0xfff000,
+            approved: 0x00ff88,
+            completed: 0x00ff88,
+            rejected: 0xff4444
+        };
+        const releaseName = updated.release?.name || 'Unknown Release';
+        const requestType = updated.type.toUpperCase().replace("_", " ");
 
-            await sendMail({
-                to: updated.user.email,
-                subject: `Request ${status.toUpperCase()} - ${releaseName}`,
-                html: generateSupportStatusEmail(
-                    updated.user.stageName || 'Artist',
-                    updated.type,
-                    status,
-                    adminNote
-                )
-            });
-        } catch (emailError) {
-            console.error("Email Error:", emailError);
-        }
-
-        // --- DISCORD DM NOTIFICATION ---
-        try {
-            const colors = {
-                reviewing: 0xffaa00,
-                processing: 0x00aaff,
-                needs_action: 0xfff000,
-                approved: 0x00ff88,
-                completed: 0x00ff88,
-                rejected: 0xff4444
-            };
-
-            const releaseName = updated.release?.name || "General";
-            const requestType = updated.type.toUpperCase().replace("_", " ");
-
-            await queueDiscordNotification(updated.userId, DISCORD_NOTIFY_TYPES.SUPPORT_RESPONSE, {
-                title: `Support Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-                description: `Your **${requestType}** request${releaseName !== "General" ? ` for **${releaseName}**` : ""} has been updated to **${status.toUpperCase()}**.${adminNote ? `\n\n**Admin Note:** ${adminNote}` : ""}`,
-                color: colors[status] || 0xcccccc,
-                fields: [
-                    { name: "Type", value: requestType, inline: true },
-                    { name: "Status", value: status.toUpperCase(), inline: true },
-                    { name: "Release", value: releaseName, inline: true }
-                ],
-                footer: "LOST. Support"
-            });
-        } catch (dmError) {
-            console.error("[Admin Requests PATCH] Failed to queue Discord DM notification:", dmError);
-        }
+        await settleSideEffects([
+            {
+                label: "support-status-email",
+                run: () => sendMail({
+                    to: updated.user.email,
+                    subject: `Request ${status.toUpperCase()} - ${releaseName}`,
+                    html: generateSupportStatusEmail(
+                        updated.user.stageName || 'Artist',
+                        updated.type,
+                        status,
+                        adminNote
+                    )
+                }).catch((emailError) => {
+                    console.error("Email Error:", emailError);
+                })
+            },
+            {
+                label: "support-status-discord",
+                run: () => queueDiscordNotification(updated.userId, DISCORD_NOTIFY_TYPES.SUPPORT_RESPONSE, {
+                    title: `Support Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+                    description: `Your **${requestType}** request${releaseName !== "General" ? ` for **${releaseName}**` : ""} has been updated to **${status.toUpperCase()}**.${adminNote ? `\n\n**Admin Note:** ${adminNote}` : ""}`,
+                    color: colors[status] || 0xcccccc,
+                    fields: [
+                        { name: "Type", value: requestType, inline: true },
+                        { name: "Status", value: status.toUpperCase(), inline: true },
+                        { name: "Release", value: releaseName, inline: true }
+                    ],
+                    footer: "LOST. Support"
+                }).catch((dmError) => {
+                    console.error("[Admin Requests PATCH] Failed to queue Discord DM notification:", dmError);
+                })
+            }
+        ], 5000);
         // -----------------------
 
         return new Response(JSON.stringify(updated), { status: 200 });

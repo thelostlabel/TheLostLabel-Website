@@ -3,37 +3,23 @@ import Link from 'next/link';
 import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { useState, useEffect } from 'react';
-import { Instagram, Disc, Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { Instagram, Menu, X } from 'lucide-react';
+import { usePublicSettings } from './PublicSettingsContext';
 
 export default function Navbar() {
     const { data: session } = useSession();
     const pathname = usePathname();
-    const [registrationsOpen, setRegistrationsOpen] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-    const [siteName, setSiteName] = useState('LOST');
-    const [socials, setSocials] = useState({});
-
-    useEffect(() => {
-        fetch('/api/settings/public')
-            .then(res => res.json())
-            .then(data => {
-                if (data.registrationsOpen === false) {
-                    setRegistrationsOpen(false);
-                }
-                if (data.siteName) {
-                    setSiteName(data.siteName);
-                }
-                setSocials({
-                    discord: data.discord,
-                    instagram: data.instagram,
-                    spotify: data.spotify,
-                    youtube: data.youtube
-                });
-            })
-            .catch(err => console.error(err));
-    }, []);
+    const publicSettings = usePublicSettings();
+    const registrationsOpen = publicSettings.registrationsOpen !== false;
+    const siteName = publicSettings.siteName || 'LOST';
+    const socials = {
+        discord: publicSettings.discord,
+        instagram: publicSettings.instagram,
+        spotify: publicSettings.spotify,
+        youtube: publicSettings.youtube
+    };
 
     // Hide Navbar on Dashboard and Auth pages
     if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/auth')) {

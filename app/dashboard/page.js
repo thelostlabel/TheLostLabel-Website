@@ -1,12 +1,19 @@
 "use client";
 import React, { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import ArtistView from '@/app/components/dashboard/ArtistView';
-import AdminView from '@/app/components/dashboard/AdminView';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import { canViewAllDemos, canViewUsers, hasAdminViewPermission, hasManagementAccess, isAdminUser } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+
+const ArtistView = dynamic(() => import('@/app/components/dashboard/ArtistView'), {
+    loading: () => <DashboardLoader fullScreen label="LOADING ARTIST WORKSPACE" subLabel="Preparing artist view..." />
+});
+
+const AdminView = dynamic(() => import('@/app/components/dashboard/AdminView'), {
+    loading: () => <DashboardLoader fullScreen label="LOADING ADMIN WORKSPACE" subLabel="Preparing admin view..." />
+});
 
 const MANAGEMENT_VIEW_PERMS = {
     overview: 'admin_view_overview',

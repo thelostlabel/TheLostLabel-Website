@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
+import { getReleaseArtistWhereById } from '@/lib/release-artists';
 
 function extractSpotifyArtistId(url) {
     if (!url || typeof url !== 'string') return null;
@@ -45,6 +46,7 @@ export async function GET(request) {
         });
         spotifyId = extractSpotifyArtistId(currentUser?.artist?.spotifyUrl || currentUser?.spotifyUrl);
     }
+    const releaseArtistScope = getReleaseArtistWhereById(spotifyId);
 
     if (isStaff) {
         const artists = await prisma.artist.findMany({
@@ -121,7 +123,7 @@ export async function GET(request) {
                                 }
                             }
                         },
-                        ...(spotifyId ? [{ artistsJson: { contains: spotifyId } }] : [])
+                        ...(releaseArtistScope ? [releaseArtistScope] : [])
                     ]
                 }
             ]

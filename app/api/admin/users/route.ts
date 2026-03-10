@@ -18,6 +18,7 @@ import {
   parsePermissions,
   stringifyPermissions,
 } from "@/lib/permissions";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import prisma from "@/lib/prisma";
 import { generateOpaqueToken, hashOpaqueToken } from "@/lib/security";
 import { linkUserToArtist } from "@/lib/userArtistLink";
@@ -92,7 +93,7 @@ async function getBasicUserSnapshot(userId: string): Promise<BasicUserSnapshot |
 }
 
 // GET: Fetch all users (Admin only)
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session || !canViewUsers(session.user)) {
@@ -100,17 +101,29 @@ export async function GET() {
   }
 
   try {
-    const users = await prisma.user.findMany({
-      where: {
-        email: {
-          not: DELETED_USER_EMAIL,
-        },
+    const { searchParams } = new URL(req.url);
+    const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
+    const where = {
+      email: {
+        not: DELETED_USER_EMAIL,
       },
-      orderBy: { createdAt: "desc" },
-      select: USER_LIST_SELECT,
-    });
+    } satisfies Prisma.UserWhereInput;
 
-    return NextResponse.json(users);
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        select: USER_LIST_SELECT,
+        skip,
+        take: limit,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      users,
+      pagination: buildOffsetPaginationMeta(total, page, limit),
+    });
   } catch (error) {
     console.error("Fetch Users Error:", error);
     return errorResponse(500, error instanceof Error ? error.message : "Internal Server Error");

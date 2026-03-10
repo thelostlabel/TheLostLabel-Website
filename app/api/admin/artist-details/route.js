@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getReleaseArtistWhereById } from "@/lib/release-artists";
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -59,22 +60,24 @@ export async function GET(req) {
                 ? rawUrl.split('/').pop().split('?')[0]
                 : rawUrl;
 
-            releases = await prisma.release.findMany({
-                where: {
-                    artistsJson: { contains: spotifyId }
-                },
-                orderBy: { releaseDate: 'desc' }
-            });
+            const releaseWhere = getReleaseArtistWhereById(spotifyId);
+            if (releaseWhere) {
+                releases = await prisma.release.findMany({
+                    where: releaseWhere,
+                    orderBy: { releaseDate: 'desc' }
+                });
+            }
         }
 
         // Additional check for Roster artists using their ID directly if URL didn't match
         if (isRoster && releases.length === 0) {
-            releases = await prisma.release.findMany({
-                where: {
-                    artistsJson: { contains: id }
-                },
-                orderBy: { releaseDate: 'desc' }
-            });
+            const releaseWhere = getReleaseArtistWhereById(id);
+            if (releaseWhere) {
+                releases = await prisma.release.findMany({
+                    where: releaseWhere,
+                    orderBy: { releaseDate: 'desc' }
+                });
+            }
         }
 
         return new Response(JSON.stringify({

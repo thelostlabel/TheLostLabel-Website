@@ -87,7 +87,7 @@ export default function SettingsView({ users = [], artists = [] }) {
 
     const fetchReleases = async () => {
         try {
-            const res = await fetch('/api/releases');
+            const res = await fetch('/api/releases?limit=60');
             const data = await res.json();
             if (data?.releases) {
                 setReleaseOptions(data.releases.slice(0, 50));
@@ -337,7 +337,7 @@ export default function SettingsView({ users = [], artists = [] }) {
                                 ))}
                             </select>
                             <p style={{ fontSize: '10px', color: '#666', marginTop: '8px', fontWeight: '800', letterSpacing: '0.5px' }}>
-                                Anasayfa hero'da görünecek release. Seçilmezse en güncel release kullanılır.
+                                Anasayfa hero&apos;da gorunecek release. Secilmezse en guncel release kullanilir.
                             </p>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '12px', position: 'relative', zIndex: 1 }}>

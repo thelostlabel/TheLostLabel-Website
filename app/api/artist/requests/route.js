@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
+import { settleSideEffects } from "@/lib/async-effects";
+import { getReleaseArtistWhereById } from "@/lib/release-artists";
 
 function escapeHtml(value) {
     return String(value || '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -69,8 +71,10 @@ export async function POST(req) {
         const safeDetails = escapeHtml(normalizedDetails).replace(/\n/g, '<br>');
         const safeEmail = escapeHtml(session.user.email || '');
 
-        await Promise.allSettled([
-            sendMail({
+        await settleSideEffects([
+            {
+                label: "artist-support-confirmation-email",
+                run: () => sendMail({
                 to: session.user.email,
                 subject: 'Support Ticket Created Successfully - LOST.',
                 html: `
@@ -85,26 +89,30 @@ export async function POST(req) {
                         <p>Best,<br>LOST. Team</p>
                     </div>
                 `
-            }).catch((mailError) => {
-                console.error("Artist support confirmation email failed:", mailError);
-            }),
-            sendMail({
-                to: supportEmail,
-                subject: `New Support Ticket: ${normalizedType.toUpperCase()} from ${session.user.stageName || session.user.email}`,
-                html: `
-                    <div style="font-family: sans-serif; color: #333;">
-                        <h2>New Support Ticket</h2>
-                        <p><strong>Artist:</strong> ${safeStageName} (${safeEmail})</p>
-                        <p><strong>Type:</strong> ${normalizedType.toUpperCase().replace('_', ' ')}</p>
-                        <p><strong>Details:</strong> ${safeDetails}</p>
-                        <br>
-                        <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
-                    </div>
-                `
-            }).catch((mailError) => {
-                console.error("Support mailbox notification email failed:", mailError);
-            })
-        ]);
+                }).catch((mailError) => {
+                    console.error("Artist support confirmation email failed:", mailError);
+                })
+            },
+            {
+                label: "support-mailbox-email",
+                run: () => sendMail({
+                    to: supportEmail,
+                    subject: `New Support Ticket: ${normalizedType.toUpperCase()} from ${session.user.stageName || session.user.email}`,
+                    html: `
+                        <div style="font-family: sans-serif; color: #333;">
+                            <h2>New Support Ticket</h2>
+                            <p><strong>Artist:</strong> ${safeStageName} (${safeEmail})</p>
+                            <p><strong>Type:</strong> ${normalizedType.toUpperCase().replace('_', ' ')}</p>
+                            <p><strong>Details:</strong> ${safeDetails}</p>
+                            <br>
+                            <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests">View in Admin Panel</a>
+                        </div>
+                    `
+                }).catch((mailError) => {
+                    console.error("Support mailbox notification email failed:", mailError);
+                })
+            }
+        ], 5000);
 
         return new Response(JSON.stringify(request), { status: 201 });
     } catch (e) {
@@ -132,10 +140,11 @@ export async function GET(req) {
         const spotifyId = extractSpotifyArtistId(user?.artist?.spotifyUrl) || extractSpotifyArtistId(user?.spotifyUrl);
 
         const accessConditions = [{ userId: session.user.id }];
-        if (spotifyId) {
+        const releaseArtistCondition = getReleaseArtistWhereById(spotifyId);
+        if (releaseArtistCondition) {
             accessConditions.push({
                 release: {
-                    artistsJson: { contains: spotifyId }
+                    ...releaseArtistCondition
                 }
             });
         }

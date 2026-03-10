@@ -1,15 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-
-function parseArtistsJson(artistsJson) {
-    try {
-        const parsed = JSON.parse(artistsJson || "[]");
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
-}
+import { mapReleaseArtistsToSummary, parseReleaseArtistsJson } from "@/lib/release-artists";
 
 function normalizeReleaseDate(value) {
     if (!value) return undefined;
@@ -22,14 +14,21 @@ export async function GET(req, { params }) {
     const { id } = await params;
     try {
         const release = await prisma.release.findUnique({
-            where: { id }
+            where: { id },
+            include: {
+                releaseArtists: {
+                    select: { artistId: true, name: true }
+                }
+            }
         });
 
         if (!release) {
             return new Response(JSON.stringify({ error: "Release not found" }), { status: 404 });
         }
 
-        const parsedArtists = parseArtistsJson(release.artistsJson);
+        const parsedArtists = release.releaseArtists?.length > 0
+            ? mapReleaseArtistsToSummary(release.releaseArtists)
+            : parseReleaseArtistsJson(release.artistsJson).map((artist) => ({ id: artist.artistId, name: artist.name || artist.artistId }));
         const resolvedArtist = parsedArtists.length > 0
             ? parsedArtists.map((artist) => artist.name).join(", ")
             : release.artistName;
@@ -43,6 +42,11 @@ export async function GET(req, { params }) {
         const versions = await prisma.release.findMany({
             where: {
                 ...(baseTitle ? { baseTitle } : { id: release.id })
+            },
+            include: {
+                releaseArtists: {
+                    select: { artistId: true, name: true }
+                }
             },
             orderBy: [
                 { popularity: "desc" },
@@ -73,7 +77,9 @@ export async function GET(req, { params }) {
                 spotify_url: v.spotifyUrl,
                 release_date: v.releaseDate,
                 preview_url: v.previewUrl,
-                artists: parseArtistsJson(v.artistsJson)
+                artists: v.releaseArtists?.length > 0
+                    ? mapReleaseArtistsToSummary(v.releaseArtists)
+                    : parseReleaseArtistsJson(v.artistsJson).map((artist) => ({ id: artist.artistId, name: artist.name || artist.artistId }))
             }))
         }), { status: 200 });
     } catch (e) {

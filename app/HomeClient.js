@@ -30,6 +30,7 @@ import AnimatedShinyText from "./components/ui/animated-shiny-text";
 import Ripple from "./components/ui/ripple";
 import NumberTicker from "./components/ui/number-ticker";
 import { usePlayer } from "./components/PlayerContext";
+import { usePublicSettings } from "./components/PublicSettingsContext";
 import { BRANDING } from "@/lib/branding";
 
 
@@ -181,7 +182,6 @@ const AnimatedNumber = ({ value }) => {
 
       // Skip animation for very small numbers to avoid UI feeling broken
       if (start === end || end <= 10) {
-        setDisplay(end);
         return;
       }
       const duration = 2000;
@@ -204,6 +204,7 @@ const AnimatedNumber = ({ value }) => {
   }, [isInView, numValue, numericPart]);
 
   if (isNaN(numValue) || numericPart === '') return <span>{value}</span>;
+  if (!isInView || numValue <= 10) return <span ref={ref}>{numValue.toLocaleString()}{suffix}</span>;
 
   // Use Math.floor for display if it's counting up, or just the number if done
   const displayVal = display === numValue && numValue % 1 !== 0
@@ -344,13 +345,14 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
 };
 
 export default function Home() {
+  const publicSettings = usePublicSettings();
   const [releases, setReleases] = useState([]);
   const [artists, setArtists] = useState([]);
   const [artistCount, setArtistCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [introDone, setIntroDone] = useState(false);
   const [heroRelease, setHeroRelease] = useState(null);
-  const [siteConfig, setSiteConfig] = useState(null);
+  const [siteConfig, setSiteConfig] = useState(publicSettings);
 
   const { playTrack } = usePlayer();
 
@@ -360,15 +362,16 @@ export default function Home() {
   const rotate = useTransform(scrollY, [0, 500], [0, 5]);
 
   useEffect(() => {
+    setSiteConfig(publicSettings);
+  }, [publicSettings]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
-        const resSettings = await fetch("/api/settings/public");
-        const settings = await resSettings.json();
-
         const [resReleases, resStats, resArtists] = await Promise.all([
-          fetch("/api/releases"),
+          fetch("/api/releases?limit=24"),
           fetch("/api/stats"),
-          fetch("/api/artists"),
+          fetch("/api/artists?limit=24"),
         ]);
 
         const jsonReleases = await resReleases.json();
@@ -383,8 +386,8 @@ export default function Home() {
         }
 
         let featured = null;
-        if (settings?.featuredReleaseId && jsonReleases?.releases) {
-          featured = jsonReleases.releases.find((r) => r.id === settings.featuredReleaseId) || null;
+        if (publicSettings?.featuredReleaseId && jsonReleases?.releases) {
+          featured = jsonReleases.releases.find((r) => r.id === publicSettings.featuredReleaseId) || null;
         }
 
         // If no configured feature or it wasn't found, try to find one with a preview
@@ -393,7 +396,6 @@ export default function Home() {
         }
 
         setHeroRelease(featured);
-        setSiteConfig(settings);
       } catch (e) {
         console.error(e);
       } finally {
@@ -408,7 +410,7 @@ export default function Home() {
       setIntroDone(true);
     }, 1500);
 
-  }, []);
+  }, [publicSettings]);
 
   const services = [
     {

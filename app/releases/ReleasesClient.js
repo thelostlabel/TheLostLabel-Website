@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
@@ -42,11 +42,41 @@ const TypewriterText = ({ text = "", delay = 0, style = {}, className = "" }) =>
 export default function ReleasesPage() {
     const [albums, setAlbums] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(false);
     const [introDone, setIntroDone] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [sortBy, setSortBy] = useState('popularity');
+    const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, hasNextPage: false });
+
+    const fetchAllReleases = useCallback(async (page = 1, append = false) => {
+        if (append) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+        }
+        setError(false);
+        try {
+            const res = await fetch(`/api/releases?page=${page}&limit=24`);
+            const data = await res.json();
+            if (data.releases) {
+                setAlbums((prev) => append ? [...prev, ...data.releases.filter((item) => !prev.some((existing) => existing.id === item.id))] : data.releases);
+                if (data.pagination) setPagination(data.pagination);
+            } else {
+                setError(true);
+            }
+        } catch (e) {
+            console.error(e);
+            setError(true);
+        } finally {
+            if (append) {
+                setLoadingMore(false);
+            } else {
+                setLoading(false);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
@@ -54,31 +84,13 @@ export default function ReleasesPage() {
     }, [searchQuery]);
 
     useEffect(() => {
-        async function fetchAllReleases() {
-            setLoading(true);
-            setError(false);
-            try {
-                const res = await fetch(`/api/releases`);
-                const data = await res.json();
-                if (data.releases) {
-                    setAlbums(data.releases);
-                } else {
-                    setError(true);
-                }
-            } catch (e) {
-                console.error(e);
-                setError(true);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchAllReleases();
+        fetchAllReleases(1, false);
 
         setTimeout(() => {
             setIntroDone(true);
         }, 1500);
 
-    }, []);
+    }, [fetchAllReleases]);
 
     const filteredAlbums = useMemo(() => {
         let result = [...albums];
@@ -256,6 +268,28 @@ export default function ReleasesPage() {
                                 ))}
                             </AnimatePresence>
                         </motion.div>
+                    )}
+
+                    {!loading && !error && pagination.hasNextPage && (
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px' }}>
+                            <button
+                                onClick={() => fetchAllReleases(pagination.page + 1, true)}
+                                disabled={loadingMore}
+                                style={{
+                                    padding: '14px 26px',
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '999px',
+                                    color: '#fff',
+                                    fontSize: '11px',
+                                    fontWeight: '900',
+                                    letterSpacing: '2px',
+                                    cursor: loadingMore ? 'wait' : 'pointer'
+                                }}
+                            >
+                                {loadingMore ? 'LOADING MORE...' : 'LOAD MORE'}
+                            </button>
+                        </div>
                     )}
 
                     {filteredAlbums.length === 0 && !loading && !error && (

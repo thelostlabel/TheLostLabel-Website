@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePublicSettings } from '../components/PublicSettingsContext';
 
 const DEFAULT_JOIN_HERO = {
     title: 'WORK WITH THE LOST. COMPANY',
@@ -9,6 +10,7 @@ const DEFAULT_JOIN_HERO = {
 };
 
 export default function JoinUsPage() {
+    const publicSettings = usePublicSettings();
     const [genres, setGenres] = useState([
         "House (Deep House / Slap House / G-House)",
         "Pop",
@@ -31,20 +33,28 @@ export default function JoinUsPage() {
     ]);
 
     const [loading, setLoading] = useState(true);
-    const [hero, setHero] = useState(DEFAULT_JOIN_HERO);
+    const [hero, setHero] = useState({
+        title: publicSettings.joinHeroTitle || DEFAULT_JOIN_HERO.title,
+        sub: publicSettings.joinHeroSub || DEFAULT_JOIN_HERO.sub
+    });
+
+    useEffect(() => {
+        setHero({
+            title: publicSettings.joinHeroTitle || DEFAULT_JOIN_HERO.title,
+            sub: publicSettings.joinHeroSub || DEFAULT_JOIN_HERO.sub
+        });
+    }, [publicSettings.joinHeroSub, publicSettings.joinHeroTitle]);
 
     useEffect(() => {
         const fetchContent = async () => {
             try {
-                const [genresRes, commissionRes, settingsRes] = await Promise.all([
+                const [genresRes, commissionRes] = await Promise.all([
                     fetch('/api/admin/content?key=join_genres'),
-                    fetch('/api/admin/content?key=join_commissions'),
-                    fetch('/api/settings/public')
+                    fetch('/api/admin/content?key=join_commissions')
                 ]);
 
                 const genresData = await genresRes.json();
                 const commissionData = await commissionRes.json();
-                const settingsData = await settingsRes.json();
 
                 if (genresData?.content) {
                     const gList = genresData.content.split(/[\n,]/).map(s => s.trim()).filter(s => s);
@@ -56,13 +66,6 @@ export default function JoinUsPage() {
                         const parsed = JSON.parse(commissionData.content);
                         if (Array.isArray(parsed) && parsed.length > 0) setCommissionData(parsed);
                     } catch (e) { console.error("Parse Error:", e); }
-                }
-
-                if (settingsData) {
-                    setHero({
-                        title: settingsData.joinHeroTitle || DEFAULT_JOIN_HERO.title,
-                        sub: settingsData.joinHeroSub || DEFAULT_JOIN_HERO.sub
-                    });
                 }
             } catch (e) {
                 console.error("Fetch Error:", e);

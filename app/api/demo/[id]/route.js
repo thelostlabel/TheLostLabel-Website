@@ -16,6 +16,7 @@ import {
 import { randomUUID } from "crypto";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
 
 const REVIEWABLE_STATUSES = new Set(["pending", "reviewing"]);
 
@@ -218,7 +219,10 @@ export async function PATCH(req, { params }) {
                                 image: body.coverArtUrl || null,
                                 releaseDate: releaseDateToUse,
                                 spotifyUrl: d.artist.spotifyUrl,
-                                artistsJson: JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }])
+                                artistsJson: JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }]),
+                                releaseArtists: buildReleaseArtistNestedWrite(
+                                    JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }])
+                                )
                             }
                         });
 

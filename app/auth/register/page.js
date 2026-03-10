@@ -1,10 +1,10 @@
 "use client";
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import BackgroundEffects from '../../components/BackgroundEffects';
 import { motion } from 'framer-motion';
+import { usePublicSettings } from '../../components/PublicSettingsContext';
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -16,19 +16,8 @@ export default function Register() {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-
-    const [registrationsOpen, setRegistrationsOpen] = useState(true);
-
-    useEffect(() => {
-        fetch('/api/settings/public')
-            .then(res => res.json())
-            .then(data => {
-                if (data.registrationsOpen === false) {
-                    setRegistrationsOpen(false);
-                }
-            })
-            .catch(err => console.error(err));
-    }, []);
+    const publicSettings = usePublicSettings();
+    const registrationsOpen = publicSettings.registrationsOpen !== false;
 
     const [success, setSuccess] = useState(false);
 

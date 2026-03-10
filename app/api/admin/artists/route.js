@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canFinalizeDemos, hasAdminViewPermission } from "@/lib/permissions";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import prisma from "@/lib/prisma";
 
 function canAccessArtists(user) {
@@ -15,25 +16,33 @@ export async function GET(req) {
     }
 
     try {
-        const artists = await prisma.artist.findMany({
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        email: true,
-                        stageName: true,
-                        fullName: true,
-                        legalName: true,
-                        phoneNumber: true,
-                        address: true
+        const { searchParams } = new URL(req.url);
+        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
+
+        const [artists, total] = await Promise.all([
+            prisma.artist.findMany({
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            email: true,
+                            stageName: true,
+                            fullName: true,
+                            legalName: true,
+                            phoneNumber: true,
+                            address: true
+                        }
+                    },
+                    _count: {
+                        select: { contracts: true }
                     }
                 },
-                _count: {
-                    select: { contracts: true }
-                }
-            },
-            orderBy: { name: 'asc' }
-        });
+                orderBy: { name: 'asc' },
+                skip,
+                take: limit
+            }),
+            prisma.artist.count()
+        ]);
 
         // Also fetch Users who are NOT linked to any artist, to show as "Available for Linking"
         const unlistedUsers = await prisma.user.findMany({
@@ -44,7 +53,11 @@ export async function GET(req) {
             select: { id: true, email: true, stageName: true, fullName: true, role: true }
         });
 
-        return new Response(JSON.stringify({ artists, unlistedUsers }), { status: 200 });
+        return new Response(JSON.stringify({
+            artists,
+            unlistedUsers,
+            pagination: buildOffsetPaginationMeta(total, page, limit)
+        }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

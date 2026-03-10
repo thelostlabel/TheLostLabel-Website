@@ -1,15 +1,21 @@
 import Link from 'next/link';
 import ArtistDetailClient from './ArtistDetailClient';
-import { getArtistsDetails, getArtistAlbums } from '@/lib/spotify'; // Direct library calls for efficiency
+import { getArtistsDetails } from '@/lib/spotify'; // Direct library calls for efficiency
 import prisma from "@/lib/prisma";
+import { getReleaseArtistWhereById, mapReleaseArtistsToSummary } from "@/lib/release-artists";
 
 // Force dynamic rendering to ensure fresh data
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
     const { id } = await params;
-    const artistDetails = await getArtistsDetails([id]);
-    const artist = artistDetails?.[0];
+    const dbArtist = await prisma.artist.findUnique({
+        where: { id },
+        select: { id: true, name: true, spotifyUrl: true }
+    });
+    const spotifyId = dbArtist?.spotifyUrl?.split('/').filter(Boolean).pop()?.split('?')[0] || id;
+    const artistDetails = await getArtistsDetails([spotifyId]);
+    const artist = artistDetails?.[0] || dbArtist;
 
     return {
         title: artist ? `${artist.name} | LOST. Roster` : 'Artist Not Found | LOST.',
@@ -19,17 +25,26 @@ export async function generateMetadata({ params }) {
 
 export default async function ArtistDetailPage({ params }) {
     const { id: artistId } = await params;
+    const dbArtist = await prisma.artist.findUnique({
+        where: { id: artistId }
+    });
+    const spotifyArtistId = dbArtist?.spotifyUrl?.split('/').filter(Boolean).pop()?.split('?')[0] || artistId;
 
     // Fetch data in parallel on the server
-    const [artistDetails, dbReleases, dbArtist] = await Promise.all([
-        getArtistsDetails([artistId]),
+    const [artistDetails, dbReleases] = await Promise.all([
+        getArtistsDetails([spotifyArtistId]),
         prisma.release.findMany({
             where: {
-                artistsJson: { contains: artistId }
+                OR: [
+                    getReleaseArtistWhereById(artistId),
+                    getReleaseArtistWhereById(spotifyArtistId)
+                ].filter(Boolean)
+            },
+            include: {
+                releaseArtists: {
+                    select: { artistId: true, name: true }
+                }
             }
-        }),
-        prisma.artist.findUnique({
-            where: { id: artistId }
         })
     ]);
 
@@ -65,7 +80,7 @@ export default async function ArtistDetailPage({ params }) {
                     image: r.image,
                     spotify_url: r.spotifyUrl,
                     release_date: r.releaseDate,
-                    artists: JSON.parse(r.artistsJson || '[]'),
+                    artists: mapReleaseArtistsToSummary(r.releaseArtists),
                     type: r.type || 'album',
                     is_manual: true,
                     versionCount: 0

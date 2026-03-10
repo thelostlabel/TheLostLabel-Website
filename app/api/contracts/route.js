@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { sanitizeContractForViewer } from "@/lib/contract-visibility";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import prisma from "@/lib/prisma";
 import { embedContractMetaInNotes, extractContractMetaAndNotes } from "@/lib/contract-template";
 
@@ -61,6 +62,7 @@ export async function GET(req) {
     try {
         const { role, id: userId } = session.user;
         let contracts;
+        let total = 0;
 
         const includeOptions = {
             user: {
@@ -80,37 +82,52 @@ export async function GET(req) {
 
         const { searchParams } = new URL(req.url);
         const fetchAll = searchParams.get('all') === 'true';
+        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
 
         if (fetchAll && (role === 'admin' || role === 'a&r')) {
             // Admin/A&R explicitly requesting all contracts
-            contracts = await prisma.contract.findMany({
-                include: includeOptions,
-                orderBy: { createdAt: 'desc' }
-            });
+            [contracts, total] = await Promise.all([
+                prisma.contract.findMany({
+                    include: includeOptions,
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: limit
+                }),
+                prisma.contract.count()
+            ]);
         } else {
             // Artists OR admins in personal context can only see their own contracts
             // including where they are a split contributor or linked via email/profile.
-            contracts = await prisma.contract.findMany({
-                where: {
-                    OR: [
-                        { userId }, // Directly linked to User
-                        { primaryArtistEmail: session.user.email }, // Linked via Email
-                        { artist: { userId } }, // Linked via Artist Profile User ID
-                        { artist: { email: session.user.email } }, // Linked via Artist Profile Email
-                        { splits: { some: { userId } } }, // Collaborator via User ID
-                        { splits: { some: { email: session.user.email } } }, // Collaborator via Email (Direct match)
-                        { splits: { some: { user: { email: session.user.email } } } } // Collaborator via Email (Linked User)
-                    ]
-                },
-                include: {
-                    ...includeOptions,
-                },
-                orderBy: { createdAt: 'desc' }
-            });
+            const where = {
+                OR: [
+                    { userId }, // Directly linked to User
+                    { primaryArtistEmail: session.user.email }, // Linked via Email
+                    { artist: { userId } }, // Linked via Artist Profile User ID
+                    { artist: { email: session.user.email } }, // Linked via Artist Profile Email
+                    { splits: { some: { userId } } }, // Collaborator via User ID
+                    { splits: { some: { email: session.user.email } } }, // Collaborator via Email (Direct match)
+                    { splits: { some: { user: { email: session.user.email } } } } // Collaborator via Email (Linked User)
+                ]
+            };
+            [contracts, total] = await Promise.all([
+                prisma.contract.findMany({
+                    where,
+                    include: {
+                        ...includeOptions,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: limit
+                }),
+                prisma.contract.count({ where })
+            ]);
         }
 
         const visibleContracts = contracts.map((contract) => sanitizeContractForViewer(contract, session.user));
-        return new Response(JSON.stringify({ contracts: visibleContracts }), { status: 200 });
+        return new Response(JSON.stringify({
+            contracts: visibleContracts,
+            pagination: buildOffsetPaginationMeta(total, page, limit)
+        }), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

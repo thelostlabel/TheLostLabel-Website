@@ -18,6 +18,7 @@ import DashboardLoader from './DashboardLoader';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 import { BRANDING } from '@/lib/branding';
+import { usePublicSettings } from '../PublicSettingsContext';
 
 
 const DASHBOARD_THEME = {
@@ -296,7 +297,6 @@ export default function ArtistView() {
     });
     const [loading, setLoading] = useState(true);
     const showLoading = useMinimumLoader(loading, 250);
-    const [actionRequiredContract, setActionRequiredContract] = useState(null);
 
 
     // Submit form state
@@ -384,7 +384,7 @@ export default function ArtistView() {
                 setWithdrawAmount('');
                 setWithdrawNotes('');
                 // Refresh data
-                fetchStats();
+                fetchOverview();
                 fetchPayments();
             } else {
                 const data = await res.json();
@@ -396,18 +396,15 @@ export default function ArtistView() {
             setWithdrawing(false);
         }
     };
-    const fetchStats = useCallback(async () => {
+    const fetchOverview = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/artist/stats');
+            const res = await fetch('/api/artist/dashboard');
             if (res.ok) {
                 const data = await res.json();
-                setStats(data);
+                setStats(data.stats || data);
+                setReleases(Array.isArray(data.releases) ? data.releases : []);
             }
-            // Still fetch releases for the list view
-            const relRes = await fetch('/api/artist/releases');
-            const relData = await relRes.json();
-            setReleases(Array.isArray(relData) ? relData : []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     }, []);
@@ -415,7 +412,7 @@ export default function ArtistView() {
     const fetchContracts = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/contracts');
+            const res = await fetch('/api/contracts?limit=50');
             const data = await res.json();
             setContracts(data.contracts || []);
         } catch (e) { console.error(e); }
@@ -437,7 +434,7 @@ export default function ArtistView() {
 
     const fetchPayments = useCallback(async () => {
         try {
-            const res = await fetch('/api/payments');
+            const res = await fetch('/api/payments?limit=50');
             const data = await res.json();
             setPayments(data.payments || []);
         } catch (e) { console.error(e); }
@@ -446,9 +443,9 @@ export default function ArtistView() {
     const fetchDemos = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/demo?filter=mine');
+            const res = await fetch('/api/demo?filter=mine&limit=50');
             const data = await res.json();
-            setDemos(Array.isArray(data) ? data : []);
+            setDemos(data.demos || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     }, []);
@@ -482,28 +479,13 @@ export default function ArtistView() {
     }, []);
 
     useEffect(() => {
-        if (view === 'overview') fetchStats();
+        if (view === 'overview') fetchOverview();
         else if (view === 'demos') fetchDemos();
         else if (view === 'contracts') fetchContracts();
         else if (view === 'earnings') { fetchEarnings(); fetchPayments(); }
         else if (view === 'support') fetchRequests();
         else setLoading(false);
-    }, [view, fetchStats, fetchDemos, fetchContracts, fetchEarnings, fetchRequests, fetchPayments]);
-
-    // Check for pending contracts on load
-    useEffect(() => {
-        const checkPendingContracts = async () => {
-            try {
-                const res = await fetch('/api/contracts');
-                const data = await res.json();
-                const pending = (data.contracts || []).find(c => c.status === 'pending');
-                if (pending) {
-                    setActionRequiredContract(pending);
-                }
-            } catch (e) { console.error("Error checking pending contracts", e); }
-        };
-        if (session) checkPendingContracts();
-    }, [session]);
+    }, [view, fetchOverview, fetchDemos, fetchContracts, fetchEarnings, fetchRequests, fetchPayments]);
 
     useEffect(() => {
         if (session?.user?.id) {
@@ -724,11 +706,6 @@ export default function ArtistView() {
                     recentReleases={releases.slice(0, 4)}
                     onNavigate={navigateToView}
                     session={session}
-                    actionRequiredContract={actionRequiredContract}
-                    onSignClick={(c) => {
-                        setActionRequiredContract(c);
-                        setShowSignModal(true);
-                    }}
                 />
             ) : view === 'demos' ? (
                 <>
@@ -1182,7 +1159,7 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
     );
 }
 
-function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContract, onSignClick, session }) {
+function OverviewView({ stats, recentReleases, onNavigate, session }) {
     const userName = stats?.user?.stageName || stats?.name || 'Artist';
     const availableCredit = stats.available ?? stats.balance ?? 0;
     const totalReleases = stats.releases || 0;
@@ -2318,18 +2295,8 @@ function SubmitView({
     dragActive, handleDrag, handleDrop, handleFileSelect, removeFile, fileInputRef,
     uploading, uploadProgress, handleSubmit
 }) {
-    const [genres, setGenres] = useState(['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Other']);
-
-    useEffect(() => {
-        const fetchGenres = async () => {
-            try {
-                const res = await fetch('/api/settings/public');
-                const data = await res.json();
-                if (data.genres) setGenres(data.genres);
-            } catch (e) { console.error('Failed to fetch genres:', e); }
-        };
-        fetchGenres();
-    }, []);
+    const publicSettings = usePublicSettings();
+    const genres = publicSettings.genres?.length ? publicSettings.genres : ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Other'];
 
     const labelStyle = { display: 'block', fontSize: '12px', letterSpacing: '0.8px', color: DASHBOARD_THEME.muted, marginBottom: '8px', fontWeight: '950' };
     const inputStyle = { width: '100%', padding: '14px 18px', background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '8px', color: '#fff', fontSize: '12px', outline: 'none', transition: 'border-color 0.2s' };

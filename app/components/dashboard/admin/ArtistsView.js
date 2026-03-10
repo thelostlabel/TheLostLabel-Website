@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
@@ -141,12 +141,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
 
     // Auto-select artist if ID is in URL
     useEffect(() => {
-        console.log("[ArtistsView] Artists:", artists.length, "Releases:", releases.length, "Contracts:", contracts.length);
-        if (selectedArtist) {
-            console.log("[ArtistsView] Selected Artist:", selectedArtist.name);
-        }
         if (!selectedArtist && artists.length > 0) {
-
             const idFromUrl = searchParams.get('id');
             if (idFromUrl) {
                 const artist = artists.find(a => a.id === idFromUrl);
@@ -166,7 +161,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         );
     }, [artists, debouncedSearch]);
 
-    const fetchArtistBalance = async (artistId) => {
+    const fetchArtistBalance = useCallback(async (artistId) => {
         if (!artistId) return;
         setBalanceLoading(true);
         try {
@@ -188,7 +183,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         } finally {
             setBalanceLoading(false);
         }
-    };
+    }, [showToast]);
 
     const handleApplyAdjustment = async () => {
         const amount = Number(adjustAmount);
@@ -238,7 +233,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         setAdjustAmount('');
         setAdjustReason('');
         fetchArtistBalance(selectedArtist.id);
-    }, [selectedArtist?.id]);
+    }, [fetchArtistBalance, selectedArtist?.id]);
 
     const handleCreate = async () => {
         if (!newArtist.name) return showToast('Name Required', "warning");
@@ -695,7 +690,9 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                 try {
                                     const res = await fetch('/api/admin/scrape/batch', { method: 'POST' });
                                     const data = await res.json();
-                                    if (data.success) {
+                                    if (data.queued) {
+                                        showToast(`Batch sync queued. Job: ${data.jobId?.slice(0, 8) || 'pending'}`, "success");
+                                    } else if (data.success) {
                                         showToast(`Batch Sync Completed. Success: ${data.successCount}, Failed: ${data.failCount}`, "success");
                                     } else {
                                         showToast("Batch sync failed", "error");

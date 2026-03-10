@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download, Repeat } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat } from 'lucide-react';
 
 function formatTime(seconds) {
     if (!seconds || isNaN(seconds)) return '0:00';
@@ -9,7 +9,11 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export default function StudioPlayer({ src, filename }) {
+export default function StudioPlayer(props) {
+    return <StudioPlayerInner key={props.src || 'empty-track'} {...props} />;
+}
+
+function StudioPlayerInner({ src, filename }) {
     const audioRef = useRef(null);
     const progressRef = useRef(null);
     const animationRef = useRef(null);
@@ -20,33 +24,30 @@ export default function StudioPlayer({ src, filename }) {
     const [volume, setVolume] = useState(0.8);
     const [isMuted, setIsMuted] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const [isLoaded, setIsLoaded] = useState(false);
     const [isLoop, setIsLoop] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
-    const [loadError, setLoadError] = useState(false);
 
-    // Reset state when src changes
     useEffect(() => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-        setDuration(0);
-        setIsLoaded(false);
-        setIsBuffering(false);
-        setLoadError(false);
+        if (!audioRef.current) return;
+        audioRef.current.volume = volume;
+        audioRef.current.loop = isLoop;
+        audioRef.current.muted = isMuted;
+    }, [isLoop, isMuted, volume]);
+
+    useEffect(() => {
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
-    }, [src]);
-
-    // Animation frame for smooth progress updates
-    const updateProgress = useCallback(() => {
-        if (audioRef.current && !isDragging) {
-            setCurrentTime(audioRef.current.currentTime);
-        }
-        animationRef.current = requestAnimationFrame(updateProgress);
-    }, [isDragging]);
+    }, []);
 
     useEffect(() => {
+        const updateProgress = () => {
+            if (audioRef.current && !isDragging) {
+                setCurrentTime(audioRef.current.currentTime);
+            }
+            animationRef.current = requestAnimationFrame(updateProgress);
+        };
+
         if (isPlaying) {
             animationRef.current = requestAnimationFrame(updateProgress);
         } else {
@@ -59,13 +60,12 @@ export default function StudioPlayer({ src, filename }) {
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [isPlaying, updateProgress]);
+    }, [isDragging, isPlaying]);
 
     // Audio event handlers
     const handleLoadedMetadata = () => {
         if (audioRef.current) {
             setDuration(audioRef.current.duration);
-            setIsLoaded(true);
         }
     };
 
@@ -79,7 +79,6 @@ export default function StudioPlayer({ src, filename }) {
     const handleWaiting = () => setIsBuffering(true);
     const handleCanPlay = () => setIsBuffering(false);
     const handleError = () => {
-        setLoadError(true);
         setIsPlaying(false);
         setIsBuffering(false);
     };

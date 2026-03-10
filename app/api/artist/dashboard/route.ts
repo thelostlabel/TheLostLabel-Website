@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { getArtistBalanceStats } from "@/lib/artist-balance";
-import type { ArtistStatsResponse, ListenerTrendPoint } from "@/lib/finance-types";
 import { extractSpotifyArtistIdFromUrl, getErrorMessage } from "@/lib/finance-utils";
 import prisma from "@/lib/prisma";
 import { getReleaseArtistWhereById, getReleaseArtistWhereByName } from "@/lib/release-artists";
@@ -15,7 +14,7 @@ const ARTIST_STATS_HISTORY_SELECT = {
   followers: true,
 } satisfies Prisma.ArtistStatsHistorySelect;
 
-export async function GET(req: Request) {
+export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -64,7 +63,11 @@ export async function GET(req: Request) {
       releaseWhereClauses.push(releaseArtistIdClause);
     }
 
-    const [artistProfile, releasesAgg, demosCount, financialStats] = await Promise.all([
+    const releaseWhere: Prisma.ReleaseWhereInput = {
+      OR: releaseWhereClauses,
+    };
+
+    const [artistProfile, releasesAgg, demosCount, financialStats, releases] = await Promise.all([
       prisma.artist.findFirst({
         where: artistId ? { id: artistId } : { OR: artistWhereClauses },
         include: {
@@ -78,19 +81,28 @@ export async function GET(req: Request) {
       prisma.release.aggregate({
         _count: { id: true },
         _sum: { totalTracks: true },
-        where: {
-          OR: releaseWhereClauses,
-        },
+        where: releaseWhere,
       }),
       prisma.demo.count({ where: { artistId: userId } }),
       getArtistBalanceStats({ userId, userEmail }),
+      prisma.release.findMany({
+        where: releaseWhere,
+        orderBy: { releaseDate: "desc" },
+        include: {
+          requests: {
+            where: { userId },
+            orderBy: { updatedAt: "desc" },
+          },
+          contracts: {
+            where: { userId },
+            select: { id: true },
+          },
+        },
+        take: 24,
+      }),
     ]);
 
-    const releasesCount = releasesAgg._count.id ?? 0;
-    const totalSongs = releasesAgg._sum.totalTracks ?? 0;
-    const monthlyListeners = artistProfile?.monthlyListeners ?? userProfile?.monthlyListeners ?? 0;
-
-    const listenerTrend: ListenerTrendPoint[] = (artistProfile?.statsHistory ?? [])
+    const listenerTrend = (artistProfile?.statsHistory ?? [])
       .map((history) => ({
         label: new Date(history.date).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" }),
         value: history.monthlyListeners,
@@ -98,11 +110,11 @@ export async function GET(req: Request) {
       }))
       .reverse();
 
-    const response: ArtistStatsResponse = {
+    const stats = {
       artistId: artistProfile?.id ?? artistId,
       artistName: artistStageName,
       artistImage: artistProfile?.image || userProfile?.artist?.image,
-      listeners: monthlyListeners,
+      listeners: artistProfile?.monthlyListeners ?? userProfile?.monthlyListeners ?? 0,
       earnings: financialStats.totalEarnings,
       streams: financialStats.totalStreams,
       withdrawn: financialStats.totalPaid,
@@ -110,8 +122,8 @@ export async function GET(req: Request) {
       pending: financialStats.totalPending,
       available: financialStats.available,
       balance: financialStats.available,
-      releases: releasesCount,
-      songs: totalSongs,
+      releases: releasesAgg._count.id ?? 0,
+      songs: releasesAgg._sum.totalTracks ?? 0,
       demos: demosCount,
       trends: financialStats.monthlyTrend,
       trendsDaily: financialStats.dailyTrend,
@@ -119,9 +131,8 @@ export async function GET(req: Request) {
       sourceStreams: financialStats.sourceStreams,
     };
 
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json({ stats, releases }, { status: 200 });
   } catch (error) {
-    console.error("Artist Stats Error:", error);
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -2,17 +2,21 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { scrapeSpotifyStats } from "@/lib/scraper";
+import { hasValidCronAuthorization } from "@/lib/cron-auth";
+import { enqueueSyncJob, scheduleSyncJobRunner, SYNC_JOB_TYPES } from "@/lib/sync-jobs";
 
 // POST: Trigger batch scrape for all artists
 export async function POST(req) {
     const session = await getServerSession(authOptions);
+    const cronAuthorized = hasValidCronAuthorization(req);
 
-    if (!session || session.user.role !== 'admin') {
+    if ((!session || session.user.role !== 'admin') && !cronAuthorized) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
     try {
         const { searchParams } = new URL(req.url);
+        const shouldQueue = searchParams.get('queue') !== 'false';
         const requestedLimit = parseInt(searchParams.get('limit') || '20', 10);
         const requestedOffset = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -26,6 +30,25 @@ export async function POST(req) {
         const interItemDelayMs = Number.isFinite(configuredDelayMs)
             ? Math.max(0, Math.min(configuredDelayMs, 10_000))
             : 500;
+
+        if (shouldQueue) {
+            if (!process.env.CRON_SECRET) {
+                return new Response(JSON.stringify({ error: "CRON_SECRET is required for queued sync jobs" }), { status: 500 });
+            }
+            const job = await enqueueSyncJob({
+                type: SYNC_JOB_TYPES.artistScrapeBatch,
+                payload: { limit, offset },
+                dedupeKey: `artist_scrape_batch:${offset}:${limit}`
+            });
+            void scheduleSyncJobRunner();
+
+            return new Response(JSON.stringify({
+                success: true,
+                queued: true,
+                jobId: job.id,
+                status: job.status
+            }), { status: 202 });
+        }
 
         // Fetch ALL artists (or just those needing update)
         // For now, let's process all artists with a Spotify URL

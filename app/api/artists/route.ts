@@ -1,23 +1,45 @@
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import { mapPublicArtist } from "@/lib/public-api";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const artists = await prisma.artist.findMany({
-      where: {
-        status: "active",
-        spotifyUrl: { not: null },
-      },
-      orderBy: {
-        monthlyListeners: "desc",
-      },
-    });
+    const { searchParams } = new URL(req.url);
+    const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 24, maxLimit: 60 });
+    const where = {
+      status: "active",
+      spotifyUrl: { not: null },
+    } as const;
+
+    const [artists, total] = await Promise.all([
+      prisma.artist.findMany({
+        where,
+        orderBy: {
+          monthlyListeners: "desc",
+        },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          spotifyUrl: true,
+          followers: true,
+          monthlyListeners: true,
+          genres: true,
+          verified: true,
+          lastSyncedAt: true,
+        },
+      }),
+      prisma.artist.count({ where }),
+    ]);
 
     return Response.json(
       {
         success: true,
         artists: artists.map(mapPublicArtist),
+        pagination: buildOffsetPaginationMeta(total, page, limit),
       },
       {
         headers: {

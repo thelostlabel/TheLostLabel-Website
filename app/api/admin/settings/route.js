@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
+import { revalidateTag } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { PUBLIC_SETTINGS_CACHE_TAG } from "@/lib/public-settings";
 
 function parseConfig(value) {
     if (!value) return {};
@@ -85,6 +87,8 @@ export async function PATCH(req) {
             update: { config: JSON.stringify(mergedConfig) },
             create: { id: "default", config: JSON.stringify(mergedConfig) }
         });
+
+        revalidateTag(PUBLIC_SETTINGS_CACHE_TAG);
 
         return new Response(JSON.stringify({ success: true, config: JSON.stringify(sanitizeConfig(parseConfig(settings.config))) }), { status: 200 });
     } catch (error) {

@@ -12,6 +12,8 @@ import { sendMail } from "@/lib/mail";
 import { generatePayoutStatusEmail } from "@/lib/mail-templates";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
+import { settleSideEffects } from "@/lib/async-effects";
 
 const typedLogger = logger as {
   debug: (message: string, data?: unknown) => void;
@@ -39,21 +41,34 @@ export async function GET(req: Request) {
   try {
     const { role, id: userId } = session.user;
     typedLogger.debug("Fetching payments", { userRole: role, userId });
+    const { searchParams } = new URL(req.url);
+    const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
+    const where = hasAdminOrArRole(role) ? undefined : { userId };
 
-    const payments = hasAdminOrArRole(role)
-      ? await prisma.payment.findMany({
-          include: {
-            user: { select: { id: true, stageName: true, email: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        })
-      : await prisma.payment.findMany({
-          where: { userId },
-          orderBy: { createdAt: "desc" },
-        });
+    const [payments, total] = await Promise.all([
+      hasAdminOrArRole(role)
+        ? prisma.payment.findMany({
+            include: {
+              user: { select: { id: true, stageName: true, fullName: true, email: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+          })
+        : prisma.payment.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+          }),
+      prisma.payment.count({ where }),
+    ]);
 
     typedLogger.debug("Payments fetched", { count: payments.length });
-    return NextResponse.json({ payments }, { status: 200 });
+    return NextResponse.json({
+      payments,
+      pagination: buildOffsetPaginationMeta(total, page, limit),
+    }, { status: 200 });
   } catch (error) {
     typedLogger.error("Failed to fetch payments", error);
     return typedHandleApiError(error, "GET /api/payments");
@@ -205,30 +220,33 @@ export async function PATCH(req: Request) {
     }
 
     if (status && ["completed", "failed"].includes(status) && existing.status !== status) {
-      try {
-        if (existing.user?.email) {
-          await sendMail({
-            to: existing.user.email,
-            subject: `Payout ${status === "completed" ? "Approved" : "Rejected"} - LOST.`,
-            html: generatePayoutStatusEmail(existing.user.stageName || "Artist", existing.amount, status, adminNote),
-          });
-        }
-      } catch (emailError) {
-        typedLogger.error("Failed to send payout status email", emailError);
-      }
-
-      try {
-        if (existing.userId) {
-          await typedQueueDiscordNotification(existing.userId, DISCORD_NOTIFY_TYPES.PAYOUT_UPDATE, {
-            artist: existing.user?.stageName || "Artist",
-            amount: existing.amount,
-            status,
-            adminNote: adminNote || null,
-          });
-        }
-      } catch (dmError) {
-        typedLogger.error("Failed to send payout Discord DM", dmError);
-      }
+      await settleSideEffects([
+        {
+          label: "payout-status-email",
+          run: async () => {
+            if (!existing.user?.email) return;
+            await sendMail({
+              to: existing.user.email,
+              subject: `Payout ${status === "completed" ? "Approved" : "Rejected"} - LOST.`,
+              html: generatePayoutStatusEmail(existing.user.stageName || "Artist", existing.amount, status, adminNote),
+            });
+          },
+        },
+        {
+          label: "payout-status-discord",
+          run: async () => {
+            if (!existing.userId) return;
+            await typedQueueDiscordNotification(existing.userId, DISCORD_NOTIFY_TYPES.PAYOUT_UPDATE, {
+              artist: existing.user?.stageName || "Artist",
+              amount: existing.amount,
+              status,
+              adminNote: adminNote || null,
+            });
+          },
+        },
+      ], 5000).catch((error) => {
+        typedLogger.error("Failed payout status side effects", error);
+      });
     }
 
     return NextResponse.json(payment, { status: 200 });

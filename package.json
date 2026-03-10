@@ -11,6 +11,7 @@
     "lint": "eslint",
     "deploy": "sh scripts/deploy.sh",
     "manual:sync": "tsx scripts/manual_sync.ts",
+    "sync:jobs": "tsx scripts/process_sync_jobs.ts",
     "typecheck": "npm run typecheck:app && npm run typecheck:scripts && npm run typecheck:discord",
     "typecheck:app": "tsc -p tsconfig.json --noEmit",
     "typecheck:discord": "npm --prefix \"Discord Bot/frontend\" run typecheck",

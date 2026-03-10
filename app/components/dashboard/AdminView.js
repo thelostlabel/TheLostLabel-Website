@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/app/components/ToastContext';
@@ -16,24 +17,28 @@ const FEATURES = {
     spotifySync:    process.env.NEXT_PUBLIC_FEATURE_SPOTIFY_SYNC !== 'false',
 };
 
-// Import View Components
-import HomeView from './admin/HomeView';
-import SubmissionsView from './admin/SubmissionsView';
-import ArtistsView from './admin/ArtistsView';
-import UsersView from './admin/UsersView';
-import RequestsView from './admin/RequestsView';
-import ContractsView from './admin/ContractsView';
-import ReleasesView from './admin/ReleasesView';
-import EarningsView from './admin/EarningsView';
-import PaymentsView from './admin/PaymentsView';
-import ContentView from './admin/ContentView';
-import WebhooksView from './admin/WebhooksView';
-import CommunicationsView from './admin/CommunicationsView';
-import SettingsView from './admin/SettingsView';
-import DiscordBridgeView from './admin/DiscordBridgeView';
 import DashboardLoader from './DashboardLoader';
 import { canDeleteDemos, canViewAllDemos, canViewUsers, hasAdminViewPermission } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+
+const lazyView = (loader) => dynamic(loader, {
+    loading: () => <DashboardLoader label="LOADING MODULE" subLabel="Fetching admin view..." />
+});
+
+const HomeView = lazyView(() => import('./admin/HomeView'));
+const SubmissionsView = lazyView(() => import('./admin/SubmissionsView'));
+const ArtistsView = lazyView(() => import('./admin/ArtistsView'));
+const UsersView = lazyView(() => import('./admin/UsersView'));
+const RequestsView = lazyView(() => import('./admin/RequestsView'));
+const ContractsView = lazyView(() => import('./admin/ContractsView'));
+const ReleasesView = lazyView(() => import('./admin/ReleasesView'));
+const EarningsView = lazyView(() => import('./admin/EarningsView'));
+const PaymentsView = lazyView(() => import('./admin/PaymentsView'));
+const ContentView = lazyView(() => import('./admin/ContentView'));
+const WebhooksView = lazyView(() => import('./admin/WebhooksView'));
+const CommunicationsView = lazyView(() => import('./admin/CommunicationsView'));
+const SettingsView = lazyView(() => import('./admin/SettingsView'));
+const DiscordBridgeView = lazyView(() => import('./admin/DiscordBridgeView'));
 
 function WisePayoutsView() {
     return (
@@ -162,9 +167,9 @@ export default function AdminView() {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/requests');
+            const res = await fetch('/api/admin/requests?limit=50');
             const data = await res.json();
-            setRequests(Array.isArray(data) ? data : []);
+            setRequests(data.requests || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -172,9 +177,9 @@ export default function AdminView() {
     const fetchSubmissions = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/demo');
+            const res = await fetch('/api/demo?limit=50');
             const data = await res.json();
-            setSubmissions(Array.isArray(data) ? data : []);
+            setSubmissions(data.demos || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -182,7 +187,7 @@ export default function AdminView() {
     const fetchArtists = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/artists');
+            const res = await fetch('/api/admin/artists?limit=50');
             const data = await res.json();
             console.log("[AdminView] Fetched Artists:", data.artists?.length);
             setArtists(data.artists || []);
@@ -194,9 +199,9 @@ export default function AdminView() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/users');
+            const res = await fetch('/api/admin/users?limit=50');
             const data = await res.json();
-            setUsers(Array.isArray(data) ? data : []);
+            setUsers(data.users || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -214,7 +219,7 @@ export default function AdminView() {
     const fetchContracts = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/contracts?all=true');
+            const res = await fetch('/api/contracts?all=true&limit=50');
             const data = await res.json();
             console.log("[AdminView] Fetched Contracts:", data.contracts?.length);
             setContracts(data.contracts || []);
@@ -237,7 +242,7 @@ export default function AdminView() {
     const fetchPayments = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/payments');
+            const res = await fetch('/api/payments?limit=50');
             const data = await res.json();
             setPayments(data.payments || []);
         } catch (e) { console.error(e); }
@@ -247,10 +252,10 @@ export default function AdminView() {
     const fetchReleases = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/releases');
+            const res = await fetch('/api/admin/releases?limit=50');
             const data = await res.json();
-            console.log("[AdminView] Fetched Releases:", data.length);
-            setReleases(Array.isArray(data) ? data : []);
+            console.log("[AdminView] Fetched Releases:", data.releases?.length);
+            setReleases(data.releases || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
 

@@ -1,17 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import prisma from "@/lib/prisma";
-
-function hasExactArtistId(artistsJson, artistId) {
-    if (!artistId || !artistsJson) return false;
-    try {
-        const parsed = JSON.parse(artistsJson);
-        if (!Array.isArray(parsed)) return false;
-        return parsed.some((artist) => artist?.id === artistId);
-    } catch {
-        return false;
-    }
-}
+import { getReleaseArtistWhereById } from "@/lib/release-artists";
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -22,17 +13,30 @@ export async function GET(req) {
     try {
         const { searchParams } = new URL(req.url);
         const artistId = searchParams.get('artistId');
+        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
+        const artistRecord = artistId
+            ? await prisma.artist.findUnique({
+                where: { id: artistId },
+                select: { spotifyUrl: true }
+            })
+            : null;
+        const spotifyArtistId = artistRecord?.spotifyUrl?.split('/').filter(Boolean).pop()?.split('?')[0] || null;
+        const artistFilters = [getReleaseArtistWhereById(artistId), getReleaseArtistWhereById(spotifyArtistId)].filter(Boolean);
+        const where = artistFilters.length > 0 ? { OR: artistFilters } : {};
 
-        const releases = await prisma.release.findMany({
-            where: artistId ? {
-                artistsJson: { contains: artistId }
-            } : {},
-            orderBy: { createdAt: 'desc' }
-        });
-        const filtered = artistId
-            ? releases.filter((release) => hasExactArtistId(release.artistsJson, artistId))
-            : releases;
-        return new Response(JSON.stringify(filtered), { status: 200 });
+        const [releases, total] = await Promise.all([
+            prisma.release.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit
+            }),
+            prisma.release.count({ where })
+        ]);
+        return new Response(JSON.stringify({
+            releases,
+            pagination: buildOffsetPaginationMeta(total, page, limit)
+        }), { status: 200 });
     } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500 });
     }

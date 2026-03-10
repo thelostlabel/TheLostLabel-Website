@@ -1,4 +1,6 @@
-import type { Artist, Release } from "@prisma/client";
+import type { Artist, Release, ReleaseArtist } from "@prisma/client";
+
+import { mapReleaseArtistsToSummary, parseReleaseArtistsJson } from "@/lib/release-artists";
 
 type ArtistRecord = Pick<
   Artist,
@@ -19,7 +21,9 @@ type ReleaseRecord = Pick<
   | "popularity"
   | "streamCountText"
   | "artistsJson"
->;
+> & {
+  releaseArtists?: Pick<ReleaseArtist, "artistId" | "name">[];
+};
 
 export type ReleaseArtistSummary = {
   name: string;
@@ -67,26 +71,14 @@ export function mapPublicArtist(artist: ArtistRecord): PublicArtist {
 }
 
 export function parseReleaseArtists(artistsJson: string | null): ReleaseArtistSummary[] {
-  if (!artistsJson) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(artistsJson) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter((artist): artist is ReleaseArtistSummary => {
-      return typeof artist === "object" && artist !== null && typeof artist.name === "string";
-    });
-  } catch {
-    return [];
-  }
+  return parseReleaseArtistsJson(artistsJson).map((artist) => ({ name: artist.name || artist.artistId }));
 }
 
 export function mapPublicRelease(release: ReleaseRecord): PublicRelease {
-  const artists = parseReleaseArtists(release.artistsJson);
+  const artists =
+    release.releaseArtists && release.releaseArtists.length > 0
+      ? mapReleaseArtistsToSummary(release.releaseArtists).map((artist) => ({ name: artist.name }))
+      : parseReleaseArtists(release.artistsJson);
   const artistName = artists.length > 0 ? artists.map((artist) => artist.name).join(", ") : (release.artistName ?? "Unknown Artist");
 
   return {

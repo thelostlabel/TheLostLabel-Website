@@ -1,29 +1,21 @@
 "use client";
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Instagram, Disc, Youtube, Twitter, Facebook, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { BRANDING } from '@/lib/branding';
+import { usePublicSettings } from './PublicSettingsContext';
 
 
 const Footer = () => {
-    const [socials, setSocials] = useState({});
-
-    useEffect(() => {
-        fetch('/api/settings/public')
-            .then(res => res.json())
-            .then(data => {
-                setSocials({
-                    discord: data.discord,
-                    instagram: data.instagram,
-                    spotify: data.spotify,
-                    youtube: data.youtube,
-                    twitter: data.twitter,
-                    facebook: data.facebook
-                });
-            })
-            .catch(err => console.error(err));
-    }, []);
+    const publicSettings = usePublicSettings();
+    const socials = {
+        discord: publicSettings.discord,
+        instagram: publicSettings.instagram,
+        spotify: publicSettings.spotify,
+        youtube: publicSettings.youtube,
+        twitter: publicSettings.twitter,
+        facebook: publicSettings.facebook
+    };
 
     const footerLinks = {
         explore: [

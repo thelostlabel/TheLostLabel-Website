@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateSupportUpdateEmail } from "@/lib/mail-templates";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { settleSideEffects } from "@/lib/async-effects";
+import { hasExactReleaseArtist } from "@/lib/release-artists";
 
 function extractSpotifyArtistId(url) {
     if (!url || typeof url !== "string") return null;
@@ -11,20 +13,6 @@ function extractSpotifyArtistId(url) {
     const lastPart = parts.pop() || '';
     const id = lastPart.split('?')[0]?.trim();
     return id || null;
-}
-
-function hasArtistAccessBySpotifyId(artistsJson, spotifyId) {
-    if (!artistsJson || !spotifyId) return false;
-    try {
-        const parsed = JSON.parse(artistsJson);
-        if (!Array.isArray(parsed)) return false;
-        return parsed.some((artist) => {
-            if (typeof artist === "string") return artist === spotifyId;
-            return artist?.id === spotifyId;
-        });
-    } catch {
-        return artistsJson.includes(spotifyId);
-    }
 }
 
 // GET: Fetch comments for a specific request
@@ -43,7 +31,11 @@ export async function GET(req, { params }) {
             select: {
                 userId: true,
                 release: {
-                    select: { artistsJson: true }
+                    select: {
+                        releaseArtists: {
+                            select: { artistId: true }
+                        }
+                    }
                 }
             }
         });
@@ -66,9 +58,9 @@ export async function GET(req, { params }) {
             });
 
             let isCollaborator = false;
-            if ((user?.spotifyUrl || user?.artist?.spotifyUrl) && request.release?.artistsJson) {
+            if (user?.spotifyUrl || user?.artist?.spotifyUrl) {
                 const spotifyId = extractSpotifyArtistId(user.artist?.spotifyUrl) || extractSpotifyArtistId(user.spotifyUrl);
-                isCollaborator = hasArtistAccessBySpotifyId(request.release.artistsJson, spotifyId);
+                isCollaborator = hasExactReleaseArtist(request.release?.releaseArtists, spotifyId);
             }
 
             if (!isCollaborator) {
@@ -111,7 +103,16 @@ export async function POST(req, { params }) {
         // Check access
         const request = await prisma.changeRequest.findUnique({
             where: { id },
-            include: { user: true, release: true }
+            include: {
+                user: true,
+                release: {
+                    include: {
+                        releaseArtists: {
+                            select: { artistId: true }
+                        }
+                    }
+                }
+            }
         });
 
         if (!request) {
@@ -130,9 +131,9 @@ export async function POST(req, { params }) {
             });
 
             let isCollaborator = false;
-            if ((user?.spotifyUrl || user?.artist?.spotifyUrl) && request.release?.artistsJson) {
+            if (user?.spotifyUrl || user?.artist?.spotifyUrl) {
                 const spotifyId = extractSpotifyArtistId(user.artist?.spotifyUrl) || extractSpotifyArtistId(user.spotifyUrl);
-                isCollaborator = hasArtistAccessBySpotifyId(request.release.artistsJson, spotifyId);
+                isCollaborator = hasExactReleaseArtist(request.release?.releaseArtists, spotifyId);
             }
 
             if (!isCollaborator) {
@@ -153,8 +154,10 @@ export async function POST(req, { params }) {
 
         // Notify support mailbox when artist/collaborator comments
         if (!isAdmin) {
-            try {
-                await sendMail({
+            await settleSideEffects([
+                {
+                    label: "support-mailbox-comment-notification",
+                    run: () => sendMail({
                     to: supportEmail,
                     subject: `Support Ticket Reply from ${request.user?.stageName || request.user?.email || 'Artist'}`,
                     html: `
@@ -168,41 +171,43 @@ export async function POST(req, { params }) {
                             <a href="${process.env.NEXTAUTH_URL}/dashboard?view=requests&id=${id}">View in Admin Panel</a>
                         </div>
                     `
-                });
-            } catch (emailError) {
-                console.error("Support Mail Notification Error:", emailError);
-            }
+                    }).catch((emailError) => {
+                        console.error("Support Mail Notification Error:", emailError);
+                    })
+                }
+            ], 5000);
         }
 
         // Artist gets notified of staff comment
         if (isAdmin && request.userId !== session.user.id) {
-            try {
-                await sendMail({
-                    to: request.user.email,
-                    subject: `Update on your ${request.type.toUpperCase().replace('_', ' ')} request`,
-                    html: generateSupportUpdateEmail(
-                        request.user.stageName || 'Artist',
-                        id,
-                        request.type,
-                        content
-                    )
-                });
-            } catch (emailError) {
-                console.error("Email Notification Error:", emailError);
-            }
-
-            // Discord DM — mirror the support reply email
-            try {
-                const reqType = request.type.toUpperCase().replace('_', ' ');
-                await queueDiscordNotification(request.userId, DISCORD_NOTIFY_TYPES.SUPPORT_RESPONSE, {
-                    artist: request.user.stageName || request.user.email || 'Artist',
-                    type: request.type,
-                    content,
-                    requestId: id
-                });
-            } catch (dmError) {
-                console.error("Discord DM Notification Error (support reply):", dmError);
-            }
+            await settleSideEffects([
+                {
+                    label: "artist-support-update-email",
+                    run: () => sendMail({
+                        to: request.user.email,
+                        subject: `Update on your ${request.type.toUpperCase().replace('_', ' ')} request`,
+                        html: generateSupportUpdateEmail(
+                            request.user.stageName || 'Artist',
+                            id,
+                            request.type,
+                            content
+                        )
+                    }).catch((emailError) => {
+                        console.error("Email Notification Error:", emailError);
+                    })
+                },
+                {
+                    label: "artist-support-update-discord",
+                    run: () => queueDiscordNotification(request.userId, DISCORD_NOTIFY_TYPES.SUPPORT_RESPONSE, {
+                        artist: request.user.stageName || request.user.email || 'Artist',
+                        type: request.type,
+                        content,
+                        requestId: id
+                    }).catch((dmError) => {
+                        console.error("Discord DM Notification Error (support reply):", dmError);
+                    })
+                }
+            ], 5000);
         }
 
         return new Response(JSON.stringify(comment), { status: 201 });

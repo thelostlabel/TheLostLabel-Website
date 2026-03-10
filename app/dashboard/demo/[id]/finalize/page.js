@@ -108,7 +108,7 @@ export default function FinalizeReleasePage({ params }) {
 
     const fetchArtists = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/artists');
+            const res = await fetch('/api/admin/artists?limit=100');
             const data = await res.json();
             if (res.ok) setArtists(data.artists || []);
         } catch (e) { console.error("Error fetching artists", e); }

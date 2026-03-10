@@ -2,6 +2,7 @@ import { getArtistsDetails } from "@/lib/spotify";
 import prisma from "@/lib/prisma";
 import { scrapeSpotifyStats } from "@/lib/scraper";
 import { hasValidCronAuthorization } from "@/lib/cron-auth";
+import { enqueueSyncJob, scheduleSyncJobRunner, SYNC_JOB_TYPES } from "@/lib/sync-jobs";
 
 /**
  * GET /api/admin/cron/sync-spotify
@@ -19,6 +20,24 @@ export async function GET(req) {
     }
 
     try {
+        const { searchParams } = new URL(req.url);
+        const shouldQueue = searchParams.get('queue') !== 'false';
+
+        if (shouldQueue) {
+            const job = await enqueueSyncJob({
+                type: SYNC_JOB_TYPES.artistStatsSync,
+                dedupeKey: "artist_stats_sync"
+            });
+            void scheduleSyncJobRunner();
+
+            return new Response(JSON.stringify({
+                success: true,
+                queued: true,
+                jobId: job.id,
+                status: job.status
+            }), { status: 202 });
+        }
+
         console.log("[Cron Sync] Starting Spotify sync for all artists...");
 
         // 1. Fetch all artists with a valid Spotify URL

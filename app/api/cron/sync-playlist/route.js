@@ -9,6 +9,8 @@ import { handleApiError } from "@/lib/api-errors";
 import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
 import { enqueueArtistRoleSyncForRelease, insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { hasValidCronAuthorization } from "@/lib/cron-auth";
+import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
+import { enqueueSyncJob, scheduleSyncJobRunner, SYNC_JOB_TYPES } from "@/lib/sync-jobs";
 
 const DEFAULT_PLAYLIST_ID = '6QHy5LPKDRHDdKZGBFxRY8';
 const NETWORK_TIMEOUT_MS = 10000;
@@ -32,6 +34,7 @@ export async function POST(req) {
 
     // Allow authenticated cron job via Authorization header OR admin access
     const { searchParams } = new URL(req.url);
+    const shouldQueue = searchParams.get('queue') !== 'false';
     const scrapeListeners = searchParams.get('scrape') !== 'false';
     const requestedResultsLimit = Number.parseInt(searchParams.get('resultsLimit') || '20', 10);
     const resultsLimit = Number.isFinite(requestedResultsLimit)
@@ -42,6 +45,28 @@ export async function POST(req) {
 
     if (!isValidCron && !isAdmin) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
+    if (shouldQueue) {
+        if (!process.env.CRON_SECRET) {
+            return new Response(JSON.stringify({ error: "CRON_SECRET is required for queued sync jobs" }), { status: 500 });
+        }
+        const job = await enqueueSyncJob({
+            type: SYNC_JOB_TYPES.playlistSync,
+            payload: {
+                scrapeListeners,
+                resultsLimit
+            },
+            dedupeKey: `playlist_sync:${scrapeListeners ? 'scrape' : 'noscrape'}`
+        });
+        void scheduleSyncJobRunner();
+
+        return new Response(JSON.stringify({
+            success: true,
+            queued: true,
+            jobId: job.id,
+            status: job.status
+        }), { status: 202 });
     }
 
     const startTime = Date.now();
@@ -269,9 +294,13 @@ export async function POST(req) {
                         artistsJson: rel.artistsJson,
                         popularity: rel.popularity,
                         totalTracks: rel.totalTracks,
-                        previewUrl: rel.previewUrl
+                        previewUrl: rel.previewUrl,
+                        releaseArtists: buildReleaseArtistNestedWrite(rel.artistsJson)
                     },
-                    create: rel
+                    create: {
+                        ...rel,
+                        releaseArtists: buildReleaseArtistNestedWrite(rel.artistsJson)
+                    }
                 });
             }
 

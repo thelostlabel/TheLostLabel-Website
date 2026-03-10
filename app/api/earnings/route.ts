@@ -12,6 +12,7 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateEarningsNotificationEmail } from "@/lib/mail-templates";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { settleSideEffects } from "@/lib/async-effects";
 
 type EarningRecipient = {
   email: string;
@@ -247,36 +248,47 @@ export async function POST(req: Request) {
       }
     }
 
-    for (const recipient of recipients.values()) {
-      try {
-        await sendMail({
-          to: recipient.email,
-          subject: `NEW EARNINGS RECEIVED: ${releaseName}`,
-          html: generateEarningsNotificationEmail(recipient.name, releaseName, recipient.amount, earning.period),
-        });
-      } catch (mailError) {
-        console.error("Failed to send earnings notification email:", mailError);
-      }
+    await settleSideEffects(
+      Array.from(recipients.values()).flatMap((recipient) => {
+        const tasks: { label: string; run: () => Promise<unknown> }[] = [
+          {
+            label: `earnings-email:${recipient.email}`,
+            run: () =>
+              sendMail({
+                to: recipient.email,
+                subject: `NEW EARNINGS RECEIVED: ${releaseName}`,
+                html: generateEarningsNotificationEmail(recipient.name, releaseName, recipient.amount, earning.period),
+              }),
+          },
+        ];
 
-      if (recipient.userId) {
-        try {
-          await queueDiscordNotification(recipient.userId, DISCORD_NOTIFY_TYPES.EARNINGS_UPDATE, {
-            title: "New Earnings Received 💰",
-            description: `New earnings have been added for **${releaseName}**.`,
-            color: 0x00ff88,
-            fields: [
-              { name: "Release", value: releaseName, inline: true },
-              { name: "Period", value: earning.period, inline: true },
-              { name: "Your Share", value: `$${Number(recipient.amount || 0).toFixed(2)} ${earning.currency}`, inline: true },
-              { name: "Streams", value: earning.streams ? earning.streams.toLocaleString() : "N/A", inline: true },
-            ],
-            footer: "LOST. Earnings",
+        const recipientUserId = recipient.userId;
+        if (recipientUserId) {
+          tasks.push({
+            label: `earnings-discord:${recipientUserId}`,
+            run: async () => {
+              await queueDiscordNotification(recipientUserId, DISCORD_NOTIFY_TYPES.EARNINGS_UPDATE, {
+                title: "New Earnings Received 💰",
+                description: `New earnings have been added for **${releaseName}**.`,
+                color: 0x00ff88,
+                fields: [
+                  { name: "Release", value: releaseName, inline: true },
+                  { name: "Period", value: earning.period, inline: true },
+                  { name: "Your Share", value: `$${Number(recipient.amount || 0).toFixed(2)} ${earning.currency}`, inline: true },
+                  { name: "Streams", value: earning.streams ? earning.streams.toLocaleString() : "N/A", inline: true },
+                ],
+                footer: "LOST. Earnings",
+              });
+            },
           });
-        } catch (dmError) {
-          console.error("[Earnings POST] Failed to queue Discord DM notification:", dmError);
         }
-      }
-    }
+
+        return tasks;
+      }),
+      5000,
+    ).catch((sideEffectError) => {
+      console.error("[Earnings POST] Failed to dispatch side effects:", sideEffectError);
+    });
 
     return NextResponse.json(earning, { status: 201 });
   } catch (error) {

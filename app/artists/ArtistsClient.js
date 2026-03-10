@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import Link from 'next/link';
 import NextImage from 'next/image';
@@ -15,6 +15,8 @@ export default function ArtistsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [sortBy, setSortBy] = useState('listeners');
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, hasNextPage: false });
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
@@ -28,32 +30,42 @@ export default function ArtistsPage() {
         restDelta: 0.001
     });
 
-    useEffect(() => {
-        async function fetchRoster() {
+    const fetchRoster = useCallback(async (page = 1, append = false) => {
+        if (append) {
+            setLoadingMore(true);
+        } else {
             setLoading(true);
-            setError(false);
-            try {
-                const res = await fetch(`/api/artists`);
-                const data = await res.json();
-                if (data.artists) {
-                    setArtists(data.artists);
-                } else {
-                    setError(true);
-                }
-            } catch (e) {
-                console.error(e);
+        }
+        setError(false);
+        try {
+            const res = await fetch(`/api/artists?page=${page}&limit=24`);
+            const data = await res.json();
+            if (data.artists) {
+                setArtists((prev) => append ? [...prev, ...data.artists.filter((item) => !prev.some((existing) => existing.id === item.id))] : data.artists);
+                if (data.pagination) setPagination(data.pagination);
+            } else {
                 setError(true);
-            } finally {
+            }
+        } catch (e) {
+            console.error(e);
+            setError(true);
+        } finally {
+            if (append) {
+                setLoadingMore(false);
+            } else {
                 setLoading(false);
             }
         }
-        fetchRoster();
+    }, []);
+
+    useEffect(() => {
+        fetchRoster(1, false);
 
         setTimeout(() => {
             setIntroDone(true);
         }, 1500);
 
-    }, []);
+    }, [fetchRoster]);
 
     const filteredArtists = useMemo(() => {
         let result = [...artists];
@@ -237,6 +249,28 @@ export default function ArtistsPage() {
                                 ))}
                             </AnimatePresence>
                         </motion.div>
+                    )}
+
+                    {!loading && !error && pagination.hasNextPage && (
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '36px' }}>
+                            <button
+                                onClick={() => fetchRoster(pagination.page + 1, true)}
+                                disabled={loadingMore}
+                                style={{
+                                    padding: '14px 24px',
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '999px',
+                                    color: '#fff',
+                                    fontSize: '11px',
+                                    fontWeight: '900',
+                                    letterSpacing: '1.8px',
+                                    cursor: loadingMore ? 'wait' : 'pointer'
+                                }}
+                            >
+                                {loadingMore ? 'LOADING...' : 'LOAD MORE'}
+                            </button>
+                        </div>
                     )}
 
                     {filteredArtists.length === 0 && !loading && !error && (

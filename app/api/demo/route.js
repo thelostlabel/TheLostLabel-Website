@@ -1,13 +1,14 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { notifyDemoSubmission } from "@/lib/discord";
 import { sendMail } from "@/lib/mail";
 import { generateDemoReceivedEmail } from "@/lib/mail-templates";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import { z } from "zod";
 import rateLimit from "@/lib/rate-limit";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
+import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
+import { settleSideEffects } from "@/lib/async-effects";
 
 // Rate limiter: 10 demos per hour per user
 const limiter = rateLimit({
@@ -128,42 +129,45 @@ export async function POST(req) {
         const artistName = userPrefs.stageName || userPrefs.fullName || "Artist";
 
         // 1. Send confirmation to Artist (always, if email exists)
-        if (userPrefs?.email) {
-            try {
-                await sendMail({
+        await settleSideEffects([
+            {
+                label: "demo-confirmation-email",
+                run: async () => {
+                    if (!userPrefs?.email) return;
+                    await sendMail({
                     to: userPrefs.email,
                     subject: 'Demo Received | LOST.',
                     html: generateDemoReceivedEmail(artistName, title)
-                });
-            } catch (mailError) {
-                console.error("Failed to send demo confirmation email:", mailError);
+                    });
+                }
+            },
+            {
+                label: "demo-team-forward-email",
+                run: async () => {
+                    const demoMailbox = process.env.DEMO_EMAIL || 'demo@thelostlabel.com';
+                    const demoLinkHtml = trackLink
+                        ? `<p><strong>Link:</strong> <a href="${trackLink}">${trackLink}</a></p>`
+                        : `<p><strong>Files:</strong> ${files.length} file(s) attached in dashboard.</p>`;
+
+                    await sendMail({
+                        to: demoMailbox,
+                        subject: `NEW DEMO: ${artistName} - ${title}`,
+                        html: `
+                            <h2>New Demo Submission</h2>
+                            <p><strong>Artist:</strong> ${artistName}</p>
+                            <p><strong>Title:</strong> ${title}</p>
+                            <p><strong>Genre:</strong> ${genre || 'N/A'}</p>
+                            ${demoLinkHtml}
+                            <p><strong>Message:</strong><br/>${message || 'No message'}</p>
+                            <hr/>
+                            <p><a href="${process.env.NEXTAUTH_URL}/dashboard?view=submissions">View in Admin Panel</a></p>
+                        `
+                    });
+                }
             }
-        }
-
-        // 2. Forward demo to A&R team mailbox
-        try {
-            const demoMailbox = process.env.DEMO_EMAIL || 'demo@thelostlabel.com';
-            const demoLinkHtml = trackLink
-                ? `<p><strong>Link:</strong> <a href="${trackLink}">${trackLink}</a></p>`
-                : `<p><strong>Files:</strong> ${files.length} file(s) attached in dashboard.</p>`;
-
-            await sendMail({
-                to: demoMailbox,
-                subject: `NEW DEMO: ${artistName} - ${title}`,
-                html: `
-                    <h2>New Demo Submission</h2>
-                    <p><strong>Artist:</strong> ${artistName}</p>
-                    <p><strong>Title:</strong> ${title}</p>
-                    <p><strong>Genre:</strong> ${genre || 'N/A'}</p>
-                    ${demoLinkHtml}
-                    <p><strong>Message:</strong><br/>${message || 'No message'}</p>
-                    <hr/>
-                    <p><a href="${process.env.NEXTAUTH_URL}/dashboard?view=submissions">View in Admin Panel</a></p>
-                `
-            });
-        } catch (teamMailError) {
-            console.error("Failed to forward demo to team:", teamMailError);
-        }
+        ], 5000).catch((sideEffectError) => {
+            console.error("Demo notification side effects failed:", sideEffectError);
+        });
 
         return new Response(JSON.stringify(demo), { status: 201 });
     } catch (error) {
@@ -180,33 +184,51 @@ export async function GET(req) {
         const { searchParams } = new URL(req.url);
         const filterMine = searchParams.get('filter') === 'mine';
         const canViewAll = canViewAllDemos(session.user);
+        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
 
         if (filterMine && !hasPortalPermission(session.user, "view_demos")) {
             return new Response(JSON.stringify({ error: "You do not have permission to view demos." }), { status: 403 });
         }
 
         if (canViewAll && !filterMine) {
-            const demos = await prisma.demo.findMany({
-                include: {
-                    artist: {
-                        select: { stageName: true, email: true }
+            const [demos, total] = await Promise.all([
+                prisma.demo.findMany({
+                    include: {
+                        artist: {
+                            select: { stageName: true, email: true }
+                        },
+                        files: true
                     },
-                    files: true
-                },
-                orderBy: { createdAt: 'desc' }
-            });
-            return new Response(JSON.stringify(demos), { status: 200 });
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: limit
+                }),
+                prisma.demo.count()
+            ]);
+            return new Response(JSON.stringify({
+                demos,
+                pagination: buildOffsetPaginationMeta(total, page, limit)
+            }), { status: 200 });
         } else {
             if (!hasPortalPermission(session.user, "view_demos")) {
                 return new Response(JSON.stringify({ error: "You do not have permission to view demos." }), { status: 403 });
             }
 
-            const demos = await prisma.demo.findMany({
-                where: { artistId: session.user.id },
-                include: { files: true },
-                orderBy: { createdAt: 'desc' }
-            });
-            return new Response(JSON.stringify(demos), { status: 200 });
+            const where = { artistId: session.user.id };
+            const [demos, total] = await Promise.all([
+                prisma.demo.findMany({
+                    where,
+                    include: { files: true },
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: limit
+                }),
+                prisma.demo.count({ where })
+            ]);
+            return new Response(JSON.stringify({
+                demos,
+                pagination: buildOffsetPaginationMeta(total, page, limit)
+            }), { status: 200 });
         }
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });

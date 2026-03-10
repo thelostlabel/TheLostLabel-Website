@@ -38,6 +38,7 @@ import { canViewAllDemos, canViewUsers, hasAdminViewPermission, hasManagementAcc
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 import { BRANDING } from '@/lib/branding';
 
+const avatarLoader = ({ src }) => src;
 
 function DashboardLayoutContent({ children }) {
     const { data: session, status } = useSession();
@@ -221,7 +222,14 @@ function DashboardLayoutContent({ children }) {
                     <div className="rail-user-head">
                         <div className="rail-user-avatar">
                             {session.user.image ? (
-                                <img src={session.user.image} alt="Profile" />
+                                <Image
+                                    loader={avatarLoader}
+                                    unoptimized
+                                    src={session.user.image}
+                                    alt={`${session.user.stageName || session.user.name || 'User'} avatar`}
+                                    width={42}
+                                    height={42}
+                                />
                             ) : (
                                 <span>{session.user.stageName?.[0] || 'U'}</span>
                             )}
@@ -358,7 +366,14 @@ function DashboardLayoutContent({ children }) {
 
                             <div className="bc-user-avatar">
                                 {session.user.image ? (
-                                    <img src={session.user.image} alt="" />
+                                    <Image
+                                        loader={avatarLoader}
+                                        unoptimized
+                                        src={session.user.image}
+                                        alt={`${session.user.stageName || session.user.name || 'User'} avatar`}
+                                        width={36}
+                                        height={36}
+                                    />
                                 ) : (
                                     <span>{session.user.stageName?.[0] || 'U'}</span>
                                 )}

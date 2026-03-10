@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getReleaseArtistWhereById } from "@/lib/release-artists";
 
 function extractSpotifyArtistId(url) {
     if (!url || typeof url !== "string") return null;
@@ -8,20 +9,6 @@ function extractSpotifyArtistId(url) {
     const lastPart = parts.pop() || '';
     const id = lastPart.split('?')[0]?.trim();
     return id || null;
-}
-
-function hasExactArtistId(artistsJson, artistId) {
-    if (!artistId || !artistsJson) return false;
-    try {
-        const parsed = JSON.parse(artistsJson);
-        if (!Array.isArray(parsed)) return false;
-        return parsed.some((artist) => {
-            if (typeof artist === "string") return artist === artistId;
-            return artist?.id === artistId;
-        });
-    } catch {
-        return false;
-    }
 }
 
 export async function GET(req) {
@@ -45,8 +32,9 @@ export async function GET(req) {
             { contracts: { some: { userId: session.user.id } } }
         ];
 
-        if (spotifyId) {
-            orConditions.push({ artistsJson: { contains: spotifyId } });
+        const releaseArtistCondition = getReleaseArtistWhereById(spotifyId);
+        if (releaseArtistCondition) {
+            orConditions.push(releaseArtistCondition);
         }
 
         const releases = await prisma.release.findMany({
@@ -66,13 +54,7 @@ export async function GET(req) {
             }
         });
 
-        const filtered = releases.filter((release) => {
-            const hasUserContract = Array.isArray(release.contracts) && release.contracts.length > 0;
-            if (hasUserContract) return true;
-            return hasExactArtistId(release.artistsJson, spotifyId);
-        });
-
-        return new Response(JSON.stringify(filtered), { status: 200 });
+        return new Response(JSON.stringify(releases), { status: 200 });
     } catch (e) {
         console.error("Fetch Releases Error:", e);
         return new Response(JSON.stringify({ error: e.message }), { status: 500 });

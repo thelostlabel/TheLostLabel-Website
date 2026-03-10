@@ -1,10 +1,12 @@
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import AuthProvider from "./components/AuthProvider";
+import { PublicSettingsProvider } from "./components/PublicSettingsContext";
 import SmoothScroll from "./components/SmoothScroll";
 import { ToastProvider } from "./components/ToastContext";
 import { PlayerProvider } from "./components/PlayerContext";
 import Player from "./components/Player";
+import { getPublicSettings } from "@/lib/public-settings";
 
 
 export const metadata = {
@@ -66,7 +68,9 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const publicSettings = await getPublicSettings();
+
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
@@ -75,16 +79,18 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body>
-        <SmoothScroll />
-        <AuthProvider>
-          <ToastProvider>
-            <PlayerProvider>
-              <Navbar />
-              <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
-              <Player />
-            </PlayerProvider>
-          </ToastProvider>
-        </AuthProvider>
+        <PublicSettingsProvider value={publicSettings}>
+          <SmoothScroll />
+          <AuthProvider>
+            <ToastProvider>
+              <PlayerProvider>
+                <Navbar />
+                <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
+                <Player />
+              </PlayerProvider>
+            </ToastProvider>
+          </AuthProvider>
+        </PublicSettingsProvider>
       </body>
     </html>
   );
