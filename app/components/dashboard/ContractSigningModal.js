@@ -84,13 +84,17 @@ export default function ContractSigningModal({ contract, user, onClose, onComple
             formData.append('file', coverArt);
             formData.append('releaseId', contract.releaseId);
 
-            await fetch('/api/upload/cover-art', {
+            const res = await fetch('/api/upload/cover-art', {
                 method: 'POST',
                 body: formData
             });
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error || 'Upload failed');
+            }
             onComplete();
         } catch (e) {
-            alert("Upload failed");
+            alert(e.message || "Upload failed");
         } finally {
             setLoading(false);
         }

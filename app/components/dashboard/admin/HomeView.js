@@ -353,8 +353,8 @@ const RevenueFlowChart = ({ data, height = 220, granularity = 'monthly' }) => {
 };
 
 /* ── Pill Toggle ── */
-const PillToggle = ({ options, value, onChange }) => (
-    <div style={{ display: 'inline-flex', gap: 2, padding: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${T.border}` }}>
+const PillToggle = ({ options, value, onChange, className }) => (
+    <div className={className} style={{ display: 'inline-flex', gap: 2, padding: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${T.border}` }}>
         {options.map((opt) => {
             const active = value === opt.key;
             return (
@@ -404,8 +404,8 @@ const Card = ({ children, style, ...props }) => (
     <div style={{
         background: T.surface,
         border: `1px solid ${T.border}`,
-        borderRadius: 16,
-        padding: '20px',
+        borderRadius: 14,
+        padding: '18px',
         position: 'relative',
         overflow: 'hidden',
         ...style
@@ -490,7 +490,7 @@ export default function HomeView({ onNavigate }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.35 }}
-                    style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 26, marginBottom: 12 }}
+                    style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 22, marginBottom: 12 }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                         <div>
@@ -504,25 +504,25 @@ export default function HomeView({ onNavigate }) {
                         />
                     </div>
                 </motion.div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+                <div className="admin-home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
                     {[1, 2, 3, 4].map((item) => (
                         <motion.div
                             key={item}
                             initial={{ opacity: 0.3 }}
                             animate={{ opacity: [0.3, 0.6, 0.3] }}
                             transition={{ repeat: Infinity, duration: 1.2, delay: item * 0.08 }}
-                            style={{ height: 100, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
+                            style={{ height: 92, borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
                         />
                     ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="admin-home-chart-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {[1, 2].map((item) => (
                         <motion.div
                             key={item}
                             initial={{ opacity: 0.3 }}
                             animate={{ opacity: [0.3, 0.6, 0.3] }}
                             transition={{ repeat: Infinity, duration: 1.4, delay: item * 0.1 }}
-                            style={{ height: 380, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
+                            style={{ height: 340, borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
                         />
                     ))}
                 </div>
@@ -536,7 +536,7 @@ export default function HomeView({ onNavigate }) {
         <div style={{ padding: '0 0 40px 0', fontFamily: 'Space Grotesk, sans-serif' }}>
 
             {/* ── KPI Row ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+            <div className="admin-home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
                 {kpiCards.map((card, i) => (
                     <motion.div
                         key={i}
@@ -544,11 +544,11 @@ export default function HomeView({ onNavigate }) {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
                     >
-                        <Card style={{ height: '100%' }}>
+                        <Card className="admin-home-card admin-home-kpi-card" style={{ height: '100%' }}>
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)` }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: '1.2px', textTransform: 'uppercase' }}>{card.label}</p>
-                                <span style={{
+                            <div className="admin-home-kpi-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                <p className="admin-home-kpi-label" style={{ margin: 0, fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: '1.2px', textTransform: 'uppercase' }}>{card.label}</p>
+                                <span className="admin-home-kpi-icon" style={{
                                     width: 28, height: 28, borderRadius: 10,
                                     background: 'rgba(255,255,255,0.03)',
                                     border: `1px solid ${T.border}`,
@@ -558,17 +558,17 @@ export default function HomeView({ onNavigate }) {
                                     {card.icon}
                                 </span>
                             </div>
-                            <p style={{ margin: 0, fontSize: card.wide ? 28 : 24, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
+                            <p className="admin-home-kpi-value" style={{ margin: 0, fontSize: card.wide ? 26 : 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
                                 {compactNumber(card.value)}
                             </p>
-                            <p style={{ margin: '8px 0 0', fontSize: 10, fontWeight: 600, color: T.muted }}>{card.sub}</p>
+                            <p className="admin-home-kpi-sub" style={{ margin: '8px 0 0', fontSize: 10, fontWeight: 600, color: T.muted }}>{card.sub}</p>
                         </Card>
                     </motion.div>
                 ))}
             </div>
 
             {/* ── Charts Row ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div className="admin-home-chart-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
 
                 {/* Revenue Flow */}
                 <motion.div
@@ -576,17 +576,17 @@ export default function HomeView({ onNavigate }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 >
-                    <Card style={{ padding: 24 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                            <div>
-                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>REVENUE FLOW</p>
-                                <h2 style={{ margin: '8px 0 0', fontSize: 24, fontWeight: 900, color: '#fff' }}>
+                    <Card className="admin-home-card admin-home-chart-card" style={{ padding: 20 }}>
+                        <div className="admin-home-panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div className="admin-home-panel-copy">
+                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>REVENUE FLOW</p>
+                                <h2 className="admin-home-panel-value" style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 900, color: '#fff' }}>
                                     ${(stats.counts.gross || 0).toLocaleString()}
                                 </h2>
-                                <p style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>Gross earnings</p>
+                                <p className="admin-home-panel-sub" style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>Gross earnings</p>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+                            <div className="admin-home-panel-tools" style={{ textAlign: 'right' }}>
+                                <div className="admin-home-inline-metrics" style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
                                     <div>
                                         <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700, letterSpacing: '1px' }}>PAYOUTS</p>
                                         <p style={{ margin: '2px 0 0', fontSize: 15, color: '#fff', fontWeight: 800 }}>${(stats.counts.payouts || 0).toLocaleString()}</p>
@@ -597,6 +597,7 @@ export default function HomeView({ onNavigate }) {
                                     </div>
                                 </div>
                                 <PillToggle
+                                    className="admin-home-pill-toggle"
                                     options={[{ key: 'monthly', label: 'Monthly' }, { key: 'quarterly', label: 'Quarterly' }]}
                                     value={revenueGranularity}
                                     onChange={setRevenueGranularity}
@@ -619,22 +620,22 @@ export default function HomeView({ onNavigate }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
                 >
-                    <Card style={{ padding: 24 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                            <div>
-                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>LISTENER SCALE</p>
-                                <h2 style={{ margin: '8px 0 0', fontSize: 24, fontWeight: 900, color: '#fff' }}>
+                    <Card className="admin-home-card admin-home-chart-card" style={{ padding: 20 }}>
+                        <div className="admin-home-panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div className="admin-home-panel-copy">
+                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>LISTENER SCALE</p>
+                                <h2 className="admin-home-panel-value" style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 900, color: '#fff' }}>
                                     {latestListeners.toLocaleString()}
                                 </h2>
-                                <p style={{
+                                <p className="admin-home-panel-sub" style={{
                                     margin: '4px 0 0', fontSize: 11, fontWeight: 700,
                                     color: listenerDeltaPct >= 0 ? T.accent : T.sub
                                 }}>
                                     {listenerDeltaPct >= 0 ? '+' : ''}{listenerDeltaPct.toFixed(1)}% vs previous
                                 </p>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+                            <div className="admin-home-panel-tools" style={{ textAlign: 'right' }}>
+                                <div className="admin-home-inline-metrics" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
                                     <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
                                         <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Artists</p>
                                         <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>{Number(stats.counts.artists || 0).toLocaleString()}</p>
@@ -651,6 +652,7 @@ export default function HomeView({ onNavigate }) {
                                     </div>
                                 </div>
                                 <PillToggle
+                                    className="admin-home-pill-toggle"
                                     options={[
                                         { key: 'daily', label: 'Daily' },
                                         { key: 'weekly', label: 'Weekly' },
@@ -675,7 +677,7 @@ export default function HomeView({ onNavigate }) {
             </div>
 
             {/* ── Bottom Row: Sidebar Stats + Top Artists + Top Releases + Actions ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1.5fr', gap: 14 }}>
+            <div className="admin-home-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1.5fr', gap: 14 }}>
 
                 {/* Left: Stats Cards */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -684,12 +686,12 @@ export default function HomeView({ onNavigate }) {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, delay: 0.3 }}
                     >
-                        <Card>
-                            <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP PLATFORM</p>
-                            <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 900, color: '#fff' }}>
+                        <Card className="admin-home-card admin-home-side-card">
+                            <p className="admin-home-side-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP PLATFORM</p>
+                            <p className="admin-home-side-value" style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 900, color: '#fff' }}>
                                 {(stats.platforms?.[0]?.label || 'N/A')}
                             </p>
-                            <p style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
+                            <p className="admin-home-side-sub" style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
                                 ${Number(stats.platforms?.[0]?.value || 0).toLocaleString()} label revenue
                             </p>
                         </Card>
@@ -700,12 +702,12 @@ export default function HomeView({ onNavigate }) {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, delay: 0.35 }}
                     >
-                        <Card>
-                            <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>AVG PER ARTIST</p>
-                            <p style={{ margin: '8px 0 0', fontSize: 20, fontWeight: 900, color: '#fff' }}>
+                        <Card className="admin-home-card admin-home-side-card">
+                            <p className="admin-home-side-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>AVG PER ARTIST</p>
+                            <p className="admin-home-side-value" style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 900, color: '#fff' }}>
                                 {stats.counts.artists ? Math.round((stats.counts.listenersTotal || 0) / stats.counts.artists).toLocaleString() : '0'}
                             </p>
-                            <p style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
+                            <p className="admin-home-side-sub" style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
                                 monthly listeners
                             </p>
                         </Card>
@@ -723,14 +725,15 @@ export default function HomeView({ onNavigate }) {
                             transition={{ duration: 0.45, delay: 0.4 + i * 0.05 }}
                         >
                             <Card
+                                className="admin-home-card admin-home-action-card"
                                 onClick={() => onNavigate(a.target)}
                                 style={{ cursor: 'pointer', transition: 'border-color 0.2s ease' }}
                                 onMouseEnter={(e) => e.currentTarget.style.borderColor = T.borderHover}
                                 onMouseLeave={(e) => e.currentTarget.style.borderColor = T.border}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                    <div style={{
-                                        width: 36, height: 36, borderRadius: 10,
+                                <div className="admin-home-action-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    <div className="admin-home-action-icon" style={{
+                                        width: 34, height: 34, borderRadius: 9,
                                         background: 'rgba(255,255,255,0.03)',
                                         border: `1px solid ${T.border}`,
                                         display: 'grid', placeItems: 'center',
@@ -739,10 +742,10 @@ export default function HomeView({ onNavigate }) {
                                         {a.icon}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <h4 style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0 }}>{a.title}</h4>
-                                        <p style={{ fontSize: 11, color: T.muted, margin: '2px 0 0' }}>{a.desc}</p>
+                                        <h4 className="admin-home-action-title" style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0 }}>{a.title}</h4>
+                                        <p className="admin-home-action-sub" style={{ fontSize: 11, color: T.muted, margin: '2px 0 0' }}>{a.desc}</p>
                                     </div>
-                                    <ChevronRight size={16} color={T.sub} />
+                                    <ChevronRight className="admin-home-action-chevron" size={16} color={T.sub} />
                                 </div>
                             </Card>
                         </motion.div>
@@ -755,13 +758,14 @@ export default function HomeView({ onNavigate }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.35 }}
                 >
-                    <Card style={{ padding: 24, height: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Card className="admin-home-card admin-home-list-card" style={{ padding: 20, height: '100%' }}>
+                        <div className="admin-home-list-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <div>
-                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP ARTISTS</p>
-                                <p style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By monthly listeners</p>
+                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP ARTISTS</p>
+                                <p className="admin-home-panel-sub" style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By monthly listeners</p>
                             </div>
                             <button
+                                className="admin-home-list-button"
                                 onClick={() => onNavigate('artists')}
                                 style={{
                                     background: 'rgba(255,255,255,0.04)',
@@ -778,18 +782,19 @@ export default function HomeView({ onNavigate }) {
                                 VIEW ALL
                             </button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
                             {(stats.topArtists || []).slice(0, 5).map((a, i) => (
                                 <motion.div
                                     key={a.id || i}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.35, delay: 0.4 + i * 0.06 }}
+                                    className="admin-home-list-item"
                                     style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                                     onClick={() => onNavigate('artists')}
                                 >
-                                    <div style={{
-                                        width: 48, height: 48, borderRadius: 8,
+                                    <div className="admin-home-list-media" style={{
+                                        width: 44, height: 44, borderRadius: 8,
                                         overflow: 'hidden', background: '#000', flexShrink: 0,
                                         border: `1px solid ${T.border}`
                                     }}>
@@ -803,11 +808,11 @@ export default function HomeView({ onNavigate }) {
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     </div>
-                                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                                        <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
-                                        <p style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
+                                    <div className="admin-home-list-copy" style={{ flex: 1, overflow: 'hidden' }}>
+                                        <p className="admin-home-list-title" style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
+                                        <p className="admin-home-list-sub" style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
                                     </div>
-                                    <div style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
+                                    <div className="admin-home-list-rank" style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
                                         #{i + 1}
                                     </div>
                                 </motion.div>
@@ -825,13 +830,14 @@ export default function HomeView({ onNavigate }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                    <Card style={{ padding: 24, height: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Card className="admin-home-card admin-home-list-card" style={{ padding: 20, height: '100%' }}>
+                        <div className="admin-home-list-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <div>
-                                <p style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP RELEASES</p>
-                                <p style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By stream count / popularity</p>
+                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP RELEASES</p>
+                                <p className="admin-home-panel-sub" style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By stream count / popularity</p>
                             </div>
                             <button
+                                className="admin-home-list-button"
                                 onClick={() => onNavigate('releases')}
                                 style={{
                                     background: 'rgba(255,255,255,0.04)',
@@ -848,18 +854,19 @@ export default function HomeView({ onNavigate }) {
                                 VIEW ALL
                             </button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
                             {(stats.topReleases || []).slice(0, 5).map((r, i) => (
                                 <motion.div
                                     key={r.id || i}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.35, delay: 0.45 + i * 0.06 }}
+                                    className="admin-home-list-item"
                                     style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                                     onClick={() => onNavigate('releases')}
                                 >
-                                    <div style={{
-                                        width: 48, height: 48, borderRadius: 8,
+                                    <div className="admin-home-list-media" style={{
+                                        width: 44, height: 44, borderRadius: 8,
                                         overflow: 'hidden', background: '#000', flexShrink: 0,
                                         border: `1px solid ${T.border}`
                                     }}>
@@ -873,13 +880,13 @@ export default function HomeView({ onNavigate }) {
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     </div>
-                                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                                        <p style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
-                                        <p style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>
+                                    <div className="admin-home-list-copy" style={{ flex: 1, overflow: 'hidden' }}>
+                                        <p className="admin-home-list-title" style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
+                                        <p className="admin-home-list-sub" style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>
                                             {r.popularity ? `${r.popularity} Popularity` : 'No data'}
                                         </p>
                                     </div>
-                                    <div style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
+                                    <div className="admin-home-list-rank" style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
                                         #{i + 1}
                                     </div>
                                 </motion.div>
@@ -893,8 +900,190 @@ export default function HomeView({ onNavigate }) {
             </div>
 
             <style jsx>{`
-                @media (max-width: 1100px) {
-                    div { font-family: 'Space Grotesk', sans-serif; }
+                @media (max-width: 1180px) {
+                    .admin-home-chart-grid,
+                    .admin-home-bottom-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .admin-home-panel-head {
+                        flex-direction: column;
+                        align-items: flex-start !important;
+                        gap: 12px;
+                    }
+
+                    .admin-home-panel-tools {
+                        width: 100%;
+                        text-align: left !important;
+                    }
+                }
+
+                @media (max-width: 820px) {
+                    .admin-home-kpi-grid {
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+
+                    .admin-home-inline-metrics {
+                        display: grid !important;
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .admin-home-panel-value {
+                        font-size: 21px !important;
+                    }
+
+                    .admin-home-list-head {
+                        align-items: flex-start !important;
+                        gap: 12px;
+                        flex-direction: column;
+                    }
+                }
+
+                @media (max-width: 540px) {
+                    .admin-home-kpi-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .admin-home-card {
+                        padding: 16px !important;
+                        border-radius: 14px !important;
+                    }
+
+                    .admin-home-kpi-head {
+                        margin-bottom: 10px !important;
+                    }
+
+                    .admin-home-kpi-label,
+                    .admin-home-side-label,
+                    .admin-home-panel-label {
+                        font-size: 9px !important;
+                        letter-spacing: 1.1px !important;
+                    }
+
+                    .admin-home-kpi-value {
+                        font-size: 22px !important;
+                    }
+
+                    .admin-home-kpi-sub,
+                    .admin-home-side-sub,
+                    .admin-home-panel-sub {
+                        font-size: 10px !important;
+                    }
+
+                    .admin-home-panel-value,
+                    .admin-home-side-value {
+                        font-size: 20px !important;
+                    }
+
+                    .admin-home-inline-metrics {
+                        gap: 8px !important;
+                        margin-bottom: 10px !important;
+                    }
+
+                    .admin-home-pill-toggle {
+                        width: 100%;
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                    }
+
+                    .admin-home-pill-toggle :global(button) {
+                        width: 100%;
+                        padding: 7px 8px !important;
+                    }
+
+                    .admin-home-list-item {
+                        display: grid !important;
+                        grid-template-columns: 40px minmax(0, 1fr) auto;
+                        gap: 10px !important;
+                        align-items: center !important;
+                    }
+
+                    .admin-home-list-media {
+                        width: 40px !important;
+                        height: 40px !important;
+                    }
+
+                    .admin-home-list-title {
+                        white-space: normal !important;
+                        overflow: visible !important;
+                        text-overflow: initial !important;
+                        font-size: 12px !important;
+                        line-height: 1.25 !important;
+                    }
+
+                    .admin-home-list-sub {
+                        font-size: 10px !important;
+                    }
+
+                    .admin-home-list-rank {
+                        font-size: 11px !important;
+                    }
+
+                    .admin-home-action-row {
+                        gap: 10px !important;
+                    }
+
+                    .admin-home-action-icon {
+                        width: 34px !important;
+                        height: 34px !important;
+                    }
+
+                    .admin-home-action-title {
+                        font-size: 12px !important;
+                    }
+
+                    .admin-home-action-sub {
+                        font-size: 10px !important;
+                    }
+                }
+
+                @media (max-width: 420px) {
+                    .admin-home-card {
+                        padding: 14px !important;
+                    }
+
+                    .admin-home-panel-head {
+                        gap: 10px !important;
+                        margin-bottom: 14px !important;
+                    }
+
+                    .admin-home-panel-value,
+                    .admin-home-side-value,
+                    .admin-home-kpi-value {
+                        font-size: 18px !important;
+                    }
+
+                    .admin-home-kpi-icon {
+                        width: 24px !important;
+                        height: 24px !important;
+                        border-radius: 8px !important;
+                    }
+
+                    .admin-home-inline-metrics {
+                        gap: 6px !important;
+                    }
+
+                    .admin-home-list-button {
+                        width: 100%;
+                        text-align: center;
+                    }
+
+                    .admin-home-pill-toggle {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .admin-home-list-item {
+                        grid-template-columns: 36px minmax(0, 1fr) auto;
+                    }
+
+                    .admin-home-list-media {
+                        width: 36px !important;
+                        height: 36px !important;
+                    }
+
+                    .admin-home-action-chevron {
+                        display: none;
+                    }
                 }
             `}</style>
         </div>

@@ -646,8 +646,36 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                 .table-row-hover:hover {
                     background-color: rgba(255,255,255,0.02) !important;
                 }
+
+                @media (max-width: 768px) {
+                    .artists-toolbar {
+                        flex-direction: column;
+                        align-items: stretch !important;
+                        gap: 12px !important;
+                    }
+
+                    .artists-toolbar-actions {
+                        width: 100%;
+                        flex-wrap: wrap;
+                    }
+
+                    .artists-table-head {
+                        display: none !important;
+                    }
+
+                    .artists-table-row {
+                        grid-template-columns: 1fr !important;
+                        gap: 12px !important;
+                        padding: 16px !important;
+                    }
+
+                    .artists-row-actions {
+                        justify-content: flex-start !important;
+                        flex-wrap: wrap;
+                    }
+                }
             `}</style>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
+            <div className="artists-toolbar" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', position: 'relative', zIndex: 1, gap: '12px' }}>
                 <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
                     <input
                         type="text"
@@ -658,7 +686,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                     />
                 </div>
                 {canManage && (
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="artists-toolbar-actions" style={{ display: 'flex', gap: '12px' }}>
                         <button
                             onClick={async () => {
                                 if (isSyncingAll) return;
@@ -781,7 +809,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
             )}
 
             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.11)', borderRadius: '12px', overflow: 'hidden', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.5fr 1fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
+                <div className="artists-table-head" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.5fr 1fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
                     <div>ARTIST</div>
                     <div>MONTHLY</div>
                     <div>STATUS</div>
@@ -797,7 +825,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            className="table-row-hover"
+                            className="table-row-hover artists-table-row"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1.5fr 1fr 1fr 1.5fr 1fr',
@@ -849,7 +877,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                 )}
                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <div className="artists-row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();

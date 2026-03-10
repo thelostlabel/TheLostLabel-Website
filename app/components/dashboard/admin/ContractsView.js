@@ -841,6 +841,18 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     .split-row-inner {
                         grid-template-columns: 1fr 1fr !important;
                     }
+                    .contracts-table-head {
+                        display: none !important;
+                    }
+                    .contracts-table-row {
+                        grid-template-columns: 1fr !important;
+                        gap: 12px !important;
+                        padding: 16px !important;
+                    }
+                    .contracts-row-actions {
+                        justify-content: flex-start !important;
+                        flex-wrap: wrap;
+                    }
                 }
             `}</style>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -1296,7 +1308,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
             )}
 
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
+                <div className="contracts-table-head" style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '10px', fontWeight: '900', color: '#666', letterSpacing: '1.5px', background: 'rgba(255,255,255,0.01)' }}>
                     <div>RELEASE</div>
                     <div>ARTIST</div>
                     <div>SPLIT</div>
@@ -1313,7 +1325,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
-                            className="table-row-hover"
+                            className="table-row-hover contracts-table-row"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr',
@@ -1388,7 +1400,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                                 </a>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <div className="contracts-row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                                 <button type="button" onClick={() => {
                                     const { details, userNotes } = extractContractMetaAndNotes(c.notes || '');
                                     let featuredArtists = [];

@@ -325,7 +325,16 @@ function ProductionView({ project, onUpdate }) {
     const [submitting, setSubmitting] = useState(false);
     const [uploadingArt, setUploadingArt] = useState(false);
     const [coverArt, setCoverArt] = useState(project.contract?.release?.image || null);
+    const [coverArtPreview, setCoverArtPreview] = useState(null);
     const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (coverArtPreview?.startsWith('blob:')) {
+                URL.revokeObjectURL(coverArtPreview);
+            }
+        };
+    }, [coverArtPreview]);
 
     const handleFileSelect = async (e) => {
         const file = e.target.files?.[0];
@@ -351,6 +360,12 @@ function ProductionView({ project, onUpdate }) {
             const data = await res.json();
             if (res.ok && data.files?.[0]) {
                 setCoverArt(data.files[0].filepath);
+                setCoverArtPreview((current) => {
+                    if (current?.startsWith('blob:')) {
+                        URL.revokeObjectURL(current);
+                    }
+                    return URL.createObjectURL(file);
+                });
             } else {
                 alert('Upload failed: ' + (data.error || 'Unknown error'));
             }
@@ -385,6 +400,12 @@ function ProductionView({ project, onUpdate }) {
         finally { setSubmitting(false); }
     };
 
+    const coverArtSrc = coverArtPreview || (
+        typeof coverArt === 'string' && coverArt.startsWith('private/')
+            ? (project.contract?.releaseId ? `/api/files/release/${project.contract.releaseId}` : null)
+            : coverArt
+    );
+
     return (
         <div style={{ ...glassStyle, padding: '40px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '30px' }}>RELEASE ASSETS</h3>
@@ -400,8 +421,13 @@ function ProductionView({ project, onUpdate }) {
                             border: '2px dashed rgba(255,255,255,0.1)', cursor: uploadingArt ? 'wait' : 'pointer',
                             overflow: 'hidden', position: 'relative'
                         }}>
-                        {coverArt ? (
-                            <NextImage src={coverArt.startsWith('private/') ? `/api/files/asset?path=${encodeURIComponent(coverArt)}` : coverArt} alt="Cover" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {coverArtSrc ? (
+                            coverArtSrc.startsWith('blob:') ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={coverArtSrc} alt="Cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <NextImage src={coverArtSrc} alt="Cover" width={400} height={400} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            )
                         ) : (
                             <div style={{ textAlign: 'center' }}>
                                 <Upload size={24} color="#444" style={{ marginBottom: '10px' }} />

@@ -206,22 +206,26 @@ export async function PATCH(req: Request) {
 
     if (status && ["completed", "failed"].includes(status) && existing.status !== status) {
       try {
-        await sendMail({
-          to: existing.user.email,
-          subject: `Payout ${status === "completed" ? "Approved" : "Rejected"} - LOST.`,
-          html: generatePayoutStatusEmail(existing.user.stageName || "Artist", existing.amount, status, adminNote),
-        });
+        if (existing.user?.email) {
+          await sendMail({
+            to: existing.user.email,
+            subject: `Payout ${status === "completed" ? "Approved" : "Rejected"} - LOST.`,
+            html: generatePayoutStatusEmail(existing.user.stageName || "Artist", existing.amount, status, adminNote),
+          });
+        }
       } catch (emailError) {
         typedLogger.error("Failed to send payout status email", emailError);
       }
 
       try {
-        await typedQueueDiscordNotification(existing.userId, DISCORD_NOTIFY_TYPES.PAYOUT_UPDATE, {
-          artist: existing.user.stageName || "Artist",
-          amount: existing.amount,
-          status,
-          adminNote: adminNote || null,
-        });
+        if (existing.userId) {
+          await typedQueueDiscordNotification(existing.userId, DISCORD_NOTIFY_TYPES.PAYOUT_UPDATE, {
+            artist: existing.user?.stageName || "Artist",
+            amount: existing.amount,
+            status,
+            adminNote: adminNote || null,
+          });
+        }
       } catch (dmError) {
         typedLogger.error("Failed to send payout Discord DM", dmError);
       }

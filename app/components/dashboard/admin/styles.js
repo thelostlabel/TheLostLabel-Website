@@ -3,7 +3,7 @@
 export const glassStyle = {
     background: 'rgba(255,255,255,0.03)',
     border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '16px',
+    borderRadius: '14px',
     overflow: 'hidden',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
@@ -12,24 +12,24 @@ export const glassStyle = {
 
 export const glassCardStyle = {
     ...glassStyle,
-    padding: '24px',
+    padding: '20px',
     position: 'relative',
 };
 
 export const statCardStyle = {
     ...glassStyle,
-    padding: '24px',
+    padding: '20px',
     position: 'relative',
 };
 
 export const glassSectionStyle = {
     ...glassStyle,
-    padding: '32px',
+    padding: '24px',
     position: 'relative',
 };
 
 export const thStyle = {
-    padding: '14px 16px',
+    padding: '12px 14px',
     fontSize: '10px',
     letterSpacing: '1.5px',
     color: 'rgba(255,255,255,0.35)',
@@ -40,7 +40,7 @@ export const thStyle = {
 };
 
 export const tdStyle = {
-    padding: '14px 16px',
+    padding: '12px 14px',
     fontSize: '12px',
     color: '#D1D5DB',
     borderBottom: '1px solid rgba(255,255,255,0.04)',
@@ -51,17 +51,17 @@ export const btnStyle = {
     background: 'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.08)',
     color: '#fff',
-    padding: '10px 18px',
+    padding: '9px 16px',
     fontSize: '10px',
     cursor: 'pointer',
     fontWeight: '800',
     letterSpacing: '1.5px',
     textDecoration: 'none',
-    borderRadius: '12px',
+    borderRadius: '10px',
     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
     backdropFilter: 'blur(10px)',
     WebkitBackdropFilter: 'blur(10px)',
 };
@@ -78,8 +78,8 @@ export const inputStyle = {
     background: 'rgba(255,255,255,0.03)',
     border: '1px solid rgba(255,255,255,0.08)',
     color: '#fff',
-    padding: '12px 16px',
-    borderRadius: '12px',
+    padding: '11px 14px',
+    borderRadius: '10px',
     fontSize: '12px',
     width: '100%',
     outline: 'none',
@@ -104,7 +104,7 @@ export const modalStyle = {
     ...glassStyle,
     background: 'rgba(15,15,15,0.95)',
     border: '1px solid rgba(255,255,255,0.1)',
-    padding: '32px',
+    padding: '24px',
     maxWidth: '600px',
     width: '90%',
     maxHeight: '85vh',

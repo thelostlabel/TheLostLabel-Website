@@ -6,6 +6,7 @@ import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
 
 export default function PaymentsView({ payments, onRefresh, users }) {
     const { showToast, showConfirm } = useToast();
+    const deletedUserEmail = 'deleted-user@system.local';
     const [showAdd, setShowAdd] = useState(false);
     const [editingPayment, setEditingPayment] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -27,11 +28,25 @@ export default function PaymentsView({ payments, onRefresh, users }) {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    const getPaymentRecipientLabel = (payment) => {
+        if (payment.user?.email === deletedUserEmail) return 'DELETED USER';
+        if (payment.user?.stageName) return payment.user.stageName;
+        if (payment.user?.fullName) return payment.user.fullName;
+        if (payment.user?.email) return payment.user.email;
+        return 'DELETED USER';
+    };
+
+    const getPaymentRecipientSubLabel = (payment) => {
+        if (payment.user?.email === deletedUserEmail) return 'Archived payout record';
+        if (payment.user?.email && payment.user?.stageName) return payment.user.email;
+        if (payment.user?.fullName && payment.user?.email) return payment.user.email;
+        return payment.userId ? `USER ${payment.userId.slice(0, 8)}` : 'User removed';
+    };
+
     const filteredPayments = useMemo(() => {
         return payments.filter(p =>
-            p.user?.stageName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            p.user?.fullName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            p.user?.email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            getPaymentRecipientLabel(p).toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            getPaymentRecipientSubLabel(p).toLowerCase().includes(debouncedSearch.toLowerCase()) ||
             p.reference?.toLowerCase().includes(debouncedSearch.toLowerCase())
         );
     }, [payments, debouncedSearch]);
@@ -304,7 +319,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
                             <div>
                                 <div style={{ fontSize: '10px', color: '#888', fontWeight: '900', letterSpacing: '1px', marginBottom: '6px' }}>RECIPIENT</div>
-                                <div style={{ fontSize: '16px', color: '#fff', fontWeight: '950', letterSpacing: '0.5px' }}>{decisionModal.payment.user?.stageName || decisionModal.payment.user?.email || 'Artist'}</div>
+                                <div style={{ fontSize: '16px', color: '#fff', fontWeight: '950', letterSpacing: '0.5px' }}>{getPaymentRecipientLabel(decisionModal.payment)}</div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '10px', color: '#888', fontWeight: '900', letterSpacing: '1px', marginBottom: '6px' }}>AMOUNT</div>
@@ -317,7 +332,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                         {decisionModal.payment.notes && (
                             <div style={{ background: 'var(--glass)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
                                 <div style={{ fontSize: '10px', color: '#888', marginBottom: '10px', fontWeight: '900', letterSpacing: '1px' }}>ARTIST REQUEST NOTE</div>
-                                <div style={{ fontSize: '13px', color: '#ddd', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>"{decisionModal.payment.notes}"</div>
+                                <div style={{ fontSize: '13px', color: '#ddd', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>&quot;{decisionModal.payment.notes}&quot;</div>
                             </div>
                         )}
 
@@ -399,8 +414,8 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ fontSize: '13px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{p.user?.stageName || p.user?.fullName || 'UNKNOWN'}</div>
-                                <div style={{ fontSize: '10px', color: '#777', fontWeight: '800', marginTop: '4px', letterSpacing: '0.5px' }}>{p.user?.email}</div>
+                                <div style={{ fontSize: '13px', fontWeight: '950', color: '#fff', letterSpacing: '0.5px' }}>{getPaymentRecipientLabel(p)}</div>
+                                <div style={{ fontSize: '10px', color: '#777', fontWeight: '800', marginTop: '4px', letterSpacing: '0.5px' }}>{getPaymentRecipientSubLabel(p)}</div>
                             </div>
 
                             <div style={{ fontSize: '14px', fontWeight: '950', color: p.status === 'completed' ? '#fff' : 'var(--accent)', letterSpacing: '0.5px' }}>

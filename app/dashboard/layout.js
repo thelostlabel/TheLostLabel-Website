@@ -54,11 +54,7 @@ function DashboardLayoutContent({ children }) {
         const storedTheme = localStorage.getItem('dashboard_theme_mode');
         return storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'dark';
     });
-    const [densityMode, setDensityMode] = useState(() => {
-        if (typeof window === 'undefined') return 'comfortable';
-        const storedDensity = localStorage.getItem('dashboard_density_mode');
-        return storedDensity === 'compact' || storedDensity === 'comfortable' ? storedDensity : 'comfortable';
-    });
+    const [densityMode, setDensityMode] = useState('compact');
 
     useEffect(() => {
         localStorage.setItem('dashboard_theme_mode', themeMode);
@@ -169,7 +165,7 @@ function DashboardLayoutContent({ children }) {
 
     const isLight = themeMode === 'light';
     const isCompact = densityMode === 'compact';
-    const railWidth = isCompact ? 228 : 248;
+    const railWidth = isCompact ? 220 : 240;
     const showRailLabels = true;
 
     const shellBackground = isLight ? '#F0F2F5' : '#0a0a0a'; // v0-ref Neutral Black
@@ -863,7 +859,7 @@ function DashboardLayoutContent({ children }) {
 
                 .dashboard-main {
                     min-height: 100vh;
-                    padding: 16px 16px 16px 24px;
+                    padding: 14px 14px 14px 20px;
                     transition: margin-left 0.28s ease;
                     position: relative;
                     z-index: 2;
@@ -871,7 +867,7 @@ function DashboardLayoutContent({ children }) {
 
                 .dashboard-window {
                     min-height: calc(100vh - 32px);
-                    border-radius: 20px;
+                    border-radius: 18px;
                     border: 1px solid rgba(255, 255, 255, 0.07);
                     background: rgba(12, 12, 16, 0.78);
                     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -885,8 +881,8 @@ function DashboardLayoutContent({ children }) {
 
 
                 .window-toolbar {
-                    min-height: 72px;
-                    padding: 0 32px;
+                    min-height: 68px;
+                    padding: 0 26px;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
@@ -932,7 +928,7 @@ function DashboardLayoutContent({ children }) {
 
                 .dashboard-content-container {
                     flex: 1;
-                    padding: ${isCompact ? '14px 18px 18px' : '20px 24px 24px'};
+                    padding: ${isCompact ? '12px 16px 16px' : '18px 22px 22px'};
                     overflow-y: auto;
                 }
 
@@ -1058,6 +1054,33 @@ function DashboardLayoutContent({ children }) {
                     }
                 }
 
+                @media (max-width: 540px) {
+                    .window-toolbar {
+                        min-height: 56px;
+                        padding: 10px 12px;
+                        gap: 10px;
+                    }
+
+                    .window-toolbar-right {
+                        gap: 8px;
+                    }
+
+                    .bc-logo {
+                        gap: 8px;
+                    }
+
+                    .bc-logo-text {
+                        font-size: 12px;
+                        letter-spacing: 1.6px !important;
+                    }
+                }
+
+                @media (max-width: 440px) {
+                    .bc-logo-text {
+                        display: none;
+                    }
+                }
+
                 .dashboard-content-container table {
                     width: 100%;
                 }
@@ -1088,6 +1111,9 @@ function DashboardLayoutContent({ children }) {
                     .admin-responsive-table {
                         display: table !important;
                         overflow: visible !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        table-layout: fixed;
                     }
                     .admin-responsive-table thead {
                         display: none;
@@ -1097,6 +1123,7 @@ function DashboardLayoutContent({ children }) {
                         flex-direction: column;
                         gap: 12px;
                         padding: 10px;
+                        white-space: normal !important;
                     }
                     .admin-responsive-table tr {
                         display: block;
@@ -1104,6 +1131,8 @@ function DashboardLayoutContent({ children }) {
                         border-radius: 10px;
                         padding: 10px 12px;
                         background: rgba(255,255,255,0.03);
+                        white-space: normal !important;
+                        width: 100%;
                     }
                     .admin-responsive-table td {
                         display: flex !important;
@@ -1114,6 +1143,11 @@ function DashboardLayoutContent({ children }) {
                         white-space: normal !important;
                         padding: 8px 0 !important;
                         font-size: 12px !important;
+                        min-width: 0;
+                    }
+                    .admin-responsive-table td > * {
+                        min-width: 0;
+                        white-space: normal !important;
                     }
                     .admin-responsive-table td::before {
                         content: attr(data-label);
@@ -1127,6 +1161,12 @@ function DashboardLayoutContent({ children }) {
                     }
                     .admin-responsive-table td[data-label="ACTIONS"] {
                         display: block !important;
+                    }
+                    .admin-responsive-table td[data-label="ACTIONS"] > * {
+                        display: flex !important;
+                        flex-wrap: wrap;
+                        justify-content: flex-start !important;
+                        gap: 8px !important;
                     }
                     .admin-responsive-table td[data-label="ACTIONS"]::before {
                         display: block;
@@ -1161,6 +1201,27 @@ function DashboardLayoutContent({ children }) {
                         grid-template-columns: 1fr !important;
                     }
 
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: repeat(4, 1fr)"] {
+                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1fr 1fr 1fr"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1fr 1.5fr 1.5fr"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1.2fr 1fr"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1.2fr 0.8fr"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1.4fr 1fr"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: minmax(0,1.15fr) minmax(0,0.85fr)"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 80px 1fr 1fr 40px"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 80px 1fr 1fr auto"] {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1fr 70px 40px"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 1fr 80px 40px"],
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: 10px 1fr 36px"] {
+                        grid-template-columns: minmax(0, 1fr) auto !important;
+                    }
+
                     .dashboard-content-container .dashboard-view [style*="width: 850px"],
                     .dashboard-content-container .dashboard-view [style*="width: 800px"],
                     .dashboard-content-container .dashboard-view [style*="width: 700px"],
@@ -1177,6 +1238,12 @@ function DashboardLayoutContent({ children }) {
 
                     .dashboard-content-container .dashboard-view [style*="padding: 40px"] {
                         padding: 18px !important;
+                    }
+                }
+
+                @media (max-width: 520px) {
+                    .dashboard-content-container .dashboard-view [style*="grid-template-columns: repeat(4, 1fr)"] {
+                        grid-template-columns: 1fr !important;
                     }
                 }
 

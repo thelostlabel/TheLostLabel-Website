@@ -154,11 +154,16 @@ export default function UsersView({ users, onRefresh }) {
             async () => {
                 try {
                     const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
-                    if (!res.ok) throw new Error('Failed to delete user');
+                    const payload = await res.json().catch(() => null);
+
+                    if (!res.ok) {
+                        showToast(payload?.error || 'Delete failed', "error");
+                        return;
+                    }
+
                     showToast("User deleted", "success");
                     onRefresh();
                 } catch (e) {
-                    console.error(e);
                     showToast('Delete failed', "error");
                 }
             }
@@ -167,12 +172,58 @@ export default function UsersView({ users, onRefresh }) {
 
     return (
         <div>
+            <style jsx>{`
+                @media (max-width: 900px) {
+                    .users-toolbar {
+                        flex-direction: column;
+                        align-items: stretch !important;
+                    }
+
+                    .users-toolbar-count {
+                        text-align: left;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .users-modal-panel {
+                        padding: 20px !important;
+                    }
+
+                    .users-modal-grid,
+                    .users-basic-grid,
+                    .users-permissions-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    .users-modal-actions {
+                        flex-direction: column;
+                    }
+
+                    .users-modal-actions > button {
+                        width: 100%;
+                    }
+                }
+
+                @media (max-width: 640px) {
+                    .users-row-actions {
+                        flex-wrap: wrap;
+                        justify-content: flex-start !important;
+                    }
+
+                    .users-email-cell {
+                        align-items: flex-start !important;
+                        flex-wrap: wrap;
+                        word-break: break-word;
+                    }
+                }
+            `}</style>
             {/* Edit Modal */}
             {editingUser && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="users-modal-panel"
                         style={{
                             width: '95vw',
                             maxWidth: '850px',
@@ -200,14 +251,6 @@ export default function UsersView({ users, onRefresh }) {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }} className="users-modal-grid">
-                            <style jsx>{`
-                                @media (max-width: 640px) {
-                                    .users-modal-grid {
-                                        grid-template-columns: 1fr !important;
-                                        gap: 24px !important;
-                                    }
-                                }
-                            `}</style>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 <div>
                                     <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>EMAIL_ADDRESS</label>
@@ -215,7 +258,7 @@ export default function UsersView({ users, onRefresh }) {
                                         disabled={!canEditProfile}
                                         style={{ ...inputStyle, width: '100%', padding: '15px', opacity: canEditProfile ? 1 : 0.6 }} />
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div className="users-basic-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div>
                                         <label style={{ fontSize: '9px', color: '#444', fontWeight: '800', display: 'block', marginBottom: '8px' }}>FULL_NAME</label>
                                         <input type="text" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
@@ -258,7 +301,7 @@ export default function UsersView({ users, onRefresh }) {
                                 {permissionSections.map((section) => (
                                     <div key={section.title}>
                                         <p style={{ fontSize: '10px', color: '#555', marginBottom: '15px', fontWeight: '950', letterSpacing: '2px' }}>{section.title}</p>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                                        <div className="users-permissions-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '24px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                                             {section.options.map((p) => {
                                                 const isEnabled = section.enabledByDefault
                                                     ? editForm.permissions?.[p.key] !== false
@@ -289,7 +332,7 @@ export default function UsersView({ users, onRefresh }) {
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
+                        <div className="users-modal-actions" style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
                             <button onClick={() => handleSave()} disabled={saving || !canOpenEditor} style={{ ...btnStyle, flex: 2, padding: '18px', background: 'var(--accent)', color: '#000', border: 'none', height: 'auto', opacity: saving || !canOpenEditor ? 0.6 : 1 }}>
                                 {saving ? 'APPLYING_CHANGES...' : 'SAVE_USER_PERMISSIONS'}
                             </button>
@@ -307,7 +350,7 @@ export default function UsersView({ users, onRefresh }) {
                 </div>
             )}
 
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="users-toolbar" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                 <input
                     type="text"
                     placeholder="Search users..."
@@ -315,7 +358,7 @@ export default function UsersView({ users, onRefresh }) {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{ ...inputStyle, width: '100%', maxWidth: '300px', background: 'var(--glass)', borderRadius: '2px' }}
                 />
-                <div style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>
+                <div className="users-toolbar-count" style={{ fontSize: '10px', color: '#444', fontWeight: '800' }}>
                     {users.filter(u => u.status === 'pending').length} PENDING REGISTRATIONS
                 </div>
             </div>
@@ -341,7 +384,7 @@ export default function UsersView({ users, onRefresh }) {
                         {filteredUsers.map((user) => (
                             <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                 <td data-label="EMAIL" style={tdStyle}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="users-email-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         {user.email}
                                         {user.emailVerified ? (
                                             <div title={`Verified: ${new Date(user.emailVerified).toLocaleDateString()}`} style={{ color: '#00ff88', display: 'flex' }}><CheckCircle size={12} /></div>
@@ -378,7 +421,7 @@ export default function UsersView({ users, onRefresh }) {
                                     </span>
                                 </td>
                                 <td data-label="ACTIONS" style={tdStyle}>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                    <div className="users-row-actions" style={{ display: 'flex', gap: '8px' }}>
                                         {user.status === 'pending' && canManageStatus && (
                                             <button onClick={() => handleApprove(user.id)} style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '2px', fontSize: '9px', height: 'auto' }}>APPROVE</button>
                                         )}

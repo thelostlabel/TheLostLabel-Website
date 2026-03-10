@@ -41,7 +41,7 @@ const DASHBOARD_THEME = {
 const glassStyle = {
     background: '#0E0E0E', // Solid matte, no gradient
     border: `1px solid ${DASHBOARD_THEME.border}`,
-    borderRadius: '14px',
+    borderRadius: '12px',
     overflow: 'hidden',
     boxShadow: '0 16px 38px rgba(0, 0, 0, 0.4)' // Pure black shadow
 };
@@ -247,17 +247,17 @@ const btnStyle = {
     background: 'linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
     border: `1px solid ${DASHBOARD_THEME.border}`,
     color: DASHBOARD_THEME.text,
-    padding: '10px 16px',
-    fontSize: '12px',
+    padding: '9px 14px',
+    fontSize: '11px',
     cursor: 'pointer',
     fontWeight: '900',
     letterSpacing: '0.8px',
-    borderRadius: '10px',
+    borderRadius: '9px',
     transition: 'all 0.2s',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px'
+    gap: '6px'
 };
 
 const inputStyle = {
@@ -1043,11 +1043,11 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
     const paid = stats.paid ?? 0;
 
     const cardStyle = {
-        padding: '16px',
+        padding: '14px',
         background: DASHBOARD_THEME.surface,
         border: `1px solid ${DASHBOARD_THEME.border}`,
-        borderRadius: '8px',
-        minHeight: '92px',
+        borderRadius: '10px',
+        minHeight: '84px',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
@@ -1056,21 +1056,21 @@ function ArtistQuickAccessBar({ stats, currentView, onNavigate }) {
         cursor: 'pointer'
     };
 
-    const labelStyle = { fontSize: '12px', color: DASHBOARD_THEME.muted, fontWeight: '800', letterSpacing: '0.8px', marginBottom: '8px', zIndex: 2, position: 'relative' };
-    const valueStyle = { fontSize: '24px', color: DASHBOARD_THEME.text, fontWeight: '900', letterSpacing: '-0.5px', zIndex: 2, position: 'relative' };
+    const labelStyle = { fontSize: '11px', color: DASHBOARD_THEME.muted, fontWeight: '800', letterSpacing: '0.7px', marginBottom: '6px', zIndex: 2, position: 'relative' };
+    const valueStyle = { fontSize: '21px', color: DASHBOARD_THEME.text, fontWeight: '900', letterSpacing: '-0.4px', zIndex: 2, position: 'relative' };
 
     const navButtonStyle = {
         ...btnStyle,
-        minHeight: '38px',
+        minHeight: '34px',
         borderRadius: '999px',
         width: 'auto',
-        padding: '0 14px',
-        fontSize: '12px',
+        padding: '0 12px',
+        fontSize: '11px',
         letterSpacing: '0.6px'
     };
 
     return (
-        <div className="quick-access-root" style={{ marginBottom: '20px', display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        <div className="quick-access-root" style={{ marginBottom: '18px', display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
             <motion.button
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
@@ -1226,9 +1226,9 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
     }, [stats.spotifyStreams, stats.appleStreams, stats.streams]);
 
     return (
-        <div className="overview-root" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="overview-root" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {/* Header Mini Stats */}
-            <div className="overview-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
+            <div className="overview-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
                 {[
                     { label: 'Total Releases', value: totalReleases },
                     { label: 'Total Tracks', value: totalTracks },
@@ -1241,20 +1241,20 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         transition={{ duration: 0.4, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
                         className="overview-kpi-card"
                         style={{
-                            padding: '18px 20px',
+                            padding: '16px 18px',
                             background: DASHBOARD_THEME.surface,
                             border: `1px solid rgba(255,255,255,0.06)`,
-                            borderRadius: '14px',
+                            borderRadius: '12px',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '10px',
+                            gap: '8px',
                             position: 'relative',
                             overflow: 'hidden'
                         }}
                     >
                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)' }} />
                         <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.3)', margin: 0, letterSpacing: '1px' }}>{s.label}</p>
-                        <p style={{ fontSize: '24px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: 0 }}>{(s.value || 0).toLocaleString()}</p>
+                        <p style={{ fontSize: '21px', fontWeight: '900', color: DASHBOARD_THEME.accent, margin: 0 }}>{(s.value || 0).toLocaleString()}</p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.15)', fontWeight: '600' }}>Updated now</span>
                             <TrendingUp size={13} color="rgba(255,255,255,0.15)" />
@@ -1274,18 +1274,18 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         className="overview-welcome" style={{
                             background: 'linear-gradient(130deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
-                            borderRadius: '20px',
-                            padding: '30px',
+                            borderRadius: '16px',
+                            padding: '24px',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             position: 'relative',
                             overflow: 'hidden',
-                            minHeight: '180px',
+                            minHeight: '156px',
                             border: '1px solid rgba(255,255,255,0.06)'
                         }}>
-                        <div className="overview-welcome-main" style={{ display: 'flex', alignItems: 'center', gap: '24px', zIndex: 1 }}>
-                            <div className="overview-welcome-avatar" style={{ width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
+                        <div className="overview-welcome-main" style={{ display: 'flex', alignItems: 'center', gap: '18px', zIndex: 1 }}>
+                            <div className="overview-welcome-avatar" style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.25)' }}>
                                 <NextImage
                                     src={resolveImageSrc(session?.user?.image)}
                                     width={90}
@@ -1297,21 +1297,21 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                 />
                             </div>
                             <div>
-                                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                <h1 className="overview-welcome-title" style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: 0 }}>WELCOME, {session?.user?.stageName || 'Artist'}!</h1>
-                                <p style={{ marginTop: '8px', fontSize: '12px', color: '#9ca3af', fontWeight: '700' }}>Artist Dashboard Overview</p>
+                                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginBottom: '6px' }}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <h1 className="overview-welcome-title" style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: 0 }}>WELCOME, {session?.user?.stageName || 'Artist'}!</h1>
+                                <p style={{ marginTop: '6px', fontSize: '11px', color: '#9ca3af', fontWeight: '700' }}>Artist Dashboard Overview</p>
                             </div>
                         </div>
                         <div className="overview-balance-panel" style={{ textAlign: 'right', zIndex: 1 }}>
-                            <p className="overview-balance-value" style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            <p className="overview-balance-value" style={{ fontSize: '28px', fontWeight: '900', color: '#fff', margin: 0 }}>${(stats?.balance || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                             <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: '800', marginTop: '4px' }}>BALANCE AVAILABLE</p>
-                            <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '700', marginTop: '10px' }}>Monthly listeners: {Number(stats.listeners || 0).toLocaleString()}</p>
+                            <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '700', marginTop: '8px' }}>Monthly listeners: {Number(stats.listeners || 0).toLocaleString()}</p>
                         </div>
                         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(255,255,255,0.09), transparent 42%)' }} />
                     </motion.div>
 
                     {/* Action Cards */}
-                    <div className="overview-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="overview-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         {[
                             { title: 'Create Release', desc: 'Add a release to your catalog', icon: <Disc size={20} />, action: () => onNavigate('submit') },
                             { title: 'Support', desc: 'Open a request and talk with admin', icon: <Users size={20} />, action: () => onNavigate('support') },
@@ -1325,23 +1325,23 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                 className="overview-action-card"
                                 onClick={a.action}
                                 style={{
-                                    padding: '24px',
+                                    padding: '18px',
                                     background: DASHBOARD_THEME.surface,
                                     border: '1px solid rgba(255,255,255,0.06)',
-                                    borderRadius: '16px',
+                                    borderRadius: '14px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '16px',
+                                    gap: '14px',
                                     cursor: 'pointer',
                                     transition: 'border-color 0.2s ease, background 0.2s ease'
                                 }}
                             >
-                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', color: DASHBOARD_THEME.muted }}>
                                     {a.icon}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>{a.title}</h4>
-                                    <p style={{ fontSize: '12px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '800', color: '#fff', margin: 0 }}>{a.title}</h4>
+                                    <p style={{ fontSize: '11px', color: DASHBOARD_THEME.muted, marginTop: '2px' }}>{a.desc}</p>
                                 </div>
                                 <ChevronRight size={18} color={DASHBOARD_THEME.accent} />
                             </motion.div>
@@ -1349,12 +1349,12 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                     </div>
 
                     {/* Recent Releases */}
-                    <div className="overview-release-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '24px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div className="overview-release-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '18px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '1px' }}>RECENT_RELEASES</h3>
                             <button onClick={() => onNavigate('releases')} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 12px', borderRadius: '4px', fontWeight: '900', cursor: 'pointer' }}>SHOW ALL</button>
                         </div>
-                        <div className="overview-release-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                        <div className="overview-release-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
                             {recentReleases.length === 0 ? (
                                 <p style={{ color: DASHBOARD_THEME.muted, fontSize: '11px' }}>No releases found.</p>
                             ) : (
@@ -1382,7 +1382,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
 
                 {/* RIGHT COLUMN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div className="overview-right-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div className="overview-right-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div className="overview-range-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                             <div>
                                 <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Monthly Listeners</h4>
@@ -1409,12 +1409,12 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                                 ))}
                             </div>
                         </div>
-                        <div style={{ height: '170px', width: '100%' }}>
-                            <RechartsAreaChart data={listenerTrend} color={DASHBOARD_THEME.accent} height={170} />
+                        <div style={{ height: '156px', width: '100%' }}>
+                            <RechartsAreaChart data={listenerTrend} color={DASHBOARD_THEME.accent} height={156} />
                         </div>
                     </div>
 
-                    <div className="overview-right-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '20px', padding: '20px' }}>
+                    <div className="overview-right-card" style={{ background: DASHBOARD_THEME.surface, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '16px', padding: '18px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                             <div>
                                 <h4 style={{ fontSize: '13px', fontWeight: '800', color: '#fff', margin: 0 }}>Total Streams</h4>
@@ -1423,11 +1423,11 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                             <button onClick={() => onNavigate('earnings')} style={{ background: 'none', border: 'none', color: DASHBOARD_THEME.accent, fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>See Details &gt;</button>
                         </div>
 
-                        <div style={{ height: '140px', width: '100%', position: 'relative', margin: '16px 0' }}>
-                            <RechartsAreaChart data={streamTrend} color={DASHBOARD_THEME.accent} height={140} />
+                        <div style={{ height: '126px', width: '100%', position: 'relative', margin: '14px 0' }}>
+                            <RechartsAreaChart data={streamTrend} color={DASHBOARD_THEME.accent} height={126} />
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {platformBreakdown.map((s, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
@@ -1455,17 +1455,17 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                     }
                     .overview-welcome {
-                        padding: 22px !important;
-                        min-height: 160px !important;
+                        padding: 20px !important;
+                        min-height: 144px !important;
                     }
                     .overview-welcome-main {
                         gap: 14px !important;
                     }
                     .overview-welcome-title {
-                        font-size: 22px !important;
+                        font-size: 20px !important;
                     }
                     .overview-balance-value {
-                        font-size: 28px !important;
+                        font-size: 24px !important;
                     }
                 }
                 @media (max-width: 640px) {
@@ -1479,7 +1479,7 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         grid-template-columns: 1fr !important;
                     }
                     .overview-kpi-card {
-                        padding: 14px 15px !important;
+                        padding: 13px 14px !important;
                     }
                     .overview-main-grid {
                         gap: 10px !important;
@@ -1513,16 +1513,16 @@ function OverviewView({ stats, recentReleases, onNavigate, actionRequiredContrac
                         font-size: 24px !important;
                     }
                     .overview-action-card {
-                        padding: 14px !important;
+                        padding: 12px !important;
                         border-radius: 12px !important;
                         gap: 10px !important;
                     }
                     .overview-release-card {
-                        padding: 14px !important;
+                        padding: 12px !important;
                         border-radius: 14px !important;
                     }
                     .overview-right-card {
-                        padding: 14px !important;
+                        padding: 12px !important;
                         border-radius: 14px !important;
                     }
                     .overview-range-head {
@@ -2694,7 +2694,6 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email,
                     fullName,
                     legalName,
                     phoneNumber,
@@ -2848,10 +2847,13 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@example.com"
-                            style={inputStyle}
+                            readOnly
+                            style={{ ...inputStyle, color: '#888', cursor: 'not-allowed' }}
                         />
+                        <div style={{ fontSize: '10px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
+                            Email changes are handled separately during verification or through support.
+                        </div>
                     </div>
 
                     <div style={{ marginBottom: '25px' }}>
