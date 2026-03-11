@@ -17,15 +17,12 @@ import { sendMail } from "@/lib/mail";
 import { generateVerificationEmail } from "@/lib/mail-templates";
 import { extractSpotifyArtistId, findBestSpotifyArtistMatch } from "@/lib/spotify";
 import { scrapeSpotifyStats } from "@/lib/scraper";
+import { normalizeSystemSettingsConfig, parseSystemSettingsConfig } from "@/lib/system-settings";
 
 const signupRateLimiter = rateLimit({
   interval: 30 * 60 * 1000,
   uniqueTokenPerInterval: 4000,
 });
-
-type RegistrationSettingsConfig = {
-  registrationsOpen?: boolean;
-};
 
 export async function POST(req: Request) {
   try {
@@ -46,16 +43,9 @@ export async function POST(req: Request) {
     }
 
     const settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
-    if (settings?.config) {
-      let config: RegistrationSettingsConfig = {};
-      try {
-        config = JSON.parse(settings.config) as RegistrationSettingsConfig;
-      } catch (parseError) {
-        console.warn("Invalid system settings JSON in signup route:", parseError instanceof Error ? parseError.message : parseError);
-      }
-      if (config.registrationsOpen === false) {
-        return NextResponse.json({ error: "Registrations are currently closed" }, { status: 403 });
-      }
+    const config = normalizeSystemSettingsConfig(parseSystemSettingsConfig(settings?.config ?? null));
+    if (config.registrationsOpen === false) {
+      return NextResponse.json({ error: "Registrations are currently closed" }, { status: 403 });
     }
 
     if (!email || !password || !fullName || !stageName) {

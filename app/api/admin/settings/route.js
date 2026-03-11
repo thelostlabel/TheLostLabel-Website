@@ -3,16 +3,11 @@ import { revalidateTag } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { PUBLIC_SETTINGS_CACHE_TAG } from "@/lib/public-settings";
-
-function parseConfig(value) {
-    if (!value) return {};
-    try {
-        const parsed = JSON.parse(value);
-        return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-        return {};
-    }
-}
+import {
+    getDefaultSystemSettings,
+    normalizeSystemSettingsConfig,
+    parseSystemSettingsConfig
+} from "@/lib/system-settings";
 
 function sanitizeConfig(config = {}) {
     const next = { ...(config || {}) };
@@ -40,13 +35,7 @@ export async function GET(req) {
 
         if (!settings) {
             // Seed default settings if not exists
-            const defaultConfig = JSON.stringify({
-                maintenanceMode: false,
-                allowRegistrations: true,
-                autoApproveDemos: false,
-                featuredPlaylistId: "",
-                homepageNotice: ""
-            });
+            const defaultConfig = JSON.stringify(getDefaultSystemSettings());
 
             const defaultSettings = await prisma.systemSettings.create({
                 data: {
@@ -54,10 +43,18 @@ export async function GET(req) {
                     config: defaultConfig
                 }
             });
-            return new Response(JSON.stringify({ config: JSON.stringify(sanitizeConfig(parseConfig(defaultSettings.config))) }), { status: 200 });
+            return new Response(JSON.stringify({
+                config: JSON.stringify(
+                    sanitizeConfig(normalizeSystemSettingsConfig(parseSystemSettingsConfig(defaultSettings.config)))
+                )
+            }), { status: 200 });
         }
 
-        return new Response(JSON.stringify({ config: JSON.stringify(sanitizeConfig(parseConfig(settings.config))) }), { status: 200 });
+        return new Response(JSON.stringify({
+            config: JSON.stringify(
+                sanitizeConfig(normalizeSystemSettingsConfig(parseSystemSettingsConfig(settings.config)))
+            )
+        }), { status: 200 });
     } catch (error) {
         console.error("Fetch Settings Error:", error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
@@ -78,7 +75,7 @@ export async function PATCH(req) {
             select: { config: true }
         });
         const mergedConfig = sanitizeConfig({
-            ...parseConfig(existing?.config),
+            ...normalizeSystemSettingsConfig(parseSystemSettingsConfig(existing?.config)),
             ...incomingConfig
         });
 
@@ -90,7 +87,12 @@ export async function PATCH(req) {
 
         revalidateTag(PUBLIC_SETTINGS_CACHE_TAG);
 
-        return new Response(JSON.stringify({ success: true, config: JSON.stringify(sanitizeConfig(parseConfig(settings.config))) }), { status: 200 });
+        return new Response(JSON.stringify({
+            success: true,
+            config: JSON.stringify(
+                sanitizeConfig(normalizeSystemSettingsConfig(parseSystemSettingsConfig(settings.config)))
+            )
+        }), { status: 200 });
     } catch (error) {
         console.error("Save Settings Error:", error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });

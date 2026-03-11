@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { BRANDING } from '@/lib/branding';
 import { usePublicSettings } from './PublicSettingsContext';
+import { DEFAULT_FOOTER_LINKS } from '@/lib/site-content-data';
 
 
-const Footer = () => {
+const Footer = ({ footerLinks = DEFAULT_FOOTER_LINKS }) => {
     const publicSettings = usePublicSettings();
     const socials = {
         discord: publicSettings.discord,
@@ -15,18 +16,6 @@ const Footer = () => {
         youtube: publicSettings.youtube,
         twitter: publicSettings.twitter,
         facebook: publicSettings.facebook
-    };
-
-    const footerLinks = {
-        explore: [
-            { name: 'Home', href: '/' },
-            { name: 'Artists', href: '/artists' },
-            { name: 'FAQ', href: '/faq' },
-        ],
-        legal: [
-            { name: 'Privacy Policy', href: '/privacy' },
-            { name: 'Terms of Service', href: '/terms' },
-        ]
     };
 
     return (

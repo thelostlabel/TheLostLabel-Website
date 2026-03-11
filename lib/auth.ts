@@ -15,6 +15,7 @@ import {
   normalizeEmail,
   passesRateLimit,
 } from "@/lib/security";
+import { normalizeSystemSettingsConfig, parseSystemSettingsConfig } from "@/lib/system-settings";
 import { linkUserToArtist } from "@/lib/userArtistLink";
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("lost-invalid-password", 10);
@@ -91,23 +92,6 @@ async function loadAuthoritativeUserClaims(userId?: string | null): Promise<Sess
   return buildSessionClaims(user);
 }
 
-type SettingsConfig = {
-  registrationsOpen?: boolean;
-};
-
-function parseSettingsConfig(config: string | null): SettingsConfig {
-  if (!config) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(config) as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as SettingsConfig) : {};
-  } catch {
-    return {};
-  }
-}
-
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -139,7 +123,7 @@ export const authOptions = {
 
           if (credentials?.type === "register") {
             const settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
-            const config = parseSettingsConfig(settings?.config ?? null);
+            const config = normalizeSystemSettingsConfig(parseSystemSettingsConfig(settings?.config ?? null));
             if (config.registrationsOpen === false) {
               throw new Error("REGISTRATIONS CLOSED");
             }

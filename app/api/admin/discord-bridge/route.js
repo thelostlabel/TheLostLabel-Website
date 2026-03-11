@@ -1,12 +1,13 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { ensureDiscordBridgeTables } from "@/lib/discord-bridge-db";
 import {
-    DEFAULT_BRIDGE_CONFIG,
     getDiscordBridgeConfig,
+    DEFAULT_BRIDGE_CONFIG,
     sanitizeBridgeConfigForClient,
     saveDiscordBridgeConfig
 } from "@/lib/discord-bridge-config";
+import { normalizeDiscordBridgeInput } from "@/lib/discord-bridge-contract";
+import { getDiscordBridgeSchemaStatus } from "@/lib/discord-bridge-db";
 import { getDiscordBridgeAdminSnapshot } from "@/lib/discord-bridge-service";
 
 function json(data, status = 200) {
@@ -14,17 +15,6 @@ function json(data, status = 200) {
         JSON.stringify(data, (_, value) => (typeof value === "bigint" ? Number(value) : value)),
         { status, headers: { "Content-Type": "application/json" } }
     );
-}
-
-function mergeWithDefaults(input = {}) {
-    return {
-        ...DEFAULT_BRIDGE_CONFIG,
-        ...input,
-        roleMap: {
-            ...DEFAULT_BRIDGE_CONFIG.roleMap,
-            ...(input?.roleMap || {})
-        }
-    };
 }
 
 export async function GET() {
@@ -35,8 +25,6 @@ export async function GET() {
     }
 
     try {
-        await ensureDiscordBridgeTables();
-
         let config = DEFAULT_BRIDGE_CONFIG;
         let snapshot = {
             counters: { linkedAccounts: 0, pendingOutbox: 0, pendingRoleSync: 0 },
@@ -61,6 +49,10 @@ export async function GET() {
 
         return json({
             config: sanitizeBridgeConfigForClient(config),
+            schema: await getDiscordBridgeSchemaStatus().catch((error) => ({
+                ready: false,
+                error: error instanceof Error ? error.message : "Unknown error"
+            })),
             snapshot
         }, 200);
     } catch (error) {
@@ -78,42 +70,9 @@ export async function PATCH(req) {
 
     try {
         const payload = await req.json();
-        const inputConfig = payload?.config || payload || {};
+        const inputConfig = normalizeDiscordBridgeInput(payload?.config || payload || {});
 
-        const normalized = mergeWithDefaults({
-            enabled: Boolean(inputConfig.enabled),
-            outboxEnabled: inputConfig.outboxEnabled !== false,
-            publicBaseUrl: String(inputConfig.publicBaseUrl || "").trim(),
-            oauthClientId: String(inputConfig.oauthClientId || "").trim(),
-            oauthClientSecret: String(inputConfig.oauthClientSecret || "").trim(),
-            oauthRedirectUri: String(inputConfig.oauthRedirectUri || "").trim(),
-            internalToken: String(inputConfig.internalToken || "").trim(),
-            internalSigningSecret: String(inputConfig.internalSigningSecret || "").trim(),
-            defaultGuildId: String(inputConfig.defaultGuildId || "").trim(),
-            supportChannelId: String(inputConfig.supportChannelId || "").trim(),
-            eventsChannelId: String(inputConfig.eventsChannelId || "").trim(),
-            roleMap: {
-                admin: String(inputConfig?.roleMap?.admin || "").trim(),
-                "a&r": String(inputConfig?.roleMap?.["a&r"] || "").trim(),
-                artist: String(inputConfig?.roleMap?.artist || "").trim()
-            },
-            botRuntime: {
-                personality: String(inputConfig?.botRuntime?.personality || "helpful").trim().toLowerCase(),
-                visionAi: Boolean(inputConfig?.botRuntime?.visionAi),
-                smartHelper: inputConfig?.botRuntime?.smartHelper !== false,
-                smartHelperMode: String(inputConfig?.botRuntime?.smartHelperMode || "questions_only").trim().toLowerCase(),
-                smartHelperKeywords: Array.isArray(inputConfig?.botRuntime?.smartHelperKeywords)
-                    ? inputConfig.botRuntime.smartHelperKeywords
-                    : [],
-                smartHelperBlockedKeywords: Array.isArray(inputConfig?.botRuntime?.smartHelperBlockedKeywords)
-                    ? inputConfig.botRuntime.smartHelperBlockedKeywords
-                    : [],
-                smartHelperRequireQuestion: inputConfig?.botRuntime?.smartHelperRequireQuestion !== false,
-                agentMode: Boolean(inputConfig?.botRuntime?.agentMode)
-            }
-        });
-
-        const saved = await saveDiscordBridgeConfig(normalized);
+        const saved = await saveDiscordBridgeConfig(inputConfig);
 
         return json({
             success: true,

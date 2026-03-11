@@ -38,6 +38,7 @@ export const MANAGEMENT_VIEW_PERMISSION_OPTIONS = [
   { key: "admin_view_content", label: "CONTENT" },
   { key: "admin_view_webhooks", label: "WEBHOOKS" },
   { key: "admin_view_discord_bridge", label: "DISCORD BRIDGE" },
+  { key: "admin_view_wise_payouts", label: "WISE PAYOUTS" },
   { key: "admin_view_settings", label: "SETTINGS" },
 ] as const satisfies readonly PermissionOption[];
 

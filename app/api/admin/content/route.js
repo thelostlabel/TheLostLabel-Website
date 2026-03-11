@@ -1,15 +1,11 @@
+import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { SITE_CONTENT_CACHE_TAG, getManagedSiteContent, getSiteContentByKey } from "@/lib/site-content";
+import { MANAGED_SITE_CONTENT_KEYS } from "@/lib/site-content-data";
 
-const PUBLIC_CONTENT_KEYS = new Set([
-    "faq",
-    "join_genres",
-    "join_commissions",
-    "terms",
-    "privacy",
-    "commission_rules"
-]);
+const PUBLIC_CONTENT_KEYS = new Set(MANAGED_SITE_CONTENT_KEYS);
 
 function isAdminSession(session) {
     return Boolean(session?.user?.role === "admin");
@@ -27,29 +23,14 @@ export async function GET(req) {
                 if (!isAdminSession(session)) {
                     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
                 }
+
+                const content = await prisma.siteContent.findUnique({
+                    where: { key }
+                });
+                return new Response(JSON.stringify(content), { status: 200 });
             }
 
-            let content = await prisma.siteContent.findUnique({
-                where: { key }
-            });
-
-            // Auto-initialize FAQ if missing
-            if (!content && key === 'faq') {
-                const defaultFaqs = [
-                    { q: "How do I submit a demo?", a: "Register as an artist, access your portal, and use the 'NEW SUBMISSION' button." },
-                    { q: "How can I track my distribution?", a: "Once signed, our A&R team will provide updates through the portal." },
-                    { q: "How do royalties and payments work?", a: "Royalties are calculated monthly. View revenue in the 'EARNINGS' tab." },
-                    { q: "What about legal contracts?", a: "Contracts are generated digitally and available in the 'CONTRACTS' section." },
-                    { q: "Do you offer Spotify sync?", a: "Yes, our system syncs with your Spotify Artist profile automatically." }
-                ];
-                content = {
-                    key: 'faq',
-                    title: 'FAQ / Sıkça Sorulan Sorular',
-                    content: JSON.stringify(defaultFaqs),
-                    updatedAt: new Date()
-                };
-            }
-
+            const content = await getSiteContentByKey(key);
             return new Response(JSON.stringify(content), { status: 200 });
         } else {
             const session = await getServerSession(authOptions);
@@ -57,7 +38,7 @@ export async function GET(req) {
                 return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
             }
 
-            const allContent = await prisma.siteContent.findMany();
+            const allContent = await getManagedSiteContent();
             return new Response(JSON.stringify(allContent), { status: 200 });
         }
     } catch (error) {
@@ -85,6 +66,8 @@ export async function POST(req) {
             update: { title, content },
             create: { key, title, content }
         });
+
+        revalidateTag(SITE_CONTENT_CACHE_TAG);
 
         return new Response(JSON.stringify(result), { status: 200 });
     } catch (error) {

@@ -1,20 +1,10 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isValidDiscordWebhookUrl } from "@/lib/discord-webhooks";
 
 function isAdminSession(session) {
     return Boolean(session?.user?.role === "admin");
-}
-
-function isValidDiscordWebhookUrl(value) {
-    try {
-        const parsed = new URL(String(value || "").trim());
-        return parsed.protocol === "https:" &&
-            parsed.hostname === "discord.com" &&
-            /^\/api\/webhooks\/[^/]+\/[^/]+$/.test(parsed.pathname);
-    } catch {
-        return false;
-    }
 }
 
 // GET: Fetch all webhooks

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import HomeClient from "./HomeClient";
 import { BRANDING } from "@/lib/branding";
 import { TENANT } from "@/lib/tenant";
+import { getSiteContentByKey } from "@/lib/site-content";
+import { parseFooterLinks, parseHomePartners, parseHomeServices, parseHomeStats } from "@/lib/site-content-data";
 
 
 export const metadata = {
@@ -13,9 +15,26 @@ export const metadata = {
 };
 
 
-export default function HomePage() {
+export default async function HomePage() {
     if (!TENANT.features.homePage) {
         redirect('/dashboard');
     }
-    return <HomeClient />;
+
+    const [servicesContent, statsContent, partnersContent, footerLinksContent] = await Promise.all([
+        getSiteContentByKey('home_services'),
+        getSiteContentByKey('home_stats'),
+        getSiteContentByKey('home_partners'),
+        getSiteContentByKey('footer_links')
+    ]);
+
+    return (
+        <HomeClient
+            initialContent={{
+                services: parseHomeServices(servicesContent.content),
+                stats: parseHomeStats(statsContent.content),
+                partners: parseHomePartners(partnersContent.content),
+                footerLinks: parseFooterLinks(footerLinksContent.content)
+            }}
+        />
+    );
 }

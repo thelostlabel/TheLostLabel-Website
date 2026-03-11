@@ -1,24 +1,12 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
 import rateLimit from "@/lib/rate-limit";
-import { fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
+import { buildDiscordWebhookPayload, findDiscordWebhookById, isValidDiscordWebhookUrl, sendDiscordWebhook } from "@/lib/discord-webhooks";
 
 const limiter = rateLimit({
     interval: 60 * 1000,
     uniqueTokenPerInterval: 250
 });
-
-function isValidDiscordWebhookUrl(value) {
-    try {
-        const parsed = new URL(String(value || "").trim());
-        return parsed.protocol === "https:" &&
-            parsed.hostname === "discord.com" &&
-            /^\/api\/webhooks\/[^/]+\/[^/]+$/.test(parsed.pathname);
-    } catch {
-        return false;
-    }
-}
 
 // POST: Test webhook notification
 export async function POST(req) {
@@ -40,10 +28,7 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Webhook ID is required" }), { status: 400 });
         }
 
-        const webhook = await prisma.webhook.findUnique({
-            where: { id: webhookId },
-            select: { id: true, name: true, url: true }
-        });
+        const webhook = await findDiscordWebhookById(webhookId);
 
         if (!webhook) {
             return new Response(JSON.stringify({ error: "Webhook not found" }), { status: 404 });
@@ -53,12 +38,9 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Stored webhook URL is invalid" }), { status: 400 });
         }
 
-        const response = await fetchWithTimeout(webhook.url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                username: "LOST Music Bot",
-                avatar_url: "https://i.imgur.com/AfFp7pu.png",
+        const response = await sendDiscordWebhook(
+            webhook,
+            buildDiscordWebhookPayload({
                 embeds: [{
                     title: "Webhook Test",
                     description: "This is a test notification from the LOST Admin Panel.",
@@ -68,11 +50,12 @@ export async function POST(req) {
                         { name: "Time", value: new Date().toLocaleString(), inline: true }
                     ]
                 }]
-            })
-        }, 10_000);
+            }),
+            { context: "Webhook test" }
+        );
 
         const success = response.ok;
-        const status = success ? 200 : (isTransientStatus(response.status) ? 502 : 400);
+        const status = success ? 200 : 400;
         return new Response(JSON.stringify({
             success,
             webhookId: webhook.id,

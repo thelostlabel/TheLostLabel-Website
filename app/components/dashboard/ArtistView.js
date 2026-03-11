@@ -15,9 +15,13 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useToast } from '@/app/components/ToastContext';
 import ProjectView from './ProjectView';
 import DashboardLoader from './DashboardLoader';
+import DiscordAccountPanel from './discord/DiscordAccountPanel';
+import DiscordLinkSoftBlockNotice from './discord/DiscordLinkSoftBlockNotice';
+import { useDiscordLink } from './discord/useDiscordLink';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 import { BRANDING } from '@/lib/branding';
+import { normalizePortalView, PORTAL_VIEW_DEFINITIONS } from '@/lib/dashboard-view-registry';
 import { usePublicSettings } from '../PublicSettingsContext';
 
 
@@ -280,7 +284,7 @@ export default function ArtistView() {
     const { showToast, showConfirm } = useToast();
     const searchParams = useSearchParams();
     const rawView = searchParams.get('view') || 'overview';
-    const view = rawView.startsWith('my-') ? rawView.replace('my-', '') : rawView;
+    const view = normalizePortalView(rawView);
 
     const [demos, setDemos] = useState([]);
     const [contracts, setContracts] = useState([]);
@@ -288,15 +292,9 @@ export default function ArtistView() {
     const [releases, setReleases] = useState([]);
     const [requests, setRequests] = useState([]);
     const [selectedRequestId, setSelectedRequestId] = useState(null);
-    const [discordLink, setDiscordLink] = useState({
-        linked: false,
-        discordUserId: null,
-        discordUsername: null,
-        linkedAt: null,
-        loading: true
-    });
     const [loading, setLoading] = useState(true);
     const showLoading = useMinimumLoader(loading, 250);
+    const { discordLink, hasDiscordLink, refreshDiscordLink } = useDiscordLink(session?.user?.id);
 
 
     // Submit form state
@@ -460,24 +458,6 @@ export default function ArtistView() {
         finally { setLoading(false); }
     }, []);
 
-    const fetchDiscordLink = useCallback(async () => {
-        try {
-            const res = await fetch('/api/profile/discord-link');
-            if (!res.ok) return;
-            const data = await res.json();
-            setDiscordLink({
-                linked: Boolean(data?.linked),
-                discordUserId: data?.discordUserId || null,
-                discordUsername: data?.discordUsername || null,
-                linkedAt: data?.linkedAt || null,
-                loading: false
-            });
-        } catch (e) {
-            console.error(e);
-            setDiscordLink((prev) => ({ ...prev, loading: false }));
-        }
-    }, []);
-
     useEffect(() => {
         if (view === 'overview') fetchOverview();
         else if (view === 'demos') fetchDemos();
@@ -486,13 +466,6 @@ export default function ArtistView() {
         else if (view === 'support') fetchRequests();
         else setLoading(false);
     }, [view, fetchOverview, fetchDemos, fetchContracts, fetchEarnings, fetchRequests, fetchPayments]);
-
-    useEffect(() => {
-        if (session?.user?.id) {
-            fetchDiscordLink();
-        }
-    }, [session, fetchDiscordLink, searchParams]);
-
 
     // File handling
     const handleFileSelect = (e) => {
@@ -606,30 +579,13 @@ export default function ArtistView() {
         }
     };
 
-    const perms = session?.user?.permissions || {};
-    const hasPermission = (p) => perms[p] !== false;
-
-    const viewTitles = {
-        overview: 'OVERVIEW',
-        demos: 'MY DEMOS',
-        support: selectedRequestId ? 'CONVERSATION' : 'SUPPORT',
-        releases: 'MY RELEASES',
-        submit: 'NEW SUBMISSION',
-        earnings: 'MY EARNINGS',
-        contracts: 'MY CONTRACTS',
-        profile: 'MY PROFILE'
-    };
-
-    const viewToPerm = {
-        overview: 'view_overview',
-        demos: 'view_demos',
-        support: 'view_support',
-        releases: 'view_releases',
-        submit: 'submit_demos',
-        earnings: 'view_earnings',
-        contracts: 'view_contracts',
-        profile: 'view_profile'
-    };
+    const viewTitles = useMemo(() => {
+        const titles = Object.fromEntries(PORTAL_VIEW_DEFINITIONS.map((item) => [item.view, item.title]));
+        if (selectedRequestId) {
+            titles.support = 'CONVERSATION';
+        }
+        return titles;
+    }, [selectedRequestId]);
 
     const navigateToView = useCallback((nextView, extraParams = {}) => {
         const params = new URLSearchParams(window.location.search);
@@ -645,8 +601,6 @@ export default function ArtistView() {
         window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
         window.dispatchEvent(new Event('popstate'));
     }, []);
-
-    const hasDiscordLink = Boolean(discordLink?.linked && discordLink?.discordUserId);
 
     if (showLoading && !hasData[view]) {
         return (
@@ -798,7 +752,7 @@ export default function ArtistView() {
                     showToast={showToast}
                     discordLink={discordLink}
                     linkStatusCode={searchParams.get('discord')}
-                    onDiscordLinkChange={fetchDiscordLink}
+                    onDiscordLinkChange={refreshDiscordLink}
                 />
             ) : null}
 
@@ -2531,37 +2485,6 @@ function SubmitView({
     );
 }
 
-function DiscordLinkSoftBlockNotice({ title, message, onLink }) {
-    return (
-        <div style={{
-            marginBottom: '12px',
-            padding: '14px 16px',
-            borderRadius: '12px',
-            border: '1px solid rgba(250, 204, 21, 0.35)',
-            background: 'linear-gradient(160deg, rgba(250, 204, 21, 0.12), rgba(255, 255, 255, 0.02))',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <AlertCircle size={16} color="#facc15" />
-                <div>
-                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{title}</div>
-                    <div style={{ fontSize: '11px', color: '#d1d5db', marginTop: '3px' }}>{message}</div>
-                </div>
-            </div>
-            <button
-                type="button"
-                onClick={onLink}
-                style={{ ...btnStyle, border: '1px solid rgba(255,255,255,0.2)', padding: '8px 12px', fontSize: '11px' }}
-            >
-                <Link2 size={12} /> LINK NOW
-            </button>
-        </div>
-    );
-}
-
 function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDiscordLinkChange }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -2912,108 +2835,18 @@ function ProfileView({ onUpdate, showToast, discordLink, linkStatusCode, onDisco
                 {/* RIGHT COLUMN: Password & Notifications */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                     <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '12px', padding: '30px' }}>
-                        <h3 style={{ fontSize: '12px', letterSpacing: '3px', fontWeight: '900', color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Link2 size={14} color="var(--accent)" /> DISCORD ACCOUNT
-                        </h3>
-
-                        {oauthStatus && (
-                            <div style={{
-                                marginBottom: '16px',
-                                borderRadius: '8px',
-                                border: `1px solid ${oauthStatus.type === 'success' ? 'rgba(34,197,94,0.45)' : oauthStatus.type === 'warning' ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.4)'}`,
-                                background: oauthStatus.type === 'success' ? 'rgba(34,197,94,0.10)' : oauthStatus.type === 'warning' ? 'rgba(250,204,21,0.10)' : 'rgba(239,68,68,0.10)',
-                                color: '#e5e7eb',
-                                padding: '10px 12px',
-                                fontSize: '12px',
-                                fontWeight: '700'
-                            }}>
-                                {oauthStatus.text}
-                            </div>
-                        )}
-
-                        <div style={{ border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: '8px', padding: '12px', background: DASHBOARD_THEME.surfaceSoft }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>
-                                    {discordLink?.linked ? 'CONNECTED' : 'NOT CONNECTED'}
-                                </span>
-                                {discordLink?.linked ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', fontSize: '10px', fontWeight: '900', borderRadius: '999px', color: '#bbf7d0', border: '1px solid rgba(34,197,94,0.45)', background: 'rgba(34,197,94,0.15)' }}>
-                                        <CheckCircle size={11} /> VERIFIED
-                                    </span>
-                                ) : null}
-                            </div>
-
-                            <div style={{ display: 'grid', gap: '6px', fontSize: '12px', color: DASHBOARD_THEME.muted }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Discord Username</span>
-                                    <span style={{ color: '#fff', fontWeight: '800' }}>{discordLink?.discordUsername || '-'}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Discord ID</span>
-                                    <span style={{ color: '#fff', fontWeight: '800' }}>{discordLink?.discordUserId || '-'}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>Linked At</span>
-                                    <span style={{ color: '#fff', fontWeight: '800' }}>
-                                        {discordLink?.linkedAt ? new Date(discordLink.linkedAt).toLocaleString() : '-'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-                            <button
-                                type="button"
-                                onClick={handleStartDiscordLink}
-                                disabled={linking}
-                                style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: '#071311', border: 'none', flex: 1, justifyContent: 'center', opacity: linking ? 0.7 : 1 }}
-                            >
-                                {linking ? 'REDIRECTING...' : 'LINK DISCORD'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleDiscordUnlink}
-                                disabled={unlinking || !discordLink?.linked}
-                                style={{ ...btnStyle, flex: 1, justifyContent: 'center', opacity: (unlinking || !discordLink?.linked) ? 0.5 : 1 }}
-                            >
-                                <Unlink size={13} /> {unlinking ? 'UNLINKING...' : 'UNLINK'}
-                            </button>
-                        </div>
-
-                        {/* Discord Notifications Toggle */}
-                        <div
-                            onClick={handleDiscordNotifyToggle}
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                marginTop: '14px', padding: '12px 14px', borderRadius: '8px',
-                                background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`,
-                                cursor: discordLink?.linked ? 'pointer' : 'not-allowed',
-                                opacity: discordLink?.linked ? 1 : 0.5
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <Bell size={14} style={{ color: discordNotifyEnabled ? DASHBOARD_THEME.success : DASHBOARD_THEME.muted }} />
-                                <span style={{ fontSize: '12px', fontWeight: '800', color: DASHBOARD_THEME.muted }}>
-                                    DISCORD DM NOTIFICATIONS
-                                </span>
-                            </div>
-                            <div style={{
-                                width: '36px', height: '20px', borderRadius: '12px',
-                                background: discordNotifyEnabled ? 'var(--status-success)' : 'rgba(255,255,255,0.1)',
-                                position: 'relative', transition: 'background 0.2s'
-                            }}>
-                                <div style={{
-                                    position: 'absolute', top: '2px', left: discordNotifyEnabled ? '18px' : '2px',
-                                    width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
-                                    transition: 'left 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                }} />
-                            </div>
-                        </div>
-                        {!discordLink?.linked && (
-                            <p style={{ fontSize: '10px', color: DASHBOARD_THEME.muted, marginTop: '8px', textAlign: 'center' }}>
-                                Link Discord to enable DM notifications
-                            </p>
-                        )}
+                        <DiscordAccountPanel
+                            discordLink={discordLink}
+                            oauthStatus={oauthStatus}
+                            linking={linking}
+                            unlinking={unlinking}
+                            discordNotifyEnabled={discordNotifyEnabled}
+                            onStartLink={handleStartDiscordLink}
+                            onUnlink={handleDiscordUnlink}
+                            onToggleNotifications={handleDiscordNotifyToggle}
+                            theme={DASHBOARD_THEME}
+                            buttonStyle={btnStyle}
+                        />
                     </motion.div>
 
                     {/* Security Section */}

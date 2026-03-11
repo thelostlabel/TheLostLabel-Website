@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { settleSideEffects } from "@/lib/async-effects";
 import { getReleaseArtistWhereById } from "@/lib/release-artists";
+import { normalizeSystemSettingsConfig, parseSystemSettingsConfig } from "@/lib/system-settings";
 
 function escapeHtml(value) {
     return String(value || '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -45,12 +46,7 @@ export async function POST(req) {
         // Verify System Settings (optional: check if request type is enabled)
         const settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
         if (settings?.config) {
-            let config = {};
-            try {
-                config = JSON.parse(settings.config);
-            } catch (parseError) {
-                console.warn("Invalid system settings JSON, falling back to defaults:", parseError?.message || parseError);
-            }
+            const config = normalizeSystemSettingsConfig(parseSystemSettingsConfig(settings.config));
             if (normalizedType === 'cover_art' && config.allowCoverArt === false) {
                 return new Response(JSON.stringify({ error: "This request type is currently disabled by admin." }), { status: 403 });
             }

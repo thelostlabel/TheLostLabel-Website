@@ -1,21 +1,14 @@
 "use client";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ReactLenis, useLenis } from 'lenis/react';
+import { ReactLenis } from 'lenis/react';
 import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from "framer-motion";
 import {
-  ArrowUpRight,
   Rocket,
   ShieldCheck,
-  BarChart3,
-  Sparkles,
   Play,
-  CheckCircle2,
   Globe2,
   Zap,
-  Users,
-  Music,
-  DollarSign
 } from "lucide-react";
 import NextImage from "next/image";
 import ReleaseCard from "./components/ReleaseCard";
@@ -32,6 +25,12 @@ import NumberTicker from "./components/ui/number-ticker";
 import { usePlayer } from "./components/PlayerContext";
 import { usePublicSettings } from "./components/PublicSettingsContext";
 import { BRANDING } from "@/lib/branding";
+import {
+  DEFAULT_FOOTER_LINKS,
+  DEFAULT_HOME_PARTNERS,
+  DEFAULT_HOME_SERVICE_ITEMS,
+  DEFAULT_HOME_STATS,
+} from "@/lib/site-content-data";
 
 
 // --- ANIMATION VARIANTS & HOOKS ---
@@ -161,57 +160,6 @@ const FeatureCard = ({ icon: Icon, title, body, badge, index }) => {
       )}
     </motion.div>
   );
-};
-
-const AnimatedNumber = ({ value }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
-  const formattedString = value?.toString() || "0";
-
-  const numericPart = formattedString.replace(/[^0-9.]/g, '');
-  const numValue = parseFloat(numericPart);
-  const suffix = formattedString.replace(/[0-9.,]/g, '');
-
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (isInView && !isNaN(numValue) && numericPart !== '') {
-      let start = 0;
-      const end = numValue;
-
-      // Skip animation for very small numbers to avoid UI feeling broken
-      if (start === end || end <= 10) {
-        return;
-      }
-      const duration = 2000;
-      const incrementTime = 30;
-      const steps = duration / incrementTime;
-      const stepValue = end / steps;
-
-      const timer = setInterval(() => {
-        start += stepValue;
-        if (start >= end) {
-          setDisplay(end);
-          clearInterval(timer);
-        } else {
-          setDisplay(start);
-        }
-      }, incrementTime);
-
-      return () => clearInterval(timer);
-    }
-  }, [isInView, numValue, numericPart]);
-
-  if (isNaN(numValue) || numericPart === '') return <span>{value}</span>;
-  if (!isInView || numValue <= 10) return <span ref={ref}>{numValue.toLocaleString()}{suffix}</span>;
-
-  // Use Math.floor for display if it's counting up, or just the number if done
-  const displayVal = display === numValue && numValue % 1 !== 0
-    ? numValue
-    : Math.floor(display);
-
-  return <span ref={ref}>{displayVal.toLocaleString()}{suffix}</span>;
 };
 
 const StatItem = ({ label, value, delay }) => (
@@ -344,7 +292,13 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
   );
 };
 
-export default function Home() {
+const SERVICE_ICON_MAP = {
+  rocket: Rocket,
+  "shield-check": ShieldCheck,
+  zap: Zap,
+};
+
+export default function Home({ initialContent }) {
   const publicSettings = usePublicSettings();
   const [releases, setReleases] = useState([]);
   const [artists, setArtists] = useState([]);
@@ -352,18 +306,17 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [introDone, setIntroDone] = useState(false);
   const [heroRelease, setHeroRelease] = useState(null);
-  const [siteConfig, setSiteConfig] = useState(publicSettings);
 
   const { playTrack } = usePlayer();
 
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
   const y2 = useTransform(scrollY, [0, 500], [0, -150]);
-  const rotate = useTransform(scrollY, [0, 500], [0, 5]);
-
-  useEffect(() => {
-    setSiteConfig(publicSettings);
-  }, [publicSettings]);
+  const registrationsOpen = publicSettings?.registrationsOpen !== false;
+  const services = initialContent?.services?.length ? initialContent.services : DEFAULT_HOME_SERVICE_ITEMS;
+  const statsItems = initialContent?.stats?.length ? initialContent.stats : DEFAULT_HOME_STATS;
+  const partnerPlatforms = initialContent?.partners?.length ? initialContent.partners : DEFAULT_HOME_PARTNERS;
+  const footerLinks = initialContent?.footerLinks || DEFAULT_FOOTER_LINKS;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -411,27 +364,6 @@ export default function Home() {
     }, 1500);
 
   }, [publicSettings]);
-
-  const services = [
-    {
-      icon: Rocket,
-      title: "Velocity Distribution",
-      body: "Direct pipes to Spotify, Apple, and TikTok. Assets delivered in under 72h with automated quality checks.",
-      badge: "SPEED"
-    },
-    {
-      icon: ShieldCheck,
-      title: "Ledger-Grade Splits",
-      body: "Smart contracts for your royalties. Collaborators get paid automatically, no Excel sheets required.",
-      badge: "FINANCE"
-    },
-    {
-      icon: Zap,
-      title: "Kinetic Marketing",
-      body: "Algorithmic pitching and localized ad clusters that actually convert listeners to fans.",
-      badge: "GROWTH"
-    },
-  ];
 
   return (
     <ReactLenis root options={{ lerp: 0.04, wheelMultiplier: 0.85, smoothWheel: true }}>
@@ -498,12 +430,12 @@ export default function Home() {
               >
                 <span style={{ width: "8px", height: "8px", background: "#E5E7EB", borderRadius: "50%", boxShadow: "0 0 10px rgba(229,231,235,0.5)" }} />
                 <AnimatedShinyText style={{ fontSize: "11px", fontWeight: "800", letterSpacing: "2px" }}>
-                  ACCEPTING NEW ARTISTS
+                  {registrationsOpen ? "ACCEPTING NEW ARTISTS" : "ROSTER OPEN"}
                 </AnimatedShinyText>
               </motion.div>
 
               <KineticText
-                text={siteConfig?.heroText || "LOSE THE LABEL KEEP CONTROL"}
+                text={publicSettings?.heroText || "LOSE THE LABEL KEEP CONTROL"}
                 className="hero-title"
                 as="h1"
                 once={false}
@@ -516,7 +448,7 @@ export default function Home() {
                 transition={{ delay: 1, duration: 1 }}
                 style={{ fontSize: "18px", color: "var(--text-secondary)", lineHeight: "1.6", maxWidth: "540px", marginBottom: "40px" }}
               >
-                {siteConfig?.heroSubText || "The operating system for independent artists. Major label infrastructure without the 360 deal handcuffs."}
+                {publicSettings?.heroSubText || "The operating system for independent artists. Major label infrastructure without the 360 deal handcuffs."}
               </motion.p>
 
               <motion.div
@@ -526,7 +458,7 @@ export default function Home() {
                 style={{ display: "flex", gap: "16px", flexWrap: "wrap", zIndex: 20, position: "relative" }}
               >
                 <MagneticEffect>
-                  <Link href="/auth/register">
+                  <Link href={registrationsOpen ? "/auth/register" : "/artists"}>
                     <ShimmerButton
                       background="#ffffff"
                       color="#000000"
@@ -534,12 +466,12 @@ export default function Home() {
                       shimmerDuration="2s"
                       style={{ padding: "18px 36px", fontSize: "14px" }}
                     >
-                      START YOUR RELEASE
+                      {registrationsOpen ? "START YOUR RELEASE" : "VIEW ROSTER"}
                     </ShimmerButton>
                   </Link>
                 </MagneticEffect>
                 <MagneticEffect>
-                  <Link href="/artists">
+                  <Link href={registrationsOpen ? "/artists" : "/releases"}>
                     <ShimmerButton
                       background="transparent"
                       color="#ffffff"
@@ -551,7 +483,7 @@ export default function Home() {
                         border: "1px solid rgba(255,255,255,0.2)",
                       }}
                     >
-                      VIEW ROSTER
+                      {registrationsOpen ? "VIEW ROSTER" : "LATEST DROPS"}
                     </ShimmerButton>
                   </Link>
                 </MagneticEffect>
@@ -578,16 +510,19 @@ export default function Home() {
         </section>
 
         {/* --- STATS TICKER --- */}
-        <section className="snap-section" style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", minHeight: "60vh", padding: "60px 24px", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px", width: "100%" }}>
-            <StatItem label="Active Artists" value={artistCount ? `${artistCount}+` : "100+"} icon={Users} delay={0.2} />
-            <StatItem label="Total Streams" value="1 Billion" icon={Music} delay={0.4} />
-            <StatItem label="Payouts Processed" value="2 Million" icon={DollarSign} delay={0.6} />
-          </div>
-        </section>
+        {publicSettings?.showStats !== false && statsItems.length > 0 && (
+          <section className="snap-section" style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", minHeight: "60vh", padding: "60px 24px", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
+            <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px", width: "100%" }}>
+              {statsItems.map((item, index) => {
+                const dynamicValue = item.dynamicKey === "artistCount" && artistCount ? `${artistCount}+` : item.value;
+                return <StatItem key={`${item.label}-${index}`} label={item.label} value={dynamicValue} delay={0.2 + (index * 0.2)} />;
+              })}
+            </div>
+          </section>
+        )}
 
         {/* --- PARTNERS MARQUEE --- */}
-        <PartnersSection />
+        <PartnersSection platforms={partnerPlatforms} />
 
         {/* --- FEATURES GRID --- */}
         <section className="snap-section" style={{ position: "relative", zIndex: 10, padding: "120px 24px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
@@ -609,8 +544,15 @@ export default function Home() {
             </motion.div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
-              {services.map((s, i) => (
-                <FeatureCard key={i} index={i} {...s} />
+              {services.map((service, index) => (
+                <FeatureCard
+                  key={`${service.title}-${index}`}
+                  index={index}
+                  icon={SERVICE_ICON_MAP[service.iconKey] || Rocket}
+                  title={service.title}
+                  body={service.body}
+                  badge={service.badge}
+                />
               ))}
             </div>
           </div>
@@ -668,7 +610,7 @@ export default function Home() {
             </TextReveal>
 
             <MagneticEffect>
-              <Link href="/auth/register">
+              <Link href={registrationsOpen ? "/auth/register" : "/releases"}>
                 <ShimmerButton
                   background="#ffffff"
                   color="#000000"
@@ -676,14 +618,14 @@ export default function Home() {
                   shimmerDuration="1.8s"
                   style={{ padding: "24px 64px", fontSize: "16px" }}
                 >
-                  SUBMIT DEMO
+                  {registrationsOpen ? "SUBMIT DEMO" : "VIEW RELEASES"}
                 </ShimmerButton>
               </Link>
             </MagneticEffect>
           </div>
         </section>
 
-        <Footer />
+        <Footer footerLinks={footerLinks} />
       </div>
     </ReactLenis>
   );

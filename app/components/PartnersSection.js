@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import {
   useScroll,
   useSpring,
@@ -10,6 +10,7 @@ import {
   useReducedMotion,
   useTransform,
 } from "framer-motion";
+import { DEFAULT_HOME_PARTNERS } from "@/lib/site-content-data";
 
 function wrap(min, max, v) {
   const range = max - min;
@@ -78,21 +79,18 @@ const AudiomackLogo = ({ size = 28 }) => (
   </svg>
 );
 
-const LOGOS_ROW1 = [
-  { name: "Spotify", Icon: SpotifyLogo },
-  { name: "Apple Music", Icon: AppleMusicLogo },
-  { name: "TikTok", Icon: TikTokLogo },
-  { name: "YouTube", Icon: YouTubeLogo },
-  { name: "Instagram", Icon: InstagramLogo },
-];
-
-const LOGOS_ROW2 = [
-  { name: "Amazon Music", Icon: AmazonMusicLogo },
-  { name: "Deezer", Icon: DeezerLogo },
-  { name: "Tidal", Icon: TidalLogo },
-  { name: "SoundCloud", Icon: SoundCloudLogo },
-  { name: "Audiomack", Icon: AudiomackLogo },
-];
+const LOGO_REGISTRY = {
+  "Spotify": SpotifyLogo,
+  "Apple Music": AppleMusicLogo,
+  "TikTok": TikTokLogo,
+  "YouTube": YouTubeLogo,
+  "Instagram": InstagramLogo,
+  "Amazon Music": AmazonMusicLogo,
+  "Deezer": DeezerLogo,
+  "Tidal": TidalLogo,
+  "SoundCloud": SoundCloudLogo,
+  "Audiomack": AudiomackLogo,
+};
 
 function LogoItem({ name, Icon }) {
   return (
@@ -172,7 +170,22 @@ function LogoRow({ logos, baseVelocity = 1.2, scrollFactor = 3 }) {
   );
 }
 
-export default function PartnersSection() {
+export default function PartnersSection({ platforms = DEFAULT_HOME_PARTNERS }) {
+  const logos = useMemo(() => {
+    const normalized = (Array.isArray(platforms) ? platforms : DEFAULT_HOME_PARTNERS)
+      .map((name) => {
+        const normalizedName = typeof name === "string" ? name.trim() : "";
+        const Icon = LOGO_REGISTRY[normalizedName];
+        return normalizedName && Icon ? { name: normalizedName, Icon } : null;
+      })
+      .filter(Boolean);
+
+    return normalized.length > 0 ? normalized : DEFAULT_HOME_PARTNERS.map((name) => ({ name, Icon: LOGO_REGISTRY[name] }));
+  }, [platforms]);
+
+  const row1 = logos.filter((_, index) => index % 2 === 0);
+  const row2 = logos.filter((_, index) => index % 2 === 1);
+
   return (
     <section
       style={{
@@ -195,8 +208,8 @@ export default function PartnersSection() {
         background: "linear-gradient(to left, #06070a, transparent)", zIndex: 2, pointerEvents: "none"
       }} />
 
-      <LogoRow logos={LOGOS_ROW1} baseVelocity={1.2} scrollFactor={3} />
-      <LogoRow logos={LOGOS_ROW2} baseVelocity={-1.2} scrollFactor={3} />
+      <LogoRow logos={row1.length > 0 ? row1 : logos} baseVelocity={1.2} scrollFactor={3} />
+      <LogoRow logos={row2.length > 0 ? row2 : logos} baseVelocity={-1.2} scrollFactor={3} />
     </section>
   );
 }

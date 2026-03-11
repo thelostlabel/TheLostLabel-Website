@@ -1,25 +1,21 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/app/components/ToastContext';
 
-const FEATURES = {
-    discordBridge:  process.env.NEXT_PUBLIC_FEATURE_DISCORD     !== 'false',
-    wisePayouts:    process.env.NEXT_PUBLIC_FEATURE_WISE         === 'true',
-    submissions:    process.env.NEXT_PUBLIC_FEATURE_SUBMISSIONS  !== 'false',
-    contracts:      process.env.NEXT_PUBLIC_FEATURE_CONTRACTS    !== 'false',
-    earnings:       process.env.NEXT_PUBLIC_FEATURE_EARNINGS     !== 'false',
-    payments:       process.env.NEXT_PUBLIC_FEATURE_PAYMENTS     !== 'false',
-    releases:       process.env.NEXT_PUBLIC_FEATURE_RELEASES     !== 'false',
-    communications: process.env.NEXT_PUBLIC_FEATURE_COMMS        !== 'false',
-    spotifySync:    process.env.NEXT_PUBLIC_FEATURE_SPOTIFY_SYNC !== 'false',
-};
-
 import DashboardLoader from './DashboardLoader';
 import { canDeleteDemos, canViewAllDemos, canViewUsers, hasAdminViewPermission } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
+import {
+    getAdminFeatureFlags,
+    getAdminViewDisplayName,
+    getAdminViewLoaders,
+    getAdminViewPermission,
+    hasAdminViewData,
+    normalizeAdminView
+} from './admin-view-registry';
 
 const lazyView = (loader) => dynamic(loader, {
     loading: () => <DashboardLoader label="LOADING MODULE" subLabel="Fetching admin view..." />
@@ -53,62 +49,10 @@ export default function AdminView() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const { showToast, showConfirm } = useToast();
+    const features = getAdminFeatureFlags();
     const rawView = searchParams.get('view') || 'overview';
-    const aliasViewMap = {
-        submit: 'submissions'
-    };
-    const normalizedView = aliasViewMap[rawView] || rawView;
-    const knownViews = new Set([
-        'overview',
-        'artists',
-        'users',
-        'requests',
-        'content',
-        'webhooks',
-        'settings',
-        ...(FEATURES.submissions    ? ['submissions']    : []),
-        ...(FEATURES.contracts      ? ['contracts']      : []),
-        ...(FEATURES.earnings       ? ['earnings']       : []),
-        ...(FEATURES.payments       ? ['payments']       : []),
-        ...(FEATURES.releases       ? ['releases']       : []),
-        ...(FEATURES.communications ? ['communications'] : []),
-        ...(FEATURES.discordBridge  ? ['discord-bridge'] : []),
-        ...(FEATURES.wisePayouts    ? ['wise-payouts']   : []),
-    ]);
-    const view = knownViews.has(normalizedView) ? normalizedView : 'overview';
-    const viewDisplayNames = {
-        overview: 'Overview',
-        artists: 'Artists',
-        users: 'Users',
-        requests: 'Requests',
-        content: 'Content',
-        webhooks: 'Webhooks',
-        settings: 'Settings',
-        ...(FEATURES.submissions    ? { submissions: 'Submissions' }       : {}),
-        ...(FEATURES.contracts      ? { contracts: 'Contracts' }           : {}),
-        ...(FEATURES.earnings       ? { earnings: 'Earnings' }             : {}),
-        ...(FEATURES.payments       ? { payments: 'Payments' }             : {}),
-        ...(FEATURES.releases       ? { releases: 'Releases' }             : {}),
-        ...(FEATURES.communications ? { communications: 'Communications' } : {}),
-        ...(FEATURES.discordBridge ? { 'discord-bridge': 'Discord Bridge' } : {}),
-        ...(FEATURES.wisePayouts ? { 'wise-payouts': 'Wise Payouts' } : {}),
-    };
-    const viewToPerm = {
-        overview: 'admin_view_overview',
-        submissions: 'admin_view_submissions',
-        artists: 'admin_view_artists',
-        users: 'admin_view_users',
-        requests: 'admin_view_requests',
-        content: 'admin_view_content',
-        webhooks: 'admin_view_webhooks',
-        contracts: 'admin_view_contracts',
-        earnings: 'admin_view_earnings',
-        payments: 'admin_view_payments',
-        releases: 'admin_view_releases',
-        settings: 'admin_view_settings',
-        communications: 'admin_view_communications',
-        'discord-bridge': 'admin_view_discord_bridge'
-    };
+    const view = normalizeAdminView(rawView);
+    const viewDisplayName = getAdminViewDisplayName(view);
 
     const [submissions, setSubmissions] = useState([]);
     const [artists, setArtists] = useState([]);
@@ -127,10 +71,91 @@ export default function AdminView() {
         ? canViewAllDemos(session?.user)
         : view === 'users'
             ? canViewUsers(session?.user)
-            : hasAdminViewPermission(session?.user, viewToPerm[view]);
+            : hasAdminViewPermission(session?.user, getAdminViewPermission(view));
     const canDeleteSubmission = canDeleteDemos(session?.user);
 
     const [earningsPagination, setEarningsPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
+
+    const fetchers = useMemo(() => ({
+        content: async () => {
+            const res = await fetch('/api/admin/content');
+            const data = await res.json();
+            setSiteContent(Array.isArray(data) ? data : []);
+        },
+        requests: async () => {
+            const res = await fetch('/api/admin/requests?limit=50');
+            const data = await res.json();
+            setRequests(data.requests || []);
+        },
+        submissions: async () => {
+            const res = await fetch('/api/demo?limit=50');
+            const data = await res.json();
+            setSubmissions(data.demos || []);
+        },
+        artists: async () => {
+            const res = await fetch('/api/admin/artists?limit=50');
+            const data = await res.json();
+            setArtists(data.artists || []);
+        },
+        users: async () => {
+            const res = await fetch('/api/admin/users?limit=50');
+            const data = await res.json();
+            setUsers(data.users || []);
+        },
+        webhooks: async () => {
+            const res = await fetch('/api/admin/webhooks');
+            const data = await res.json();
+            setWebhooks(Array.isArray(data) ? data : []);
+        },
+        contracts: async () => {
+            const res = await fetch('/api/contracts?all=true&limit=50');
+            const data = await res.json();
+            setContracts(data.contracts || []);
+        },
+        earnings: async (page = 1) => {
+            const res = await fetch(`/api/earnings?page=${page}&limit=50`);
+            const data = await res.json();
+            setEarnings(data.earnings || []);
+            if (data.pagination) setEarningsPagination(data.pagination);
+        },
+        payments: async () => {
+            const res = await fetch('/api/payments?limit=50');
+            const data = await res.json();
+            setPayments(data.payments || []);
+        },
+        releases: async () => {
+            const res = await fetch('/api/admin/releases?limit=50');
+            const data = await res.json();
+            setReleases(data.releases || []);
+        },
+        discordBridge: async () => {
+            const res = await fetch('/api/admin/discord-bridge');
+            const data = await res.json();
+            setDiscordBridge(data || null);
+        }
+    }), []);
+
+    const runLoaders = useCallback(async (keys = []) => {
+        if (!keys.length) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await Promise.all(keys.map(async (key) => {
+                const loader = fetchers[key];
+                if (!loader) return;
+                try {
+                    await loader();
+                } catch (error) {
+                    console.error(`[AdminView] Failed loader: ${key}`, error);
+                }
+            }));
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchers]);
 
     useEffect(() => {
         if (!canViewCurrentSection) {
@@ -138,141 +163,8 @@ export default function AdminView() {
             return;
         }
 
-        if (view === 'submissions') fetchSubmissions();
-        else if (view === 'artists') { fetchArtists(); fetchUsers(); fetchReleases(); fetchContracts(); }
-        else if (view === 'users') fetchUsers();
-        else if (view === 'requests') fetchRequests();
-        else if (view === 'content') fetchContent();
-        else if (view === 'contracts') { fetchContracts(); fetchArtists(); fetchReleases(); fetchSubmissions(); }
-        else if (view === 'releases') fetchReleases();
-        else if (view === 'earnings') { fetchEarnings(); fetchContracts(); }
-        else if (view === 'payments') { fetchPayments(); fetchUsers(); }
-        else if (view === 'webhooks') fetchWebhooks();
-        else if (view === 'communications') fetchArtists();
-        else if (view === 'discord-bridge') fetchDiscordBridge();
-        else if (view === 'settings') setLoading(false);
-        else setLoading(false);
-    }, [view, canViewCurrentSection]);
-
-    const fetchContent = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/content');
-            const data = await res.json();
-            setSiteContent(Array.isArray(data) ? data : []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchRequests = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/requests?limit=50');
-            const data = await res.json();
-            setRequests(data.requests || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchSubmissions = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/demo?limit=50');
-            const data = await res.json();
-            setSubmissions(data.demos || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchArtists = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/artists?limit=50');
-            const data = await res.json();
-            console.log("[AdminView] Fetched Artists:", data.artists?.length);
-            setArtists(data.artists || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-
-    };
-
-    const fetchUsers = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/users?limit=50');
-            const data = await res.json();
-            setUsers(data.users || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchWebhooks = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/webhooks');
-            const data = await res.json();
-            setWebhooks(Array.isArray(data) ? data : []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchContracts = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/contracts?all=true&limit=50');
-            const data = await res.json();
-            console.log("[AdminView] Fetched Contracts:", data.contracts?.length);
-            setContracts(data.contracts || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-
-    };
-
-    const fetchEarnings = async (page = 1) => {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/earnings?page=${page}&limit=50`);
-            const data = await res.json();
-            setEarnings(data.earnings || []);
-            if (data.pagination) setEarningsPagination(data.pagination);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchPayments = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/payments?limit=50');
-            const data = await res.json();
-            setPayments(data.payments || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
-
-    const fetchReleases = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/releases?limit=50');
-            const data = await res.json();
-            console.log("[AdminView] Fetched Releases:", data.releases?.length);
-            setReleases(data.releases || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-
-    };
-
-    const fetchDiscordBridge = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/admin/discord-bridge');
-            const data = await res.json();
-            setDiscordBridge(data || null);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
+        void runLoaders(getAdminViewLoaders(view));
+    }, [canViewCurrentSection, runLoaders, view]);
 
     const handleSyncStats = async (userId, existingUrl, artistId = null) => {
         if (!userId && !existingUrl) return;
@@ -291,8 +183,7 @@ export default function AdminView() {
             const data = await res.json();
             if (data.success) {
                 showToast(`SYNC_COMPLETED: ${data.monthlyListeners?.toLocaleString()} Listeners`, "success");
-                fetchArtists();
-                if (view === 'users') fetchUsers();
+                await runLoaders(view === 'users' ? ['artists', 'users'] : ['artists']);
             } else {
                 showToast(data.error || "Sync failed", "error");
             }
@@ -317,7 +208,7 @@ export default function AdminView() {
                 try {
                     await fetch(`/api/demo/${id}`, { method: 'DELETE' });
                     showToast("Submission deleted", "success");
-                    fetchSubmissions();
+                    await runLoaders(['submissions']);
                 } catch (e) {
                     showToast("Delete failed", "error");
                 }
@@ -336,31 +227,53 @@ export default function AdminView() {
 
     // Only show full-screen loader if it's the very first load for that view
     const hasData = {
-        overview: true,
-        submissions: submissions.length > 0,
-        artists: artists.length > 0,
-        users: users.length > 0,
-        requests: requests.length > 0,
-        contracts: contracts.length > 0,
-        earnings: earnings.length > 0,
-        payments: payments.length > 0,
-        releases: releases.length > 0,
-        webhooks: webhooks.length > 0,
-        content: siteContent.length > 0,
-        communications: artists.length > 0,
-        'discord-bridge': discordBridge !== null,
-        settings: true
+        submissions,
+        artists,
+        users,
+        requests,
+        contracts,
+        earnings,
+        payments,
+        releases,
+        webhooks,
+        siteContent,
+        discordBridge
     };
 
-    if (showLoading && !hasData[view]) {
+    if (showLoading && !hasAdminViewData(view, hasData)) {
         return (
             <DashboardLoader
                 fullScreen
                 label="Admin Panel"
-                subLabel={`Preparing ${viewDisplayNames[view] || 'Dashboard'} module...`}
+                subLabel={`Preparing ${viewDisplayName} module...`}
             />
         );
     }
+
+    const refreshEarnings = async (page = 1) => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                fetchers.contracts(),
+                fetchers.earnings(page)
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const refreshers = {
+        content: () => runLoaders(['content']),
+        requests: () => runLoaders(['requests']),
+        submissions: () => runLoaders(['submissions']),
+        artists: () => runLoaders(['artists', 'users', 'releases', 'contracts']),
+        users: () => runLoaders(['users']),
+        webhooks: () => runLoaders(['webhooks']),
+        contracts: () => runLoaders(['contracts', 'artists', 'releases', 'submissions']),
+        payments: () => runLoaders(['payments', 'users']),
+        releases: () => runLoaders(['releases']),
+        discordBridge: () => runLoaders(['discordBridge'])
+    };
 
     return (
         <div className="dashboard-view p-0">
@@ -370,20 +283,20 @@ export default function AdminView() {
                 window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
                 window.dispatchEvent(new Event('popstate'));
             }} />}
-            {view === 'submissions'   && FEATURES.submissions    && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} canDelete={canDeleteSubmission} />}
-            {view === 'artists'       && <ArtistsView artists={artists} users={users} releases={releases} contracts={contracts} onSync={handleSyncStats} onRefresh={fetchArtists} />}
-            {view === 'users'         && <UsersView users={users} onRefresh={fetchUsers} />}
+            {view === 'submissions'   && features.submissions    && <SubmissionsView demos={submissions} onDelete={handleDeleteDemo} canDelete={canDeleteSubmission} />}
+            {view === 'artists'       && <ArtistsView artists={artists} users={users} releases={releases} contracts={contracts} onSync={handleSyncStats} onRefresh={refreshers.artists} />}
+            {view === 'users'         && <UsersView users={users} onRefresh={refreshers.users} />}
             {view === 'requests'      && <RequestsView requests={requests} />}
-            {view === 'contracts'     && FEATURES.contracts      && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={fetchContracts} />}
-            {view === 'earnings'      && FEATURES.earnings       && <EarningsView earnings={earnings} contracts={contracts} onRefresh={fetchEarnings} pagination={earningsPagination} />}
-            {view === 'payments'      && FEATURES.payments       && <PaymentsView payments={payments} users={users} onRefresh={fetchPayments} />}
-            {view === 'content'       && <ContentView content={siteContent} onRefresh={fetchContent} />}
-            {view === 'webhooks'      && <WebhooksView webhooks={webhooks} onRefresh={fetchWebhooks} />}
-            {view === 'releases'      && FEATURES.releases       && <ReleasesView releases={releases} />}
-            {view === 'communications'&& FEATURES.communications && <CommunicationsView artists={artists} />}
+            {view === 'contracts'     && features.contracts      && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={refreshers.contracts} />}
+            {view === 'earnings'      && features.earnings       && <EarningsView earnings={earnings} contracts={contracts} onRefresh={refreshEarnings} pagination={earningsPagination} />}
+            {view === 'payments'      && features.payments       && <PaymentsView payments={payments} users={users} onRefresh={refreshers.payments} />}
+            {view === 'content'       && <ContentView content={siteContent} onRefresh={refreshers.content} />}
+            {view === 'webhooks'      && <WebhooksView webhooks={webhooks} onRefresh={refreshers.webhooks} />}
+            {view === 'releases'      && features.releases       && <ReleasesView releases={releases} />}
+            {view === 'communications'&& features.communications && <CommunicationsView artists={artists} />}
             {view === 'settings'      && <SettingsView />}
-            {view === 'discord-bridge'&& FEATURES.discordBridge  && <DiscordBridgeView data={discordBridge} onRefresh={fetchDiscordBridge} />}
-            {view === 'wise-payouts'  && FEATURES.wisePayouts    && <WisePayoutsView />}
+            {view === 'discord-bridge'&& features.discordBridge  && <DiscordBridgeView data={discordBridge} onRefresh={refreshers.discordBridge} />}
+            {view === 'wise-payouts'  && features.wisePayouts    && <WisePayoutsView />}
         </div>
     );
 }

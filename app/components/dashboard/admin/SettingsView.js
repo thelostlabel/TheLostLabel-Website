@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { Users, Music, Disc, FileText } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, glassStyle, inputStyle } from './styles';
+import {
+    getDefaultSystemSettings,
+    normalizeSystemSettingsConfig,
+    parseSystemSettingsConfig
+} from '@/lib/system-settings';
 
 export default function SettingsView({ users = [], artists = [] }) {
     const { showToast } = useToast();
@@ -21,65 +26,9 @@ export default function SettingsView({ users = [], artists = [] }) {
             const res = await fetch('/api/admin/settings');
             const data = await res.json();
             if (data.config) {
-                let parsed;
-                try {
-                    parsed = JSON.parse(data.config);
-                    // Handle potential double-stringification
-                    if (typeof parsed === 'string') {
-                        parsed = JSON.parse(parsed);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse config", e);
-                    parsed = {};
-                }
-
-                setConfig({
-                    // Requests
-                    allowCoverArt: parsed.allowCoverArt ?? true,
-                    allowAudio: parsed.allowAudio ?? true,
-                    allowDelete: parsed.allowDelete ?? true,
-                    allowOther: parsed.allowOther ?? true,
-                    // General
-                    siteName: parsed.siteName || 'LOST MUSIC',
-                    registrationsOpen: parsed.registrationsOpen ?? true,
-                    maintenanceMode: parsed.maintenanceMode ?? false,
-                    adminEmail: parsed.adminEmail || '',
-                    defaultPlaylistId: parsed.defaultPlaylistId || '6QHy5LPKDRHDdKZGBFxRY8',
-                    // Home Page
-                    heroText: parsed.heroText || 'THE NEW ORDER',
-                    heroSubText: parsed.heroSubText || 'INDEPENDENT DISTRIBUTION REDEFINED.',
-                    featuredReleaseId: parsed.featuredReleaseId || '',
-                    featuredReleaseLabel: parsed.featuredReleaseLabel || 'FEATURED RELEASE',
-                    featuredReleaseSubLabel: parsed.featuredReleaseSubLabel || 'NOW STREAMING',
-                    featuredReleaseStatus: parsed.featuredReleaseStatus || 'Featured',
-                    showStats: parsed.showStats ?? true,
-                    // Socials
-                    discord: parsed.discord || '',
-                    instagram: parsed.instagram || '',
-                    spotify: parsed.spotify || '',
-                    youtube: parsed.youtube || '',
-                    twitter: parsed.twitter || '',
-                    facebook: parsed.facebook || '',
-                    // Genres
-                    genres: parsed.genres || ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
-                    // Join Page
-                    joinHeroTitle: parsed.joinHeroTitle || 'WORK WITH THE LOST. COMPANY',
-                    joinHeroSub: parsed.joinHeroSub || 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
-                });
+                setConfig(normalizeSystemSettingsConfig(parseSystemSettingsConfig(data.config)));
             } else {
-                // Defaults
-                setConfig({
-                    allowCoverArt: true, allowAudio: true, allowDelete: true, allowOther: true,
-                    siteName: 'LOST MUSIC', registrationsOpen: true, maintenanceMode: false, adminEmail: '',
-                    heroText: 'THE NEW ORDER', heroSubText: 'INDEPENDENT DISTRIBUTION REDEFINED.', featuredReleaseId: '',
-                    featuredReleaseLabel: 'FEATURED RELEASE', featuredReleaseSubLabel: 'NOW STREAMING', featuredReleaseStatus: 'Featured',
-                    showStats: true,
-                    discord: '', instagram: '', spotify: '', youtube: '', twitter: '', facebook: '',
-                    defaultPlaylistId: '6QHy5LPKDRHDdKZGBFxRY8',
-                    genres: ['Hip-Hop', 'R&B', 'Pop', 'Electronic', 'Phonk', 'Brazilian Funk', 'Other'],
-                    joinHeroTitle: 'WORK WITH THE LOST. COMPANY',
-                    joinHeroSub: 'A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS'
-                });
+                setConfig(getDefaultSystemSettings());
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }

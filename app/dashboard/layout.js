@@ -37,8 +37,35 @@ import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import { canViewAllDemos, canViewUsers, hasAdminViewPermission, hasManagementAccess, hasPortalPermission, isAdminUser } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 import { BRANDING } from '@/lib/branding';
+import { ADMIN_DASHBOARD_FEATURES } from '@/lib/dashboard-features';
+import { getEnabledAdminViews, PORTAL_VIEW_DEFINITIONS } from '@/lib/dashboard-view-registry';
 
 const avatarLoader = ({ src }) => src;
+
+const NAV_ICON_MAP = {
+    'layout-dashboard': LayoutDashboard,
+    inbox: Inbox,
+    'mic-2': Mic2,
+    'file-text': FileText,
+    users: Users,
+    file: File,
+    bell: Bell,
+    settings: Settings,
+    disc: Disc,
+    music: Music,
+    upload: Upload,
+    user: User,
+    briefcase: Briefcase,
+    'dollar-sign': DollarSign,
+    'credit-card': CreditCard,
+    mail: Mail,
+    bot: Bot
+};
+
+function getNavIcon(iconKey) {
+    const Icon = NAV_ICON_MAP[iconKey];
+    return Icon ? <Icon size={16} /> : null;
+}
 
 function DashboardLayoutContent({ children }) {
     const { data: session, status } = useSession();
@@ -89,33 +116,23 @@ function DashboardLayoutContent({ children }) {
         return hasAdminPermission(perm);
     };
 
-    const mgmtItems = [
-        { name: 'OVERVIEW', view: 'overview', icon: <LayoutDashboard size={16} />, perm: 'admin_view_overview' },
-        { name: 'SUBMISSIONS', view: 'submissions', icon: <Inbox size={16} />, perm: 'admin_view_submissions' },
-        { name: 'ARTISTS', view: 'artists', icon: <Mic2 size={16} />, perm: 'admin_view_artists' },
-        { name: 'CONTRACTS', view: 'contracts', icon: <Briefcase size={16} />, perm: 'admin_view_contracts' },
-        { name: 'EARNINGS', view: 'earnings', icon: <DollarSign size={16} />, perm: 'admin_view_earnings' },
-        { name: 'PAYMENTS', view: 'payments', icon: <CreditCard size={16} />, perm: 'admin_view_payments' },
-        { name: 'RELEASES', view: 'releases', icon: <Disc size={16} />, perm: 'admin_view_releases' },
-        { name: 'REQUESTS', view: 'requests', icon: <FileText size={16} />, perm: 'admin_view_requests' },
-        { name: 'USERS', view: 'users', icon: <Users size={16} />, perm: 'admin_view_users' },
-        { name: 'COMMUNICATIONS', view: 'communications', icon: <Mail size={16} />, perm: 'admin_view_communications' },
-        { name: 'CONTENT', view: 'content', icon: <File size={16} />, perm: 'admin_view_content' },
-        { name: 'WEBHOOKS', view: 'webhooks', icon: <Bell size={16} />, perm: 'admin_view_webhooks' },
-        { name: 'DISCORD BRIDGE', view: 'discord-bridge', icon: <Bot size={16} />, perm: 'admin_view_discord_bridge' },
-        { name: 'SETTINGS', view: 'settings', icon: <Settings size={16} />, perm: 'admin_view_settings' }
-    ].filter((item) => canAccessManagementView(item.view, item.perm));
+    const mgmtItems = getEnabledAdminViews(ADMIN_DASHBOARD_FEATURES)
+        .filter((item) => canAccessManagementView(item.view, item.perm))
+        .map((item) => ({
+            name: item.navLabel,
+            view: item.view,
+            icon: getNavIcon(item.iconKey),
+            perm: item.perm
+        }));
 
-    const personalItems = [
-        { name: 'MY OVERVIEW', view: 'my-overview', icon: <LayoutDashboard size={16} />, perm: 'view_overview' },
-        { name: 'MY RELEASES', view: 'my-releases', icon: <Disc size={16} />, perm: 'view_releases' },
-        { name: 'MY DEMOS', view: 'my-demos', icon: <Music size={16} />, perm: 'view_demos' },
-        { name: 'NEW SUBMISSION', view: 'my-submit', icon: <Upload size={16} />, perm: 'submit_demos' },
-        { name: 'EARNINGS', view: 'my-earnings', icon: <DollarSign size={16} />, perm: 'view_earnings' },
-        { name: 'CONTRACTS', view: 'my-contracts', icon: <Briefcase size={16} />, perm: 'view_contracts' },
-        { name: 'SUPPORT', view: 'my-support', icon: <Inbox size={16} />, perm: 'view_support' },
-        { name: 'MY PROFILE', view: 'my-profile', icon: <User size={16} />, perm: 'view_profile' }
-    ].filter((item) => hasPermission(item.perm));
+    const personalItems = PORTAL_VIEW_DEFINITIONS
+        .filter((item) => !item.hidden && hasPermission(item.perm))
+        .map((item) => ({
+            name: item.navLabel,
+            view: item.routeView,
+            icon: getNavIcon(item.iconKey),
+            perm: item.perm
+        }));
 
     const sections = (canAccessManagement
         ? [
