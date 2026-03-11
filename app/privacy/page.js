@@ -1,10 +1,10 @@
 import { getPublicSettings } from "@/lib/public-settings";
 import { getSiteContentByKey } from "@/lib/site-content";
 
-export default async function TermsPage() {
+export default async function PrivacyPage() {
     const [publicSettings, contentRecord] = await Promise.all([
         getPublicSettings(),
-        getSiteContentByKey('terms')
+        getSiteContentByKey('privacy')
     ]);
     const updatedLabel = contentRecord.updatedAt
         ? new Date(contentRecord.updatedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
@@ -16,11 +16,20 @@ export default async function TermsPage() {
                 <div style={{
                     position: 'absolute',
                     top: '-10%',
-                    right: '-5%',
+                    left: '-5%',
                     width: '60%',
                     height: '60%',
                     background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)',
                     filter: 'blur(100px)'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    bottom: '10%',
+                    right: '-5%',
+                    width: '50%',
+                    height: '50%',
+                    background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)',
+                    filter: 'blur(120px)'
                 }} />
             </div>
 
@@ -40,7 +49,7 @@ export default async function TermsPage() {
             <div style={{ padding: '160px 20px 120px', position: 'relative', zIndex: 2, maxWidth: '900px', margin: '0 auto' }}>
                 <header style={{ marginBottom: '80px', textAlign: 'center' }}>
                     <h1 style={{ fontSize: '48px', fontWeight: '900', letterSpacing: '8px', marginBottom: '15px', textTransform: 'uppercase' }}>
-                        TERMS OF <span style={{ color: 'var(--accent)' }}>SERVICE</span>
+                        PRIVACY <span style={{ color: 'var(--accent)' }}>POLICY</span>
                     </h1>
                     <p style={{ color: '#444', fontSize: '10px', fontWeight: '800', letterSpacing: '3px' }}>
                         LAST UPDATED: {updatedLabel} {'//'} {(publicSettings.siteName || 'LOST MUSIC').toUpperCase()}

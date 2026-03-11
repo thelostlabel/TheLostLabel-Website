@@ -17,7 +17,8 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
     const publicSettings = usePublicSettings();
-    const registrationsOpen = publicSettings.registrationsOpen !== false;
+    const maintenanceMode = publicSettings.maintenanceMode === true;
+    const registrationsOpen = publicSettings.registrationsOpen !== false && !maintenanceMode;
 
     const [success, setSuccess] = useState(false);
 
@@ -82,8 +83,12 @@ export default function Register() {
             }}>
                 <BackgroundEffects />
                 <div className="glass-premium" style={{ textAlign: 'center', padding: '60px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', zIndex: 10 }}>
-                    <h2 style={{ fontSize: '24px', letterSpacing: '8px', marginBottom: '20px', fontWeight: '900' }}>INVITE ONLY</h2>
-                    <p style={{ color: '#888', fontSize: '11px', letterSpacing: '2px' }}>REGISTRATIONS ARE CURRENTLY CLOSED.</p>
+                    <h2 style={{ fontSize: '24px', letterSpacing: '8px', marginBottom: '20px', fontWeight: '900' }}>
+                        {maintenanceMode ? 'MAINTENANCE' : 'INVITE ONLY'}
+                    </h2>
+                    <p style={{ color: '#888', fontSize: '11px', letterSpacing: '2px' }}>
+                        {maintenanceMode ? 'REGISTRATION IS TEMPORARILY DISABLED DURING MAINTENANCE.' : 'REGISTRATIONS ARE CURRENTLY CLOSED.'}
+                    </p>
                     <Link href="/" className="glow-button" style={{ display: 'inline-block', marginTop: '40px', padding: '12px 30px', borderRadius: '50px', fontSize: '11px', textDecoration: 'none' }}>RETURN HOME</Link>
                 </div>
             </div>

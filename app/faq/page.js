@@ -20,7 +20,7 @@ export default async function FAQPage() {
                         FREQUENTLY ASKED <span style={{ color: 'rgba(229,231,235,0.9)' }}>QUESTIONS</span>
                     </h1>
                     <p style={{ color: '#444', fontSize: '12px', fontWeight: '800', letterSpacing: '3px' }}>
-                        {(publicSettings.siteName || 'LOST MUSIC').toUpperCase()} // ARTIST SUPPORT
+                        {(publicSettings.siteName || 'LOST MUSIC').toUpperCase()} {'//'} ARTIST SUPPORT
                     </p>
                 </header>
 

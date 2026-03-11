@@ -312,7 +312,7 @@ export default function Home({ initialContent }) {
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
   const y2 = useTransform(scrollY, [0, 500], [0, -150]);
-  const registrationsOpen = publicSettings?.registrationsOpen !== false;
+  const registrationsOpen = publicSettings?.registrationsOpen !== false && publicSettings?.maintenanceMode !== true;
   const services = initialContent?.services?.length ? initialContent.services : DEFAULT_HOME_SERVICE_ITEMS;
   const statsItems = initialContent?.stats?.length ? initialContent.stats : DEFAULT_HOME_STATS;
   const partnerPlatforms = initialContent?.partners?.length ? initialContent.partners : DEFAULT_HOME_PARTNERS;
