@@ -3,9 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import prisma from "@/lib/prisma";
 import { stat } from "fs/promises";
-import { createReadStream } from "fs";
-import { extname, join } from "path";
-import { Readable } from "stream";
+import { extname } from "path";
+import { createFileWebStream } from "@/lib/file-stream-response";
+import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
 
 const MIME_BY_EXT = {
   ".jpg": "image/jpeg",
@@ -39,14 +39,7 @@ const resolvePath = (filepath) => {
   if (normalized.includes("..")) return [];
   if (!normalized.startsWith("private/uploads/")) return [];
 
-  const root = process.cwd();
-  const appRoot = "/app";
-  const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
-  return [
-    join(root, normalized),
-    join(appRoot, normalized),
-    join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
-  ];
+  return resolvePrivateStorageCandidates(normalized, ["private/uploads/"]);
 };
 
 function hasContractAccess(user, contract) {
@@ -200,7 +193,7 @@ export async function GET(req) {
 
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
-    const stream = Readable.toWeb(createReadStream(filePath));
+    const stream = createFileWebStream(filePath, req.signal);
     const isDownload = searchParams.get("download") === "1";
 
     return new Response(stream, {

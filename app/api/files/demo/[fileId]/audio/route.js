@@ -2,10 +2,10 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import { stat } from "fs/promises";
-import { createReadStream } from "fs";
-import { extname, join } from "path";
-import { Readable } from "stream";
+import { extname } from "path";
 import prisma from "@/lib/prisma";
+import { createFileWebStream } from "@/lib/file-stream-response";
+import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
 
 const MIME_BY_EXT = {
     ".mp3": "audio/mpeg",
@@ -17,18 +17,11 @@ const MIME_BY_EXT = {
 const getCandidatePaths = (filepath) => {
     if (!filepath) return [];
     const normalized = filepath.replace(/^\/+/, "");
-    const root = process.cwd();
-    const appRoot = "/app";
-    const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
 
     if (normalized.includes("..")) return [];
     if (!normalized.startsWith("private/uploads/demos/")) return [];
 
-    return [
-        join(root, normalized),
-        join(appRoot, normalized),
-        join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
-    ];
+    return resolvePrivateStorageCandidates(normalized, ["private/uploads/demos/"]);
 };
 
 export async function GET(req, { params }) {
@@ -77,7 +70,7 @@ export async function GET(req, { params }) {
 
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
-        const stream = Readable.toWeb(createReadStream(filePath));
+        const stream = createFileWebStream(filePath, req.signal);
 
         return new Response(stream, {
             headers: {

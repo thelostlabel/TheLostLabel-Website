@@ -2,10 +2,10 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import prisma from "@/lib/prisma";
-import { createReadStream } from "fs";
 import { stat } from "fs/promises";
-import { extname, join } from "path";
-import { Readable } from "stream";
+import { extname } from "path";
+import { createFileWebStream } from "@/lib/file-stream-response";
+import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
 
 const MIME_BY_EXT = {
   ".wav": "audio/wav",
@@ -24,9 +24,6 @@ const ALLOWED_PREFIXES = [
 const getCandidatePaths = (filepath) => {
   if (!filepath) return [];
   const normalized = filepath.replace(/^\/+/, "");
-  const root = process.cwd();
-  const appRoot = "/app";
-  const configuredPrivateRoot = process.env.PRIVATE_STORAGE_ROOT || "/app/private";
 
   // Security: never allow path traversal
   if (normalized.includes("..")) return [];
@@ -38,13 +35,7 @@ const getCandidatePaths = (filepath) => {
     return [];
   }
 
-  const candidates = [
-    join(root, normalized),
-    join(appRoot, normalized),
-    join(configuredPrivateRoot, normalized.replace(/^private\/+/, "")),
-    // Also try stripping 'private/' prefix directly against storage root
-    join(configuredPrivateRoot, normalized.replace(/^private\/uploads\/demos\//, "uploads/demos/")),
-  ];
+  const candidates = resolvePrivateStorageCandidates(normalized, ALLOWED_PREFIXES);
 
   console.info(`[demo-file] Trying paths for "${normalized}":`, candidates);
   return candidates;
@@ -95,7 +86,7 @@ export async function GET(req, { params }) {
 
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
-    const stream = Readable.toWeb(createReadStream(filePath));
+    const stream = createFileWebStream(filePath, req.signal);
     const url = new URL(req.url);
     const isDownload = url.searchParams.get("download") === "1";
 

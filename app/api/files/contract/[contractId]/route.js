@@ -1,12 +1,11 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { createReadStream } from "fs";
 import { stat, readFile } from "fs/promises";
 import { extname, join } from "path";
-import { Readable } from "stream";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { extractContractMetaAndNotes } from "@/lib/contract-template";
+import { createFileWebStream } from "@/lib/file-stream-response";
 
 const MIME_BY_EXT = {
   ".pdf": "application/pdf",
@@ -397,7 +396,7 @@ export async function GET(req, { params }) {
 
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
-    const stream = Readable.toWeb(createReadStream(filePath));
+    const stream = createFileWebStream(filePath, req.signal);
     return new Response(stream, {
       headers: {
         "Content-Type": contentType,
