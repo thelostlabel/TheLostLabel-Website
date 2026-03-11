@@ -38,3 +38,5 @@ volumes:
   bot_data:
   lost_site_uploads:
   playwright_data:
+    # Keep the cache volume name stable across Dokploy/Swarm redeploys.
+    name: ${PLAYWRIGHT_VOLUME_NAME:-lost-website-playwright-data}

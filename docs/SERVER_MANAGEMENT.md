@@ -20,8 +20,9 @@ Automated tasks are set in the root crontab. They target the active container dy
 - **Sync Listeners (05:00):** Calls `/api/cron/sync-listeners` with `Authorization: Bearer $CRON_SECRET`
 
 ## 🏗️ Docker & Deployment
-- **Dockerfile:** Bakes Playwright Chromium into the production image.
-- **Entrypoint:** `docker-entrypoint.sh` handles startup checks.
+- **Dockerfile:** Keeps Playwright CLI in the runtime image and installs Chromium on first startup into `/ms-playwright`.
+- **Entrypoint:** `docker-entrypoint.sh` checks `/ms-playwright` and installs Chromium only when the cache volume is empty.
+- **Playwright Volume:** Use a stable Docker volume name (`lost-website-playwright-data`) so Dokploy/Swarm redeploys reuse the same browser cache.
 - **Clean Registry:** Run `docker container prune -f && docker image prune -f` to reclaim space.
 
 ## 🔍 Common Management Commands
