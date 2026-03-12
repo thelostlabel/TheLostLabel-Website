@@ -2,51 +2,37 @@ import { useState, useEffect, useMemo } from 'react';
 import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Disc, Edit3, Trash2, Edit2, Search } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
 
 import { useToast } from '@/app/components/ToastContext';
+import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
+import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
 import { btnStyle, inputStyle } from './styles';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import Portal from '@/app/components/Portal';
 
 
-export default function ReleasesView({ releases }) {
-    const actionBtnStyle = (typeof btnStyle !== 'undefined' && btnStyle)
-        ? btnStyle
-        : {
-            background: 'var(--glass)',
-            border: '1px solid var(--border)',
-            color: '#fff',
-            padding: '8px 14px',
-            fontSize: '12px',
-            cursor: 'pointer',
-            fontWeight: '900',
-            letterSpacing: '1px',
-            borderRadius: '2px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px'
-        };
+export default function ReleasesView({ releases, onRefresh }) {
+    const actionBtnStyle = btnStyle;
     const [activeTab, setActiveTab] = useState('all'); // 'upcoming', 'all', 'released'
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [expandedReleaseId, setExpandedReleaseId] = useState(null);
     const [editingRelease, setEditingRelease] = useState(null);
     const [saving, setSaving] = useState(false);
-    const searchParams = useSearchParams();
+    const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
 
     // Deep link to release
     useEffect(() => {
-        if (!editingRelease && releases.length > 0) {
-            const idFromUrl = searchParams.get('id');
-            if (idFromUrl) {
-                const release = releases.find(r => r.id === idFromUrl);
-                if (release) {
-                    setEditingRelease(release);
-                }
-            }
+        if (!recordId) {
+            setEditingRelease(null);
+            return;
         }
-    }, [releases, searchParams, editingRelease]);
+
+        const release = releases.find(r => r.id === recordId);
+        if (release && release.id !== editingRelease?.id) {
+            setEditingRelease(release);
+        }
+    }, [editingRelease?.id, recordId, releases]);
 
     const { showToast, showConfirm } = useToast();
 
@@ -61,14 +47,15 @@ export default function ReleasesView({ releases }) {
             "Are you sure? This will delete the release definition. It might NOT delete the tracks from the database depending on configuration.",
             async () => {
                 try {
-                    const res = await fetch(`/api/releases/${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        showToast("Release deleted", "success");
-                        window.location.reload();
-                    } else {
-                        showToast("Failed to delete", "error");
-                    }
-                } catch (e) { showToast("Error deleting", "error"); }
+                    await dashboardRequestJson(`/api/releases/${id}`, {
+                        method: 'DELETE',
+                        context: 'delete release',
+                        retry: false
+                    });
+                    showToast("Release deleted", "success");
+                    clearRecordId({ replace: true });
+                    await onRefresh?.();
+                } catch (e) { showToast(getDashboardErrorMessage(e, "Error deleting"), "error"); }
             }
         );
     };
@@ -77,19 +64,17 @@ export default function ReleasesView({ releases }) {
         e.preventDefault();
         setSaving(true);
         try {
-            const res = await fetch(`/api/releases/${editingRelease.id}`, {
+            await dashboardRequestJson(`/api/releases/${editingRelease.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editingRelease)
+                body: JSON.stringify(editingRelease),
+                context: 'update release',
+                retry: false
             });
-            if (res.ok) {
-                showToast("Release updated", "success");
-                setEditingRelease(null);
-                window.location.reload();
-            } else {
-                showToast("Failed to update", "error");
-            }
-        } catch (e) { showToast("Error updating", "error"); }
+            showToast("Release updated", "success");
+            clearRecordId({ replace: true });
+            await onRefresh?.();
+        } catch (e) { showToast(getDashboardErrorMessage(e, "Error updating"), "error"); }
         finally { setSaving(false); }
     };
 
@@ -234,7 +219,7 @@ export default function ReleasesView({ releases }) {
                                     {/* Action Buttons Overlay on Image */}
                                     <motion.div initial={{ opacity: 0 }} whileHover={{ opacity: 1 }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', display: 'flex', gap: '8px', padding: '16px', alignItems: 'flex-end', justifyContent: 'center' }}>
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); setEditingRelease(mainRelease); }}
+                                            onClick={(e) => { e.stopPropagation(); setEditingRelease(mainRelease); setRecordId(mainRelease.id); }}
                                             style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: '#fff', fontSize: '9px', fontWeight: '950', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'background 0.2s' }}
                                         >
                                             <Edit3 size={12} /> EDIT
@@ -290,7 +275,7 @@ export default function ReleasesView({ releases }) {
                                                         <div style={{ fontSize: '9px', color: '#666', fontWeight: '800', marginTop: '2px' }}>{new Date(v.releaseDate).toLocaleDateString()}</div>
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                                        <button onClick={(e) => { e.stopPropagation(); setEditingRelease(v); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', padding: '6px', borderRadius: '4px' }} title="Edit"><Edit2 size={12} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); setEditingRelease(v); setRecordId(v.id); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', padding: '6px', borderRadius: '4px' }} title="Edit"><Edit2 size={12} /></button>
                                                         <button onClick={(e) => { e.stopPropagation(); handleDelete(v.id); }} style={{ background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', color: '#ff4444', cursor: 'pointer', padding: '6px', borderRadius: '4px' }} title="Delete"><Trash2 size={12} /></button>
                                                     </div>
                                                 </div>
@@ -389,10 +374,7 @@ export default function ReleasesView({ releases }) {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setEditingRelease(null);
-                                            const params = new URLSearchParams(window.location.search);
-                                            params.delete('id');
-                                            window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                            clearRecordId({ replace: true });
                                         }}
                                         style={{
                                             flex: 1,

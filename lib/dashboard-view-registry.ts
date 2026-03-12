@@ -81,6 +81,34 @@ export const PORTAL_VIEW_DEFINITIONS: Array<{
   { view: "project", routeView: "my-project", navLabel: "PROJECT", title: "PROJECT", iconKey: "file-text", perm: "view_demos", hidden: true },
 ];
 
+export function getAdminViewDefinition(view: string | null | undefined) {
+  return ADMIN_VIEW_DEFINITIONS.find((item) => item.view === view) || null;
+}
+
+export function getAdminViewPermission(view: string | null | undefined) {
+  return getAdminViewDefinition(view)?.perm || "admin_view_overview";
+}
+
+export function getAdminViewDisplayName(view: string | null | undefined) {
+  return getAdminViewDefinition(view)?.displayName || "Dashboard";
+}
+
+export function getAdminViewLoaders(view: string | null | undefined) {
+  return getAdminViewDefinition(view)?.loaders || [];
+}
+
+export function getPortalViewDefinition(view: string | null | undefined) {
+  return PORTAL_VIEW_DEFINITIONS.find((item) => item.view === view) || null;
+}
+
+export function getPortalViewTitle(view: string | null | undefined) {
+  return getPortalViewDefinition(view)?.title || "DASHBOARD";
+}
+
+export function isAdminDashboardView(view: string | null | undefined) {
+  return Boolean(getAdminViewDefinition(view));
+}
+
 export function getEnabledAdminViews(features: Partial<Record<AdminDashboardFeatureKey, boolean>>) {
   return ADMIN_VIEW_DEFINITIONS.filter((item) => {
     if (!item.featureKey) {

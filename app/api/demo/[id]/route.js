@@ -160,6 +160,11 @@ export async function PATCH(req, { params }) {
             if (rejectionReason) updateData.rejectionReason = rejectionReason;
         }
 
+        // Artist note (owner can always update)
+        if (typeof body.artistNote === "string" && isOwner) {
+            updateData.artistNote = body.artistNote.slice(0, 2000);
+        }
+
         // Phase 5: Scheduling / Assets
         if (body.scheduledReleaseDate) {
             updateData.scheduledReleaseDate = body.scheduledReleaseDate;
@@ -307,22 +312,16 @@ export async function PATCH(req, { params }) {
                         ? DISCORD_NOTIFY_TYPES.DEMO_CONTRACT_SENT
                         : DISCORD_NOTIFY_TYPES.DEMO_APPROVED;
 
-                const colors = {
-                    approved: 0x00ff88,
-                    rejected: 0xff4444,
-                    contract_sent: 0x00aaff
-                };
-
-                const descriptions = {
-                    approved: `Your demo **${updatedDemo.title}** has been approved! 🎉`,
-                    rejected: `Your demo **${updatedDemo.title}** was not accepted.${rejectionReason ? `\n\n**Reason:** ${rejectionReason}` : ""}`,
-                    contract_sent: `A contract has been sent for your demo **${updatedDemo.title}**. Please check your dashboard.`
+                const statusMeta = {
+                    approved: { color: 0x00ff88, description: `Your demo **${updatedDemo.title}** has been approved! 🎉` },
+                    rejected: { color: 0xff4444, description: `Your demo **${updatedDemo.title}** was not accepted.${rejectionReason ? `\n\n**Reason:** ${rejectionReason}` : ""}` },
+                    contract_sent: { color: 0x00aaff, description: `A contract has been sent for your demo **${updatedDemo.title}**. Please check your dashboard.` }
                 };
 
                 await queueDiscordNotification(updatedDemo.artistId, notifyType, {
                     title: `Demo ${notifiedStatus === "contract_sent" ? "Contract Sent" : notifiedStatus.charAt(0).toUpperCase() + notifiedStatus.slice(1)}`,
-                    description: descriptions[notifiedStatus],
-                    color: colors[notifiedStatus] || 0x7c3aed,
+                    description: statusMeta[notifiedStatus]?.description,
+                    color: statusMeta[notifiedStatus]?.color ?? 0x7c3aed,
                     fields: [
                         { name: "Demo", value: updatedDemo.title, inline: true },
                         { name: "Artist", value: artistName, inline: true }
@@ -366,13 +365,26 @@ export async function PATCH(req, { params }) {
 
 export async function DELETE(req, { params }) {
     const session = await getServerSession(authOptions);
-    if (!session || !canDeleteDemos(session.user)) {
+    if (!session) {
         return new Response("Unauthorized", { status: 401 });
     }
 
     const { id } = await params;
 
     try {
+        const demo = await prisma.demo.findUnique({ where: { id } });
+        if (!demo) {
+            return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
+        }
+
+        const isAdmin = canDeleteDemos(session.user);
+        const artistContext = await resolveArtistContextForUser(session.user.id);
+        const isOwner = demo.artistId === session.user.id || (artistContext.artistId && demo.artistProfileId === artistContext.artistId);
+
+        if (!isAdmin && !isOwner) {
+            return new Response("Unauthorized", { status: 401 });
+        }
+
         await prisma.demo.delete({
             where: { id }
         });

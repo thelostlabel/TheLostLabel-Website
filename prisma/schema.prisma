@@ -61,6 +61,7 @@ model Demo {
   reviewedAt           DateTime?
   reviewedBy           String?
   rejectionReason      String?
+  artistNote           String?
   scheduledReleaseDate String?
   featuredArtists      String?
   contract             Contract?

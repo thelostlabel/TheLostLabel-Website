@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { useDashboardAuth } from '@/app/components/dashboard/context/DashboardAuthProvider';
+import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
+import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
 import {
     canDeleteUsers,
     canEditUsers,
@@ -20,7 +21,8 @@ import {
 import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
 
 export default function UsersView({ users, onRefresh }) {
-    const { data: session } = useSession();
+    const { currentUser } = useDashboardAuth();
+    const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
     const { showToast, showConfirm } = useToast();
     const roles = ['artist', 'a&r', 'admin'];
     const [editingUser, setEditingUser] = useState(null);
@@ -28,12 +30,11 @@ export default function UsersView({ users, onRefresh }) {
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const searchParams = useSearchParams();
-    const canEditProfile = canEditUsers(session?.user);
-    const canManageStatus = canManageUserStatus(session?.user);
-    const canManageRoles = canManageUserRoles(session?.user);
-    const canManagePermissions = canManageUserPermissions(session?.user);
-    const canDeleteUser = canDeleteUsers(session?.user);
+    const canEditProfile = canEditUsers(currentUser);
+    const canManageStatus = canManageUserStatus(currentUser);
+    const canManageRoles = canManageUserRoles(currentUser);
+    const canManagePermissions = canManageUserPermissions(currentUser);
+    const canDeleteUser = canDeleteUsers(currentUser);
     const canOpenEditor = canEditProfile || canManageStatus || canManageRoles || canManagePermissions;
     const permissionSections = [
         { title: 'PORTAL_PERMISSIONS', options: PORTAL_PERMISSION_OPTIONS, enabledByDefault: true },
@@ -44,16 +45,17 @@ export default function UsersView({ users, onRefresh }) {
 
     // Deep link to user
     useEffect(() => {
-        if (canOpenEditor && !editingUser && users.length > 0) {
-            const idFromUrl = searchParams.get('id');
-            if (idFromUrl) {
-                const user = users.find(u => u.id === idFromUrl);
-                if (user) {
-                    openEdit(user);
-                }
-            }
+        if (!canOpenEditor || users.length === 0) return;
+        if (!recordId) {
+            setEditingUser(null);
+            return;
         }
-    }, [users, searchParams, editingUser, canOpenEditor]);
+
+        const user = users.find(u => u.id === recordId);
+        if (user && user.id !== editingUser?.id) {
+            openEdit(user, false);
+        }
+    }, [users, recordId, editingUser?.id, canOpenEditor, openEdit]);
 
 
     useEffect(() => {
@@ -69,9 +71,13 @@ export default function UsersView({ users, onRefresh }) {
         );
     }, [users, debouncedSearch]);
 
-    const openEdit = (user) => {
+    const openEdit = useCallback((user, updateRoute = true) => {
         setEditingUser(user);
         const perms = parsePermissions(user.permissions);
+
+        if (updateRoute) {
+            setRecordId(user.id);
+        }
 
         setEditForm({
             email: user.email || '',
@@ -82,7 +88,7 @@ export default function UsersView({ users, onRefresh }) {
             status: user.status || 'pending',
             permissions: perms
         });
-    };
+    }, [setRecordId]);
 
     const handleSave = async (overrideData = null) => {
         if (!overrideData && !canOpenEditor) {
@@ -105,22 +111,21 @@ export default function UsersView({ users, onRefresh }) {
                 ...(canManagePermissions ? { permissions: JSON.stringify(editForm.permissions) } : {})
             };
 
-            const res = await fetch('/api/admin/users', {
+            await dashboardRequestJson('/api/admin/users', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                context: 'update user',
+                retry: false
             });
 
-            if (!res.ok) throw new Error('Failed to update user');
-
             if (!overrideData) {
-                setEditingUser(null);
+                clearRecordId({ replace: true });
                 showToast("User updated successfully", "success");
             }
-            onRefresh();
+            await onRefresh?.();
         } catch (e) {
-            console.error(e);
-            showToast('Save failed', "error");
+            showToast(getDashboardErrorMessage(e, 'Save failed'), "error");
         } finally {
             setSaving(false);
         }
@@ -153,18 +158,16 @@ export default function UsersView({ users, onRefresh }) {
             "Are you sure you want to PERMANENTLY delete this user? This cannot be undone.",
             async () => {
                 try {
-                    const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
-                    const payload = await res.json().catch(() => null);
-
-                    if (!res.ok) {
-                        showToast(payload?.error || 'Delete failed', "error");
-                        return;
-                    }
-
+                    await dashboardRequestJson(`/api/admin/users?id=${userId}`, {
+                        method: 'DELETE',
+                        context: 'delete user',
+                        retry: false
+                    });
                     showToast("User deleted", "success");
-                    onRefresh();
+                    clearRecordId({ replace: true });
+                    await onRefresh?.();
                 } catch (e) {
-                    showToast('Delete failed', "error");
+                    showToast(getDashboardErrorMessage(e, 'Delete failed'), "error");
                 }
             }
         );
@@ -242,10 +245,7 @@ export default function UsersView({ users, onRefresh }) {
                                 <h3 style={{ fontSize: '11px', letterSpacing: '4px', fontWeight: '950', color: '#fff', margin: 0 }}>USER_ACCESS_CONTROL</h3>
                             </div>
                             <button onClick={() => {
-                                setEditingUser(null);
-                                const params = new URLSearchParams(window.location.search);
-                                params.delete('id');
-                                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                clearRecordId({ replace: true });
                             }} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '24px' }}>×</button>
 
                         </div>
@@ -337,10 +337,7 @@ export default function UsersView({ users, onRefresh }) {
                                 {saving ? 'APPLYING_CHANGES...' : 'SAVE_USER_PERMISSIONS'}
                             </button>
                             <button onClick={() => {
-                                setEditingUser(null);
-                                const params = new URLSearchParams(window.location.search);
-                                params.delete('id');
-                                window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                clearRecordId({ replace: true });
                             }} style={{ ...btnStyle, flex: 1, padding: '18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', height: 'auto' }}>
                                 CANCEL
                             </button>

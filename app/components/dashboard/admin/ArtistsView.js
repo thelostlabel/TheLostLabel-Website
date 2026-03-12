@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import NextImage from 'next/image';
-import { useSession } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
 
 import { RefreshCw, Plus, AlertCircle } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { useDashboardAuth } from '@/app/components/dashboard/context/DashboardAuthProvider';
+import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
+import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
 import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
 
-function UserLinker({ artistId, users, artistEmail }) {
+function UserLinker({ artistId, users, artistEmail, onLinked }) {
     const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUser, setSelectedUser] = useState(null);
@@ -27,19 +28,17 @@ function UserLinker({ artistId, users, artistEmail }) {
         if (!user) return;
         setLinking(true);
         try {
-            const res = await fetch('/api/admin/artists', {
+            await dashboardRequestJson('/api/admin/artists', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: artistId, userId: user.id })
+                body: JSON.stringify({ id: artistId, userId: user.id }),
+                context: 'link artist user',
+                retry: false
             });
-            if (res.ok) {
-                window.location.reload();
-            } else {
-                showToast('Failed to link user', "error");
-            }
+            await onLinked?.();
+            showToast('User linked successfully', "success");
         } catch (e) {
-            console.error(e);
-            showToast('Error linking user', "error");
+            showToast(getDashboardErrorMessage(e, 'Error linking user'), "error");
         }
         finally { setLinking(false); }
     };
@@ -112,8 +111,9 @@ function UserLinker({ artistId, users, artistEmail }) {
 export default function ArtistsView({ artists, users, releases = [], contracts = [], onSync, onRefresh }) {
 
     const { showToast, showConfirm } = useToast();
-    const { data: session } = useSession();
-    const canManage = session?.user?.role === 'admin' || session?.user?.permissions?.canManageArtists;
+    const { currentUser } = useDashboardAuth();
+    const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
+    const canManage = currentUser?.role === 'admin' || currentUser?.permissions?.canManageArtists;
 
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -121,7 +121,6 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
     const [isCreating, setIsCreating] = useState(false);
     const [newArtist, setNewArtist] = useState({ name: '', spotifyUrl: '', email: '' });
     const [saving, setSaving] = useState(false);
-    const searchParams = useSearchParams();
 
     // Syncing States
     const [syncingArtistId, setSyncingArtistId] = useState(null);
@@ -139,18 +138,25 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Auto-select artist if ID is in URL
     useEffect(() => {
-        if (!selectedArtist && artists.length > 0) {
-            const idFromUrl = searchParams.get('id');
-            if (idFromUrl) {
-                const artist = artists.find(a => a.id === idFromUrl);
-                if (artist) {
-                    setSelectedArtist(artist);
-                }
-            }
+        if (!recordId) {
+            setSelectedArtist(null);
+            return;
         }
-    }, [artists, searchParams, selectedArtist]);
+
+        const artist = artists.find(a => a.id === recordId);
+        if (artist && artist.id !== selectedArtist?.id) {
+            setSelectedArtist(artist);
+        }
+    }, [artists, recordId, selectedArtist?.id]);
+
+    useEffect(() => {
+        if (!selectedArtist?.id) return;
+        const latest = artists.find((artist) => artist.id === selectedArtist.id);
+        if (latest && latest !== selectedArtist) {
+            setSelectedArtist(latest);
+        }
+    }, [artists, selectedArtist]);
 
     // Filter artists based on search
 
@@ -165,21 +171,15 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         if (!artistId) return;
         setBalanceLoading(true);
         try {
-            const res = await fetch(`/api/admin/artist-balance?artistId=${artistId}`);
-            const data = await res.json();
-            if (res.ok) {
-                setBalanceStats(data.stats || null);
-                setBalanceAdjustments(data.adjustments || []);
-            } else {
-                setBalanceStats(null);
-                setBalanceAdjustments([]);
-                showToast(data.error || 'Failed to fetch artist balance', 'error');
-            }
+            const data = await dashboardRequestJson(`/api/admin/artist-balance?artistId=${artistId}`, {
+                context: 'artist balance'
+            });
+            setBalanceStats(data.stats || null);
+            setBalanceAdjustments(data.adjustments || []);
         } catch (e) {
-            console.error(e);
             setBalanceStats(null);
             setBalanceAdjustments([]);
-            showToast('Failed to fetch artist balance', 'error');
+            showToast(getDashboardErrorMessage(e, 'Failed to fetch artist balance'), 'error');
         } finally {
             setBalanceLoading(false);
         }
@@ -195,28 +195,24 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
 
         setAdjustSaving(true);
         try {
-            const res = await fetch('/api/admin/artist-balance', {
+            await dashboardRequestJson('/api/admin/artist-balance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     artistId: selectedArtist.id,
                     amount,
                     reason: adjustReason
-                })
+                }),
+                context: 'apply balance adjustment',
+                retry: false
             });
-            const data = await res.json();
-            if (!res.ok) {
-                showToast(data.error || 'Failed to apply balance adjustment', 'error');
-                return;
-            }
 
             setAdjustAmount('');
             setAdjustReason('');
             showToast('Balance adjustment applied', 'success');
             await fetchArtistBalance(selectedArtist.id);
         } catch (e) {
-            console.error(e);
-            showToast('Failed to apply balance adjustment', 'error');
+            showToast(getDashboardErrorMessage(e, 'Failed to apply balance adjustment'), 'error');
         } finally {
             setAdjustSaving(false);
         }
@@ -239,23 +235,19 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         if (!newArtist.name) return showToast('Name Required', "warning");
         setSaving(true);
         try {
-            const res = await fetch('/api/admin/artists', {
+            await dashboardRequestJson('/api/admin/artists', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newArtist)
+                body: JSON.stringify(newArtist),
+                context: 'create artist',
+                retry: false
             });
-            if (res.ok) {
-                setIsCreating(false);
-                setNewArtist({ name: '', spotifyUrl: '', email: '' });
-                showToast("Artist profile created", "success");
-                window.location.reload();
-            } else {
-                const err = await res.json();
-                showToast(err.error || "Creation failed", "error");
-            }
+            setIsCreating(false);
+            setNewArtist({ name: '', spotifyUrl: '', email: '' });
+            showToast("Artist profile created", "success");
+            await onRefresh?.();
         } catch (e) {
-            console.error(e);
-            showToast("Create error", "error");
+            showToast(getDashboardErrorMessage(e, "Creation failed"), "error");
         }
         finally { setSaving(false); }
     };
@@ -277,11 +269,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         return (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ ...glassStyle, padding: '40px', background: 'rgba(255,255,255,0.022)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}>
                 <button onClick={() => {
-                    setSelectedArtist(null);
-                    const params = new URLSearchParams(window.location.search);
-                    params.delete('id');
-                    const newUrl = `${window.location.pathname}?${params.toString()}`;
-                    window.history.pushState({}, '', newUrl);
+                    clearRecordId({ replace: true });
                 }} style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', cursor: 'pointer', padding: '10px 20px', borderRadius: '8px', fontSize: '11px', fontWeight: '950', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}>← BACK TO LIST</button>
 
 
@@ -354,18 +342,16 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                                     "Are you sure you want to unlink this user from the artist profile? They will lose access to their stats and dashboard.",
                                                     async () => {
                                                         try {
-                                                            const res = await fetch('/api/admin/artists', {
-                                                                method: 'PUT',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ id: selectedArtist.id, userId: null })
-                                                            });
-                                                            if (res.ok) {
+                                                                await dashboardRequestJson('/api/admin/artists', {
+                                                                    method: 'PUT',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ id: selectedArtist.id, userId: null }),
+                                                                    context: 'unlink artist user',
+                                                                    retry: false
+                                                                });
                                                                 showToast("Account unlinked successfully", "success");
-                                                                window.location.reload();
-                                                            } else {
-                                                                showToast("Failed to unlink account", "error");
-                                                            }
-                                                        } catch (e) { showToast('Error unlinking account', "error"); }
+                                                                await onRefresh?.();
+                                                        } catch (e) { showToast(getDashboardErrorMessage(e, 'Error unlinking account'), "error"); }
                                                     }
                                                 );
                                             }}
@@ -376,7 +362,9 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                     </div>
                                 </div>
                             ) : (
-                                <UserLinker artistId={selectedArtist.id} users={users} artistEmail={selectedArtist.email} />
+                                <UserLinker artistId={selectedArtist.id} users={users} artistEmail={selectedArtist.email} onLinked={async () => {
+                                    await onRefresh?.();
+                                }} />
                             )}
                         </div>
 
@@ -818,7 +806,10 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                     {filteredArtists.map((artist, idx) => (
                         <motion.div
                             key={artist.id}
-                            onClick={() => setSelectedArtist(artist)}
+                            onClick={() => {
+                                setSelectedArtist(artist);
+                                setRecordId(artist.id);
+                            }}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.05 }}
@@ -885,7 +876,11 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                 >
                                     <RefreshCw size={10} /> SYNC
                                 </button>
-                                <button style={{ ...btnStyle, fontSize: '9px', padding: '6px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>
+                                <button onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedArtist(artist);
+                                    setRecordId(artist.id);
+                                }} style={{ ...btnStyle, fontSize: '9px', padding: '6px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>
                                     MANAGE
                                 </button>
                             </div>

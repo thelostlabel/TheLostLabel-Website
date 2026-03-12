@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 import { motion } from 'framer-motion';
 import { Plus, Trash2, CheckCircle, Upload } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
+import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
 import { btnStyle, tdStyle, thStyle, glassStyle, inputStyle } from './styles';
 import { extractContractMetaAndNotes } from '@/lib/contract-template';
 
@@ -18,6 +19,92 @@ const createEmptySplit = () => ({
     email: '',
     role: 'featured'
 });
+
+const createDefaultContractForm = () => ({
+    userId: '',
+    artistId: '',
+    primaryArtistName: '',
+    releaseId: '',
+    demoId: '',
+    title: '',
+    isDemo: false,
+    artistShare: 0.70,
+    labelShare: 0.30,
+    notes: '',
+    pdfUrl: '',
+    contractDetails: {
+        agreementReferenceNo: '',
+        effectiveDate: '',
+        deliveryDate: '',
+        isrc: '',
+        songTitles: '',
+        artistLegalName: '',
+        artistPhone: '',
+        artistAddress: ''
+    },
+    isValid: true,
+    splits: [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
+});
+
+const hydrateContractForm = (contract) => {
+    const { details, userNotes } = extractContractMetaAndNotes(contract.notes || '');
+    let featuredArtists = [];
+
+    try {
+        featuredArtists = contract.featuredArtists ? JSON.parse(contract.featuredArtists) : [];
+    } catch {
+        featuredArtists = [];
+    }
+
+    const featuredByKey = new Map(
+        featuredArtists.map((featured) => [
+            `${featured.artistId || ''}:${featured.userId || ''}:${(featured.name || '').toLowerCase()}`,
+            featured
+        ])
+    );
+
+    const hydratedSplits = (contract.splits || []).map((split, index) => {
+        const match = featuredByKey.get(`${split.artistId || ''}:${split.userId || ''}:${(split.name || '').toLowerCase()}`);
+        return {
+            ...createEmptySplit(),
+            name: split.name,
+            percentage: split.percentage,
+            userId: split.userId || '',
+            artistId: split.artistId || '',
+            email: split.email || match?.email || '',
+            legalName: match?.legalName || split.user?.legalName || split.user?.fullName || split.artist?.user?.legalName || split.artist?.user?.fullName || '',
+            phoneNumber: match?.phoneNumber || split.user?.phoneNumber || split.artist?.user?.phoneNumber || '',
+            address: match?.address || split.user?.address || split.artist?.user?.address || '',
+            role: split.role || (index === 0 ? 'primary' : 'featured')
+        };
+    });
+
+    return {
+        userId: contract.userId || '',
+        artistId: contract.artistId || '',
+        primaryArtistName: contract.primaryArtistName || '',
+        releaseId: contract.releaseId || '',
+        demoId: contract.demoId || '',
+        title: contract.title || '',
+        isDemo: !contract.releaseId,
+        artistShare: contract.artistShare,
+        labelShare: contract.labelShare,
+        notes: userNotes || '',
+        pdfUrl: contract.pdfUrl || '',
+        contractDetails: {
+            agreementReferenceNo: details.agreementReferenceNo || '',
+            effectiveDate: details.effectiveDate || '',
+            deliveryDate: details.deliveryDate || '',
+            isrc: details.isrc || '',
+            songTitles: details.songTitles || '',
+            artistLegalName: details.artistLegalName || '',
+            artistPhone: details.artistPhone || '',
+            artistAddress: details.artistAddress || ''
+        },
+        isValid: true,
+        splits: hydratedSplits.length > 0 ? hydratedSplits : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
+    };
+};
 
 const ArtistPicker = ({ artists, value, onChange, placeholder = "Select Artist...", onClear }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -277,66 +364,36 @@ function SplitRow({ split, index, onUpdate, onRemove, onMakePrimary, artists, ef
 
 export default function ContractsView({ contracts, onRefresh, artists, releases, demos = [] }) {
     const { showToast, showConfirm } = useToast();
+    const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
     const [showAdd, setShowAdd] = useState(false);
     const [editingContract, setEditingContract] = useState(null);
-    const searchParams = useSearchParams();
-
-    // Deep link to contract
-    useEffect(() => {
-        if (!editingContract && contracts.length > 0) {
-            const idFromUrl = searchParams.get('id');
-            if (idFromUrl) {
-                const contract = contracts.find(c => c.id === idFromUrl);
-                if (contract) {
-                    setEditingContract(contract);
-                    setForm({
-                        ...contract,
-                        isDemo: Boolean(contract.demoId),
-                        splits: contract.splits?.length > 0 ? contract.splits : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }],
-                        contractDetails: contract.contractDetails || {
-                            agreementReferenceNo: '',
-                            effectiveDate: '',
-                            deliveryDate: '',
-                            isrc: '',
-                            songTitles: '',
-                            artistLegalName: '',
-                            artistPhone: '',
-                            artistAddress: ''
-                        }
-                    });
-                }
-            }
-        }
-    }, [contracts, searchParams, editingContract]);
-
     const [saving, setSaving] = useState(false);
-    const [form, setForm] = useState({
-        userId: '',
-        artistId: '',
-        primaryArtistName: '', // Fallback for display
-        releaseId: '',
-        title: '',
-        isDemo: false,
-        artistShare: 0.70,
-        labelShare: 0.30,
-        notes: '',
-        pdfUrl: '',
-        contractDetails: {
-            agreementReferenceNo: '',
-            effectiveDate: '',
-            deliveryDate: '',
-            isrc: '',
-            songTitles: '',
-            artistLegalName: '',
-            artistPhone: '',
-            artistAddress: ''
-        },
-        isValid: true,
-        splits: [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
-    });
+    const [form, setForm] = useState(createDefaultContractForm);
     const [uploadingPdf, setUploadingPdf] = useState(false);
     const [batchProcessing, setBatchProcessing] = useState(false);
     const pdfInputRef = useRef(null);
+
+    // Deep link to contract
+    useEffect(() => {
+        if (!recordId) {
+            setEditingContract(null);
+            return;
+        }
+
+        const contract = contracts.find(c => c.id === recordId);
+        if (contract) {
+            setEditingContract(contract);
+            setForm(hydrateContractForm(contract));
+            setShowAdd(true);
+        }
+    }, [contracts, recordId]);
+
+    const closeEditor = ({ replace = true } = {}) => {
+        setShowAdd(false);
+        setEditingContract(null);
+        setForm(createDefaultContractForm());
+        clearRecordId({ replace });
+    };
 
     const handleBatchAutoUpload = async (e) => {
         const files = Array.from(e.target.files);
@@ -352,11 +409,12 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                 // 1. Upload and Parse PDF
                 const formData = new FormData();
                 formData.append('file', file);
-                const uploadRes = await fetch('/api/contracts/upload', {
+                const uploadData = await dashboardRequestJson('/api/contracts/upload', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    context: 'upload contract pdf',
+                    retry: false
                 });
-                const uploadData = await uploadRes.json();
                 if (!uploadData.success) throw new Error(uploadData.error || 'Upload failed');
 
 
@@ -538,21 +596,20 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
 
                     if (!existing) {
                         try {
-                            const createArtistRes = await fetch('/api/admin/artists', {
+                            existing = await dashboardRequestJson('/api/admin/artists', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     name: block.stageName,
                                     email: block.email || null,
                                     status: 'active'
-                                })
+                                }),
+                                context: 'create artist',
+                                retry: false
                             });
-                            if (createArtistRes.ok) {
-                                existing = await createArtistRes.json();
-                                artists.push(existing);
-                            }
+                            artists.push(existing);
                         } catch (createErr) {
-                            console.warn(`[PDF_PARSE] Failed to create artist: ${block.stageName}`, createErr);
+                            showToast(getDashboardErrorMessage(createErr, `Failed to create artist ${block.stageName}`), 'warning');
                         }
                     }
 
@@ -626,21 +683,21 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                     }))
                 };
 
-                const createRes = await fetch('/api/contracts', {
+                await dashboardRequestJson('/api/contracts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(body),
+                    context: 'create contract',
+                    retry: false
                 });
-
-                if (createRes.ok) successCount++;
-                else failCount++;
+                successCount++;
             } catch (err) {
-                console.error("[BATCH_UPLOAD_ERROR]", err);
+                showToast(getDashboardErrorMessage(err, `Failed to process ${file.name}`), 'error');
                 failCount++;
             }
         }
 
-        onRefresh();
+        await onRefresh?.();
         showToast(`Batch complete: ${successCount} added, ${failCount} failed.`, successCount > 0 ? "success" : "error");
         setBatchProcessing(false);
         if (e.target) e.target.value = '';
@@ -655,18 +712,19 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
         formData.append('file', file);
 
         try {
-            const res = await fetch('/api/contracts/upload', {
+            const data = await dashboardRequestJson('/api/contracts/upload', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                context: 'upload contract pdf',
+                retry: false
             });
-            const data = await res.json();
             if (data.success) {
                 setForm({ ...form, pdfUrl: data.pdfUrl });
                 showToast("PDF uploaded successfully", "success");
             } else {
                 showToast(data.error || "Upload failed", "error");
             }
-        } catch (e) { showToast("Error uploading PDF", "error"); }
+        } catch (e) { showToast(getDashboardErrorMessage(e, "Error uploading PDF"), "error"); }
         finally { setUploadingPdf(false); }
     };
 
@@ -707,21 +765,17 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
             };
             if (editingContract) body.id = editingContract.id;
 
-            const res = await fetch(url, {
+            await dashboardRequestJson(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
+                context: editingContract ? 'update contract' : 'create contract',
+                retry: false
             });
-            if (res.ok) {
-                setShowAdd(false);
-                setEditingContract(null);
-                showToast(`Contract ${editingContract ? 'updated' : 'created'} successfully`, "success");
-                onRefresh();
-            } else {
-                const data = await res.json();
-                showToast(data.error || "Failed to save contract", "error");
-            }
-        } catch (e) { showToast("Error saving contract", "error"); }
+            closeEditor();
+            showToast(`Contract ${editingContract ? 'updated' : 'created'} successfully`, "success");
+            await onRefresh?.();
+        } catch (e) { showToast(getDashboardErrorMessage(e, "Error saving contract"), "error"); }
         finally { setSaving(false); }
     };
 
@@ -731,15 +785,18 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
             "Are you sure you want to delete this contract? All linked earnings and data will be lost forever.",
             async () => {
                 try {
-                    const res = await fetch(`/api/contracts?id=${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        showToast("Contract deleted", "success");
-                        onRefresh();
-                    } else {
-                        showToast("Failed to delete contract", "error");
+                    await dashboardRequestJson(`/api/contracts?id=${id}`, {
+                        method: 'DELETE',
+                        context: 'delete contract',
+                        retry: false
+                    });
+                    if (editingContract?.id === id) {
+                        closeEditor();
                     }
+                    showToast("Contract deleted", "success");
+                    await onRefresh?.();
                 } catch (e) {
-                    showToast("Error deleting contract", "error");
+                    showToast(getDashboardErrorMessage(e, "Error deleting contract"), "error");
                 }
             }
         );
@@ -873,33 +930,14 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                 </button>
                 <button
                     onClick={() => {
-                        if (!showAdd) {
-                            setForm({
-                                userId: '',
-                                artistId: '',
-                                primaryArtistName: '',
-                                releaseId: '',
-                                title: '',
-                                isDemo: false,
-                                artistShare: 0.70,
-                                labelShare: 0.30,
-                                notes: '',
-                                pdfUrl: '',
-                                contractDetails: {
-                                    agreementReferenceNo: '',
-                                    effectiveDate: '',
-                                    deliveryDate: '',
-                                    isrc: '',
-                                    songTitles: '',
-                                    artistLegalName: '',
-                                    artistPhone: '',
-                                    artistAddress: ''
-                                },
-                                isValid: true,
-                                splits: [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
-                            });
+                        if (showAdd) {
+                            closeEditor();
+                            return;
                         }
-                        setShowAdd(!showAdd);
+                        setForm(createDefaultContractForm());
+                        setEditingContract(null);
+                        clearRecordId({ replace: true });
+                        setShowAdd(true);
                     }}
                     style={{ ...btnStyle, background: 'var(--accent)', color: '#000', border: 'none' }}
                 >
@@ -1291,11 +1329,7 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => {
-                                    setShowAdd(false);
-                                    setEditingContract(null);
-                                    const params = new URLSearchParams(window.location.search);
-                                    params.delete('id');
-                                    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                    closeEditor();
                                 }} style={btnStyle}>CANCEL</button>
 
                                 <button type="submit" disabled={saving || !canSubmit} style={{ ...btnStyle, background: '#fff', color: '#000', opacity: (saving || !canSubmit) ? 0.6 : 1 }}>
@@ -1402,60 +1436,10 @@ export default function ContractsView({ contracts, onRefresh, artists, releases,
 
                             <div className="contracts-row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                                 <button type="button" onClick={() => {
-                                    const { details, userNotes } = extractContractMetaAndNotes(c.notes || '');
-                                    let featuredArtists = [];
-                                    try {
-                                        featuredArtists = c.featuredArtists ? JSON.parse(c.featuredArtists) : [];
-                                    } catch {
-                                        featuredArtists = [];
-                                    }
-                                    const featuredByKey = new Map(
-                                        featuredArtists.map((f) => [
-                                            `${f.artistId || ''}:${f.userId || ''}:${(f.name || '').toLowerCase()}`,
-                                            f
-                                        ])
-                                    );
                                     setEditingContract(c);
-                                    const hydratedSplits = (c.splits || []).map((s, idx) => {
-                                        const match = featuredByKey.get(`${s.artistId || ''}:${s.userId || ''}:${(s.name || '').toLowerCase()}`);
-                                        return {
-                                            ...createEmptySplit(),
-                                            name: s.name,
-                                            percentage: s.percentage,
-                                            userId: s.userId || '',
-                                            artistId: s.artistId || '',
-                                            email: s.email || match?.email || '',
-                                            legalName: match?.legalName || s.user?.legalName || s.user?.fullName || s.artist?.user?.legalName || s.artist?.user?.fullName || '',
-                                            phoneNumber: match?.phoneNumber || s.user?.phoneNumber || s.artist?.user?.phoneNumber || '',
-                                            address: match?.address || s.user?.address || s.artist?.user?.address || '',
-                                            role: s.role || (idx === 0 ? 'primary' : 'featured')
-                                        };
-                                    });
-
-                                    setForm({
-                                        userId: c.userId || '',
-                                        artistId: c.artistId || '',
-                                        primaryArtistName: c.primaryArtistName || '',
-                                        releaseId: c.releaseId || '',
-                                        isDemo: !c.releaseId,
-                                        artistShare: c.artistShare,
-                                        labelShare: c.labelShare,
-                                        notes: userNotes || '',
-                                        pdfUrl: c.pdfUrl || '',
-                                        contractDetails: {
-                                            agreementReferenceNo: details.agreementReferenceNo || '',
-                                            effectiveDate: details.effectiveDate || '',
-                                            deliveryDate: details.deliveryDate || '',
-                                            isrc: details.isrc || '',
-                                            songTitles: details.songTitles || '',
-                                            artistLegalName: details.artistLegalName || '',
-                                            artistPhone: details.artistPhone || '',
-                                            artistAddress: details.artistAddress || ''
-                                        },
-                                        isValid: true,
-                                        splits: hydratedSplits.length > 0 ? hydratedSplits : [{ ...createEmptySplit(), percentage: 100, role: 'primary' }]
-                                    });
+                                    setForm(hydrateContractForm(c));
                                     setShowAdd(true);
+                                    setRecordId(c.id);
                                 }} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: '#fff', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>EDIT</button>
                                 <button type="button" onClick={() => handleDeleteContract(c.id)} style={{ ...btnStyle, fontSize: '9px', padding: '8px 16px', color: '#ff4444', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', borderRadius: '6px', fontWeight: '950', letterSpacing: '1px' }}>DEL</button>
                             </div>

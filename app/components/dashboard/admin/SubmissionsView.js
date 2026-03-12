@@ -5,7 +5,7 @@ import { PlayCircle, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import { btnStyle, glassStyle, inputStyle } from './styles';
 
 export default function SubmissionsView({ demos, onDelete, canDelete = false }) {
-    const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'reviewing', 'approved', 'rejected'
+    const [activeTab, setActiveTab] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -13,6 +13,16 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }) 
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    const availableTabs = useMemo(() => {
+        const preferredOrder = ['all', 'pending', 'reviewing', 'approved', 'rejected', 'contract_sent'];
+        const demoStatuses = Array.from(new Set(demos.map((demo) => String(demo.status || '').toLowerCase()).filter(Boolean)));
+        const orderedKnownTabs = preferredOrder.filter((tab) => tab === 'all' || demoStatuses.includes(tab));
+        const extraTabs = demoStatuses.filter((status) => !preferredOrder.includes(status)).sort();
+        return [...orderedKnownTabs, ...extraTabs];
+    }, [demos]);
+
+    const selectedTab = availableTabs.includes(activeTab) ? activeTab : (availableTabs[0] || 'all');
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -62,12 +72,13 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }) 
 
     const filteredDemos = useMemo(() => {
         return demos.filter(demo => {
-            const matchesTab = demo.status === activeTab;
+            const normalizedStatus = String(demo.status || '').toLowerCase();
+            const matchesTab = selectedTab === 'all' || normalizedStatus === selectedTab;
             const matchesSearch = demo.title?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                 demo.artist?.stageName?.toLowerCase().includes(debouncedSearch.toLowerCase());
             return matchesTab && matchesSearch;
         });
-    }, [demos, activeTab, debouncedSearch]);
+    }, [demos, debouncedSearch, selectedTab]);
 
     return (
         <div className="submissions-root">
@@ -317,16 +328,16 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }) 
             `}</style>
             <div className="submissions-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
                 <div className="submissions-filter-tabs" style={{ display: 'flex', gap: '8px', background: 'var(--glass)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    {['pending', 'reviewing', 'approved', 'rejected'].map(tab => (
+                    {availableTabs.map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className="submissions-filter-btn"
                             style={{
                                 ...btnStyle,
-                                background: activeTab === tab ? 'var(--accent)' : 'transparent',
+                                background: selectedTab === tab ? 'var(--accent)' : 'transparent',
                                 border: 'none',
-                                color: activeTab === tab ? '#000' : '#888',
+                                color: selectedTab === tab ? '#000' : '#888',
                                 padding: '8px 16px',
                                 borderRadius: '6px',
                                 cursor: 'pointer',
@@ -338,7 +349,7 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }) 
                                 transition: 'all 0.2s ease'
                             }}
                         >
-                            {tab}
+                            {tab.replace(/_/g, ' ')}
                         </button>
                     ))}
                 </div>
@@ -455,7 +466,7 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }) 
                                 <Search size={20} color="#444" />
                             </div>
                             <div style={{ color: '#555', fontSize: '11px', fontWeight: '900', letterSpacing: '2px' }}>
-                                NO {activeTab.toUpperCase()} SUBMISSIONS FOUND
+                                NO {selectedTab.toUpperCase()} SUBMISSIONS FOUND
                             </div>
                         </div>
                     )}

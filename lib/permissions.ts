@@ -228,3 +228,37 @@ export function canManageUserPermissions(user: PermissionAwareUser | null | unde
 export function canDeleteUsers(user: PermissionAwareUser | null | undefined): boolean {
   return hasManagementPermission(user, "user_delete");
 }
+
+export function canAccessAdminView(
+  user: PermissionAwareUser | null | undefined,
+  view: string,
+  permission: string,
+): boolean {
+  if (!view) return false;
+  if (isAdminUser(user)) return true;
+
+  switch (view) {
+    case "submissions":
+      return canViewAllDemos(user);
+    case "users":
+      return canViewUsers(user);
+    case "artists":
+      return hasAdminViewPermission(user, permission) || canFinalizeDemos(user);
+    case "overview":
+    case "contracts":
+    case "earnings":
+    case "payments":
+    case "releases":
+    case "requests":
+    case "communications":
+      return isARUser(user) || hasAdminViewPermission(user, permission);
+    case "content":
+    case "webhooks":
+    case "discord-bridge":
+    case "settings":
+    case "wise-payouts":
+      return hasAdminViewPermission(user, permission);
+    default:
+      return hasAdminViewPermission(user, permission);
+  }
+}

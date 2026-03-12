@@ -107,13 +107,6 @@ export default function ContractSigningModal({ contract, user, onClose, onComple
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div className="glass" style={{ width: '500px', padding: '40px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                {/* Header Steps */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '20px' }}>
-                    <div style={{ opacity: step === 1 ? 1 : 0.4, fontWeight: '800', fontSize: '10px', letterSpacing: '1px' }}>1. LEGAL INFO</div>
-                    <div style={{ opacity: step === 2 ? 1 : 0.4, fontWeight: '800', fontSize: '10px', letterSpacing: '1px' }}>2. CONTRACT</div>
-                    <div style={{ opacity: step === 3 ? 1 : 0.4, fontWeight: '800', fontSize: '10px', letterSpacing: '1px' }}>3. ARTWORK</div>
-                </div>
-
                 {/* STEP 1: LEGAL INFO */}
                 {step === 1 && (
                     <div>

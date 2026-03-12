@@ -1,5 +1,12 @@
 import { ADMIN_DASHBOARD_FEATURES } from '@/lib/dashboard-features';
-import { getEnabledAdminViews, normalizeAdminView as normalizeSharedAdminView } from '@/lib/dashboard-view-registry';
+import {
+    getAdminViewDefinition as getSharedAdminViewDefinition,
+    getAdminViewDisplayName as getSharedAdminViewDisplayName,
+    getAdminViewLoaders as getSharedAdminViewLoaders,
+    getAdminViewPermission as getSharedAdminViewPermission,
+    getEnabledAdminViews,
+    normalizeAdminView as normalizeSharedAdminView
+} from '@/lib/dashboard-view-registry';
 
 export function getAdminFeatureFlags() {
     return ADMIN_DASHBOARD_FEATURES;
@@ -17,7 +24,16 @@ export function getEnabledAdminViewDefinitions() {
 }
 
 export function getAdminViewDefinition(view) {
-    return getEnabledAdminViewDefinitions().find((definition) => definition.key === view) || null;
+    const def = getSharedAdminViewDefinition(view);
+    if (!def) return null;
+    return {
+        key: def.view,
+        label: def.displayName,
+        permission: def.perm,
+        loaders: def.loaders,
+        dataKey: def.dataKey,
+        alwaysHasData: def.alwaysHasData
+    };
 }
 
 export function normalizeAdminView(rawView) {
@@ -25,15 +41,15 @@ export function normalizeAdminView(rawView) {
 }
 
 export function getAdminViewDisplayName(view) {
-    return getAdminViewDefinition(view)?.label || "Dashboard";
+    return getSharedAdminViewDisplayName(view);
 }
 
 export function getAdminViewPermission(view) {
-    return getAdminViewDefinition(view)?.permission || "admin_view_overview";
+    return getSharedAdminViewPermission(view);
 }
 
 export function getAdminViewLoaders(view) {
-    return getAdminViewDefinition(view)?.loaders || [];
+    return getSharedAdminViewLoaders(view);
 }
 
 export function hasAdminViewData(view, state) {

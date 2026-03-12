@@ -1,6 +1,7 @@
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import AuthProvider from "./components/AuthProvider";
+import QueryProvider from "./components/QueryProvider";
 import { PublicSettingsProvider } from "./components/PublicSettingsContext";
 import SmoothScroll from "./components/SmoothScroll";
 import { ToastProvider } from "./components/ToastContext";
@@ -88,15 +89,17 @@ export default async function RootLayout({ children }) {
       <body>
         <PublicSettingsProvider value={publicSettings}>
           <SmoothScroll />
-          <AuthProvider>
-            <ToastProvider>
-              <PlayerProvider>
-                <Navbar />
-                <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
-                <Player />
-              </PlayerProvider>
-            </ToastProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <ToastProvider>
+                <PlayerProvider>
+                  <Navbar />
+                  <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
+                  <Player />
+                </PlayerProvider>
+              </ToastProvider>
+            </AuthProvider>
+          </QueryProvider>
         </PublicSettingsProvider>
       </body>
     </html>
