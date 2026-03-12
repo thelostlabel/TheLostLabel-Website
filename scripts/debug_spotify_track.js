@@ -24,7 +24,7 @@ async function main() {
     });
     const data = await response.json();
 
-    console.log("Track Name:", data.name);
+    console.log("Track Name:s", data.name);
     console.log("Album Name:", data.album.name);
     console.log("Release Date:", data.album.release_date);
     console.log("Release Date Precision:", data.album.release_date_precision);
