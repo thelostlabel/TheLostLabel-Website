@@ -18,6 +18,7 @@ export const adminArtistBalanceBodySchema = z.object({
 
 export const paymentCreateBodySchema = z.object({
   userId: z.string().optional(),
+  artistId: z.string().optional(),
   amount: numericInputSchema.optional(),
   currency: z.string().optional(),
   method: stringOrNullSchema.optional(),
@@ -28,6 +29,8 @@ export const paymentCreateBodySchema = z.object({
 
 export const paymentUpdateBodySchema = z.object({
   id: z.string().optional(),
+  userId: z.string().optional(),
+  artistId: z.string().optional(),
   amount: numericInputSchema.optional(),
   method: stringOrNullSchema.optional(),
   reference: stringOrNullSchema.optional(),

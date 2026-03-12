@@ -57,6 +57,7 @@ model Demo {
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
   artistId             String
+  artistProfileId      String?
   reviewedAt           DateTime?
   reviewedBy           String?
   rejectionReason      String?
@@ -64,9 +65,11 @@ model Demo {
   featuredArtists      String?
   contract             Contract?
   artist               User       @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistProfile        Artist?    @relation(fields: [artistProfileId], references: [id])
   files                DemoFile[]
 
   @@index([artistId, createdAt(sort: Desc)], map: "idx_demo_artist_id_created_at")
+  @@index([artistProfileId, createdAt(sort: Desc)], map: "idx_demo_artist_profile_id_created_at")
   @@index([status, createdAt(sort: Desc)], map: "idx_demo_status_created_at")
 }
 
@@ -120,6 +123,8 @@ model Artist {
   contracts        Contract[]
   royaltySplits    RoyaltySplit[]
   balanceAdjustments BalanceAdjustment[]
+  demos            Demo[]
+  payments         Payment[]
 }
 
 model ArtistStatsHistory {
@@ -277,6 +282,7 @@ model Earning {
 model Payment {
   id          String    @id @default(uuid())
   userId      String
+  artistId    String?
   amount      Float
   currency    String    @default("USD")
   method      String?
@@ -286,8 +292,10 @@ model Payment {
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  artist      Artist?   @relation(fields: [artistId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
 
+  @@index([artistId, createdAt(sort: Desc)], map: "idx_payment_artist_id_created_at")
   @@index([status, createdAt(sort: Desc)], map: "idx_payment_status_created_at")
   @@index([userId, createdAt(sort: Desc)], map: "idx_payment_user_id_created_at")
 }

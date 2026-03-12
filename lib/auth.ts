@@ -194,8 +194,12 @@ export const authOptions = {
             throw new Error("ACCOUNT PENDING APPROVAL");
           }
 
-          if (user.role === "artist" && user.status === "approved" && !user.artist?.id) {
+          if (user.role === "artist" && user.status === "approved") {
             await linkUserToArtist(user.id);
+            const refreshedClaims = await loadAuthoritativeUserClaims(user.id);
+            if (refreshedClaims) {
+              return refreshedClaims;
+            }
           }
 
           return buildSessionClaims(user);

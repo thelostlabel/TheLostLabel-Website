@@ -146,11 +146,14 @@ export async function getArtistBalanceStats({
         AND e."createdAt" >= CURRENT_DATE - INTERVAL '29 days'
       GROUP BY TO_CHAR(DATE_TRUNC('day', e."createdAt"), 'YYYY-MM-DD')
     `,
-    userId
+    (userId || artistId)
       ? prisma.payment.groupBy({
           by: ["status"],
           where: {
-            userId,
+            OR: [
+              ...(userId ? [{ userId }] : []),
+              ...(artistId ? [{ artistId }] : []),
+            ],
             status: { in: ["completed", "pending"] },
           },
           _sum: { amount: true },

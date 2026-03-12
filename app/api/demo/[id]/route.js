@@ -16,6 +16,7 @@ import {
 import { randomUUID } from "crypto";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { resolveArtistContextForUser } from "@/lib/artist-identity";
 import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
 
 const REVIEWABLE_STATUSES = new Set(["pending", "reviewing"]);
@@ -34,6 +35,7 @@ export async function GET(req, { params }) {
     const { id } = await params;
 
     try {
+        const artistContext = await resolveArtistContextForUser(session.user.id);
         const demo = await prisma.demo.findUnique({
             where: { id },
             include: {
@@ -61,7 +63,7 @@ export async function GET(req, { params }) {
         }
 
         const canViewAll = canViewAllDemos(session.user);
-        const isOwner = demo.artistId === session.user.id;
+        const isOwner = demo.artistId === session.user.id || (artistContext.artistId && demo.artistProfileId === artistContext.artistId);
         if (!canViewAll && !isOwner) {
             return new Response("Forbidden", { status: 403 });
         }
@@ -86,6 +88,7 @@ export async function PATCH(req, { params }) {
     const { status, rejectionReason, finalizeData } = body;
     const nextStatus = typeof status === "string" ? status.trim().toLowerCase() : null;
     const canViewAll = canViewAllDemos(session.user);
+    const artistContext = await resolveArtistContextForUser(session.user.id);
 
     // Fetch existing demo to check ownership
     const existingDemo = await prisma.demo.findUnique({
@@ -106,7 +109,7 @@ export async function PATCH(req, { params }) {
         return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
     }
 
-    const isOwner = existingDemo.artistId === session.user.id;
+    const isOwner = existingDemo.artistId === session.user.id || (artistContext.artistId && existingDemo.artistProfileId === artistContext.artistId);
 
     if (!canViewAll && !isOwner) {
         return new Response("Unauthorized", { status: 401 });

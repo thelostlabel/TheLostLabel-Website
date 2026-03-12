@@ -5,6 +5,10 @@ import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagi
 import prisma from "@/lib/prisma";
 import { embedContractMetaInNotes, extractContractMetaAndNotes } from "@/lib/contract-template";
 
+function normalizeIdentityValue(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function normalizeShare(value, defaultValue) {
     if (value === undefined || value === null || value === "") return defaultValue;
     const parsed = Number(value);
@@ -50,6 +54,80 @@ function validateAndNormalizeSplits(splits) {
         return { error: "Split percentages cannot exceed 100%." };
     }
     return { normalized };
+}
+
+async function findArtistByIdentity({ artistId, userId, name, email }) {
+    if (artistId) {
+        const artist = await prisma.artist.findUnique({
+            where: { id: artistId },
+            include: { user: { select: { id: true, email: true } } }
+        });
+        if (artist) return artist;
+    }
+
+    if (userId) {
+        const artist = await prisma.artist.findFirst({
+            where: { userId },
+            include: { user: { select: { id: true, email: true } } }
+        });
+        if (artist) return artist;
+    }
+
+    const normalizedName = normalizeIdentityValue(name);
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (!normalizedName && !normalizedEmail) return null;
+
+    const candidates = await prisma.artist.findMany({
+        where: {
+            OR: [
+                normalizedEmail ? { email: { equals: normalizedEmail, mode: "insensitive" } } : undefined,
+                name ? { name: { equals: name, mode: "insensitive" } } : undefined
+            ].filter(Boolean)
+        },
+        include: { user: { select: { id: true, email: true } } }
+    });
+
+    return candidates.find((artist) => {
+        const emailMatch = normalizedEmail && String(artist.email || "").trim().toLowerCase() === normalizedEmail;
+        const nameMatch = normalizedName && normalizeIdentityValue(artist.name) === normalizedName;
+        return emailMatch || nameMatch;
+    }) || null;
+}
+
+async function normalizeContractParticipants({ artistId, userId, primaryArtistName, primaryArtistEmail, splits }) {
+    const resolvedArtist = await findArtistByIdentity({
+        artistId,
+        userId,
+        name: primaryArtistName,
+        email: primaryArtistEmail
+    });
+
+    const normalizedSplits = !Array.isArray(splits)
+        ? splits
+        : await Promise.all(splits.map(async (split) => {
+            const splitArtist = await findArtistByIdentity({
+                artistId: split.artistId,
+                userId: split.userId,
+                name: split.name,
+                email: split.email
+            });
+
+            return {
+                ...split,
+                artistId: splitArtist?.id || split.artistId || null,
+                userId: splitArtist?.userId || split.userId || null,
+                email: split.email || splitArtist?.email || null
+            };
+        }));
+
+    return {
+        resolvedArtist,
+        normalizedArtistId: resolvedArtist?.id || artistId || null,
+        normalizedUserId: resolvedArtist?.userId || userId || null,
+        normalizedPrimaryArtistName: primaryArtistName || resolvedArtist?.name || null,
+        normalizedPrimaryArtistEmail: primaryArtistEmail || resolvedArtist?.email || resolvedArtist?.user?.email || null,
+        normalizedSplits
+    };
 }
 
 // GET: Fetch contracts
@@ -143,6 +221,14 @@ export async function POST(req) {
     try {
         const body = await req.json();
         const { releaseId, title, demoId, artistId, userId, primaryArtistName, primaryArtistEmail, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists, contractDetails } = body;
+        const participantState = await normalizeContractParticipants({ artistId, userId, primaryArtistName, primaryArtistEmail, splits });
+        const {
+            normalizedArtistId,
+            normalizedUserId,
+            normalizedPrimaryArtistName,
+            normalizedPrimaryArtistEmail,
+            normalizedSplits
+        } = participantState;
 
         const normalizedArtistShare = normalizeShare(artistShare, 0.7);
         const normalizedLabelShare = normalizeShare(labelShare, 0.3);
@@ -153,7 +239,7 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "artistShare + labelShare must equal 1 (or 100%)." }), { status: 400 });
         }
 
-        const splitValidation = validateAndNormalizeSplits(splits);
+        const splitValidation = validateAndNormalizeSplits(normalizedSplits);
         if (splitValidation.error) {
             return new Response(JSON.stringify({ error: splitValidation.error }), { status: 400 });
         }
@@ -161,7 +247,7 @@ export async function POST(req) {
         const storedNotes = embedContractMetaInNotes(notes, contractDetails);
 
         // Validation: Needs (Artist ID OR PrimaryName) AND (ReleaseID OR Title OR DemoID)
-        if ((!artistId && !primaryArtistName && !userId) || (!releaseId && !title && !demoId)) {
+        if ((!normalizedArtistId && !normalizedPrimaryArtistName && !normalizedUserId) || (!releaseId && !title && !demoId)) {
             return new Response(JSON.stringify({ error: "Missing required fields (Artist and Release/Title/Demo)" }), { status: 400 });
         }
 
@@ -169,17 +255,16 @@ export async function POST(req) {
         let whereClause = {};
         if (releaseId) {
             whereClause = { releaseId };
-            // If we have an artistId, check that. Fallback to userId
-            if (artistId) whereClause.artistId = artistId;
-            else if (userId) whereClause.userId = userId;
+            if (normalizedArtistId) whereClause.artistId = normalizedArtistId;
+            else if (normalizedUserId) whereClause.userId = normalizedUserId;
         } else if (title) {
             whereClause = { title };
-            if (artistId) whereClause.artistId = artistId;
-            else if (userId) whereClause.userId = userId;
+            if (normalizedArtistId) whereClause.artistId = normalizedArtistId;
+            else if (normalizedUserId) whereClause.userId = normalizedUserId;
         }
 
         // Check if contract already exists for this artist/release combo
-        if ((artistId || userId) && releaseId) {
+        if ((normalizedArtistId || normalizedUserId) && releaseId) {
             const existing = await prisma.contract.findFirst({
                 where: whereClause
             });
@@ -204,12 +289,11 @@ export async function POST(req) {
                 releaseId: releaseId || null,
                 title: title || null,
                 demoId: demoId || null,
-                artistId: artistId || null, // Link to Profile
-                userId: userId || null,     // Fallback Link to User
+                artistId: normalizedArtistId || null,
+                userId: normalizedUserId || null,
 
-                // Fallback text fields if no profile is used (though we should encourage profile creation)
-                primaryArtistName: primaryArtistName || null,
-                primaryArtistEmail: primaryArtistEmail || null,
+                primaryArtistName: normalizedPrimaryArtistName || null,
+                primaryArtistEmail: normalizedPrimaryArtistEmail || null,
 
                 artistShare: normalizedArtistShare,
                 labelShare: normalizedLabelShare,
@@ -258,7 +342,7 @@ export async function PATCH(req) {
 
     try {
         const body = await req.json();
-        const { id, title, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists, contractDetails } = body;
+        const { id, title, artistId, userId, primaryArtistName, primaryArtistEmail, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists, contractDetails } = body;
 
         if (!id) {
             return new Response(JSON.stringify({ error: "Missing contract ID" }), { status: 400 });
@@ -281,7 +365,16 @@ export async function PATCH(req) {
             return new Response(JSON.stringify({ error: "artistShare + labelShare must equal 1 (or 100%)." }), { status: 400 });
         }
 
-        const splitValidation = validateAndNormalizeSplits(splits);
+        const participantState = await normalizeContractParticipants({ artistId, userId, primaryArtistName, primaryArtistEmail, splits });
+        const {
+            normalizedArtistId,
+            normalizedUserId,
+            normalizedPrimaryArtistName,
+            normalizedPrimaryArtistEmail,
+            normalizedSplits
+        } = participantState;
+
+        const splitValidation = validateAndNormalizeSplits(normalizedSplits);
         if (splitValidation.error) {
             return new Response(JSON.stringify({ error: splitValidation.error }), { status: 400 });
         }
@@ -289,6 +382,12 @@ export async function PATCH(req) {
         // We only allow updating specific fields to avoid breaking relations easily
         const updateData = {};
         if (title !== undefined) updateData.title = title;
+        if (artistId !== undefined || userId !== undefined || primaryArtistName !== undefined || primaryArtistEmail !== undefined) {
+            updateData.artistId = normalizedArtistId;
+            updateData.userId = normalizedUserId;
+            updateData.primaryArtistName = normalizedPrimaryArtistName;
+            updateData.primaryArtistEmail = normalizedPrimaryArtistEmail;
+        }
         if (artistShare !== undefined) updateData.artistShare = normalizedArtistShare;
         if (labelShare !== undefined) updateData.labelShare = normalizedLabelShare;
         if (notes !== undefined || contractDetails !== undefined) {

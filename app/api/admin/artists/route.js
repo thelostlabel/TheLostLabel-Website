@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { canFinalizeDemos, hasAdminViewPermission } from "@/lib/permissions";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import prisma from "@/lib/prisma";
+import { linkUserToArtist, normalizeArtistValue } from "@/lib/userArtistLink";
 
 function canAccessArtists(user) {
     return hasAdminViewPermission(user, "admin_view_artists") || canFinalizeDemos(user);
@@ -90,6 +91,65 @@ export async function POST(req) {
             }
         }
 
+        const normalizedName = normalizeArtistValue(name);
+        const normalizedEmail = email ? email.toLowerCase() : null;
+        const existingArtists = await prisma.artist.findMany({
+            where: {
+                OR: [
+                    normalizedEmail ? { email: { equals: normalizedEmail, mode: 'insensitive' } } : undefined,
+                    { name: { equals: name, mode: 'insensitive' } }
+                ].filter(Boolean)
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        stageName: true,
+                        fullName: true,
+                        legalName: true,
+                        phoneNumber: true,
+                        address: true
+                    }
+                }
+            }
+        });
+
+        const duplicate = existingArtists.find((artist) => (
+            (normalizedEmail && artist.email?.toLowerCase() === normalizedEmail) ||
+            normalizeArtistValue(artist.name) === normalizedName
+        ));
+
+        if (duplicate) {
+            if (linkedUserId && !duplicate.userId) {
+                const updatedArtist = await prisma.artist.update({
+                    where: { id: duplicate.id },
+                    data: {
+                        userId: linkedUserId,
+                        ...(duplicate.email ? {} : { email: normalizedEmail })
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                stageName: true,
+                                fullName: true,
+                                legalName: true,
+                                phoneNumber: true,
+                                address: true
+                            }
+                        }
+                    }
+                });
+
+                await linkUserToArtist(linkedUserId);
+                return new Response(JSON.stringify(updatedArtist), { status: 200 });
+            }
+
+            return new Response(JSON.stringify(duplicate), { status: 200 });
+        }
+
         const artist = await prisma.artist.create({
             data: {
                 name,
@@ -132,6 +192,10 @@ export async function PUT(req) {
             data: updateData,
             include: { user: true }
         });
+
+        if (userId) {
+            await linkUserToArtist(userId);
+        }
 
         return new Response(JSON.stringify(artist), { status: 200 });
     } catch (error) {

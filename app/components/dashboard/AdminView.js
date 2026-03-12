@@ -289,7 +289,7 @@ export default function AdminView() {
             {view === 'requests'      && <RequestsView requests={requests} />}
             {view === 'contracts'     && features.contracts      && <ContractsView contracts={contracts} artists={artists} releases={releases} demos={submissions.filter(s => s.status === 'approved')} onRefresh={refreshers.contracts} />}
             {view === 'earnings'      && features.earnings       && <EarningsView earnings={earnings} contracts={contracts} onRefresh={refreshEarnings} pagination={earningsPagination} />}
-            {view === 'payments'      && features.payments       && <PaymentsView payments={payments} users={users} onRefresh={refreshers.payments} />}
+            {view === 'payments'      && features.payments       && <PaymentsView payments={payments} users={users} artists={artists} onRefresh={refreshers.payments} />}
             {view === 'content'       && <ContentView content={siteContent} onRefresh={refreshers.content} />}
             {view === 'webhooks'      && <WebhooksView webhooks={webhooks} onRefresh={refreshers.webhooks} />}
             {view === 'releases'      && features.releases       && <ReleasesView releases={releases} />}

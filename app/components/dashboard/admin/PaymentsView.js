@@ -4,7 +4,7 @@ import { Search, Plus } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, glassStyle, inputStyle, tdStyle, thStyle } from './styles';
 
-export default function PaymentsView({ payments, onRefresh, users }) {
+export default function PaymentsView({ payments, onRefresh, artists = [] }) {
     const { showToast, showConfirm } = useToast();
     const deletedUserEmail = 'deleted-user@system.local';
     const [showAdd, setShowAdd] = useState(false);
@@ -13,6 +13,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [form, setForm] = useState({
+        artistId: '',
         userId: '',
         amount: '',
         method: 'bank_transfer',
@@ -29,6 +30,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
     }, [searchTerm]);
 
     const getPaymentRecipientLabel = (payment) => {
+        if (payment.artist?.name) return payment.artist.name;
         if (payment.user?.email === deletedUserEmail) return 'DELETED USER';
         if (payment.user?.stageName) return payment.user.stageName;
         if (payment.user?.fullName) return payment.user.fullName;
@@ -37,6 +39,8 @@ export default function PaymentsView({ payments, onRefresh, users }) {
     };
 
     const getPaymentRecipientSubLabel = (payment) => {
+        if (payment.artist?.email) return payment.artist.email;
+        if (payment.artist?.id) return `ARTIST ${payment.artist.id.slice(0, 8)}`;
         if (payment.user?.email === deletedUserEmail) return 'Archived payout record';
         if (payment.user?.email && payment.user?.stageName) return payment.user.email;
         if (payment.user?.fullName && payment.user?.email) return payment.user.email;
@@ -179,6 +183,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                     onClick={() => {
                         if (!showAdd) {
                             setForm({
+                                artistId: '',
                                 userId: '',
                                 amount: '',
                                 method: 'bank_transfer',
@@ -213,14 +218,23 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                         <div className="pay-form-span-2" style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '10px', color: '#888', fontWeight: '900', display: 'block', marginBottom: '10px', letterSpacing: '1px' }}>ARTIST RECIPIENT *</label>
                             <select
-                                value={form.userId}
-                                onChange={e => setForm({ ...form, userId: e.target.value })}
+                                value={form.artistId}
+                                onChange={e => {
+                                    const selectedArtist = artists.find((artist) => artist.id === e.target.value);
+                                    setForm({
+                                        ...form,
+                                        artistId: e.target.value,
+                                        userId: selectedArtist?.user?.id || selectedArtist?.userId || ''
+                                    });
+                                }}
                                 required
                                 style={{ ...inputStyle, borderRadius: '8px', fontSize: '12px', background: 'var(--glass)', border: '1px solid var(--border)', padding: '16px', width: '100%', color: '#fff' }}
                             >
                                 <option value="" style={{ color: '#000' }}>Select Recipient...</option>
-                                {users.filter(u => u.role === 'artist' || u.role === 'a&r' || u.role === 'admin').map(u => (
-                                    <option key={u.id} value={u.id} style={{ color: '#000' }}>{u.stageName || u.fullName || u.email} ({u.role.toUpperCase()})</option>
+                                {artists.map(artist => (
+                                    <option key={artist.id} value={artist.id} style={{ color: '#000' }}>
+                                        {artist.name}{artist.user?.email ? ` (${artist.user.email})` : artist.email ? ` (${artist.email})` : ''}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -464,6 +478,7 @@ export default function PaymentsView({ payments, onRefresh, users }) {
                                 <button onClick={() => {
                                     setEditingPayment(p);
                                     setForm({
+                                        artistId: p.artistId || '',
                                         userId: p.userId || '',
                                         amount: p.amount,
                                         method: p.method,

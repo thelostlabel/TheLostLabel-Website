@@ -7,6 +7,7 @@ import {
   earningCreateBodySchema,
   earningsDeleteBodySchema,
 } from "@/lib/finance-schemas";
+import { buildArtistOwnedContractScope, resolveArtistContextForUser } from "@/lib/artist-identity";
 import { getErrorMessage, hasAdminOrArRole, parseFloatInput, parseIntegerInput } from "@/lib/finance-utils";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
@@ -37,16 +38,12 @@ export async function GET(req: Request) {
     const whereClause: Prisma.EarningWhereInput = {};
 
     if (!hasAdminOrArRole(role)) {
-      const contractScope: Prisma.ContractWhereInput[] = [{ userId }, { artist: { userId } }, { splits: { some: { userId } } }];
-      if (session.user.email) {
-        const email = session.user.email;
-        contractScope.push(
-          { primaryArtistEmail: email },
-          { artist: { email } },
-          { splits: { some: { email } } },
-          { splits: { some: { user: { email } } } },
-        );
-      }
+      const artistContext = await resolveArtistContextForUser(userId);
+      const contractScope: Prisma.ContractWhereInput[] = buildArtistOwnedContractScope({
+        userId,
+        userEmail: session.user.email,
+        artistId: artistContext.artistId,
+      });
 
       whereClause.contract = {
         OR: contractScope,

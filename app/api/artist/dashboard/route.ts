@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { resolveArtistContextForUser, buildArtistOwnedContractScope } from "@/lib/artist-identity";
 import { getArtistBalanceStats } from "@/lib/artist-balance";
 import { extractSpotifyArtistIdFromUrl, getErrorMessage } from "@/lib/finance-utils";
 import prisma from "@/lib/prisma";
@@ -22,24 +23,10 @@ export async function GET() {
 
   try {
     const userId = session.user.id;
-    const userEmail = session.user.email;
-    const stageName = session.user.stageName;
-
-    const userProfile = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        monthlyListeners: true,
-        artist: {
-          select: {
-            id: true,
-            name: true,
-            monthlyListeners: true,
-            spotifyUrl: true,
-            image: true,
-          },
-        },
-      },
-    });
+    const artistContext = await resolveArtistContextForUser(userId);
+    const userProfile = artistContext.user;
+    const userEmail = artistContext.userEmail;
+    const stageName = userProfile?.stageName || session.user.stageName;
 
     const artistId = userProfile?.artist?.id ?? null;
     const artistStageName = userProfile?.artist?.name || stageName || null;
@@ -53,7 +40,10 @@ export async function GET() {
       artistWhereClauses.push({ name: stageName });
     }
 
-    const releaseWhereClauses: Prisma.ReleaseWhereInput[] = [{ contracts: { some: { userId } } }];
+    const releaseContractScope = buildArtistOwnedContractScope({ userId, userEmail, artistId });
+    const releaseWhereClauses: Prisma.ReleaseWhereInput[] = releaseContractScope.length
+      ? [{ contracts: { some: { OR: releaseContractScope } } }]
+      : [];
     const releaseArtistNameClause = getReleaseArtistWhereByName(artistStageName);
     const releaseArtistIdClause = getReleaseArtistWhereById(spotifyId);
     if (releaseArtistNameClause) {
@@ -83,8 +73,15 @@ export async function GET() {
         _sum: { totalTracks: true },
         where: releaseWhere,
       }),
-      prisma.demo.count({ where: { artistId: userId } }),
-      getArtistBalanceStats({ userId, userEmail }),
+      prisma.demo.count({
+        where: {
+          OR: [
+            { artistId: userId },
+            ...(artistId ? [{ artistProfileId: artistId }] : []),
+          ],
+        },
+      }),
+      getArtistBalanceStats({ userId, userEmail, artistId }),
       prisma.release.findMany({
         where: releaseWhere,
         orderBy: { releaseDate: "desc" },
@@ -94,7 +91,7 @@ export async function GET() {
             orderBy: { updatedAt: "desc" },
           },
           contracts: {
-            where: { userId },
+            where: releaseContractScope.length ? { OR: releaseContractScope } : undefined,
             select: { id: true },
           },
         },

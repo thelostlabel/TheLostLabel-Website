@@ -82,9 +82,17 @@ export type PaymentUserSummary = {
   email: string;
 };
 
+export type PaymentArtistSummary = {
+  id: string;
+  name: string;
+  email: string | null;
+  userId: string | null;
+};
+
 export type PaymentRecord = {
   id: string;
   userId: string;
+  artistId: string | null;
   amount: number;
   currency: string;
   method: string | null;
@@ -95,6 +103,7 @@ export type PaymentRecord = {
   createdAt: Date;
   updatedAt: Date;
   user?: PaymentUserSummary;
+  artist?: PaymentArtistSummary | null;
 };
 
 export type PaymentsResponse = {

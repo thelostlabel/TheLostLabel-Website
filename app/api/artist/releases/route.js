@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { buildArtistOwnedContractScope, resolveArtistContextForUser } from "@/lib/artist-identity";
 import prisma from "@/lib/prisma";
 import { getReleaseArtistWhereById } from "@/lib/release-artists";
 
@@ -18,19 +19,23 @@ export async function GET(req) {
     }
 
     // Always get latest user profile from DB to avoid session sync issues
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { artist: true }
-    });
+    const artistContext = await resolveArtistContextForUser(session.user.id);
+    const user = artistContext.user;
 
     // Extract Artist ID
     const spotifyId = extractSpotifyArtistId(user?.artist?.spotifyUrl) || extractSpotifyArtistId(user?.spotifyUrl);
 
     try {
+        const contractScope = buildArtistOwnedContractScope({
+            userId: session.user.id,
+            userEmail: user?.email || session.user.email,
+            artistId: artistContext.artistId
+        });
+
         // Build OR conditions
-        const orConditions = [
-            { contracts: { some: { userId: session.user.id } } }
-        ];
+        const orConditions = contractScope.length
+            ? [{ contracts: { some: { OR: contractScope } } }]
+            : [];
 
         const releaseArtistCondition = getReleaseArtistWhereById(spotifyId);
         if (releaseArtistCondition) {
@@ -48,7 +53,7 @@ export async function GET(req) {
                     orderBy: { updatedAt: 'desc' }
                 },
                 contracts: {
-                    where: { userId: session.user.id },
+                    where: contractScope.length ? { OR: contractScope } : undefined,
                     select: { id: true }
                 }
             }

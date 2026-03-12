@@ -9,6 +9,7 @@ import rateLimit from "@/lib/rate-limit";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import { settleSideEffects } from "@/lib/async-effects";
+import { resolveArtistContextForUser } from "@/lib/artist-identity";
 
 // Rate limiter: 10 demos per hour per user
 const limiter = rateLimit({
@@ -70,6 +71,8 @@ export async function POST(req) {
             return new Response(JSON.stringify({ error: "Invalid uploaded file references." }), { status: 400 });
         }
 
+        const artistContext = await resolveArtistContextForUser(session.user.id);
+
         const demo = await prisma.demo.create({
             data: {
                 title,
@@ -79,6 +82,11 @@ export async function POST(req) {
                 artist: {
                     connect: { id: session.user.id }
                 },
+                ...(artistContext.artistId ? {
+                    artistProfile: {
+                        connect: { id: artistContext.artistId }
+                    }
+                } : {}),
                 files: sanitizedFiles.length > 0 ? {
                     create: sanitizedFiles.map(f => ({
                         filename: f.filename,
@@ -214,7 +222,13 @@ export async function GET(req) {
                 return new Response(JSON.stringify({ error: "You do not have permission to view demos." }), { status: 403 });
             }
 
-            const where = { artistId: session.user.id };
+            const artistContext = await resolveArtistContextForUser(session.user.id);
+            const where = {
+                OR: [
+                    { artistId: session.user.id },
+                    ...(artistContext.artistId ? [{ artistProfileId: artistContext.artistId }] : [])
+                ]
+            };
             const [demos, total] = await Promise.all([
                 prisma.demo.findMany({
                     where,

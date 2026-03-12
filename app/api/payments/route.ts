@@ -14,6 +14,7 @@ import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import { settleSideEffects } from "@/lib/async-effects";
+import { resolveArtistContextForUser } from "@/lib/artist-identity";
 
 const typedLogger = logger as {
   debug: (message: string, data?: unknown) => void;
@@ -32,6 +33,42 @@ const typedQueueDiscordNotification = queueDiscordNotification as (
   data: Record<string, unknown>,
 ) => Promise<unknown>;
 
+async function resolvePaymentRecipient({
+  userId,
+  artistId,
+}: {
+  userId?: string | null;
+  artistId?: string | null;
+}) {
+  if (artistId) {
+    const artist = await prisma.artist.findUnique({
+      where: { id: artistId },
+      include: {
+        user: { select: { id: true, email: true, stageName: true, fullName: true } },
+      },
+    });
+    if (artist) {
+      return {
+        artist,
+        userId: artist.user?.id || userId || null,
+      };
+    }
+  }
+
+  if (userId) {
+    const context = await resolveArtistContextForUser(userId);
+    return {
+      artist: context.artist,
+      userId,
+    };
+  }
+
+  return {
+    artist: null,
+    userId: null,
+  };
+}
+
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -40,16 +77,26 @@ export async function GET(req: Request) {
 
   try {
     const { role, id: userId } = session.user;
+    const artistContext = await resolveArtistContextForUser(userId);
     typedLogger.debug("Fetching payments", { userRole: role, userId });
     const { searchParams } = new URL(req.url);
     const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
-    const where = hasAdminOrArRole(role) ? undefined : { userId };
+    const where = hasAdminOrArRole(role)
+      ? undefined
+      : {
+          OR: [
+            { userId },
+            ...(artistContext.artistId ? [{ artistId: artistContext.artistId }] : []),
+            { artist: { userId } },
+          ],
+        };
 
     const [payments, total] = await Promise.all([
       hasAdminOrArRole(role)
         ? prisma.payment.findMany({
             include: {
               user: { select: { id: true, stageName: true, fullName: true, email: true } },
+              artist: { select: { id: true, name: true, email: true, userId: true } },
             },
             orderBy: { createdAt: "desc" },
             skip,
@@ -57,6 +104,10 @@ export async function GET(req: Request) {
           })
         : prisma.payment.findMany({
             where,
+            include: {
+              user: { select: { id: true, stageName: true, fullName: true, email: true } },
+              artist: { select: { id: true, name: true, email: true, userId: true } },
+            },
             orderBy: { createdAt: "desc" },
             skip,
             take: limit,
@@ -88,9 +139,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const { userId, amount, currency, method, reference, notes, status } = parsedBody.data;
+    const { userId, artistId, amount, currency, method, reference, notes, status } = parsedBody.data;
 
-    if (!userId || amount === undefined) {
+    if ((!userId && !artistId) || amount === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -99,10 +150,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
+    const recipient = await resolvePaymentRecipient({ userId, artistId });
+    if (!recipient.userId) {
+      return NextResponse.json({ error: "Payment recipient must be linked to a user account." }, { status: 400 });
+    }
+
     const resolvedStatus = status || "completed";
     const payment = await prisma.payment.create({
       data: {
-        userId,
+        userId: recipient.userId,
+        artistId: recipient.artist?.id || artistId || null,
         amount: parsedAmount,
         currency: currency || "USD",
         method: method ?? null,
@@ -150,7 +207,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Missing payment ID" }, { status: 400 });
     }
 
-    const { id, amount, method, reference, notes, status, adminNote } = parsedBody.data;
+    const { id, userId, artistId, amount, method, reference, notes, status, adminNote } = parsedBody.data;
     if (!id) {
       return NextResponse.json({ error: "Missing payment ID" }, { status: 400 });
     }
@@ -159,6 +216,7 @@ export async function PATCH(req: Request) {
       where: { id },
       include: {
         user: { select: { email: true, stageName: true } },
+        artist: { select: { id: true, name: true, email: true, userId: true } },
       },
     });
 
@@ -167,6 +225,19 @@ export async function PATCH(req: Request) {
     }
 
     const updateData: Prisma.PaymentUpdateInput = {};
+    if (userId !== undefined || artistId !== undefined) {
+      const recipient = await resolvePaymentRecipient({
+        userId: userId ?? existing.userId,
+        artistId: artistId ?? existing.artist?.id ?? null,
+      });
+
+      if (!recipient.userId) {
+        return NextResponse.json({ error: "Payment recipient must be linked to a user account." }, { status: 400 });
+      }
+
+      updateData.user = { connect: { id: recipient.userId } };
+      updateData.artist = recipient.artist?.id ? { connect: { id: recipient.artist.id } } : { disconnect: true };
+    }
     if (amount !== undefined) {
       updateData.amount = parseFloatInput(amount);
     }
