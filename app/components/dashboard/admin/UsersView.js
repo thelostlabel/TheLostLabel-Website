@@ -53,23 +53,19 @@ export default function UsersView({ users, onRefresh }) {
 
         const user = users.find(u => u.id === recordId);
         if (user && user.id !== editingUser?.id) {
-            openEdit(user, false);
+            setEditingUser(user);
+            const perms = parsePermissions(user.permissions);
+            setEditForm({
+                email: user.email || '',
+                fullName: user.fullName || '',
+                stageName: user.stageName || '',
+                spotifyUrl: user.spotifyUrl || '',
+                role: user.role || 'artist',
+                status: user.status || 'pending',
+                permissions: perms
+            });
         }
-    }, [users, recordId, editingUser?.id, canOpenEditor, openEdit]);
-
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
-
-    const filteredUsers = useMemo(() => {
-        return users.filter(user =>
-            user.email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            user.stageName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            user.fullName?.toLowerCase().includes(debouncedSearch.toLowerCase())
-        );
-    }, [users, debouncedSearch]);
+    }, [users, recordId, editingUser?.id, canOpenEditor]);
 
     const openEdit = useCallback((user, updateRoute = true) => {
         setEditingUser(user);
@@ -89,6 +85,19 @@ export default function UsersView({ users, onRefresh }) {
             permissions: perms
         });
     }, [setRecordId]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const filteredUsers = useMemo(() => {
+        return users.filter(user =>
+            user.email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            user.stageName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            user.fullName?.toLowerCase().includes(debouncedSearch.toLowerCase())
+        );
+    }, [users, debouncedSearch]);
 
     const handleSave = async (overrideData = null) => {
         if (!overrideData && !canOpenEditor) {
