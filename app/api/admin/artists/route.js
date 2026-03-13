@@ -18,7 +18,7 @@ export async function GET(req) {
 
     try {
         const { searchParams } = new URL(req.url);
-        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 100 });
+        const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 500 });
 
         const [artists, total] = await Promise.all([
             prisma.artist.findMany({

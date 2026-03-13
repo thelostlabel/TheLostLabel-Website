@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Check } from 'lucide-react';
+import { Search, Check, Loader } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { btnStyle, glassStyle, inputStyle } from './styles';
 
-export default function CommunicationsView({ artists }) {
+export default function CommunicationsView({ artists: initialArtists }) {
     const { showToast } = useToast();
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
@@ -13,6 +13,28 @@ export default function CommunicationsView({ artists }) {
     const [selectedArtistIds, setSelectedArtistIds] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState(null);
+    const [artists, setArtists] = useState(initialArtists || []);
+    const [loadingAll, setLoadingAll] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchAllArtists() {
+            setLoadingAll(true);
+            try {
+                const res = await fetch('/api/admin/artists?limit=500');
+                const data = await res.json();
+                if (!cancelled && data.artists) {
+                    setArtists(data.artists);
+                }
+            } catch (e) {
+                console.error('Failed to fetch all artists:', e);
+            } finally {
+                if (!cancelled) setLoadingAll(false);
+            }
+        }
+        fetchAllArtists();
+        return () => { cancelled = true; };
+    }, []);
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -151,7 +173,7 @@ export default function CommunicationsView({ artists }) {
                 <div style={{ padding: '20px', maxHeight: '600px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     {sendToAll ? (
                         <div style={{ textAlign: 'center', padding: '40px 20px', color: '#444', fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px dashed rgba(255,255,255,0.05)' }}>
-                            TARGETING ALL {artistsWithEmail.length} ARTISTS WITH EMAIL
+                            {loadingAll ? <><Loader size={12} style={{ display: 'inline', animation: 'spin 1s linear infinite' }} /> LOADING ARTISTS...</> : `TARGETING ALL ${artistsWithEmail.length} ARTISTS WITH EMAIL`}
                         </div>
                     ) : (
                         <>
