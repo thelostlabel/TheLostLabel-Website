@@ -87,19 +87,17 @@ export function normalizeReleaseArtists(artists: RawReleaseArtist[] | null | und
   return Array.from(deduped.values());
 }
 
-export function buildReleaseArtistNestedWrite(artistsJson: string | null | undefined) {
+export function buildReleaseArtistNestedWrite(artistsJson: string | null | undefined, mode: "update" | "create" = "update") {
   const releaseArtists = parseReleaseArtistsJson(artistsJson);
-  return {
-    deleteMany: {},
-    ...(releaseArtists.length > 0
-      ? {
-          create: releaseArtists.map((artist) => ({
-            artistId: artist.artistId,
-            name: artist.name,
-          })),
-        }
-      : {}),
-  };
+  const createEntries = releaseArtists.length > 0
+    ? { create: releaseArtists.map((artist) => ({ artistId: artist.artistId, name: artist.name })) }
+    : {};
+
+  if (mode === "create") {
+    return createEntries;
+  }
+
+  return { deleteMany: {}, ...createEntries };
 }
 
 export function mapReleaseArtistsToSummary(releaseArtists: Pick<ReleaseArtist, "artistId" | "name">[] | null | undefined) {

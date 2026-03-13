@@ -299,7 +299,7 @@ export async function POST(req) {
                     },
                     create: {
                         ...rel,
-                        releaseArtists: buildReleaseArtistNestedWrite(rel.artistsJson)
+                        releaseArtists: buildReleaseArtistNestedWrite(rel.artistsJson, "create")
                     }
                 });
             }

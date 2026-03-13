@@ -229,7 +229,8 @@ export async function PATCH(req, { params }) {
                                 spotifyUrl: d.artist.spotifyUrl,
                                 artistsJson: JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }]),
                                 releaseArtists: buildReleaseArtistNestedWrite(
-                                    JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }])
+                                    JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }]),
+                                    "create"
                                 )
                             }
                         });
