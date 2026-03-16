@@ -119,7 +119,7 @@ export default function ArtistsSection({ artists: propArtists }) {
     );
   }, [columns]);
 
-  if (!artists.length) return null;
+  if (!artists.length) return <section ref={containerRef} style={{ display: "none" }} />;
 
   return (
     <section
