@@ -1,31 +1,31 @@
 import { z } from "zod";
 
 export const signupBodySchema = z.object({
-  fullName: z.string(),
-  stageName: z.string(),
-  email: z.string(),
-  password: z.string(),
+  fullName: z.string().min(1).max(100),
+  stageName: z.string().min(1).max(100),
+  email: z.string().email().max(254),
+  password: z.string().min(8).max(128),
 });
 
 export const emailBodySchema = z.object({
-  email: z.string(),
+  email: z.string().email().max(254),
 });
 
 export const updateEmailBodySchema = z.object({
-  currentEmail: z.string().optional(),
-  newEmail: z.string(),
+  currentEmail: z.string().email().max(254).optional(),
+  newEmail: z.string().email().max(254),
 });
 
 export const resetPasswordBodySchema = z.object({
-  token: z.string(),
-  password: z.string(),
+  token: z.string().min(1).max(256),
+  password: z.string().min(8).max(128),
 });
 
 export const tokenBodySchema = z.object({
-  token: z.string(),
+  token: z.string().min(1).max(256),
 });
 
 export const changePasswordBodySchema = z.object({
-  currentPassword: z.string(),
-  newPassword: z.string(),
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
 });

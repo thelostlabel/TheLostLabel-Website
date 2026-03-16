@@ -28,7 +28,7 @@ function VerifyPendingContent() {
 
     const handleResend = async () => {
         if (!email) {
-            setError("Lutfen once e-posta adresinizi girin.");
+            setError("Please enter your email address first.");
             return;
         }
         if (resendCooldown > 0) return;
@@ -45,13 +45,13 @@ function VerifyPendingContent() {
             });
             const data = await res.json();
             if (res.ok) {
-                setMessage("Dogrulama e-postasi tekrar gonderildi.");
+                setMessage("Verification email has been resent.");
                 setResendCooldown(60);
             } else {
-                setError(data.error || "Gonderim basarisiz oldu.");
+                setError(data.error || "Failed to send email.");
             }
         } catch {
-            setError("Gonderim basarisiz oldu. Baglantinizi kontrol edin.");
+            setError("Failed to send email. Please check your connection.");
         } finally {
             setLoading(false);
         }
@@ -60,7 +60,7 @@ function VerifyPendingContent() {
     const handleUpdateEmail = async (e) => {
         e.preventDefault();
         if (!email) {
-            setError("Mevcut e-posta bilgisi bulunamadi.");
+            setError("Current email information not found.");
             return;
         }
         if (newEmail === email) {
@@ -82,16 +82,16 @@ function VerifyPendingContent() {
             if (res.ok) {
                 setEmail(newEmail);
                 setIsEditing(false);
-                setMessage("E-posta guncellendi ve yeni dogrulama linki gonderildi.");
+                setMessage("Email updated and a new verification link has been sent.");
 
                 const url = new URL(window.location.href);
                 url.searchParams.set("email", newEmail);
                 window.history.replaceState({}, "", url);
             } else {
-                setError(data.error || "E-posta guncellenemedi.");
+                setError(data.error || "Failed to update email.");
             }
         } catch {
-            setError("E-posta guncellenemedi.");
+            setError("Failed to update email.");
         } finally {
             setLoading(false);
         }
@@ -123,12 +123,12 @@ function VerifyPendingContent() {
                     </div>
 
                     <h1 style={{ fontSize: "30px", fontWeight: "900", letterSpacing: "-0.02em", marginBottom: "10px" }}>
-                        {isApprovalFlow ? "ONAY SIRASINDA" : "E-POSTA DOGRULAMA"}
+                        {isApprovalFlow ? "PENDING APPROVAL" : "EMAIL VERIFICATION"}
                     </h1>
                     <p style={{ color: "#9098a7", fontSize: "14px", lineHeight: "1.65" }}>
                         {isApprovalFlow
-                            ? "E-posta dogrulamaniz tamamlandi. Hesabiniz admin onayina dustu."
-                            : "Gelen kutunuza giden linke tiklayarak hesabinizi aktif edin."}
+                            ? "Your email has been verified. Your account is now pending admin approval."
+                            : "Click the link sent to your inbox to activate your account."}
                     </p>
                 </div>
 
@@ -143,7 +143,7 @@ function VerifyPendingContent() {
                     >
                         {email && (
                             <div style={{ marginBottom: "16px" }}>
-                                <p style={{ fontSize: "11px", color: "#95a0b1", marginBottom: "4px" }}>Hesap</p>
+                                <p style={{ fontSize: "11px", color: "#95a0b1", marginBottom: "4px" }}>Account</p>
                                 <p style={{ fontSize: "15px", fontWeight: "700", color: "#fff" }}>{email}</p>
                             </div>
                         )}
@@ -159,7 +159,7 @@ function VerifyPendingContent() {
                                 lineHeight: "1.6",
                             }}
                         >
-                            Admin onayi tamamlandiginda giris yaparak dashboarda ulasabilirsiniz.
+                            Once admin approval is complete, you can sign in and access your dashboard.
                         </div>
 
                         <div style={{ marginTop: "18px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -174,7 +174,7 @@ function VerifyPendingContent() {
                                     textDecoration: "none",
                                 }}
                             >
-                                Giris Sayfasi
+                                Try Sign In
                             </Link>
                             <Link
                                 href="/"
@@ -187,7 +187,7 @@ function VerifyPendingContent() {
                                     textDecoration: "none",
                                 }}
                             >
-                                Ana Sayfa
+                                Home
                             </Link>
                         </div>
                     </div>
@@ -213,10 +213,10 @@ function VerifyPendingContent() {
                                     >
                                         <div style={{ overflow: "hidden" }}>
                                             <p style={{ fontSize: "10px", fontWeight: "900", color: "var(--accent)", letterSpacing: "2px", marginBottom: "4px" }}>
-                                                GONDERILEN ADRES
+                                                SENT TO
                                             </p>
                                             <p style={{ fontSize: "15px", fontWeight: "700", color: "#fff", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
-                                                {email || "E-posta girilmedi"}
+                                                {email || "No email provided"}
                                             </p>
                                         </div>
                                         <button
@@ -229,7 +229,7 @@ function VerifyPendingContent() {
                                                 color: "#fff",
                                                 cursor: "pointer",
                                             }}
-                                            title="E-posta degistir"
+                                            title="Change email"
                                         >
                                             <Edit2 size={16} />
                                         </button>
@@ -248,7 +248,7 @@ function VerifyPendingContent() {
                                             value={newEmail}
                                             onChange={(e) => setNewEmail(e.target.value)}
                                             required
-                                            placeholder="Yeni e-posta adresi"
+                                            placeholder="New email address"
                                             style={{
                                                 flex: 1,
                                                 background: "rgba(0,0,0,0.3)",
@@ -274,7 +274,7 @@ function VerifyPendingContent() {
                                                 fontSize: "12px",
                                             }}
                                         >
-                                            KAYDET
+                                            SAVE
                                         </button>
                                     </motion.form>
                                 )}
@@ -353,7 +353,7 @@ function VerifyPendingContent() {
                                 }}
                             >
                                 {loading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                                {resendCooldown > 0 ? `Tekrar Gonder (${resendCooldown}s)` : "Dogrulama E-postasini Tekrar Gonder"}
+                                {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : "Resend Verification Email"}
                             </button>
 
                             <Link
@@ -375,12 +375,12 @@ function VerifyPendingContent() {
                                     background: "rgba(255,255,255,0.01)",
                                 }}
                             >
-                                GIRIS SAYFASINA DON <ArrowRight size={14} />
+                                BACK TO SIGN IN <ArrowRight size={14} />
                             </Link>
                         </div>
 
                         <p style={{ marginTop: "22px", fontSize: "11px", color: "#687184", textAlign: "center", lineHeight: "1.6" }}>
-                            Mail gelmediyse spam klasorunu kontrol edin.
+                            If you didn&apos;t receive the email, check your spam folder.
                         </p>
                     </>
                 )}

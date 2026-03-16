@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     }
 
     const verificationToken = generateOpaqueToken();
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const verificationTokenExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     await prisma.user.update({
       where: { id: user.id },

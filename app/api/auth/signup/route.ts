@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = generateOpaqueToken();
     const verificationTokenHash = hashOpaqueToken(verificationToken);
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const verificationTokenExpiry = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
     const user = await prisma.$transaction(async (tx) => {
       const matchedSpotifyUrl = spotifyMatch?.spotifyUrl || existingArtist?.spotifyUrl || null;
@@ -174,11 +174,15 @@ export async function POST(req: Request) {
 
     const verificationLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/auth/verify-email?token=${verificationToken}`;
 
-    await sendMail({
-      to: email,
-      subject: "Confirm your collective identity | LOST.",
-      html: generateVerificationEmail(verificationLink),
-    });
+    try {
+      await sendMail({
+        to: email,
+        subject: "Confirm your collective identity | LOST.",
+        html: generateVerificationEmail(verificationLink),
+      });
+    } catch (mailError) {
+      console.error("Verification email failed (user created, can resend later):", mailError instanceof Error ? mailError.message : mailError);
+    }
 
     return NextResponse.json({ success: true, userId: user.id }, { status: 201 });
   } catch (error) {

@@ -1,17 +1,30 @@
 "use client";
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import BackgroundEffects from '../../components/BackgroundEffects';
 import { motion } from 'framer-motion';
 
-export default function Login() {
+function LoginContent() {
+    const searchParams = useSearchParams();
+    const statusParam = searchParams.get('status');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        const emailParam = searchParams.get('email') || '';
+        if (statusParam === 'pending') {
+            router.replace(`/auth/verify-pending?step=approval${emailParam ? `&email=${encodeURIComponent(emailParam)}` : ''}`);
+        } else if (statusParam === 'verified') {
+            router.replace(`/auth/verify-pending?step=approval${emailParam ? `&email=${encodeURIComponent(emailParam)}` : ''}`);
+        }
+    }, [statusParam, searchParams, router]);
+
+    if (statusParam === 'pending' || statusParam === 'verified') return null;
 
     const getSafeCallbackUrl = () => {
         if (typeof window === 'undefined') return '/dashboard';
@@ -23,17 +36,17 @@ export default function Login() {
     const getFriendlyError = (rawError) => {
         switch (rawError) {
             case 'EMAIL NOT VERIFIED':
-                return 'E-posta adresiniz henuz dogrulanmamis. Dogrulama merkezine gidip linki tekrar gonderebilirsiniz.';
+                return 'Your email has not been verified yet. Go to the verification center to resend the link.';
             case 'ACCOUNT PENDING APPROVAL':
-                return 'E-posta dogrulamaniz tamam, hesabiniz su an admin onayi bekliyor.';
+                return 'Your email is verified, but your account is pending admin approval.';
             case 'INVALID EMAIL OR PASSWORD':
-                return 'E-posta veya sifre hatali.';
+                return 'Invalid email or password.';
             case 'TOO MANY ATTEMPTS':
-                return 'Cok fazla deneme yapildi. Lutfen biraz sonra tekrar deneyin.';
+                return 'Too many attempts. Please try again later.';
             case 'REGISTRATIONS CLOSED':
-                return 'Kayitlar su an kapali.';
+                return 'Registrations are currently closed.';
             default:
-                return rawError || 'Giris yaparken bir hata olustu.';
+                return rawError || 'An error occurred while signing in.';
         }
     };
 
@@ -50,6 +63,14 @@ export default function Login() {
         });
 
         if (result.error) {
+            if (result.error === 'ACCOUNT PENDING APPROVAL') {
+                router.push(`/auth/verify-pending?step=approval&email=${encodeURIComponent(email)}`);
+                return;
+            }
+            if (result.error === 'EMAIL NOT VERIFIED') {
+                router.push(`/auth/verify-pending?email=${encodeURIComponent(email)}`);
+                return;
+            }
             setError(result.error);
             setLoading(false);
         } else {
@@ -223,5 +244,13 @@ export default function Login() {
                 }
             `}</style>
         </div>
+    );
+}
+
+export default function Login() {
+    return (
+        <Suspense fallback={<div style={{ background: '#050607', minHeight: '100vh' }} />}>
+            <LoginContent />
+        </Suspense>
     );
 }

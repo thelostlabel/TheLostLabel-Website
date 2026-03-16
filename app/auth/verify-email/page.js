@@ -7,9 +7,9 @@ import { Suspense } from 'react';
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
-    const [status, setStatus] = useState(token ? 'verifying' : 'error'); // verifying, success, error
+    const [status, setStatus] = useState(token ? 'verifying' : 'error');
     const [message, setMessage] = useState(
-        token ? 'Email adresiniz dogrulaniyor...' : 'Dogrulama baglantisi gecersiz veya eksik.'
+        token ? 'Verifying your email address...' : 'Verification link is invalid or missing.'
     );
     const [verifiedEmail, setVerifiedEmail] = useState('');
 
@@ -31,16 +31,16 @@ function VerifyEmailContent() {
                     if (isCancelled) return;
                     setStatus('success');
                     setVerifiedEmail(data?.email || '');
-                    setMessage('E-posta adresiniz dogrulandi. Hesabiniz su an admin onayi bekliyor.');
+                    setMessage('Your email has been verified. Your account is now pending admin approval.');
                 } else {
                     if (isCancelled) return;
                     setStatus('error');
-                    setMessage(data.error || 'Dogrulama islemi basarisiz oldu.');
+                    setMessage(data.error || 'Verification failed.');
                 }
             } catch {
                 if (isCancelled) return;
                 setStatus('error');
-                setMessage('Bir hata olustu. Lutfen tekrar deneyin.');
+                setMessage('An error occurred. Please try again.');
             }
         };
 
@@ -62,9 +62,9 @@ function VerifyEmailContent() {
             padding: '20px'
         }}>
             <div className="glass" style={{ padding: '40px', maxWidth: '400px', width: '100%', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <h1 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 'bold' }}>E-Posta Dogrulama</h1>
+                <h1 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 'bold' }}>Email Verification</h1>
                 <p style={{ color: '#888', fontSize: '14px', marginBottom: '22px' }}>
-                    Hesabinizin guvenligi icin e-posta baglantisini kontrol ediyoruz.
+                    We are verifying your email link for account security.
                 </p>
 
                 {status === 'verifying' && (
@@ -79,14 +79,14 @@ function VerifyEmailContent() {
                         <div style={{ fontSize: '40px', marginBottom: '14px' }}>OK</div>
                         <p>{message}</p>
                         <div style={{ marginTop: '22px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <Link href="/auth/login" style={{ padding: '10px 16px', borderRadius: '10px', background: '#fff', color: '#000', fontWeight: '700', textDecoration: 'none' }}>
-                                Giris Ekrani
+                            <Link href="/auth/login?status=verified" style={{ padding: '10px 16px', borderRadius: '10px', background: '#fff', color: '#000', fontWeight: '700', textDecoration: 'none' }}>
+                                Sign In
                             </Link>
                             <Link
                                 href={`/auth/verify-pending?step=approval${verifiedEmail ? `&email=${encodeURIComponent(verifiedEmail)}` : ''}`}
                                 style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontWeight: '700', textDecoration: 'none' }}
                             >
-                                Onay Durumu
+                                Approval Status
                             </Link>
                         </div>
                     </div>
@@ -97,7 +97,7 @@ function VerifyEmailContent() {
                         <div style={{ fontSize: '40px', marginBottom: '14px' }}>X</div>
                         <p>{message}</p>
                         <Link href="/auth/login" style={{ display: 'inline-block', marginTop: '20px', color: '#fff', textDecoration: 'underline' }}>
-                            Giris Sayfasina Don
+                            Back to Sign In
                         </Link>
                     </div>
                 )}

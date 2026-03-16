@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     const { token, password } = parsedBody.data;
 
-    const allowed = await passesRateLimit(resetPasswordLimiter, 8, buildRateLimitKey(req, "reset-password"));
+    const allowed = await passesRateLimit(resetPasswordLimiter, 5, buildRateLimitKey(req, "reset-password"));
     if (!allowed) {
       return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
     }
