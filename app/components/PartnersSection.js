@@ -183,15 +183,13 @@ export default function PartnersSection({ platforms = DEFAULT_HOME_PARTNERS }) {
     return normalized.length > 0 ? normalized : DEFAULT_HOME_PARTNERS.map((name) => ({ name, Icon: LOGO_REGISTRY[name] }));
   }, [platforms]);
 
-  const row1 = logos.filter((_, index) => index % 2 === 0);
-  const row2 = logos.filter((_, index) => index % 2 === 1);
+  const row1 = useMemo(() => logos.filter((_, index) => index % 2 === 0), [logos]);
+  const row2 = useMemo(() => logos.filter((_, index) => index % 2 === 1), [logos]);
 
   return (
     <section
       style={{
         padding: "64px 0",
-        borderTop: "1px solid rgba(255,255,255,0.04)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
         overflow: "hidden",
         position: "relative",
         display: "flex",

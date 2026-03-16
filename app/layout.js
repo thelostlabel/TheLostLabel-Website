@@ -3,7 +3,6 @@ import Navbar from "./components/Navbar";
 import AuthProvider from "./components/AuthProvider";
 import QueryProvider from "./components/QueryProvider";
 import { PublicSettingsProvider } from "./components/PublicSettingsContext";
-import SmoothScroll from "./components/SmoothScroll";
 import { ToastProvider } from "./components/ToastContext";
 import { PlayerProvider } from "./components/PlayerContext";
 import Player from "./components/Player";
@@ -88,7 +87,6 @@ export default async function RootLayout({ children }) {
       </head>
       <body>
         <PublicSettingsProvider value={publicSettings}>
-          <SmoothScroll />
           <QueryProvider>
             <AuthProvider>
               <ToastProvider>

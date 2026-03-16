@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { ReactLenis } from 'lenis/react';
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate, AnimatePresence } from "framer-motion";
 import {
   Rocket,
   ShieldCheck,
   Play,
+  Pause,
   Globe2,
   Zap,
 } from "lucide-react";
@@ -262,6 +263,9 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
           </div>
 
           <motion.div
+            role="button"
+            aria-label="Play preview"
+            tabIndex={0}
             whileHover={{ scale: 1.1, backgroundColor: "#E5E7EB" }}
             whileTap={{ scale: 0.95 }}
             style={{ width: "48px", height: "48px", background: "#fff", display: "grid", placeItems: "center", cursor: "pointer", transition: "background 0.2s" }}
@@ -278,7 +282,7 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
                     previewUrl: heroRelease.preview_url
                   });
                 } else if (heroRelease.spotify_url) {
-                  window.open(heroRelease.spotify_url, '_blank');
+                  window.open(heroRelease.spotify_url, '_blank', 'noopener,noreferrer');
                 }
               }
             }}
@@ -289,6 +293,415 @@ const BrutalistHeroCover = ({ heroRelease, playTrack }) => {
       </div>
       <div style={{ position: "absolute", inset: 0, border: "1px solid rgba(255,255,255,0.1)", pointerEvents: "none" }} />
     </motion.div>
+  );
+};
+
+// ---- STACKED RELEASES (scroll-lock via IntersectionObserver) ----
+
+const StackedCard = ({ release, index, activeIndex, total, playTrack, currentTrack, isPlaying }) => {
+  const [hovered, setHovered] = useState(false);
+  const position = index - activeIndex;
+  const isCurrent = position === 0;
+  const isPast = position < 0;
+
+  const imageSrc = release.image?.startsWith("private/")
+    ? `/api/files/release/${release.id}`
+    : release.image;
+  const artist = release.artists?.map((a) => a.name).join(", ") || release.artist;
+  const title = (release.name || "").split(" (")[0].split(" - ")[0];
+  const isCurrentTrack = currentTrack?.id === release.id;
+  const isActive = isCurrentTrack && isPlaying;
+
+  const handlePlay = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (release.preview_url) {
+      playTrack({ id: release.id, name: release.name, artist, image: imageSrc, previewUrl: release.preview_url });
+    } else if (release.spotify_url) {
+      window.open(release.spotify_url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  return (
+    <motion.div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      animate={{
+        y: position > 0 ? "110vh" : "0vh",
+        scale: isCurrent ? 1 : isPast ? Math.max(0.72, 1 + position * 0.06) : 1,
+        translateY: isPast ? `${position * 28}px` : "0px",
+        zIndex: total + position,
+        opacity: position < -4 ? 0 : 1,
+      }}
+      transition={{ type: "spring", stiffness: 320, damping: 34 }}
+      style={{
+        position: "absolute",
+        width: "min(520px, 88vw)",
+        aspectRatio: "1/1",
+        transformOrigin: "top center",
+        overflow: "hidden",
+        boxShadow: isCurrent
+          ? "0 60px 120px rgba(0,0,0,0.95), 0 20px 60px rgba(0,0,0,0.6)"
+          : "0 30px 60px rgba(0,0,0,0.7)",
+      }}
+    >
+      <Link href={`/releases/${release.id}`} style={{ display: "block", width: "100%", height: "100%", position: "relative" }}>
+        {imageSrc ? (
+          <motion.div
+            animate={hovered && isCurrent ? { scale: 1.06 } : { scale: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <NextImage src={imageSrc} alt={release.name} fill style={{ objectFit: "cover" }} />
+          </motion.div>
+        ) : (
+          <div style={{ position: "absolute", inset: 0, background: "#111", display: "grid", placeItems: "center" }}>
+            <Globe2 size={48} color="#333" />
+          </div>
+        )}
+
+        <div style={{ position: "absolute", top: "20px", left: "20px", fontSize: "11px", fontWeight: "900", letterSpacing: "3px", color: "rgba(255,255,255,0.45)", zIndex: 10 }}>
+          {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+        </div>
+
+        {release.stream_count_text && (
+          <div style={{ position: "absolute", top: "20px", right: "20px", background: "rgba(245,197,66,0.95)", color: "#000", padding: "7px 14px", fontSize: "10px", fontWeight: "900", letterSpacing: "1.5px", zIndex: 10 }}>
+            {release.stream_count_text} STREAMS
+          </div>
+        )}
+
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.55) 55%, transparent 100%)", padding: "52px 28px 28px", zIndex: 10 }}>
+          {release.release_type && (
+            <div style={{ fontSize: "10px", fontWeight: "900", letterSpacing: "4px", color: "rgba(229,231,235,0.6)", marginBottom: "8px", textTransform: "uppercase" }}>
+              {release.release_type}
+            </div>
+          )}
+          <h3 style={{ fontSize: "clamp(22px, 5vw, 34px)", fontWeight: "900", letterSpacing: "-0.02em", lineHeight: 1.05, marginBottom: "8px", textTransform: "uppercase" }}>
+            {title}
+          </h3>
+          <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.55)", fontWeight: "600", margin: 0 }}>{artist}</p>
+        </div>
+
+        <motion.div
+          role="button"
+          aria-label={isActive ? `Pause ${release.name}` : `Play ${release.name}`}
+          tabIndex={0}
+          onClick={handlePlay}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handlePlay(e); } }}
+          animate={{ opacity: (hovered && isCurrent) || isActive ? 1 : 0 }}
+          transition={{ duration: 0.25 }}
+          style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.3)", zIndex: 11, cursor: "pointer" }}
+        >
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.92 }}
+            style={{ width: "72px", height: "72px", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 40px rgba(0,0,0,0.6)" }}
+          >
+            {isActive ? <Pause size={30} fill="#000" color="#000" /> : <Play size={30} fill="#000" color="#000" style={{ marginLeft: "4px" }} />}
+          </motion.div>
+        </motion.div>
+      </Link>
+    </motion.div>
+  );
+};
+
+const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
+  const sectionRef = useRef(null);
+  const lockedRef = useRef(false);
+  const cooldownRef = useRef(false);
+  const activeIndexRef = useRef(0);
+  const lastWheelRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const n = releases.length;
+  const pathname = usePathname();
+
+  // Helper to clear overflow lock
+  const clearOverflowLock = useCallback(() => {
+    lockedRef.current = false;
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+    setIsLocked(false);
+  }, []);
+
+  // Snap scroll to section top
+  const snapToSection = useCallback(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    window.scrollTo({ top: section.offsetTop, behavior: "auto" });
+  }, []);
+
+  // Lock: freeze page scroll at section
+  const lock = useCallback(() => {
+    if (lockedRef.current || cooldownRef.current) return;
+    lockedRef.current = true;
+    snapToSection();
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    setIsLocked(true);
+  }, [snapToSection]);
+
+  // Unlock: remove overflow lock, scroll to next/prev section
+  const unlock = useCallback((direction) => {
+    lockedRef.current = false;
+    cooldownRef.current = true;
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+    setIsLocked(false);
+
+    const section = sectionRef.current;
+    if (section) {
+      const target = direction === "down"
+        ? section.offsetTop + section.offsetHeight + 2
+        : Math.max(0, section.offsetTop - window.innerHeight + 2);
+      window.scrollTo({ top: target, behavior: "smooth" });
+    }
+
+    setTimeout(() => { cooldownRef.current = false; }, 1200);
+  }, []);
+
+  // Route-change cleanup: always release scroll lock on navigation
+  useEffect(() => {
+    clearOverflowLock();
+  }, [pathname, clearOverflowLock]);
+
+  // Detect section via scroll position
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const checkLock = () => {
+      if (lockedRef.current || cooldownRef.current) return;
+      const rect = section.getBoundingClientRect();
+      const vh = window.innerHeight;
+      if (rect.top <= vh * 0.15 && rect.bottom >= vh * 0.85) {
+        lock();
+      }
+    };
+
+    window.addEventListener("scroll", checkLock, { passive: true });
+    return () => window.removeEventListener("scroll", checkLock);
+  }, [lock]);
+
+  // Always-on wheel interceptor (capture phase)
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (!lockedRef.current) return;
+
+      e.preventDefault();
+
+      // Re-snap to make sure we stay pinned
+      snapToSection();
+
+      const now = Date.now();
+      if (now - lastWheelRef.current < 450) return;
+      lastWheelRef.current = now;
+
+      const cur = activeIndexRef.current;
+      if (e.deltaY > 5) {
+        if (cur >= n - 1) { unlock("down"); }
+        else { activeIndexRef.current = cur + 1; setActiveIndex(cur + 1); }
+      } else if (e.deltaY < -5) {
+        if (cur <= 0) { unlock("up"); }
+        else { activeIndexRef.current = cur - 1; setActiveIndex(cur - 1); }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false, capture: true });
+    return () => window.removeEventListener("wheel", handleWheel, { capture: true });
+  }, [n, snapToSection, unlock]);
+
+  // Touch capture for mobile — scoped to section element
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!isLocked || !section) return;
+
+    let startY = 0;
+    const onStart = (e) => { startY = e.touches[0].clientY; };
+    const onMove = (e) => { e.preventDefault(); };
+    const onEnd = (e) => {
+      const deltaY = startY - e.changedTouches[0].clientY;
+      if (Math.abs(deltaY) < 50) return;
+      const cur = activeIndexRef.current;
+      if (deltaY > 0) {
+        if (cur >= n - 1) unlock("down");
+        else { activeIndexRef.current = cur + 1; setActiveIndex(cur + 1); }
+      } else {
+        if (cur <= 0) unlock("up");
+        else { activeIndexRef.current = cur - 1; setActiveIndex(cur - 1); }
+      }
+    };
+
+    section.addEventListener("touchstart", onStart, { passive: true });
+    section.addEventListener("touchmove", onMove, { passive: false });
+    section.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      section.removeEventListener("touchstart", onStart);
+      section.removeEventListener("touchmove", onMove);
+      section.removeEventListener("touchend", onEnd);
+    };
+  }, [isLocked, n, unlock]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  if (!releases || n === 0) return null;
+
+  return (
+    <section ref={sectionRef} style={{ height: "100vh", position: "relative", zIndex: 10, overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ position: "absolute", top: "40px", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "1200px", padding: "0 32px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 20 }}>
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: "900", letterSpacing: "4px", color: "rgba(229,231,235,0.45)", marginBottom: "6px" }}>SELECTED WORKS</div>
+          <KineticText as="h2" text="LATEST DROPS" style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: "900" }} />
+        </div>
+        <Link href="/releases" style={{ fontSize: "12px", fontWeight: "800", letterSpacing: "1px", borderBottom: "1px solid rgba(229,231,235,0.4)", paddingBottom: "3px", color: "rgba(255,255,255,0.6)" }}>
+          VIEW ALL →
+        </Link>
+      </div>
+
+      {/* Cards */}
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {releases.map((release, i) => (
+          <StackedCard
+            key={release.id}
+            release={release}
+            index={i}
+            activeIndex={activeIndex}
+            total={n}
+            playTrack={playTrack}
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+          />
+        ))}
+      </div>
+
+      {/* Progress dots */}
+      <div style={{ position: "absolute", bottom: "36px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "8px", alignItems: "center", zIndex: 20 }}>
+        {releases.map((_, i) => (
+          <motion.div
+            key={i}
+            animate={{ width: i === activeIndex ? "28px" : "6px", background: i <= activeIndex ? "#fff" : "rgba(255,255,255,0.2)" }}
+            transition={{ duration: 0.3 }}
+            style={{ height: "5px", borderRadius: "3px" }}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
+
+// ---- Hero Artist Mosaic Background ----
+const HeroArtistMosaic = ({ artists }) => {
+  const containerRef = useRef(null);
+  const spotX = useMotionValue(50);
+  const spotY = useMotionValue(50);
+
+  const overlayBg = useMotionTemplate`radial-gradient(circle 180px at ${spotX}% ${spotY}%, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.75) 40%, rgba(0,0,0,0.92) 70%)`;
+
+  useEffect(() => {
+    const handleMove = (e) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      spotX.set(((e.clientX - rect.left) / rect.width) * 100);
+      spotY.set(((e.clientY - rect.top) / rect.height) * 100);
+    };
+    window.addEventListener("mousemove", handleMove);
+    return () => window.removeEventListener("mousemove", handleMove);
+  }, [spotX, spotY]);
+
+  // Memoize grid computation
+  const columns = useMemo(() => {
+    if (!artists || artists.length === 0) return [];
+    const cols = 6;
+    const rows = 5;
+    const total = cols * rows;
+    const grid = Array.from({ length: total }, (_, i) => artists[i % artists.length]);
+    return Array.from({ length: cols }, (_, c) =>
+      grid.filter((_, i) => i % cols === c)
+    );
+  }, [artists]);
+
+  if (!artists || artists.length === 0) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 1,
+        overflow: "hidden",
+      }}
+    >
+      {/* Artist grid columns */}
+      <div style={{ display: "flex", height: "140%", marginTop: "-20%", gap: "4px", padding: "0 4px" }}>
+        {columns.map((col, colIdx) => {
+          const list = [...col, ...col];
+          const dir = colIdx % 2 === 0 ? "up" : "down";
+          const speed = 40 + colIdx * 5;
+          return (
+            <div key={colIdx} style={{ flex: 1, overflow: "hidden", height: "100%" }}>
+              <motion.div
+                animate={{ y: dir === "up" ? ["0%", "-50%"] : ["-50%", "0%"] }}
+                transition={{ duration: speed, repeat: Infinity, ease: "linear" }}
+                style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+              >
+                {list.map((artist, idx) => (
+                  <div
+                    key={`${artist.id}-${idx}`}
+                    style={{
+                      aspectRatio: "1/1",
+                      borderRadius: "6px",
+                      overflow: "hidden",
+                      position: "relative",
+                    }}
+                  >
+                    {artist.image ? (
+                      <NextImage
+                        src={artist.image}
+                        alt={artist.name}
+                        fill
+                        sizes="18vw"
+                        style={{ objectFit: "cover" }}
+                      />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: "#111" }} />
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dark overlay with mouse spotlight cutout */}
+      <motion.div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: overlayBg,
+          zIndex: 2,
+        }}
+      />
+
+      {/* Extra center darkening for text readability */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%)",
+          zIndex: 3,
+          pointerEvents: "none",
+        }}
+      />
+    </div>
   );
 };
 
@@ -307,7 +720,7 @@ export default function Home({ initialContent }) {
   const [introDone, setIntroDone] = useState(false);
   const [heroRelease, setHeroRelease] = useState(null);
 
-  const { playTrack } = usePlayer();
+  const { playTrack, currentTrack, isPlaying } = usePlayer();
 
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
@@ -318,7 +731,21 @@ export default function Home({ initialContent }) {
   const partnerPlatforms = initialContent?.partners?.length ? initialContent.partners : DEFAULT_HOME_PARTNERS;
   const footerLinks = initialContent?.footerLinks || DEFAULT_FOOTER_LINKS;
 
+  const featuredReleaseId = publicSettings?.featuredReleaseId;
+
   useEffect(() => {
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Fisher-Yates shuffle (unbiased)
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
     const fetchData = async () => {
       try {
         const [resReleases, resStats, resArtists] = await Promise.all([
@@ -331,16 +758,15 @@ export default function Home({ initialContent }) {
         const jsonStats = await resStats.json();
         const jsonArtists = await resArtists.json();
 
-        if (jsonReleases?.releases) setReleases(jsonReleases.releases.slice(0, 6));
+        if (jsonReleases?.releases) setReleases(jsonReleases.releases.slice(0, 5));
         if (jsonStats?.artistCount) setArtistCount(jsonStats.artistCount);
         if (jsonArtists?.artists) {
-          // Send all artists, randomized
-          setArtists(jsonArtists.artists.sort(() => 0.5 - Math.random()));
+          setArtists(shuffle(jsonArtists.artists));
         }
 
         let featured = null;
-        if (publicSettings?.featuredReleaseId && jsonReleases?.releases) {
-          featured = jsonReleases.releases.find((r) => r.id === publicSettings.featuredReleaseId) || null;
+        if (featuredReleaseId && jsonReleases?.releases) {
+          featured = jsonReleases.releases.find((r) => r.id === featuredReleaseId) || null;
         }
 
         // If no configured feature or it wasn't found, try to find one with a preview
@@ -356,17 +782,13 @@ export default function Home({ initialContent }) {
       }
     };
 
-    fetchData();
+    // Run fetch and minimum preloader duration in parallel
+    Promise.all([fetchData(), delay(1500)]).then(() => setIntroDone(true));
 
-    // Ensure preloader shows for at least 1.5 seconds for dramatic effect
-    setTimeout(() => {
-      setIntroDone(true);
-    }, 1500);
-
-  }, [publicSettings]);
+  }, [featuredReleaseId]);
 
   return (
-    <ReactLenis root options={{ lerp: 0.04, wheelMultiplier: 0.85, smoothWheel: true }}>
+    <>
       <AnimatePresence>
         {(loading || !introDone) && (
           <motion.div
@@ -398,21 +820,23 @@ export default function Home({ initialContent }) {
         )}
       </AnimatePresence>
 
-      <div style={{ background: "#0a0a0c", minHeight: "100vh", color: "#fff", overflowX: "hidden" }}>
+      <div style={{ minHeight: "100vh", color: "#fff", overflowX: "hidden", position: "relative" }}>
         <BackgroundEffects />
 
         {/* --- HERO SECTION --- */}
         <section className="snap-section" style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", paddingTop: "120px", overflow: "hidden" }}>
 
-          {/* Animated Background Mesh */}
-          <div className="bg-gradient-mesh" style={{ position: "absolute", inset: 0, opacity: 0.6 }} />
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at center, transparent 0%, #0a0a0c 90%)" }} />
+          {/* Artist Mosaic Background */}
+          <HeroArtistMosaic artists={artists} />
+
+          {/* Fallback gradient when no artists loaded yet */}
+          <div className="bg-gradient-mesh" style={{ position: "absolute", inset: 0, opacity: artists.length > 0 ? 0 : 0.6, transition: "opacity 1s ease" }} />
           <Particles
-            className="absolute inset-0 z-[2] opacity-50"
-            quantity={24}
+            className="absolute inset-0 z-[4] opacity-30"
+            quantity={16}
             staticity={65}
             ease={70}
-            size={0.45}
+            size={0.4}
             color="#d7dbe3"
             vx={0.02}
             vy={-0.01}
@@ -500,7 +924,7 @@ export default function Home({ initialContent }) {
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
-            style={{ position: "absolute", bottom: "40px", left: "50%", translateX: "-50%", opacity: 0.5 }}
+            style={{ position: "absolute", bottom: "40px", left: "50%", translateX: "-50%", opacity: 0.5, zIndex: 10 }}
           >
             <div style={{ width: "20px", height: "32px", border: "2px solid #fff", borderRadius: "10px", display: "flex", justifyContent: "center", paddingTop: "6px" }}>
               <div style={{ width: "4px", height: "4px", background: "#fff", borderRadius: "50%" }} />
@@ -509,10 +933,29 @@ export default function Home({ initialContent }) {
 
         </section>
 
+        {/* --- STACKED RELEASES --- */}
+        {!loading && releases.length > 0 && (
+          <HitTracksSection
+            releases={releases}
+            playTrack={playTrack}
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+          />
+        )}
+
+        {/* ═══ Transition: Releases → Roster ═══ */}
+        <div style={{ position: "relative", height: "120px", marginTop: "-60px", zIndex: 11, pointerEvents: "none" }}>
+          <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: "1px", height: "60px", background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.06), transparent)" }} />
+        </div>
+
+        {/* --- THE ROSTER --- */}
+        <ArtistsSection artists={artists} />
+
         {/* --- STATS TICKER --- */}
         {publicSettings?.showStats !== false && statsItems.length > 0 && (
-          <section className="snap-section" style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", minHeight: "60vh", padding: "60px 24px", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}>
-            <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px", width: "100%" }}>
+          <section className="snap-section" style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", minHeight: "50vh", padding: "80px 24px" }}>
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 50% 70% at 50% 50%, rgba(255,255,255,0.025) 0%, transparent 70%)" }} />
+            <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px", width: "100%", position: "relative", zIndex: 2 }}>
               {statsItems.map((item, index) => {
                 const dynamicValue = item.dynamicKey === "artistCount" && artistCount ? `${artistCount}+` : item.value;
                 return <StatItem key={`${item.label}-${index}`} label={item.label} value={dynamicValue} delay={0.2 + (index * 0.2)} />;
@@ -521,12 +964,10 @@ export default function Home({ initialContent }) {
           </section>
         )}
 
-        {/* --- PARTNERS MARQUEE --- */}
-        <PartnersSection platforms={partnerPlatforms} />
-
         {/* --- FEATURES GRID --- */}
-        <section className="snap-section" style={{ position: "relative", zIndex: 10, padding: "120px 24px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <section className="snap-section" style={{ position: "relative", zIndex: 10, padding: "80px 24px 120px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 50% at 50% 30%, rgba(255,255,255,0.02) 0%, transparent 60%)" }} />
+          <div style={{ maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 2 }}>
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -558,44 +999,12 @@ export default function Home({ initialContent }) {
           </div>
         </section>
 
-        {/* --- ARTISTS MARQUEE --- */}
-        <ArtistsSection artists={artists} />
-
-        {/* --- SELECTED RELEASES --- */}
-        <section className="snap-section" style={{ position: "relative", zIndex: 10, padding: "100px 24px", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-          <div style={{ width: "100%", maxWidth: "1200px", margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", marginBottom: "50px" }}>
-              <div>
-                <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} style={{ fontSize: "11px", fontWeight: "900", letterSpacing: "2px", color: "rgba(229,231,235,0.9)", marginBottom: "8px" }}>CURATED PICKS</motion.div>
-                <KineticText as="h2" text="LATEST DROPS" style={{ fontSize: "42px", fontWeight: "900" }} />
-              </div>
-              <motion.div initial={{ opacity: 0, filter: "blur(10px)" }} whileInView={{ opacity: 1, filter: "blur(0px)" }} viewport={{ once: true }} transition={{ delay: 0.5 }}>
-                <Link href="/releases" style={{ fontSize: "13px", fontWeight: "800", letterSpacing: "1px", borderBottom: "1px solid rgba(229,231,235,0.75)", paddingBottom: "4px" }}>VIEW ALL RELEASES</Link>
-              </motion.div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px", width: "100%" }}>
-              {loading
-                ? [1, 2, 3].map(i => <div key={i} style={{ height: "300px", background: "rgba(255,255,255,0.05)" }} />)
-                : releases.slice(0, 3).map((r, i) => (
-                  <motion.div
-                    key={r.id}
-                    initial={{ opacity: 0, y: 100 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.2, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    style={{ width: "100%" }}
-                  >
-                    <ReleaseCard id={r.id} initialData={r} />
-                  </motion.div>
-                ))
-              }
-            </div>
-          </div>
-        </section>
+        {/* --- PARTNERS MARQUEE --- */}
+        <PartnersSection platforms={partnerPlatforms} />
 
         {/* --- CTA SECTION --- */}
-        <section className="snap-section" style={{ padding: "140px 24px", minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", overflow: "hidden", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <section className="snap-section" style={{ padding: "100px 24px 140px", minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 60% 60% at 50% 55%, rgba(255,255,255,0.025) 0%, transparent 70%)" }} />
           <Ripple numRipples={6} mainCircleSize={180} mainCircleOpacity={0.18} duration={4} />
           <div style={{ position: "relative", zIndex: 10, maxWidth: "800px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <KineticText
@@ -627,6 +1036,6 @@ export default function Home({ initialContent }) {
 
         <Footer footerLinks={footerLinks} />
       </div>
-    </ReactLenis>
+    </>
   );
 }

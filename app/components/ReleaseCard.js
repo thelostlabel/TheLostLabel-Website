@@ -51,7 +51,7 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
 
         if (!hasPreview) {
             if (data?.spotify_url) {
-                window.open(data.spotify_url, '_blank', 'noopener');
+                window.open(data.spotify_url, '_blank', 'noopener,noreferrer');
             }
             return;
         }
