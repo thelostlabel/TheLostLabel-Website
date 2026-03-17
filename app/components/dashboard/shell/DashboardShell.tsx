@@ -92,6 +92,23 @@ type DashboardShellProps = PropsWithChildren<{
   initialUser: AppSessionUser;
 }>;
 
+import React, { isValidElement, cloneElement } from "react";
+
+/**
+ * ViewLocker captures and freezes the 'view' state for its children.
+ * This prevents exiting components from re-rendering with the new 
+ * global view state during AnimatePresence transitions.
+ */
+function ViewLocker({ view, children }: { view: string } & PropsWithChildren) {
+  const [lockedView] = useState(view);
+  
+  if (!isValidElement(children)) return <>{children}</>;
+  
+  return cloneElement(children as React.ReactElement<any>, { 
+    view: lockedView 
+  });
+}
+
 function DashboardShellContent({ children }: PropsWithChildren) {
   const { currentUser, canAccessManagement } = useDashboardAuth();
   const { showConfirm } = useToast() as {
@@ -434,7 +451,9 @@ function DashboardShellContent({ children }: PropsWithChildren) {
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                 className={styles.content}
               >
-                {children}
+                <ViewLocker view={currentView}>
+                  {children}
+                </ViewLocker>
               </motion.section>
             </AnimatePresence>
           </div>

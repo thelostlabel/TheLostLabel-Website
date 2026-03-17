@@ -15,7 +15,8 @@ export type AdminViewKey =
   | "releases"
   | "communications"
   | "discord-bridge"
-  | "wise-payouts";
+  | "wise-payouts"
+  | "announcements";
 
 export type PortalViewKey =
   | "overview"
@@ -59,6 +60,7 @@ export const ADMIN_VIEW_DEFINITIONS: Array<{
   { view: "discord-bridge", navLabel: "DISCORD BRIDGE", displayName: "Discord Bridge", iconKey: "bot", perm: "admin_view_discord_bridge", featureKey: "discordBridge", access: "admin", loaders: ["discordBridge"], dataKey: "discordBridge" },
   { view: "wise-payouts", navLabel: "WISE PAYOUTS", displayName: "Wise Payouts", iconKey: "credit-card", perm: "admin_view_wise_payouts", featureKey: "wisePayouts", access: "admin", loaders: [], alwaysHasData: true },
   { view: "settings", navLabel: "SETTINGS", displayName: "Settings", iconKey: "settings", perm: "admin_view_settings", access: "admin", loaders: [], alwaysHasData: true },
+  { view: "announcements", navLabel: "ANNOUNCEMENTS", displayName: "Announcements", iconKey: "bell", perm: "admin_view_announcements", featureKey: "announcements", access: "admin", loaders: ["announcements"], dataKey: "announcements" },
 ];
 
 export const PORTAL_VIEW_DEFINITIONS: Array<{

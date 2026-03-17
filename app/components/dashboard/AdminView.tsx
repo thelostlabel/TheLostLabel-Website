@@ -47,6 +47,7 @@ const WebhooksView = lazyView(() => import("./admin/WebhooksView"));
 const CommunicationsView = lazyView(() => import("./admin/CommunicationsView"));
 const SettingsView = lazyView(() => import("./admin/SettingsView"));
 const DiscordBridgeView = lazyView(() => import("./admin/DiscordBridgeView"));
+const AnnouncementsView = lazyView(() => import("./admin/AnnouncementsView"));
 
 function WisePayoutsView() {
   return (
@@ -61,12 +62,12 @@ function WisePayoutsView() {
   );
 }
 
-export default function AdminView() {
+export default function AdminView({ view: propView }: { view?: string }) {
   const { currentUser } = useDashboardAuth();
   const { showToast, showConfirm } = useToast() as any;
   const { rawView, setView } = useDashboardRoute<string>();
   const features = getAdminFeatureFlags();
-  const view = normalizeAdminView(rawView);
+  const view = normalizeAdminView(propView || rawView);
   const viewDisplayName = getAdminViewDisplayName(view);
   const {
     submissions,
@@ -80,6 +81,7 @@ export default function AdminView() {
     payments,
     releases,
     discordBridge,
+    announcements,
     earningsPagination,
     hasViewData,
     isViewLoading,
@@ -217,6 +219,7 @@ export default function AdminView() {
     payments: () => refreshView(["payments", "users"]),
     releases: () => refreshView("releases"),
     discordBridge: () => refreshView("discordBridge"),
+    announcements: () => refreshView("announcements"),
   };
 
   const refreshEarnings = async (page = 1) => {
@@ -287,6 +290,9 @@ export default function AdminView() {
       {view === "settings" && <SettingsView />}
       {view === "discord-bridge" && features.discordBridge && (
         <DiscordBridgeView data={discordBridge} onRefresh={refreshers.discordBridge} />
+      )}
+      {view === "announcements" && features.announcements && (
+        <AnnouncementsView announcements={announcements} onRefresh={refreshers.announcements} />
       )}
       {view === "wise-payouts" && features.wisePayouts && <WisePayoutsView />}
 

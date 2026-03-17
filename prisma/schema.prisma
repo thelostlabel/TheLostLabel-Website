@@ -423,3 +423,14 @@ model SyncJob {
   @@index([status, runAfter, createdAt], map: "idx_sync_job_pending")
   @@index([dedupeKey], map: "idx_sync_job_dedupe_key")
 }
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  type      String   @default("feature") // feature, update, important, maintenance
+  active    Boolean  @default(true)
+  linkUrl   String?
+  linkText  String?  @default("Learn more")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -36,7 +36,8 @@ export type AdminDatasetKey =
   | "earnings"
   | "payments"
   | "releases"
-  | "discordBridge";
+  | "discordBridge"
+  | "announcements";
 
 type AdminDashboardData = {
   submissions: DashboardDemo[];
@@ -50,6 +51,7 @@ type AdminDashboardData = {
   payments: DashboardPayment[];
   releases: Array<Record<string, unknown>>;
   discordBridge: DashboardDiscordBridge | null;
+  announcements: DashboardAnnouncement[];
 };
 
 type DatasetResponseMap = {
@@ -64,6 +66,7 @@ type DatasetResponseMap = {
   payments: { payments?: DashboardPayment[] };
   releases: { releases?: Array<Record<string, unknown>> };
   discordBridge: DashboardDiscordBridge | null;
+  announcements: DashboardAnnouncement[];
 };
 
 const INITIAL_DATA: AdminDashboardData = {
@@ -78,6 +81,7 @@ const INITIAL_DATA: AdminDashboardData = {
   payments: [],
   releases: [],
   discordBridge: null,
+  announcements: [],
 };
 
 const INITIAL_PAGINATION: DashboardPagination = {
@@ -99,6 +103,7 @@ const DATASET_KEYS: AdminDatasetKey[] = [
   "payments",
   "releases",
   "discordBridge",
+  "announcements",
 ];
 
 const getDatasetQueryKey = (key: AdminDatasetKey, page = 1) =>
@@ -153,6 +158,10 @@ const fetchAdminDataset = async <TKey extends AdminDatasetKey>(
       return dashboardRequestJson<DatasetResponseMap[TKey]>("/api/admin/discord-bridge", {
         context: "discord bridge",
       });
+    case "announcements":
+      return dashboardRequestJson<DatasetResponseMap[TKey]>("/api/admin/announcements", {
+        context: "admin announcements",
+      });
   }
 };
 
@@ -183,6 +192,8 @@ const getDashboardDataForKey = (
       return (payload as DatasetResponseMap["releases"] | undefined)?.releases || [];
     case "discordBridge":
       return (payload as DatasetResponseMap["discordBridge"]) || null;
+    case "announcements":
+      return Array.isArray(payload) ? payload : [];
   }
 };
 
@@ -255,6 +266,9 @@ export function useAdminDashboardData(view: string) {
           break;
         case "discordBridge":
           nextData.discordBridge = getDashboardDataForKey(key, payload) as DashboardDiscordBridge | null;
+          break;
+        case "announcements":
+          nextData.announcements = getDashboardDataForKey(key, payload) as DashboardAnnouncement[];
           break;
       }
     });

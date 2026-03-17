@@ -41,7 +41,7 @@ import {
   normalizePortalView,
 } from "@/lib/dashboard-view-registry";
 
-export default function ArtistView() {
+export default function ArtistView({ view: propView }: { view?: string }) {
   const { currentUser, syncSessionClaims } = useDashboardAuth();
   const { showToast, showConfirm } = useToast() as {
     showToast: (message: string, type?: string) => void;
@@ -61,7 +61,7 @@ export default function ArtistView() {
     setRecordId,
     clearRecordId,
   } = useDashboardRoute();
-  const view = normalizePortalView(rawView);
+  const view = normalizePortalView(propView || rawView);
   const {
     stats,
     releases,

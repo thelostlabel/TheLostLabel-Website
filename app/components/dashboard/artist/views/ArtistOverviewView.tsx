@@ -28,6 +28,7 @@ import {
   handleImageError,
   resolveImageSrc,
 } from "@/app/components/dashboard/artist/lib/shared";
+import FeaturedAnnouncements from "./FeaturedAnnouncements";
 
 type ArtistOverviewViewProps = {
   stats: ArtistOverviewStats;
@@ -458,6 +459,7 @@ export default function ArtistOverviewView({
 
   return (
     <div className="overview-root" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <FeaturedAnnouncements />
       <div
         className="overview-kpi-grid"
         style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "10px" }}

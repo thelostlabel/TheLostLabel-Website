@@ -8,6 +8,7 @@ export const ADMIN_DASHBOARD_FEATURES = {
   releases: process.env.NEXT_PUBLIC_FEATURE_RELEASES !== "false",
   communications: process.env.NEXT_PUBLIC_FEATURE_COMMS !== "false",
   spotifySync: process.env.NEXT_PUBLIC_FEATURE_SPOTIFY_SYNC !== "false",
+  announcements: true,
 } as const;
 
 export type AdminDashboardFeatureKey = keyof typeof ADMIN_DASHBOARD_FEATURES;

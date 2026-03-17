@@ -150,6 +150,18 @@ export type DashboardWebhook = {
 };
 
 export type DashboardDiscordBridge = Record<string, unknown>;
+export type DashboardAnnouncement = {
+  id: string;
+  title: string;
+  content: string;
+  type?: string;
+  active?: boolean;
+  linkUrl?: string | null;
+  linkText?: string | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+  [key: string]: unknown;
+};
 
 export type ArtistOverviewStats = {
   releases?: number;
