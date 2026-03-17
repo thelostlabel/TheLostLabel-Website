@@ -26,6 +26,8 @@ export default function StudioPlayer(props) {
 function StudioPlayerInner({ src, filename }) {
     const audioRef = useRef(null);
     const progressRef = useRef(null);
+    const progressFillRef = useRef(null);
+    const progressThumbRef = useRef(null);
     const volumeSliderRef = useRef(null);
     const animationRef = useRef(null);
 
@@ -256,8 +258,11 @@ function StudioPlayerInner({ src, filename }) {
     const displayedVolume = Math.round((isMuted ? 0 : volume) * 100);
 
     useEffect(() => {
-        if (progressRef.current) {
-            progressRef.current.style.setProperty('--sp-progress', `${progress}%`);
+        if (progressFillRef.current) {
+            progressFillRef.current.style.width = `${progress}%`;
+        }
+        if (progressThumbRef.current) {
+            progressThumbRef.current.style.left = `${progress}%`;
         }
     }, [progress]);
 
@@ -294,36 +299,41 @@ function StudioPlayerInner({ src, filename }) {
                         <span key={i} className={`${styles.bar} ${isPlaying ? styles.barActive : ''}`} />
                     ))}
                 </div>
-                <span className={styles.trackLabel}>
-                    {filename?.toUpperCase() || 'UNKNOWN TRACK'}
-                </span>
-                {isBuffering && <span className={styles.buffering}>BUFFERING...</span>}
-                {error && (
-                    <div className={styles.errorGroup}>
-                        <span className={styles.errorText}>{error}</span>
-                        <button
-                            onClick={retryLoad}
-                            className={styles.retryButton}
-                        >
-                            RETRY
-                        </button>
+                <div className={styles.metaBlock}>
+                    <div className={styles.metaTopRow}>
+                        <span className={styles.trackLabel}>
+                            {filename?.toUpperCase() || 'UNKNOWN TRACK'}
+                        </span>
+                        {isBuffering && <span className={styles.buffering}>BUFFERING...</span>}
                     </div>
-                )}
-            </div>
 
-            <div className={styles.progressWrapper}>
-                <span className={styles.time}>{formatTime(currentTime)}</span>
-                <div
-                    ref={progressRef}
-                    className={styles.progressBar}
-                    onMouseDown={handleProgressMouseDown}
-                    onTouchStart={handleProgressTouchStart}
-                >
-                    <div className={styles.progressBg} />
-                    <div className={styles.progressFill} />
-                    <div className={styles.progressThumb} />
+                    <div className={styles.progressWrapper}>
+                        <span className={styles.time}>{formatTime(currentTime)}</span>
+                        <div
+                            ref={progressRef}
+                            className={styles.progressBar}
+                            onMouseDown={handleProgressMouseDown}
+                            onTouchStart={handleProgressTouchStart}
+                        >
+                            <div className={styles.progressBg} />
+                            <div ref={progressFillRef} className={styles.progressFill} />
+                            <div ref={progressThumbRef} className={styles.progressThumb} />
+                        </div>
+                        <span className={styles.time}>{formatTime(duration)}</span>
+                    </div>
+
+                    {error && (
+                        <div className={styles.errorGroup}>
+                            <span className={styles.errorText}>{error}</span>
+                            <button
+                                onClick={retryLoad}
+                                className={styles.retryButton}
+                            >
+                                RETRY
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <span className={styles.time}>{formatTime(duration)}</span>
             </div>
 
             <div className={styles.controls}>
