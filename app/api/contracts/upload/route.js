@@ -3,6 +3,7 @@ import { join, resolve } from 'path';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { createRequire } from 'module';
+import { randomUUID } from 'crypto';
 
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse/lib/pdf-parse.js');
@@ -39,9 +40,9 @@ export async function POST(req) {
         const uploadsDir = join(storageRoot, 'uploads', 'contracts');
         await mkdir(uploadsDir, { recursive: true });
 
-        // Generate unique filename
+        // Generate unique filename securely
         const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).substring(7);
+        const randomStr = randomUUID();
         const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const uniqueFilename = `${timestamp}_${randomStr}_${safeFilename}`;
         const filepath = join(uploadsDir, uniqueFilename);
