@@ -32,30 +32,62 @@ function StudioPlayerInner({ src, filename }) {
     const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState(null);
 
-    // Load audio directly for streaming - no need to download entire file
+    // Fetch audio as blob for instant seeking
     useEffect(() => {
         if (!src) return;
-        setLoadingAudio(true);
-        setLoadProgress(0);
-        setError(null);
-        
-        // Clean up previous blob URL
-        if (blobUrlRef.current) {
-            URL.revokeObjectURL(blobUrlRef.current);
-            blobUrlRef.current = null;
-        }
-        setBlobSrc(null);
-        
-        return () => {
-            // Cleanup on unmount
-        };
-    }, [src]);
+        let cancelled = false;
+        const controller = new AbortController();
 
-    // Update blobSrc to use direct URL for streaming
-    useEffect(() => {
-        if (src && !blobSrc) {
-            setBlobSrc(src);
-        }
+        const loadAudio = async () => {
+            setLoadingAudio(true);
+            setLoadProgress(0);
+            setError(null);
+
+            try {
+                const res = await fetch(src, { signal: controller.signal });
+                if (!res.ok) throw new Error('Failed to load audio');
+
+                const contentLength = res.headers.get('content-length');
+                const total = contentLength ? parseInt(contentLength, 10) : 0;
+                const reader = res.body.getReader();
+                const chunks = [];
+                let received = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    if (total > 0) {
+                        setLoadProgress(Math.round((received / total) * 100));
+                    }
+                }
+
+                if (cancelled) return;
+
+                const blob = new Blob(chunks);
+                const url = URL.createObjectURL(blob);
+                blobUrlRef.current = url;
+                setBlobSrc(url);
+            } catch (err) {
+                if (cancelled || err.name === 'AbortError') return;
+                console.error('Audio load error:', err);
+                setError('Unable to load audio file. Please check your connection and try again.');
+            } finally {
+                if (!cancelled) setLoadingAudio(false);
+            }
+        };
+
+        loadAudio();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+            if (blobUrlRef.current) {
+                URL.revokeObjectURL(blobUrlRef.current);
+                blobUrlRef.current = null;
+            }
+        };
     }, [src]);
 
     useEffect(() => {
@@ -119,15 +151,43 @@ function StudioPlayerInner({ src, filename }) {
         setIsBuffering(false);
     };
 
-    // Retry - just reload the audio element
     const retryLoad = () => {
         setError(null);
-        if (audioRef.current) {
-            audioRef.current.load();
+        setBlobSrc(null);
+        if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current);
+            blobUrlRef.current = null;
         }
+        // Re-trigger blob fetch
         setLoadingAudio(true);
         setLoadProgress(0);
-        setTimeout(() => setLoadingAudio(false), 1000);
+        const controller = new AbortController();
+        fetch(src, { signal: controller.signal })
+            .then(async (res) => {
+                if (!res.ok) throw new Error('Failed to load audio');
+                const contentLength = res.headers.get('content-length');
+                const total = contentLength ? parseInt(contentLength, 10) : 0;
+                const reader = res.body.getReader();
+                const chunks = [];
+                let received = 0;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    if (total > 0) setLoadProgress(Math.round((received / total) * 100));
+                }
+                const blob = new Blob(chunks);
+                const url = URL.createObjectURL(blob);
+                blobUrlRef.current = url;
+                setBlobSrc(url);
+            })
+            .catch((err) => {
+                if (err.name !== 'AbortError') {
+                    setError('Unable to load audio file. Please check your connection and try again.');
+                }
+            })
+            .finally(() => setLoadingAudio(false));
     };
 
     // Playback controls
