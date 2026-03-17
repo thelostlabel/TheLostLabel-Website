@@ -12,6 +12,17 @@ function getAppliedVolume(sliderValue) {
     return safeValue ** 2;
 }
 
+function applyProgressPosition(fillEl, thumbEl, current, total) {
+    const progress = total > 0 ? clamp((current / total) * 100, 0, 100) : 0;
+    if (fillEl) {
+        fillEl.style.width = `${progress}%`;
+    }
+    if (thumbEl) {
+        thumbEl.style.left = `${progress}%`;
+    }
+    return progress;
+}
+
 function formatTime(seconds) {
     if (!seconds || isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -57,9 +68,15 @@ function StudioPlayerInner({ src, filename }) {
     useEffect(() => {
         const updateProgress = () => {
             if (audioRef.current && !isDragging) {
-                setCurrentTime(audioRef.current.currentTime);
-                if (Number.isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
-                    setDuration(audioRef.current.duration);
+                const nextTime = audioRef.current.currentTime;
+                const nextDuration = Number.isFinite(audioRef.current.duration) && audioRef.current.duration > 0
+                    ? audioRef.current.duration
+                    : duration;
+
+                applyProgressPosition(progressFillRef.current, progressThumbRef.current, nextTime, nextDuration);
+                setCurrentTime(nextTime);
+                if (nextDuration > 0) {
+                    setDuration(nextDuration);
                 }
             }
             animationRef.current = requestAnimationFrame(updateProgress);
@@ -77,24 +94,30 @@ function StudioPlayerInner({ src, filename }) {
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [isDragging, isPlaying]);
+    }, [duration, isDragging, isPlaying]);
 
     // Audio event handlers
     const handleLoadedMetadata = () => {
         if (audioRef.current) {
-            setDuration(audioRef.current.duration);
+            const nextDuration = audioRef.current.duration;
+            setDuration(nextDuration);
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, audioRef.current.currentTime, nextDuration);
         }
     };
 
     const handleDurationChange = () => {
         if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
-            setDuration(audioRef.current.duration);
+            const nextDuration = audioRef.current.duration;
+            setDuration(nextDuration);
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, audioRef.current.currentTime, nextDuration);
         }
     };
 
     const syncCurrentTime = () => {
         if (audioRef.current && !isDragging) {
-            setCurrentTime(audioRef.current.currentTime);
+            const nextTime = audioRef.current.currentTime;
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, nextTime, duration || audioRef.current.duration);
+            setCurrentTime(nextTime);
         }
     };
 
@@ -146,6 +169,7 @@ function StudioPlayerInner({ src, filename }) {
         if (audioRef.current && duration > 0) {
             const newTime = Math.min(audioRef.current.currentTime + 10, duration);
             audioRef.current.currentTime = newTime;
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, newTime, duration);
             setCurrentTime(newTime);
         }
     };
@@ -154,6 +178,7 @@ function StudioPlayerInner({ src, filename }) {
         if (audioRef.current && duration > 0) {
             const newTime = Math.max(audioRef.current.currentTime - 10, 0);
             audioRef.current.currentTime = newTime;
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, newTime, duration);
             setCurrentTime(newTime);
         }
     };
@@ -198,10 +223,12 @@ function StudioPlayerInner({ src, filename }) {
     const handleProgressMouseDown = (e) => {
         setIsDragging(true);
         const seekTime = calculateSeekPosition(e);
+        applyProgressPosition(progressFillRef.current, progressThumbRef.current, seekTime, duration);
         setCurrentTime(seekTime);
 
         const handleMouseMove = (ev) => {
             const t = calculateSeekPosition(ev);
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
             setCurrentTime(t);
         };
 
@@ -210,6 +237,7 @@ function StudioPlayerInner({ src, filename }) {
             if (audioRef.current) {
                 audioRef.current.currentTime = t;
             }
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
             setCurrentTime(t);
             setIsDragging(false);
             document.removeEventListener('mousemove', handleMouseMove);
@@ -229,12 +257,15 @@ function StudioPlayerInner({ src, filename }) {
         const rect = bar.getBoundingClientRect();
         const x = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
         const seekTime = (x / rect.width) * duration;
+        applyProgressPosition(progressFillRef.current, progressThumbRef.current, seekTime, duration);
         setCurrentTime(seekTime);
 
         const handleTouchMove = (ev) => {
             const t2 = ev.touches[0];
             const x2 = Math.max(0, Math.min(t2.clientX - rect.left, rect.width));
-            setCurrentTime((x2 / rect.width) * duration);
+            const t = (x2 / rect.width) * duration;
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
+            setCurrentTime(t);
         };
 
         const handleTouchEnd = (ev) => {
@@ -244,6 +275,7 @@ function StudioPlayerInner({ src, filename }) {
             if (audioRef.current) {
                 audioRef.current.currentTime = t;
             }
+            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
             setCurrentTime(t);
             setIsDragging(false);
             document.removeEventListener('touchmove', handleTouchMove);
@@ -254,17 +286,7 @@ function StudioPlayerInner({ src, filename }) {
         document.addEventListener('touchend', handleTouchEnd);
     };
 
-    const progress = duration > 0 ? clamp((currentTime / duration) * 100, 0, 100) : 0;
     const displayedVolume = Math.round((isMuted ? 0 : volume) * 100);
-
-    useEffect(() => {
-        if (progressFillRef.current) {
-            progressFillRef.current.style.width = `${progress}%`;
-        }
-        if (progressThumbRef.current) {
-            progressThumbRef.current.style.left = `${progress}%`;
-        }
-    }, [progress]);
 
     useEffect(() => {
         if (volumeSliderRef.current) {
