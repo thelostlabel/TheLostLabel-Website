@@ -38,8 +38,6 @@ function StudioPlayerInner({ src, filename }) {
         
         // Use direct URL - browser will make Range requests for seeking
         setBlobSrc(src);
-        setLoadingAudio(true);
-        setLoadProgress(0);
         setError(null);
         
         // Clean up blob URLs
@@ -120,14 +118,11 @@ function StudioPlayerInner({ src, filename }) {
         if (audioRef.current) {
             audioRef.current.load();
         }
-        setLoadingAudio(true);
-        setLoadProgress(0);
-        setTimeout(() => setLoadingAudio(false), 1500);
     };
 
     // Playback controls
     const togglePlay = async () => {
-        if (!audioRef.current || loadingAudio) return;
+        if (!audioRef.current) return;
         try {
             if (isPlaying) {
                 audioRef.current.pause();
@@ -284,12 +279,7 @@ function StudioPlayerInner({ src, filename }) {
                 <span className="sp-track-label">
                     {filename?.toUpperCase() || 'UNKNOWN TRACK'}
                 </span>
-                {loadingAudio && (
-                    <span className="sp-buffering">
-                        LOADING{loadProgress > 0 ? ` ${loadProgress}%` : '...'}
-                    </span>
-                )}
-                {!loadingAudio && isBuffering && <span className="sp-buffering">BUFFERING...</span>}
+                {isBuffering && <span className="sp-buffering">BUFFERING...</span>}
                 {error && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="sp-error" style={{ color: '#ef4444', fontSize: '9px', fontWeight: 700, letterSpacing: '1px' }}>{error}</span>
@@ -312,13 +302,6 @@ function StudioPlayerInner({ src, filename }) {
                     </div>
                 )}
             </div>
-
-            {/* Loading progress bar */}
-            {loadingAudio && (
-                <div className="sp-load-bar">
-                    <div className="sp-load-fill" style={{ width: `${loadProgress}%` }} />
-                </div>
-            )}
 
             {/* Progress Bar */}
             <div className="sp-progress-wrapper">
@@ -351,7 +334,7 @@ function StudioPlayerInner({ src, filename }) {
                     <button onClick={skipBackward} className="sp-icon-btn" title="Back 10s">
                         <SkipBack size={17} />
                     </button>
-                    <button onClick={togglePlay} className="sp-play-btn" title={isPlaying ? 'Pause' : 'Play'} style={{ opacity: loadingAudio ? 0.4 : 1 }}>
+                    <button onClick={togglePlay} className="sp-play-btn" title={isPlaying ? 'Pause' : 'Play'} style={{ opacity: error ? 0.4 : 1 }}>
                         {isPlaying ? <Pause size={22} /> : <Play size={22} style={{ marginLeft: '2px' }} />}
                     </button>
                     <button onClick={skipForward} className="sp-icon-btn" title="Forward 10s">
