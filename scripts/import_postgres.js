@@ -11,58 +11,58 @@ async function importData() {
         // Order matters because of foreign key constraints
 
         console.log('👥 Importing Users...');
-        for (const item of data.users) {
-            await prisma.user.create({ data: item });
+        if (data.users && data.users.length > 0) {
+            await prisma.user.createMany({ data: data.users });
         }
 
         console.log('🎨 Importing Artists...');
-        for (const item of data.artists) {
-            await prisma.artist.create({ data: item });
+        if (data.artists && data.artists.length > 0) {
+            await prisma.artist.createMany({ data: data.artists });
         }
 
         console.log('🎵 Importing Releases...');
-        for (const item of data.releases) {
-            await prisma.release.create({ data: item });
+        if (data.releases && data.releases.length > 0) {
+            await prisma.release.createMany({ data: data.releases });
         }
 
         console.log('📝 Importing Demos...');
-        for (const item of data.demos) {
-            await prisma.demo.create({ data: item });
+        if (data.demos && data.demos.length > 0) {
+            await prisma.demo.createMany({ data: data.demos });
         }
 
         console.log('📂 Importing Demo Files...');
-        for (const item of data.demoFiles) {
-            await prisma.demoFile.create({ data: item });
+        if (data.demoFiles && data.demoFiles.length > 0) {
+            await prisma.demoFile.createMany({ data: data.demoFiles });
         }
 
         console.log('📜 Importing Contracts...');
-        for (const item of data.contracts) {
-            await prisma.contract.create({ data: item });
+        if (data.contracts && data.contracts.length > 0) {
+            await prisma.contract.createMany({ data: data.contracts });
         }
 
         console.log('✂️ Importing Royalty Splits...');
-        for (const item of data.royaltySplits) {
-            await prisma.royaltySplit.create({ data: item });
+        if (data.royaltySplits && data.royaltySplits.length > 0) {
+            await prisma.royaltySplit.createMany({ data: data.royaltySplits });
         }
 
         console.log('💰 Importing Earnings...');
-        for (const item of data.earnings) {
-            await prisma.earning.create({ data: item });
+        if (data.earnings && data.earnings.length > 0) {
+            await prisma.earning.createMany({ data: data.earnings });
         }
 
         console.log('💳 Importing Payments...');
-        for (const item of data.payments) {
-            await prisma.payment.create({ data: item });
+        if (data.payments && data.payments.length > 0) {
+            await prisma.payment.createMany({ data: data.payments });
         }
 
         console.log('⚙️ Importing System Settings...');
-        for (const item of data.systemSettings) {
-            await prisma.systemSettings.create({ data: item });
+        if (data.systemSettings && data.systemSettings.length > 0) {
+            await prisma.systemSettings.createMany({ data: data.systemSettings });
         }
 
         console.log('📄 Importing Site Content...');
-        for (const item of data.siteContent) {
-            await prisma.siteContent.create({ data: item });
+        if (data.siteContent && data.siteContent.length > 0) {
+            await prisma.siteContent.createMany({ data: data.siteContent });
         }
 
         console.log('✅ Import completed successfully!');
