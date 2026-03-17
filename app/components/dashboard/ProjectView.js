@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import NextImage from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     CheckCircle, Clock, FileText, Music, Upload,
-    Calendar, AlertCircle, ArrowLeft, ChevronRight,
-    Play, Pause, Download, RefreshCw
+    Calendar, ArrowLeft, Play, Pause
 } from 'lucide-react';
 import ContractSigningModal from './ContractSigningModal';
 import DashboardLoader from './DashboardLoader';
