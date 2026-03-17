@@ -428,6 +428,7 @@ function StudioPlayerInner({ src, filename }) {
                     <button onClick={toggleMute} className="sp-icon-btn" title={isMuted ? 'Unmute' : 'Mute'}>
                         {isMuted || volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
                     </button>
+                    <span className="sp-volume-label">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
                     <input
                         type="range"
                         min="0"
@@ -664,31 +665,58 @@ function StudioPlayerInner({ src, filename }) {
                 .sp-volume-slider {
                     -webkit-appearance: none;
                     appearance: none;
-                    width: 60px;
-                    height: 4px;
-                    background: rgba(255,255,255,0.08);
-                    border-radius: 2px;
+                    width: 70px;
+                    height: 6px;
+                    background: linear-gradient(90deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
+                    border-radius: 3px;
                     outline: none;
                     cursor: pointer;
+                    transition: background 0.2s ease;
+                }
+                .sp-volume-slider:hover {
+                    background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.12) 100%);
                 }
                 .sp-volume-slider::-webkit-slider-thumb {
                     -webkit-appearance: none;
                     appearance: none;
-                    width: 12px;
-                    height: 12px;
+                    width: 14px;
+                    height: 14px;
                     border-radius: 50%;
-                    background: #d1d5db;
+                    background: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%);
                     cursor: pointer;
-                    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.1);
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+                .sp-volume-slider::-webkit-slider-thumb:hover {
+                    transform: scale(1.15);
+                    box-shadow: 0 3px 8px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,255,255,0.15);
                 }
                 .sp-volume-slider::-moz-range-thumb {
-                    width: 12px;
-                    height: 12px;
+                    width: 14px;
+                    height: 14px;
                     border-radius: 50%;
-                    background: #d1d5db;
+                    background: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%);
                     cursor: pointer;
                     border: none;
-                    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.1);
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+                .sp-volume-slider::-moz-range-thumb:hover {
+                    transform: scale(1.15);
+                    box-shadow: 0 3px 8px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,255,255,0.15);
+                }
+                .sp-volume-slider::-moz-range-progress {
+                    height: 6px;
+                    border-radius: 3px;
+                    background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.15) 100%);
+                }
+                .sp-volume-label {
+                    font-size: 9px;
+                    font-weight: 600;
+                    color: rgba(255,255,255,0.5);
+                    min-width: 28px;
+                    text-align: center;
+                    letter-spacing: 0.5px;
                 }
 
                 @media (max-width: 640px) {
