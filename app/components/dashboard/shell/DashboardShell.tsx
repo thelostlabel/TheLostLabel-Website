@@ -1,12 +1,13 @@
 "use client";
 
-import {
-  type CSSProperties,
+import React, {
   type ReactNode,
   useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
+  isValidElement,
+  cloneElement,
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -91,8 +92,6 @@ function getNavIcon(iconKey: keyof typeof NAV_ICON_MAP | string) {
 type DashboardShellProps = PropsWithChildren<{
   initialUser: AppSessionUser;
 }>;
-
-import React, { isValidElement, cloneElement } from "react";
 
 /**
  * ViewLocker captures and freezes the 'view' state for its children.
@@ -243,7 +242,7 @@ function DashboardShellContent({ children }: PropsWithChildren) {
           "--shell-surface": shellSurface,
           "--shell-border": shellBorder,
           "--shell-muted": shellMuted,
-        } as CSSProperties
+        } as React.CSSProperties
       }
     >
       <div className={styles.ambient} aria-hidden />
