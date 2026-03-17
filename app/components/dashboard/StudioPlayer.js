@@ -32,17 +32,19 @@ function StudioPlayerInner({ src, filename }) {
     const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState(null);
 
-    // Fetch audio as blob for instant seeking
+    // Load audio with hybrid approach: streaming first, then full blob for instant seeking
     useEffect(() => {
         if (!src) return;
         let cancelled = false;
         const controller = new AbortController();
 
-        const loadAudio = async () => {
-            setLoadingAudio(true);
-            setLoadProgress(0);
-            setError(null);
+        // Step 1: Use direct URL for immediate playback
+        setBlobSrc(src);
+        setLoadingAudio(true);
+        setLoadProgress(0);
+        setError(null);
 
+        const loadFullBlob = async () => {
             try {
                 const res = await fetch(src, { signal: controller.signal });
                 if (!res.ok) throw new Error('Failed to load audio');
@@ -55,7 +57,7 @@ function StudioPlayerInner({ src, filename }) {
 
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    if (done || cancelled) break;
                     chunks.push(value);
                     received += value.length;
                     if (total > 0) {
@@ -65,20 +67,26 @@ function StudioPlayerInner({ src, filename }) {
 
                 if (cancelled) return;
 
+                // Step 2: Create blob URL for instant seeking
                 const blob = new Blob(chunks);
                 const url = URL.createObjectURL(blob);
                 blobUrlRef.current = url;
-                setBlobSrc(url);
+                
+                // Only update if still on same source
+                if (!cancelled) {
+                    setBlobSrc(url);
+                }
             } catch (err) {
                 if (cancelled || err.name === 'AbortError') return;
                 console.error('Audio load error:', err);
-                setError('Unable to load audio file. Please check your connection and try again.');
+                // Don't show error - streaming is already working
             } finally {
                 if (!cancelled) setLoadingAudio(false);
             }
         };
 
-        loadAudio();
+        // Start loading full blob in background
+        loadFullBlob();
 
         return () => {
             cancelled = true;
@@ -151,16 +159,19 @@ function StudioPlayerInner({ src, filename }) {
         setIsBuffering(false);
     };
 
+    // Retry - reload both streaming and full blob
     const retryLoad = () => {
         setError(null);
-        setBlobSrc(null);
         if (blobUrlRef.current) {
             URL.revokeObjectURL(blobUrlRef.current);
             blobUrlRef.current = null;
         }
-        // Re-trigger blob fetch
+        
+        // First, use direct URL for immediate playback
+        setBlobSrc(src);
         setLoadingAudio(true);
         setLoadProgress(0);
+        
         const controller = new AbortController();
         fetch(src, { signal: controller.signal })
             .then(async (res) => {
@@ -184,7 +195,7 @@ function StudioPlayerInner({ src, filename }) {
             })
             .catch((err) => {
                 if (err.name !== 'AbortError') {
-                    setError('Unable to load audio file. Please check your connection and try again.');
+                    console.error('Audio load error:', err);
                 }
             })
             .finally(() => setLoadingAudio(false));
