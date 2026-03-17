@@ -484,6 +484,7 @@ function StudioPlayerInner({ src, filename }) {
                     padding: 12px 0;
                     margin: -12px 0;
                     touch-action: none;
+                    overflow: hidden;
                 }
                 .sp-progress-bg {
                     position: absolute;
@@ -500,12 +501,13 @@ function StudioPlayerInner({ src, filename }) {
                     position: absolute;
                     top: 50%;
                     left: 0;
-                    height: 4px;
+                    height: 6px;
                     transform: translateY(-50%);
-                    background: linear-gradient(90deg, #9ca3af, #d1d5db);
-                    border-radius: 2px;
+                    background: linear-gradient(90deg, #6366f1, #818cf8);
+                    border-radius: 3px;
                     transition: width 0.05s linear;
                     pointer-events: none;
+                    z-index: 1;
                 }
                 .sp-progress-thumb {
                     position: absolute;
@@ -519,6 +521,7 @@ function StudioPlayerInner({ src, filename }) {
                     opacity: 0.7;
                     transition: opacity 0.2s, transform 0.15s;
                     pointer-events: none;
+                    z-index: 2;
                 }
                 .sp-progress-bar:hover .sp-progress-thumb,
                 .sp-progress-bar:active .sp-progress-thumb {
@@ -526,8 +529,8 @@ function StudioPlayerInner({ src, filename }) {
                     transform: translate(-50%, -50%) scale(1.15);
                 }
                 .sp-progress-bar:hover .sp-progress-fill {
-                    background: linear-gradient(90deg, #d1d5db, #fff);
-                    height: 5px;
+                    background: linear-gradient(90deg, #818cf8, #a5b4fc);
+                    height: 7px;
                 }
                 .sp-progress-bar:hover .sp-progress-bg {
                     background: rgba(255,255,255,0.1);
