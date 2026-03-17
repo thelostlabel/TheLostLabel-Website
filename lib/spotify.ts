@@ -150,7 +150,24 @@ export const getPlaylistTracks = async (playlistId: string): Promise<SpotifyPlay
 
     return allTracks;
   } catch (error) {
-    console.error("Spotify Playlist Sync Error:", error);
+    console.error("Spotify Playlist Tracks Sync Error:", error);
+    return null;
+  }
+};
+
+export const getPlaylistDetails = async (playlistId: string) => {
+  const tokenData = await getAccessToken();
+  if (!tokenData?.access_token) return null;
+
+  try {
+    const { response, data } = await spotifyFetchJson<any>(`https://api.spotify.com/v1/playlists/${playlistId}?fields=images,name,external_urls`, {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      next: { revalidate: 3600 },
+    }, "Spotify Playlist Details");
+
+    return response.ok ? data : null;
+  } catch (error) {
+    console.error("Spotify Playlist Details Error:", error);
     return null;
   }
 };

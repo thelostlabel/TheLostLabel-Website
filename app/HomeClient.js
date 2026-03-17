@@ -12,6 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import NextImage from "next/image";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import ReleaseCard from "./components/ReleaseCard";
 import Footer from "./components/Footer";
 import BackgroundEffects from "./components/BackgroundEffects";
@@ -328,12 +329,13 @@ const StackedCard = ({ release, index, activeIndex, total, playTrack, currentTra
       onMouseLeave={() => setHovered(false)}
       animate={{
         y: position > 0 ? "110vh" : "0vh",
-        scale: isCurrent ? 1 : isPast ? Math.max(0.72, 1 + position * 0.06) : 1,
-        translateY: isPast ? `${position * 28}px` : "0px",
+        scale: isCurrent ? 1 : isPast ? Math.max(0.75, 1 + position * 0.05) : 1,
+        translateY: isPast ? `${position * 32}px` : "0px",
+        rotateZ: isCurrent ? 0 : isPast ? position * -1.5 : position * 2,
         zIndex: total + position,
         opacity: position < -4 ? 0 : 1,
       }}
-      transition={{ type: "spring", stiffness: 320, damping: 34 }}
+      transition={{ type: "spring", stiffness: 260, damping: 30, mass: 1.2 }}
       style={{
         position: "absolute",
         width: "min(520px, 88vw)",
@@ -411,9 +413,12 @@ const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
   const cooldownRef = useRef(false);
   const activeIndexRef = useRef(0);
   const lastWheelRef = useRef(0);
+  const deltaAccumulatorRef = useRef(0);
+  const lastAccumulatorResetRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const n = releases.length;
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const pathname = usePathname();
 
   // Helper to clear overflow lock
@@ -428,7 +433,7 @@ const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
   const snapToSection = useCallback(() => {
     const section = sectionRef.current;
     if (!section) return;
-    window.scrollTo({ top: section.offsetTop, behavior: "auto" });
+    window.scrollTo({ top: section.offsetTop, behavior: "smooth" });
   }, []);
 
   // Lock: freeze page scroll at section
@@ -457,7 +462,7 @@ const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
       window.scrollTo({ top: target, behavior: "smooth" });
     }
 
-    setTimeout(() => { cooldownRef.current = false; }, 1200);
+    setTimeout(() => { cooldownRef.current = false; }, 600);
   }, []);
 
   // Route-change cleanup: always release scroll lock on navigation
@@ -465,23 +470,25 @@ const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
     clearOverflowLock();
   }, [pathname, clearOverflowLock]);
 
-  // Detect section via scroll position
+  // Detect section via IntersectionObserver
   useEffect(() => {
     const section = sectionRef.current;
-    if (!section) return;
+    if (!section || isMobile) return;
 
-    const checkLock = () => {
-      if (lockedRef.current || cooldownRef.current) return;
-      const rect = section.getBoundingClientRect();
-      const vh = window.innerHeight;
-      if (rect.top <= vh * 0.15 && rect.bottom >= vh * 0.85) {
-        lock();
-      }
-    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        // Trigger lock when section is mostly visible and we're not in cooldown
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !lockedRef.current && !cooldownRef.current) {
+          lock();
+        }
+      },
+      { threshold: [0.5], rootMargin: "-5% 0px -5% 0px" }
+    );
 
-    window.addEventListener("scroll", checkLock, { passive: true });
-    return () => window.removeEventListener("scroll", checkLock);
-  }, [lock]);
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [lock, isMobile]);
 
   // Always-on wheel interceptor (capture phase)
   useEffect(() => {
@@ -489,21 +496,42 @@ const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
       if (!lockedRef.current) return;
 
       e.preventDefault();
-
-      // Re-snap to make sure we stay pinned
       snapToSection();
 
       const now = Date.now();
-      if (now - lastWheelRef.current < 450) return;
-      lastWheelRef.current = now;
+
+      // Reset accumulator if there's a pause in scrolling (300ms)
+      if (now - lastAccumulatorResetRef.current > 300) {
+        deltaAccumulatorRef.current = 0;
+      }
+      lastAccumulatorResetRef.current = now;
+
+      // Cooldown after a card change to prevent rapid skipping
+      if (now - lastWheelRef.current < 450) return; // Snappier card flip rate
+
+      deltaAccumulatorRef.current += e.deltaY;
+      const threshold = 40; // Much more sensitive for standard mice
 
       const cur = activeIndexRef.current;
-      if (e.deltaY > 5) {
-        if (cur >= n - 1) { unlock("down"); }
-        else { activeIndexRef.current = cur + 1; setActiveIndex(cur + 1); }
-      } else if (e.deltaY < -5) {
-        if (cur <= 0) { unlock("up"); }
-        else { activeIndexRef.current = cur - 1; setActiveIndex(cur - 1); }
+
+      if (deltaAccumulatorRef.current > threshold) {
+        if (cur >= n - 1) { 
+          unlock("down"); 
+        } else { 
+          activeIndexRef.current = cur + 1; 
+          setActiveIndex(cur + 1); 
+          lastWheelRef.current = now;
+          deltaAccumulatorRef.current = 0;
+        }
+      } else if (deltaAccumulatorRef.current < -threshold) {
+        if (cur <= 0) { 
+          unlock("up"); 
+        } else { 
+          activeIndexRef.current = cur - 1; 
+          setActiveIndex(cur - 1); 
+          lastWheelRef.current = now;
+          deltaAccumulatorRef.current = 0;
+        }
       }
     };
 
@@ -567,6 +595,87 @@ const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
 
       {/* Cards */}
       <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        
+        {/* Featured Badges (Left/Right) for specific track */}
+        <AnimatePresence>
+          {releases[activeIndex] && (
+            releases[activeIndex].name?.toUpperCase().includes("MONTAGEM") && 
+            releases[activeIndex].name?.toUpperCase().includes("TALENTHINO") && (
+            <>
+              {/* Left Side: Stream Count */}
+              <motion.div
+                initial={{ x: -100, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -100, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                style={{
+                  position: "absolute",
+                  left: "clamp(20px, 8vw, 15%)",
+                  zIndex: 30,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  alignItems: "flex-start"
+                }}
+              >
+                <div style={{ fontSize: "10px", fontWeight: "900", letterSpacing: "4px", color: "rgba(255,255,255,0.4)" }}>GLOBAL REACH</div>
+                <div style={{ background: "rgba(245,197,66,1)", color: "#000", padding: "12px 24px", fontSize: "24px", fontWeight: "900", letterSpacing: "-1px", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
+                  {releases[activeIndex].stream_count_text || "75M+"} STREAMS
+                </div>
+              </motion.div>
+
+              {/* Right Side: Playlist Ranking */}
+              <motion.div
+                initial={{ x: 100, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 100, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                style={{
+                  position: "absolute",
+                  right: "clamp(20px, 8vw, 15%)",
+                  zIndex: 30,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  alignItems: "flex-end"
+                }}
+              >
+                <div style={{ fontSize: "10px", fontWeight: "900", letterSpacing: "4px", color: "rgba(255,255,255,0.4)" }}>FEATURED PLAYLIST</div>
+                <div style={{ 
+                  background: "#1DB954", 
+                  color: "#fff", 
+                  padding: "12px 32px 12px 12px", 
+                  fontSize: "18px", 
+                  fontWeight: "900", 
+                  letterSpacing: "0.5px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "20px",
+                  boxShadow: "0 20px 40px rgba(29, 185, 84, 0.2)",
+                  position: "relative"
+                }}>
+                  {phonkPlaylistInfo?.images?.[0]?.url && (
+                    <div style={{ width: "60px", height: "60px", position: "relative", flexShrink: 0, borderRadius: "2px", overflow: "hidden" }}>
+                      <NextImage src={phonkPlaylistInfo.images[0].url} alt="Phonk Playlist" fill style={{ objectFit: "cover" }} />
+                    </div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <div style={{ fontSize: "10px", opacity: 0.8, letterSpacing: "2px" }}>CURATED BY SPOTIFY</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <motion.div 
+                        animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#fff" }} 
+                      />
+                      #73 ON PHONK
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          ))}
+        </AnimatePresence>
+
         {releases.map((release, i) => (
           <StackedCard
             key={release.id}
@@ -719,6 +828,7 @@ export default function Home({ initialContent }) {
   const [loading, setLoading] = useState(true);
   const [introDone, setIntroDone] = useState(false);
   const [heroRelease, setHeroRelease] = useState(null);
+  const [phonkPlaylistInfo, setPhonkPlaylistInfo] = useState(null);
 
   const { playTrack, currentTrack, isPlaying } = usePlayer();
 
@@ -773,8 +883,19 @@ export default function Home({ initialContent }) {
         if (!featured && jsonReleases?.releases?.length) {
           featured = jsonReleases.releases.find(r => r.preview_url) || jsonReleases.releases[0];
         }
-
         setHeroRelease(featured);
+
+        // Fetch Phonk Playlist Info (Official API)
+        try {
+          const phonkId = "37i9dQZF1DWWY64wDtewQt";
+          const resPhonk = await fetch(`/api/spotify/playlist/${phonkId}/details`);
+          if (resPhonk.ok) {
+            const data = await resPhonk.json();
+            setPhonkPlaylistInfo(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch Phonk playlist info:", err);
+        }
       } catch (e) {
         console.error(e);
       } finally {
