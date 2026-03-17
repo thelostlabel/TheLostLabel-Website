@@ -102,9 +102,15 @@ function DashboardShellContent({ children }: PropsWithChildren) {
       onCancel?: () => void,
     ) => void;
   };
-  const { rawView, setView } = useDashboardRoute<string>();
+  const { rawView, setView, pathname } = useDashboardRoute<string>();
+  const currentView = useMemo(() => {
+    if (rawView) return rawView;
+    if (pathname.startsWith("/dashboard/demo/")) {
+      return canAccessManagement ? "submissions" : "my-demos";
+    }
+    return "overview";
+  }, [rawView, pathname, canAccessManagement]);
 
-  const currentView = rawView || "overview";
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);

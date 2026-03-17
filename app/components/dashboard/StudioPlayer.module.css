@@ -47,9 +47,9 @@
 
 .nowPlaying {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
-    margin-bottom: 18px;
+    margin-bottom: 22px;
     min-width: 0;
 }
 
@@ -58,7 +58,6 @@
     align-items: flex-end;
     gap: 2px;
     height: 16px;
-    margin-top: 4px;
     flex-shrink: 0;
 }
 
@@ -229,7 +228,7 @@
     transform: translate(-50%, -50%);
     box-shadow: 0 0 0 3px var(--player-glow), 0 4px 14px rgba(0,0,0,0.42);
     opacity: 0.88;
-    transition: opacity 0.2s, transform 0.15s;
+    transition: opacity 0.2s, transform 0.15s, left 0.05s linear;
     pointer-events: none;
     z-index: 2;
 }
@@ -263,8 +262,9 @@
 .controlsRight {
     display: flex;
     align-items: center;
-    gap: 6px;
-    min-width: 90px;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
 }
 
 .controlsRight {
@@ -274,7 +274,9 @@
 .controlsCenter {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .iconButton {

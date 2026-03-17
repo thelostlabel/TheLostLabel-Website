@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat } from 'lucide-react';
 import styles from './StudioPlayer.module.css';
 
@@ -12,33 +12,21 @@ function getAppliedVolume(sliderValue) {
     return safeValue ** 2;
 }
 
-function applyProgressPosition(fillEl, thumbEl, current, total) {
-    const progress = total > 0 ? clamp((current / total) * 100, 0, 100) : 0;
-    if (fillEl) {
-        fillEl.style.width = `${progress}%`;
-    }
-    if (thumbEl) {
-        thumbEl.style.left = `${progress}%`;
-    }
-    return progress;
-}
-
 function formatTime(seconds) {
-    if (!seconds || isNaN(seconds)) return '0:00';
+    if (!seconds || isNaN(seconds) || !Number.isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 export default function StudioPlayer(props) {
+    // Key ensures component resets when src changes
     return <StudioPlayerInner key={props.src || 'empty-track'} {...props} />;
 }
 
 function StudioPlayerInner({ src, filename }) {
     const audioRef = useRef(null);
     const progressRef = useRef(null);
-    const progressFillRef = useRef(null);
-    const progressThumbRef = useRef(null);
     const volumeSliderRef = useRef(null);
     const animationRef = useRef(null);
 
@@ -52,6 +40,13 @@ function StudioPlayerInner({ src, filename }) {
     const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState(null);
 
+    // Calculate progress percentage for CSS
+    const progressPercent = useMemo(() => {
+        if (!duration || duration <= 0) return 0;
+        return clamp((currentTime / duration) * 100, 0, 100);
+    }, [currentTime, duration]);
+
+    // Volume and Loop sync
     useEffect(() => {
         if (!audioRef.current) return;
         audioRef.current.volume = getAppliedVolume(volume);
@@ -59,65 +54,46 @@ function StudioPlayerInner({ src, filename }) {
         audioRef.current.muted = isMuted;
     }, [isLoop, isMuted, volume]);
 
-    useEffect(() => {
-        if (animationRef.current) {
-            cancelAnimationFrame(animationRef.current);
-        }
-    }, []);
-
+    // Animation loop for smooth progress bar updates
     useEffect(() => {
         const updateProgress = () => {
             if (audioRef.current && !isDragging) {
-                const nextTime = audioRef.current.currentTime;
-                const nextDuration = Number.isFinite(audioRef.current.duration) && audioRef.current.duration > 0
-                    ? audioRef.current.duration
-                    : duration;
-
-                applyProgressPosition(progressFillRef.current, progressThumbRef.current, nextTime, nextDuration);
-                setCurrentTime(nextTime);
-                if (nextDuration > 0) {
-                    setDuration(nextDuration);
-                }
+                setCurrentTime(audioRef.current.currentTime);
             }
             animationRef.current = requestAnimationFrame(updateProgress);
         };
 
-        if (isPlaying) {
+        if (isPlaying && !isDragging) {
             animationRef.current = requestAnimationFrame(updateProgress);
         } else {
             if (animationRef.current) {
                 cancelAnimationFrame(animationRef.current);
             }
         }
+
         return () => {
             if (animationRef.current) {
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [duration, isDragging, isPlaying]);
+    }, [isPlaying, isDragging]);
 
     // Audio event handlers
     const handleLoadedMetadata = () => {
         if (audioRef.current) {
-            const nextDuration = audioRef.current.duration;
-            setDuration(nextDuration);
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, audioRef.current.currentTime, nextDuration);
+            setDuration(audioRef.current.duration);
         }
     };
 
     const handleDurationChange = () => {
         if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
-            const nextDuration = audioRef.current.duration;
-            setDuration(nextDuration);
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, audioRef.current.currentTime, nextDuration);
+            setDuration(audioRef.current.duration);
         }
     };
 
     const syncCurrentTime = () => {
         if (audioRef.current && !isDragging) {
-            const nextTime = audioRef.current.currentTime;
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, nextTime, duration || audioRef.current.duration);
-            setCurrentTime(nextTime);
+            setCurrentTime(audioRef.current.currentTime);
         }
     };
 
@@ -130,17 +106,34 @@ function StudioPlayerInner({ src, filename }) {
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-
     const handleWaiting = () => setIsBuffering(true);
     const handleCanPlay = () => setIsBuffering(false);
+
     const handleError = (e) => {
-        console.error("Audio error:", e);
-        setError("Unable to load audio file. Please check your connection and try again.");
+        const audio = audioRef.current;
+        let errorMessage = "Unable to load audio file.";
+        
+        if (audio && audio.error) {
+            console.error("Detailed audio error:", {
+                code: audio.error.code,
+                message: audio.error.message
+            });
+            
+            switch (audio.error.code) {
+                case 1: errorMessage = "Playback aborted."; break;
+                case 2: errorMessage = "Network error. Please check your connection."; break;
+                case 3: errorMessage = "Audio decoding failed."; break;
+                case 4: errorMessage = "Audio format not supported or file not found."; break;
+            }
+        } else {
+            console.error("Audio error event:", e);
+        }
+        
+        setError(errorMessage);
         setIsPlaying(false);
         setIsBuffering(false);
     };
 
-    // Retry - reload audio element (browser handles Range requests)
     const retryLoad = () => {
         setError(null);
         if (audioRef.current) {
@@ -161,7 +154,12 @@ function StudioPlayerInner({ src, filename }) {
             }
         } catch (err) {
             console.error("Play/pause error:", err);
-            setError("Unable to play audio. Please try again.");
+            // Some browsers block play() without user interaction
+            if (err.name === 'NotAllowedError') {
+                setError("Playback blocked. Please click play again.");
+            } else {
+                setError("Unable to play audio. Please try again.");
+            }
         }
     };
 
@@ -169,7 +167,6 @@ function StudioPlayerInner({ src, filename }) {
         if (audioRef.current && duration > 0) {
             const newTime = Math.min(audioRef.current.currentTime + 10, duration);
             audioRef.current.currentTime = newTime;
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, newTime, duration);
             setCurrentTime(newTime);
         }
     };
@@ -178,67 +175,49 @@ function StudioPlayerInner({ src, filename }) {
         if (audioRef.current && duration > 0) {
             const newTime = Math.max(audioRef.current.currentTime - 10, 0);
             audioRef.current.currentTime = newTime;
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, newTime, duration);
             setCurrentTime(newTime);
         }
     };
 
-    const toggleMute = () => {
-        if (audioRef.current) {
-            audioRef.current.muted = !isMuted;
-            setIsMuted(!isMuted);
-        }
-    };
+    const toggleMute = () => setIsMuted(prev => !prev);
 
-    const toggleLoop = () => {
-        if (audioRef.current) {
-            audioRef.current.loop = !isLoop;
-            setIsLoop(!isLoop);
-        }
-    };
+    const toggleLoop = () => setIsLoop(prev => !prev);
 
     const handleVolumeChange = (e) => {
         const newVol = parseFloat(e.target.value);
         setVolume(newVol);
-        if (audioRef.current) {
-            audioRef.current.volume = getAppliedVolume(newVol);
-        }
         if (newVol === 0) {
             setIsMuted(true);
         } else if (isMuted) {
             setIsMuted(false);
-            audioRef.current.muted = false;
         }
     };
 
     // Progress bar seeking
-    const calculateSeekPosition = (e) => {
+    const calculateSeekPosition = (clientX) => {
         const bar = progressRef.current;
         if (!bar || duration <= 0) return 0;
         const rect = bar.getBoundingClientRect();
-        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const x = clamp(clientX - rect.left, 0, rect.width);
         return (x / rect.width) * duration;
     };
 
     const handleProgressMouseDown = (e) => {
         setIsDragging(true);
-        const seekTime = calculateSeekPosition(e);
-        applyProgressPosition(progressFillRef.current, progressThumbRef.current, seekTime, duration);
+        const seekTime = calculateSeekPosition(e.clientX);
         setCurrentTime(seekTime);
 
         const handleMouseMove = (ev) => {
-            const t = calculateSeekPosition(ev);
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
+            const t = calculateSeekPosition(ev.clientX);
             setCurrentTime(t);
         };
 
         const handleMouseUp = (ev) => {
-            const t = calculateSeekPosition(ev);
+            const finalTime = calculateSeekPosition(ev.clientX);
             if (audioRef.current) {
-                audioRef.current.currentTime = t;
+                audioRef.current.currentTime = finalTime;
             }
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
-            setCurrentTime(t);
+            setCurrentTime(finalTime);
             setIsDragging(false);
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
@@ -252,30 +231,19 @@ function StudioPlayerInner({ src, filename }) {
     const handleProgressTouchStart = (e) => {
         setIsDragging(true);
         const touch = e.touches[0];
-        const bar = progressRef.current;
-        if (!bar || duration <= 0) return;
-        const rect = bar.getBoundingClientRect();
-        const x = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
-        const seekTime = (x / rect.width) * duration;
-        applyProgressPosition(progressFillRef.current, progressThumbRef.current, seekTime, duration);
+        const seekTime = calculateSeekPosition(touch.clientX);
         setCurrentTime(seekTime);
 
         const handleTouchMove = (ev) => {
-            const t2 = ev.touches[0];
-            const x2 = Math.max(0, Math.min(t2.clientX - rect.left, rect.width));
-            const t = (x2 / rect.width) * duration;
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
+            const t = calculateSeekPosition(ev.touches[0].clientX);
             setCurrentTime(t);
         };
 
         const handleTouchEnd = (ev) => {
-            const ct = ev.changedTouches[0];
-            const x2 = Math.max(0, Math.min(ct.clientX - rect.left, rect.width));
-            const t = (x2 / rect.width) * duration;
+            const t = calculateSeekPosition(ev.changedTouches[0].clientX);
             if (audioRef.current) {
                 audioRef.current.currentTime = t;
             }
-            applyProgressPosition(progressFillRef.current, progressThumbRef.current, t, duration);
             setCurrentTime(t);
             setIsDragging(false);
             document.removeEventListener('touchmove', handleTouchMove);
@@ -288,11 +256,24 @@ function StudioPlayerInner({ src, filename }) {
 
     const displayedVolume = Math.round((isMuted ? 0 : volume) * 100);
 
+    // Apply volume variable for CSS
     useEffect(() => {
         if (volumeSliderRef.current) {
             volumeSliderRef.current.style.setProperty('--sp-volume', `${displayedVolume}%`);
         }
     }, [displayedVolume]);
+
+    // Safety cleanup
+    useEffect(() => {
+        return () => {
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = "";
+                audioRef.current.load();
+            }
+        };
+    }, []);
 
     return (
         <div className={styles.studioPlayer}>
@@ -310,8 +291,6 @@ function StudioPlayerInner({ src, filename }) {
                     onPlay={handlePlay}
                     onPause={handlePause}
                     onTimeUpdate={syncCurrentTime}
-                    onSeeking={syncCurrentTime}
-                    onSeeked={syncCurrentTime}
                 />
             )}
 
@@ -338,8 +317,14 @@ function StudioPlayerInner({ src, filename }) {
                             onTouchStart={handleProgressTouchStart}
                         >
                             <div className={styles.progressBg} />
-                            <div ref={progressFillRef} className={styles.progressFill} />
-                            <div ref={progressThumbRef} className={styles.progressThumb} />
+                            <div
+                                className={styles.progressFill}
+                                style={{ width: `${progressPercent}%` || '0%' }}
+                            />
+                            <div
+                                className={styles.progressThumb}
+                                style={{ left: `${progressPercent}%` || '0%' }}
+                            />
                         </div>
                         <span className={styles.time}>{formatTime(duration)}</span>
                     </div>
@@ -347,10 +332,7 @@ function StudioPlayerInner({ src, filename }) {
                     {error && (
                         <div className={styles.errorGroup}>
                             <span className={styles.errorText}>{error}</span>
-                            <button
-                                onClick={retryLoad}
-                                className={styles.retryButton}
-                            >
+                            <button onClick={retryLoad} className={styles.retryButton}>
                                 RETRY
                             </button>
                         </div>
@@ -360,7 +342,11 @@ function StudioPlayerInner({ src, filename }) {
 
             <div className={styles.controls}>
                 <div className={styles.controlsLeft}>
-                    <button onClick={toggleLoop} className={`${styles.iconButton} ${isLoop ? styles.iconButtonActive : ''}`} title="Loop">
+                    <button
+                        onClick={toggleLoop}
+                        className={`${styles.iconButton} ${isLoop ? styles.iconButtonActive : ''}`}
+                        title="Loop"
+                    >
                         <Repeat size={15} />
                     </button>
                 </div>
