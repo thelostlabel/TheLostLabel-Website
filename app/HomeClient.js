@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useInView, useMotionValue, useMotionTemplate, AnimatePresence } from "framer-motion";
 import {
   Rocket,
   ShieldCheck,
