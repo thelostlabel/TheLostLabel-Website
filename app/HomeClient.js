@@ -407,305 +407,97 @@ const StackedCard = ({ release, index, activeIndex, total, playTrack, currentTra
   );
 };
 
-const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
-  const sectionRef = useRef(null);
-  const lockedRef = useRef(false);
-  const cooldownRef = useRef(false);
-  const activeIndexRef = useRef(0);
-  const lastWheelRef = useRef(0);
-  const deltaAccumulatorRef = useRef(0);
-  const lastAccumulatorResetRef = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
-  const n = releases.length;
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  const pathname = usePathname();
+const HitTrackCard = ({ release, i, total, scrollYProgress, playTrack, currentTrack, isPlaying }) => {
+  const isLast = i === total - 1;
+  const progressRange = [i / total, (i + 1) / total];
 
-  // Helper to clear overflow lock
-  const clearOverflowLock = useCallback(() => {
-    lockedRef.current = false;
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
-    setIsLocked(false);
-  }, []);
-
-  // Snap scroll to section top
-  const snapToSection = useCallback(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-    window.scrollTo({ top: section.offsetTop, behavior: "smooth" });
-  }, []);
-
-  // Lock: freeze page scroll at section
-  const lock = useCallback(() => {
-    if (lockedRef.current || cooldownRef.current) return;
-    lockedRef.current = true;
-    snapToSection();
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    setIsLocked(true);
-  }, [snapToSection]);
-
-  // Unlock: remove overflow lock, scroll to next/prev section
-  const unlock = useCallback((direction) => {
-    lockedRef.current = false;
-    cooldownRef.current = true;
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
-    setIsLocked(false);
-
-    const section = sectionRef.current;
-    if (section) {
-      const target = direction === "down"
-        ? section.offsetTop + section.offsetHeight + 2
-        : Math.max(0, section.offsetTop - window.innerHeight + 2);
-      window.scrollTo({ top: target, behavior: "smooth" });
-    }
-
-    setTimeout(() => { cooldownRef.current = false; }, 600);
-  }, []);
-
-  // Route-change cleanup: always release scroll lock on navigation
-  useEffect(() => {
-    clearOverflowLock();
-  }, [pathname, clearOverflowLock]);
-
-  // Detect section via IntersectionObserver
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section || isMobile) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        // Trigger lock when section is mostly visible and we're not in cooldown
-        if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !lockedRef.current && !cooldownRef.current) {
-          lock();
-        }
-      },
-      { threshold: [0.5], rootMargin: "-5% 0px -5% 0px" }
-    );
-
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, [lock, isMobile]);
-
-  // Always-on wheel interceptor (capture phase)
-  useEffect(() => {
-    const handleWheel = (e) => {
-      if (!lockedRef.current) return;
-
-      e.preventDefault();
-      snapToSection();
-
-      const now = Date.now();
-
-      // Reset accumulator if there's a pause in scrolling (300ms)
-      if (now - lastAccumulatorResetRef.current > 300) {
-        deltaAccumulatorRef.current = 0;
-      }
-      lastAccumulatorResetRef.current = now;
-
-      // Cooldown after a card change to prevent rapid skipping
-      if (now - lastWheelRef.current < 450) return; // Snappier card flip rate
-
-      deltaAccumulatorRef.current += e.deltaY;
-      const threshold = 40; // Much more sensitive for standard mice
-
-      const cur = activeIndexRef.current;
-
-      if (deltaAccumulatorRef.current > threshold) {
-        if (cur >= n - 1) { 
-          unlock("down"); 
-        } else { 
-          activeIndexRef.current = cur + 1; 
-          setActiveIndex(cur + 1); 
-          lastWheelRef.current = now;
-          deltaAccumulatorRef.current = 0;
-        }
-      } else if (deltaAccumulatorRef.current < -threshold) {
-        if (cur <= 0) { 
-          unlock("up"); 
-        } else { 
-          activeIndexRef.current = cur - 1; 
-          setActiveIndex(cur - 1); 
-          lastWheelRef.current = now;
-          deltaAccumulatorRef.current = 0;
-        }
-      }
-    };
-
-    window.addEventListener("wheel", handleWheel, { passive: false, capture: true });
-    return () => window.removeEventListener("wheel", handleWheel, { capture: true });
-  }, [n, snapToSection, unlock]);
-
-  // Touch capture for mobile — scoped to section element
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!isLocked || !section) return;
-
-    let startY = 0;
-    const onStart = (e) => { startY = e.touches[0].clientY; };
-    const onMove = (e) => { e.preventDefault(); };
-    const onEnd = (e) => {
-      const deltaY = startY - e.changedTouches[0].clientY;
-      if (Math.abs(deltaY) < 50) return;
-      const cur = activeIndexRef.current;
-      if (deltaY > 0) {
-        if (cur >= n - 1) unlock("down");
-        else { activeIndexRef.current = cur + 1; setActiveIndex(cur + 1); }
-      } else {
-        if (cur <= 0) unlock("up");
-        else { activeIndexRef.current = cur - 1; setActiveIndex(cur - 1); }
-      }
-    };
-
-    section.addEventListener("touchstart", onStart, { passive: true });
-    section.addEventListener("touchmove", onMove, { passive: false });
-    section.addEventListener("touchend", onEnd, { passive: true });
-    return () => {
-      section.removeEventListener("touchstart", onStart);
-      section.removeEventListener("touchmove", onMove);
-      section.removeEventListener("touchend", onEnd);
-    };
-  }, [isLocked, n, unlock]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  if (!releases || n === 0) return null;
+  const scale = useTransform(scrollYProgress, progressRange, [0.8, 1]);
+  const y = useTransform(scrollYProgress, progressRange, [100, 0]);
+  const opacity = useTransform(scrollYProgress, [i / total - 0.1, i / total, (i + 1) / total], [0, 1, 1]);
+  const nextOpacity = useTransform(scrollYProgress, [(i + 0.8) / total, (i + 1) / total], [1, 0]);
+  const finalOpacity = isLast ? opacity : nextOpacity;
 
   return (
-    <section ref={sectionRef} style={{ height: "100vh", position: "relative", zIndex: 10, overflow: "hidden" }}>
-      {/* Header */}
-      <div style={{ position: "absolute", top: "40px", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "1200px", padding: "0 32px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 20 }}>
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: "900", letterSpacing: "4px", color: "rgba(229,231,235,0.45)", marginBottom: "6px" }}>SELECTED WORKS</div>
-          <KineticText as="h2" text="LATEST DROPS" style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: "900" }} />
+    <motion.div
+      style={{ scale, y, opacity: finalOpacity, zIndex: i }}
+      className="absolute w-[80%] aspect-square max-w-[400px] shadow-[0_40px_100px_-20px_rgba(0,0,0,1)] rounded-md overflow-hidden bg-zinc-900 border border-white/5"
+    >
+      <NextImage
+        src={release.image?.startsWith("private/") ? `/api/files/release/${release.id}` : (release.image || "/images/placeholder.jpg")}
+        alt={release.name || "Release"}
+        fill
+        className="object-cover"
+      />
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex flex-col justify-end p-8">
+        <div className="text-[10px] font-black tracking-[4px] text-gray-200/60 mb-2 uppercase">LATEST RELEASE</div>
+        <h3 className="text-[clamp(22px,5vw,34px)] font-black tracking-tighter leading-[1.05] mb-2 uppercase text-white drop-shadow-md">
+          {release.name}
+        </h3>
+        <p className="text-[15px] font-semibold text-white/55 m-0 uppercase">{release.artistName || "Artist"}</p>
+      </div>
+
+      <div
+        className="absolute inset-0 flex items-center justify-center bg-black/30 z-10 cursor-pointer opacity-0 hover:opacity-100 transition-opacity duration-300"
+        onClick={() => playTrack({
+          id: release.id,
+          name: release.name,
+          artist: release.artistName || "Unknown Artist",
+          image: release.image?.startsWith("private/") ? `/api/files/release/${release.id}` : release.image,
+          previewUrl: release.previewUrl || ""
+        })}
+      >
+        <div className="w-[72px] h-[72px] bg-white flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.6)] rounded-full hover:scale-105 transition-transform duration-200">
+          {currentTrack?.id === release.id && isPlaying ?
+            <Pause size={30} fill="#000" color="#000" /> :
+            <Play size={30} fill="#000" color="#000" className="ml-1" />
+          }
         </div>
-        <Link href="/releases" style={{ fontSize: "12px", fontWeight: "800", letterSpacing: "1px", borderBottom: "1px solid rgba(229,231,235,0.4)", paddingBottom: "3px", color: "rgba(255,255,255,0.6)" }}>
-          VIEW ALL →
-        </Link>
       </div>
+    </motion.div>
+  );
+};
 
-      {/* Cards */}
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+const HitTracksSection = ({ releases, playTrack, currentTrack, isPlaying }) => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+
+  return (
+    <section ref={containerRef} className="relative h-[200vh] w-full bg-black/95">
+      <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden">
         
-        {/* Featured Badges (Left/Right) for specific track */}
-        <AnimatePresence>
-          {releases[activeIndex] && (
-            releases[activeIndex].name?.toUpperCase().includes("MONTAGEM") && 
-            releases[activeIndex].name?.toUpperCase().includes("TALENTHINO") && (
-            <>
-              {/* Left Side: Stream Count */}
-              <motion.div
-                initial={{ x: -100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -100, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                style={{
-                  position: "absolute",
-                  left: "clamp(20px, 8vw, 15%)",
-                  zIndex: 30,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  alignItems: "flex-start"
-                }}
-              >
-                <div style={{ fontSize: "10px", fontWeight: "900", letterSpacing: "4px", color: "rgba(255,255,255,0.4)" }}>GLOBAL REACH</div>
-                <div style={{ background: "rgba(245,197,66,1)", color: "#000", padding: "12px 24px", fontSize: "24px", fontWeight: "900", letterSpacing: "-1px", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
-                  {releases[activeIndex].stream_count_text || "75M+"} STREAMS
-                </div>
-              </motion.div>
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-full max-w-[1200px] px-8 flex justify-between items-end z-20">
+          <div>
+            <div className="text-[11px] font-black tracking-[4px] text-gray-200/45 mb-1.5 uppercase">SELECTED WORKS</div>
+            <KineticText as="h2" text="LATEST DROPS" className="text-[clamp(28px,4vw,48px)] font-black uppercase text-white" />
+          </div>
+          <Link href="/releases" className="text-[12px] font-extrabold tracking-[1px] border-b border-gray-200/40 pb-[3px] text-white/60 hover:text-white transition-colors">
+            VIEW ALL →
+          </Link>
+        </div>
 
-              {/* Right Side: Playlist Ranking */}
-              <motion.div
-                initial={{ x: 100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 100, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                style={{
-                  position: "absolute",
-                  right: "clamp(20px, 8vw, 15%)",
-                  zIndex: 30,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  alignItems: "flex-end"
-                }}
-              >
-                <div style={{ fontSize: "10px", fontWeight: "900", letterSpacing: "4px", color: "rgba(255,255,255,0.4)" }}>FEATURED PLAYLIST</div>
-                <div style={{ 
-                  background: "#1DB954", 
-                  color: "#fff", 
-                  padding: "12px 32px 12px 12px", 
-                  fontSize: "18px", 
-                  fontWeight: "900", 
-                  letterSpacing: "0.5px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "20px",
-                  boxShadow: "0 20px 40px rgba(29, 185, 84, 0.2)",
-                  position: "relative"
-                }}>
-                  {phonkPlaylistInfo?.images?.[0]?.url && (
-                    <div style={{ width: "60px", height: "60px", position: "relative", flexShrink: 0, borderRadius: "2px", overflow: "hidden" }}>
-                      <NextImage src={phonkPlaylistInfo.images[0].url} alt="Phonk Playlist" fill style={{ objectFit: "cover" }} />
-                    </div>
-                  )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                    <div style={{ fontSize: "10px", opacity: 0.8, letterSpacing: "2px" }}>CURATED BY SPOTIFY</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <motion.div 
-                        animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#fff" }} 
-                      />
-                      #73 ON PHONK
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </>
+        <div className="relative w-full h-[60vh] max-h-[600px] max-w-[800px] mx-auto mt-20 flex items-center justify-center">
+          {releases.map((release, i) => (
+            <HitTrackCard
+              key={release.id}
+              release={release}
+              i={i}
+              total={releases.length}
+              scrollYProgress={scrollYProgress}
+              playTrack={playTrack}
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+            />
           ))}
-        </AnimatePresence>
-
-        {releases.map((release, i) => (
-          <StackedCard
-            key={release.id}
-            release={release}
-            index={i}
-            activeIndex={activeIndex}
-            total={n}
-            playTrack={playTrack}
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-          />
-        ))}
-      </div>
-
-      {/* Progress dots */}
-      <div style={{ position: "absolute", bottom: "36px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "8px", alignItems: "center", zIndex: 20 }}>
-        {releases.map((_, i) => (
-          <motion.div
-            key={i}
-            animate={{ width: i === activeIndex ? "28px" : "6px", background: i <= activeIndex ? "#fff" : "rgba(255,255,255,0.2)" }}
-            transition={{ duration: 0.3 }}
-            style={{ height: "5px", borderRadius: "3px" }}
-          />
-        ))}
+        </div>
       </div>
     </section>
   );
 };
 
-// ---- Hero Artist Mosaic Background ----
 const HeroArtistMosaic = ({ artists }) => {
   const containerRef = useRef(null);
   const spotX = useMotionValue(50);
