@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
+import { ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import StudioPlayer from '@/app/components/dashboard/StudioPlayer';
