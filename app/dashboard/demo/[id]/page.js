@@ -192,6 +192,20 @@ export default function DemoReviewPage({ params }) {
                             <span>•</span>
                             <span>{new Date(demo.createdAt).toLocaleDateString()} {new Date(demo.createdAt).toLocaleTimeString()}</span>
                         </div>
+                        {demo.status === 'rejected' && demo.rejectionReason && (
+                            <div className="rejection-card">
+                                <div className="rejection-card-header">
+                                    <div className="rejection-icon">✕</div>
+                                    <div>
+                                        <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, letterSpacing: '1.5px', color: '#fca5a5' }}>REJECTION REASON</p>
+                                        <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#ef444480' }}>
+                                            {demo.reviewedBy ? `by ${demo.reviewedBy}` : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.7, color: '#fee2e2', whiteSpace: 'pre-wrap' }}>{demo.rejectionReason}</p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="panel artist-panel">
@@ -220,7 +234,6 @@ export default function DemoReviewPage({ params }) {
                         {activeFile ? (
                             <div>
                                 <StudioPlayer
-                                    key={activeFileUrl}
                                     src={activeFileUrl}
                                     filename={activeFile.filename}
                                 />
@@ -691,6 +704,43 @@ export default function DemoReviewPage({ params }) {
                     display: flex;
                     justify-content: flex-end;
                     gap: 8px;
+                }
+                .rejection-card {
+                    margin-top: 18px;
+                    padding: 18px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(239,68,68,0.25);
+                    background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04));
+                    position: relative;
+                    overflow: hidden;
+                }
+                .rejection-card::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 2px;
+                    background: linear-gradient(90deg, transparent, #ef4444, transparent);
+                    opacity: 0.5;
+                }
+                .rejection-card-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 12px;
+                }
+                .rejection-icon {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: rgba(239,68,68,0.15);
+                    color: #ef4444;
+                    display: grid;
+                    place-items: center;
+                    font-size: 14px;
+                    font-weight: 900;
+                    flex-shrink: 0;
                 }
                 @media (max-width: 980px) {
                     .demo-review-grid {

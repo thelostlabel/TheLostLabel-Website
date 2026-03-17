@@ -17,7 +17,11 @@ function StudioPlayerInner({ src, filename }) {
     const audioRef = useRef(null);
     const progressRef = useRef(null);
     const animationRef = useRef(null);
+    const blobUrlRef = useRef(null);
 
+    const [blobSrc, setBlobSrc] = useState(null);
+    const [loadingAudio, setLoadingAudio] = useState(false);
+    const [loadProgress, setLoadProgress] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -26,6 +30,65 @@ function StudioPlayerInner({ src, filename }) {
     const [isDragging, setIsDragging] = useState(false);
     const [isLoop, setIsLoop] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Fetch audio as blob for instant seeking
+    useEffect(() => {
+        if (!src) return;
+        let cancelled = false;
+        const controller = new AbortController();
+
+        const loadAudio = async () => {
+            setLoadingAudio(true);
+            setLoadProgress(0);
+            setError(null);
+
+            try {
+                const res = await fetch(src, { signal: controller.signal });
+                if (!res.ok) throw new Error('Failed to load audio');
+
+                const contentLength = res.headers.get('content-length');
+                const total = contentLength ? parseInt(contentLength, 10) : 0;
+                const reader = res.body.getReader();
+                const chunks = [];
+                let received = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    if (total > 0) {
+                        setLoadProgress(Math.round((received / total) * 100));
+                    }
+                }
+
+                if (cancelled) return;
+
+                const blob = new Blob(chunks);
+                const url = URL.createObjectURL(blob);
+                blobUrlRef.current = url;
+                setBlobSrc(url);
+            } catch (err) {
+                if (cancelled || err.name === 'AbortError') return;
+                console.error('Audio load error:', err);
+                setError('Unable to load audio file. Please check your connection and try again.');
+            } finally {
+                if (!cancelled) setLoadingAudio(false);
+            }
+        };
+
+        loadAudio();
+
+        return () => {
+            cancelled = true;
+            controller.abort();
+            if (blobUrlRef.current) {
+                URL.revokeObjectURL(blobUrlRef.current);
+                blobUrlRef.current = null;
+            }
+        };
+    }, [src]);
 
     useEffect(() => {
         if (!audioRef.current) return;
@@ -76,33 +139,87 @@ function StudioPlayerInner({ src, filename }) {
         }
     };
 
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
     const handleWaiting = () => setIsBuffering(true);
     const handleCanPlay = () => setIsBuffering(false);
-    const handleError = () => {
+    const handleError = (e) => {
+        console.error("Audio error:", e);
+        setError("Unable to load audio file. Please check your connection and try again.");
         setIsPlaying(false);
         setIsBuffering(false);
     };
 
-    // Playback controls
-    const togglePlay = () => {
-        if (!audioRef.current) return;
-        if (isPlaying) {
-            audioRef.current.pause();
-        } else {
-            audioRef.current.play();
+    const retryLoad = () => {
+        setError(null);
+        setBlobSrc(null);
+        if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current);
+            blobUrlRef.current = null;
         }
-        setIsPlaying(!isPlaying);
+        // Re-trigger blob fetch
+        setLoadingAudio(true);
+        setLoadProgress(0);
+        const controller = new AbortController();
+        fetch(src, { signal: controller.signal })
+            .then(async (res) => {
+                if (!res.ok) throw new Error('Failed to load audio');
+                const contentLength = res.headers.get('content-length');
+                const total = contentLength ? parseInt(contentLength, 10) : 0;
+                const reader = res.body.getReader();
+                const chunks = [];
+                let received = 0;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    if (total > 0) setLoadProgress(Math.round((received / total) * 100));
+                }
+                const blob = new Blob(chunks);
+                const url = URL.createObjectURL(blob);
+                blobUrlRef.current = url;
+                setBlobSrc(url);
+            })
+            .catch((err) => {
+                if (err.name !== 'AbortError') {
+                    setError('Unable to load audio file. Please check your connection and try again.');
+                }
+            })
+            .finally(() => setLoadingAudio(false));
+    };
+
+    // Playback controls
+    const togglePlay = async () => {
+        if (!audioRef.current || loadingAudio) return;
+        try {
+            if (isPlaying) {
+                audioRef.current.pause();
+                setIsPlaying(false);
+            } else {
+                await audioRef.current.play();
+                setIsPlaying(true);
+            }
+        } catch (err) {
+            console.error("Play/pause error:", err);
+            setError("Unable to play audio. Please try again.");
+        }
     };
 
     const skipForward = () => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = Math.min(audioRef.current.currentTime + 10, duration);
+        if (audioRef.current && duration > 0) {
+            const newTime = Math.min(audioRef.current.currentTime + 10, duration);
+            audioRef.current.currentTime = newTime;
+            setCurrentTime(newTime);
         }
     };
 
     const skipBackward = () => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 10, 0);
+        if (audioRef.current && duration > 0) {
+            const newTime = Math.max(audioRef.current.currentTime - 10, 0);
+            audioRef.current.currentTime = newTime;
+            setCurrentTime(newTime);
         }
     };
 
@@ -206,16 +323,21 @@ function StudioPlayerInner({ src, filename }) {
 
     return (
         <div className="studio-player">
-            {/* Hidden audio element */}
-            <audio
-                ref={audioRef}
-                src={src}
-                preload="metadata"
-                onLoadedMetadata={handleLoadedMetadata}
-                onEnded={handleEnded}
-                onWaiting={handleWaiting}
-                onCanPlay={handleCanPlay}
-            />
+            {/* Hidden audio element — uses blob URL for instant seeking */}
+            {blobSrc && (
+                <audio
+                    ref={audioRef}
+                    src={blobSrc}
+                    preload="auto"
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onEnded={handleEnded}
+                    onWaiting={handleWaiting}
+                    onCanPlay={handleCanPlay}
+                    onError={handleError}
+                    onPlay={handlePlay}
+                    onPause={handlePause}
+                />
+            )}
 
             {/* Now Playing Label */}
             <div className="sp-now-playing">
@@ -227,8 +349,41 @@ function StudioPlayerInner({ src, filename }) {
                 <span className="sp-track-label">
                     {filename?.toUpperCase() || 'UNKNOWN TRACK'}
                 </span>
-                {isBuffering && <span className="sp-buffering">BUFFERING...</span>}
+                {loadingAudio && (
+                    <span className="sp-buffering">
+                        LOADING{loadProgress > 0 ? ` ${loadProgress}%` : '...'}
+                    </span>
+                )}
+                {!loadingAudio && isBuffering && <span className="sp-buffering">BUFFERING...</span>}
+                {error && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="sp-error" style={{ color: '#ef4444', fontSize: '9px', fontWeight: 700, letterSpacing: '1px' }}>{error}</span>
+                        <button
+                            onClick={retryLoad}
+                            style={{
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: '4px',
+                                color: '#fff',
+                                fontSize: '8px',
+                                fontWeight: 900,
+                                letterSpacing: '1px',
+                                padding: '4px 8px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            RETRY
+                        </button>
+                    </div>
+                )}
             </div>
+
+            {/* Loading progress bar */}
+            {loadingAudio && (
+                <div className="sp-load-bar">
+                    <div className="sp-load-fill" style={{ width: `${loadProgress}%` }} />
+                </div>
+            )}
 
             {/* Progress Bar */}
             <div className="sp-progress-wrapper">
@@ -261,7 +416,7 @@ function StudioPlayerInner({ src, filename }) {
                     <button onClick={skipBackward} className="sp-icon-btn" title="Back 10s">
                         <SkipBack size={17} />
                     </button>
-                    <button onClick={togglePlay} className="sp-play-btn" title={isPlaying ? 'Pause' : 'Play'}>
+                    <button onClick={togglePlay} className="sp-play-btn" title={isPlaying ? 'Pause' : 'Play'} style={{ opacity: loadingAudio ? 0.4 : 1 }}>
                         {isPlaying ? <Pause size={22} /> : <Play size={22} style={{ marginLeft: '2px' }} />}
                     </button>
                     <button onClick={skipForward} className="sp-icon-btn" title="Forward 10s">
@@ -354,6 +509,21 @@ function StudioPlayerInner({ src, filename }) {
                     50% { opacity: 0.4; }
                 }
 
+                /* Load progress */
+                .sp-load-bar {
+                    height: 3px;
+                    background: rgba(255,255,255,0.06);
+                    border-radius: 2px;
+                    margin-bottom: 16px;
+                    overflow: hidden;
+                }
+                .sp-load-fill {
+                    height: 100%;
+                    background: linear-gradient(90deg, #6b7280, #d1d5db);
+                    border-radius: 2px;
+                    transition: width 0.2s ease;
+                }
+
                 /* Progress */
                 .sp-progress-wrapper {
                     display: flex;
@@ -375,8 +545,9 @@ function StudioPlayerInner({ src, filename }) {
                     position: relative;
                     cursor: pointer;
                     border-radius: 3px;
-                    padding: 8px 0;
-                    margin: -8px 0;
+                    padding: 12px 0;
+                    margin: -12px 0;
+                    touch-action: none;
                 }
                 .sp-progress-bg {
                     position: absolute;
@@ -387,6 +558,7 @@ function StudioPlayerInner({ src, filename }) {
                     transform: translateY(-50%);
                     background: rgba(255,255,255,0.06);
                     border-radius: 2px;
+                    pointer-events: none;
                 }
                 .sp-progress-fill {
                     position: absolute;
@@ -397,6 +569,7 @@ function StudioPlayerInner({ src, filename }) {
                     background: linear-gradient(90deg, #9ca3af, #d1d5db);
                     border-radius: 2px;
                     transition: width 0.05s linear;
+                    pointer-events: none;
                 }
                 .sp-progress-thumb {
                     position: absolute;
@@ -407,19 +580,22 @@ function StudioPlayerInner({ src, filename }) {
                     border-radius: 50%;
                     transform: translate(-50%, -50%);
                     box-shadow: 0 0 8px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.1);
-                    opacity: 0;
+                    opacity: 0.7;
                     transition: opacity 0.2s, transform 0.15s;
+                    pointer-events: none;
                 }
                 .sp-progress-bar:hover .sp-progress-thumb,
                 .sp-progress-bar:active .sp-progress-thumb {
                     opacity: 1;
-                    transform: translate(-50%, -50%) scale(1.1);
+                    transform: translate(-50%, -50%) scale(1.15);
                 }
                 .sp-progress-bar:hover .sp-progress-fill {
                     background: linear-gradient(90deg, #d1d5db, #fff);
+                    height: 5px;
                 }
                 .sp-progress-bar:hover .sp-progress-bg {
                     background: rgba(255,255,255,0.1);
+                    height: 5px;
                 }
 
                 /* Controls */

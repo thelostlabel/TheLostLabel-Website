@@ -70,12 +70,37 @@ export async function GET(req, { params }) {
 
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_BY_EXT[ext] || "application/octet-stream";
-        const stream = createFileWebStream(filePath, req.signal);
+        const fileSize = info.size;
 
+        // Handle Range requests for audio seeking
+        const rangeHeader = req.headers.get("range");
+        if (rangeHeader) {
+            const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+            if (match) {
+                const start = parseInt(match[1], 10);
+                const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+                const chunkSize = end - start + 1;
+
+                const stream = createFileWebStream(filePath, req.signal, { start, end });
+                return new Response(stream, {
+                    status: 206,
+                    headers: {
+                        "Content-Type": contentType,
+                        "Content-Length": chunkSize.toString(),
+                        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                        "Accept-Ranges": "bytes",
+                        "Cache-Control": "private, no-store",
+                        "Vary": "Cookie",
+                    },
+                });
+            }
+        }
+
+        const stream = createFileWebStream(filePath, req.signal);
         return new Response(stream, {
             headers: {
                 "Content-Type": contentType,
-                "Content-Length": info.size.toString(),
+                "Content-Length": fileSize.toString(),
                 "Accept-Ranges": "bytes",
                 "Cache-Control": "private, no-store",
                 "Vary": "Cookie",

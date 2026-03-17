@@ -1,4 +1,4 @@
-const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_TIMEOUT_MS = 30000;
 
 type RetryOptions = {
   retries?: number;
@@ -20,7 +20,9 @@ export const isTransientStatus = (status: number) => status === 429 || status >=
 const isTimeoutError = (error: unknown) => {
   if (!(error instanceof Error)) return false;
   if (error.name === "AbortError") return true;
-  return error.message.toLowerCase().includes("timeout");
+  // Check for timeout-specific error messages
+  const message = error.message.toLowerCase();
+  return message.includes("timeout") || message.includes("aborted") || message.includes("canceled");
 };
 
 export const isTransientError = (error: unknown) => {
@@ -66,6 +68,15 @@ export async function fetchWithTimeout(
       ...options,
       signal: controller.signal,
     });
+  } catch (error) {
+    // If it's an abort error, create a more descriptive error
+    if (error instanceof Error && error.name === "AbortError") {
+      const abortError = new Error(`Request to ${url} timed out after ${timeoutMs}ms`) as Error & { name: string; code?: string };
+      abortError.name = "AbortError";
+      abortError.code = "ETIMEDOUT";
+      throw abortError;
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

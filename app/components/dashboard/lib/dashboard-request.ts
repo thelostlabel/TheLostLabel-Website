@@ -75,7 +75,7 @@ export async function dashboardRequestJson<T>(
   input: RequestInfo | URL,
   init: DashboardRequestInit = {},
 ): Promise<T> {
-  const { context = "request", timeoutMs = 10000, retry, ...requestInit } = init;
+  const { context = "request", timeoutMs = 30000, retry, ...requestInit } = init;
   const method = String(requestInit.method || "GET").toUpperCase();
   const retryOptions = retry === false ? false : retry ?? (method === "GET" ? DEFAULT_RETRY : false);
 

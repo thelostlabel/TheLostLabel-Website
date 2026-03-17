@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient, QueryObserverResult } from "@tanstack/react-query";
 
 import {
   getAdminViewLoaders,
@@ -206,7 +206,7 @@ export function useAdminDashboardData(view: string) {
     () =>
       Object.fromEntries(
         viewLoaderKeys.map((key, index) => [key, activeQueries[index]]),
-      ) as Partial<Record<AdminDatasetKey, (typeof activeQueries)[number]>>,
+      ) as Partial<Record<AdminDatasetKey, QueryObserverResult>>,
     [activeQueries, viewLoaderKeys],
   );
 
