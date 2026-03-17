@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Play, Pause, ExternalLink } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { usePlayer } from './PlayerContext';
 import { motion } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
