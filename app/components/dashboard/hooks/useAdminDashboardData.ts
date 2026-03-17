@@ -23,6 +23,7 @@ import type {
   DashboardUser,
   DashboardWebhook,
   DashboardDemo,
+  DashboardAnnouncement,
 } from "@/app/components/dashboard/types";
 
 export type AdminDatasetKey =
