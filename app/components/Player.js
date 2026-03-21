@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, X, Volume2, Maximize2, Minimize2, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, X, Maximize2, Minimize2, SkipBack, SkipForward } from 'lucide-react';
 import { usePlayer } from './PlayerContext';
 import NextImage from 'next/image';
 
