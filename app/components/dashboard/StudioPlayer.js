@@ -282,6 +282,7 @@ function StudioPlayerInner({ src, filename }) {
                     ref={audioRef}
                     src={src}
                     preload="auto"
+                    playsInline
                     onLoadedMetadata={handleLoadedMetadata}
                     onDurationChange={handleDurationChange}
                     onEnded={handleEnded}

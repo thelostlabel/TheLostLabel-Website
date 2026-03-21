@@ -212,6 +212,7 @@ export default function ArtistView({ view: propView }: { view?: string }) {
         <ArtistOverviewView
           stats={stats}
           recentReleases={releases.slice(0, 4)}
+          demos={demos}
           onNavigate={navigateToView}
           sessionUser={currentUser}
         />

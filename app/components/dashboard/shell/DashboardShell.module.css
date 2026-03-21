@@ -325,8 +325,9 @@
 .logoText {
   text-transform: uppercase;
   letter-spacing: 0.26em;
-  font-weight: 950;
+  font-weight: 900;
   font-size: 14px;
+  font-family: "Montserrat", system-ui, sans-serif;
 }
 
 .toolbarRight {

@@ -42,6 +42,23 @@ const getCandidatePaths = (filepath) => {
   return candidates;
 };
 
+const getRemoteCandidatePaths = (filepath, remoteRoot) => {
+  if (!filepath || !remoteRoot) return [];
+
+  const normalized = filepath.replace(/^\/+/, "");
+  if (normalized.includes("..")) return [];
+
+  const relativeToApp = normalized;
+  const relativeToPrivate = normalized.startsWith("private/")
+    ? normalized.replace(/^private\/+/, "")
+    : normalized;
+
+  return Array.from(new Set([
+    join(remoteRoot, relativeToApp),
+    join(remoteRoot, relativeToPrivate),
+  ]));
+};
+
 export async function GET(req, { params }) {
   const session = await getServerSession(authOptions);
   if (!session) return new Response("Unauthorized", { status: 401 });
@@ -85,28 +102,57 @@ export async function GET(req, { params }) {
       // Local fallback for development: if file not found locally, stream via SSH if configured
       const remotePath = process.env.REMOTE_STORAGE_PATH;
       if (remotePath && process.env.NODE_ENV === "development") {
-        const relativePath = demoFile.filepath.replace(/^private\/+/, "");
-        const fullRemotePath = join(remotePath, relativePath);
-        
-        console.info(`[demo-file] Local file not found, prepping SSH stream for: ${fullRemotePath}`);
-        
+        const remoteCandidates = getRemoteCandidatePaths(demoFile.filepath, remotePath);
+        const fullRemotePath = remoteCandidates[0];
+
+        console.info(`[demo-file] Local file not found, trying SSH paths for "${demoFile.filepath}":`, remoteCandidates);
+
         const ext = extname(demoFile.filepath).toLowerCase();
         const contentType = MIME_BY_EXT[ext] || "audio/mpeg";
 
-        const { exec } = await import("child_process");
-        const promisify = (fn) => (arg) => new Promise((resolve, reject) => fn(arg, (err, stdout, stderr) => err ? reject(err) : resolve({ stdout, stderr })));
-        const execAsync = promisify(exec);
+        const { execFile } = await import("child_process");
+        const execFileAsync = (...args) =>
+          new Promise((resolve, reject) => {
+            execFile(...args, (error, stdout, stderr) => {
+              if (error) {
+                reject(Object.assign(error, { stdout, stderr }));
+                return;
+              }
+              resolve({ stdout, stderr });
+            });
+          });
 
         let fileSize = null;
-        try {
-          const { stdout } = await execAsync(`ssh -o StrictHostKeyChecking=no -o BatchMode=yes root@152.53.142.222 "stat -c%s '${fullRemotePath}'"`);
-          fileSize = parseInt(stdout.trim(), 10);
-        } catch (err) {
-          console.warn(`[demo-file] Failed to get remote file size: ${err.message}`);
+        let resolvedRemotePath = null;
+
+        for (const candidate of remoteCandidates) {
+          try {
+            const { stdout } = await execFileAsync("ssh", [
+              "-o", "StrictHostKeyChecking=no",
+              "-o", "BatchMode=yes",
+              "-o", "ConnectTimeout=5",
+              "root@152.53.142.222",
+              "stat",
+              "-c%s",
+              candidate,
+            ]);
+            resolvedRemotePath = candidate;
+            fileSize = parseInt(String(stdout).trim(), 10);
+            break;
+          } catch (err) {
+            console.warn(`[demo-file] Remote candidate missing or inaccessible: ${candidate}`);
+          }
         }
 
+        if (!resolvedRemotePath) {
+          console.warn(`[demo-file] No SSH candidate resolved for "${demoFile.filepath}" from root "${remotePath}"`);
+          return new Response("Not found", { status: 404 });
+        }
+
+        console.info(`[demo-file] Streaming via SSH from: ${resolvedRemotePath}`);
+
         const rangeHeader = req.headers.get("range");
-        let sshCommand = `cat "${fullRemotePath}"`;
+        let sshCommand = `cat "${resolvedRemotePath}"`;
         let status = 200;
         const responseHeaders = {
           "Content-Type": contentType,
@@ -122,7 +168,7 @@ export async function GET(req, { params }) {
             const chunkSize = end - start + 1;
             
             // Use tail and head for byte-range seeking over SSH
-            sshCommand = `tail -c +${start + 1} "${fullRemotePath}" | head -c ${chunkSize}`;
+            sshCommand = `tail -c +${start + 1} "${resolvedRemotePath}" | head -c ${chunkSize}`;
             status = 206;
             responseHeaders["Content-Range"] = `bytes ${start}-${end}/${fileSize}`;
             responseHeaders["Content-Length"] = chunkSize.toString();
@@ -171,15 +217,24 @@ export async function GET(req, { params }) {
       if (match) {
         const start = parseInt(match[1], 10);
         const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
-        const chunkSize = end - start + 1;
 
-        const stream = createFileWebStream(filePath, req.signal, { start, end });
+        if (start >= fileSize) {
+          return new Response(null, {
+            status: 416,
+            headers: { "Content-Range": `bytes */${fileSize}` },
+          });
+        }
+
+        const clampedEnd = Math.min(end, fileSize - 1);
+        const chunkSize = clampedEnd - start + 1;
+
+        const stream = createFileWebStream(filePath, req.signal, { start, end: clampedEnd });
         return new Response(stream, {
           status: 206,
           headers: {
             "Content-Type": contentType,
             "Content-Length": chunkSize.toString(),
-            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Content-Range": `bytes ${start}-${clampedEnd}/${fileSize}`,
             "Accept-Ranges": "bytes",
             "Content-Disposition": `inline; filename="${demoFile.filename}"`,
           },

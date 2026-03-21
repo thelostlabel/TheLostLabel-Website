@@ -17,77 +17,37 @@ export default function DashboardErrorState({
 }: DashboardErrorStateProps) {
   return (
     <div
-      className="dashboard-error-state"
+      className="dashboard-error-state grid place-items-center"
       style={{
         minHeight: compact ? "auto" : "50vh",
-        display: "grid",
-        placeItems: "center",
         padding: compact ? "20px" : "40px",
       }}
     >
       <div
+        className="w-full rounded-[18px] border border-white/[0.08] bg-white/[0.03]"
         style={{
-          width: "100%",
           maxWidth: compact ? "100%" : "520px",
-          borderRadius: "18px",
-          border: "1px solid rgba(255,255,255,0.08)",
-          background: "rgba(255,255,255,0.03)",
           padding: compact ? "20px" : "28px",
           textAlign: compact ? "left" : "center",
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            fontSize: "11px",
-            fontWeight: 900,
-            letterSpacing: "0.16em",
-            color: "rgba(255,255,255,0.55)",
-            textTransform: "uppercase",
-          }}
-        >
+        <p className="m-0 text-[11px] font-[900] tracking-[0.16em] text-white/[0.55] uppercase">
           Dashboard Error
         </p>
         <h2
-          style={{
-            margin: "10px 0 0",
-            fontSize: compact ? "18px" : "24px",
-            fontWeight: 900,
-            color: "#fff",
-          }}
+          className="mt-2.5 font-[900] text-white"
+          style={{ fontSize: compact ? "18px" : "24px" }}
         >
           {title}
         </h2>
-        <p
-          style={{
-            margin: "10px 0 0",
-            fontSize: "13px",
-            lineHeight: 1.6,
-            color: "rgba(255,255,255,0.68)",
-          }}
-        >
+        <p className="mt-2.5 text-[13px] leading-relaxed text-white/[0.68]">
           {message}
         </p>
         {onAction ? (
           <button
             type="button"
-            onClick={() => {
-              void onAction();
-            }}
-            style={{
-              marginTop: "18px",
-              minWidth: "140px",
-              height: "42px",
-              borderRadius: "12px",
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-              fontSize: "11px",
-              fontWeight: 900,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
+            onClick={() => { void onAction(); }}
+            className="dash-btn mt-[18px] min-w-[140px] h-[42px]"
           >
             {actionLabel}
           </button>

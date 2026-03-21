@@ -89,7 +89,7 @@ const DATASET_KEYS: ArtistDatasetKey[] = [
 const getViewDatasets = (view: string): ArtistDatasetKey[] => {
   switch (view) {
     case "overview":
-      return ["overview"];
+      return ["overview", "demos"];
     case "demos":
       return ["demos"];
     case "contracts":

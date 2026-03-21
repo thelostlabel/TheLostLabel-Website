@@ -79,15 +79,24 @@ export async function GET(req, { params }) {
             if (match) {
                 const start = parseInt(match[1], 10);
                 const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
-                const chunkSize = end - start + 1;
 
-                const stream = createFileWebStream(filePath, req.signal, { start, end });
+                if (start >= fileSize) {
+                    return new Response(null, {
+                        status: 416,
+                        headers: { "Content-Range": `bytes */${fileSize}` },
+                    });
+                }
+
+                const clampedEnd = Math.min(end, fileSize - 1);
+                const chunkSize = clampedEnd - start + 1;
+
+                const stream = createFileWebStream(filePath, req.signal, { start, end: clampedEnd });
                 return new Response(stream, {
                     status: 206,
                     headers: {
                         "Content-Type": contentType,
                         "Content-Length": chunkSize.toString(),
-                        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                        "Content-Range": `bytes ${start}-${clampedEnd}/${fileSize}`,
                         "Accept-Ranges": "bytes",
                         "Cache-Control": "private, no-store",
                         "Vary": "Cookie",

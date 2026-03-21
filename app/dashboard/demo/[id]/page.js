@@ -4,10 +4,9 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Plus, X, Upload, Info } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
-import StudioPlayer from '@/app/components/dashboard/StudioPlayer';
+import WaveformPlayer from '@/app/components/dashboard/WaveformPlayer';
 import {
     canApproveDemos,
     canDeleteDemos,
@@ -18,14 +17,6 @@ import {
 } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
-const glassStyle = {
-    background: 'var(--surface)',
-    backdropFilter: 'blur(18px)',
-    border: '1px solid var(--border)',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    boxShadow: '0 18px 40px rgba(0,0,0,0.35)'
-};
 
 const inputStyle = {
     width: '100%',
@@ -62,7 +53,6 @@ export default function DemoReviewPage({ params }) {
     const showLoading = useMinimumLoader(loading, 900);
     const [error, setError] = useState(null);
     const [activeFile, setActiveFile] = useState(null);
-    const [showApproveModal, setShowApproveModal] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -233,7 +223,7 @@ export default function DemoReviewPage({ params }) {
 
                         {activeFile ? (
                             <div>
-                                <StudioPlayer
+                                <WaveformPlayer
                                     src={activeFileUrl}
                                     filename={activeFile.filename}
                                 />

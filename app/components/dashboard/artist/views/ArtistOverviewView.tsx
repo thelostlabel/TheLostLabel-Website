@@ -22,7 +22,7 @@ import {
 } from "recharts";
 
 import type { AppSessionUser } from "@/lib/auth-types";
-import type { ArtistOverviewStats } from "@/app/components/dashboard/types";
+import type { ArtistOverviewStats, DashboardDemo } from "@/app/components/dashboard/types";
 import {
   DASHBOARD_THEME,
   handleImageError,
@@ -33,6 +33,7 @@ import FeaturedAnnouncements from "./FeaturedAnnouncements";
 type ArtistOverviewViewProps = {
   stats: ArtistOverviewStats;
   recentReleases: Array<Record<string, unknown>>;
+  demos?: DashboardDemo[];
   onNavigate: (view: string) => void;
   sessionUser: AppSessionUser | null;
 };
@@ -409,6 +410,7 @@ export function ArtistQuickAccessBar({
 export default function ArtistOverviewView({
   stats,
   recentReleases,
+  demos = [],
   onNavigate,
   sessionUser,
 }: ArtistOverviewViewProps) {
@@ -512,6 +514,142 @@ export default function ArtistOverviewView({
           </motion.div>
         ))}
       </div>
+
+      {/* ── Demo Submission Tracker ── */}
+      {demos.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            background: DASHBOARD_THEME.surface,
+            border: `1px solid ${DASHBOARD_THEME.border}`,
+            borderRadius: "14px",
+            padding: "16px 18px",
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <p style={{ margin: 0, fontSize: "10px", fontWeight: 800, letterSpacing: "1.5px", color: DASHBOARD_THEME.muted }}>
+                DEMO SUBMISSIONS
+              </p>
+              {/* Quick stats */}
+              {(["pending", "reviewing", "approved", "rejected"] as const).map((s) => {
+                const count = demos.filter((d) => d.status === s).length;
+                if (count === 0) return null;
+                const colors: Record<string, string> = {
+                  pending: "#888",
+                  reviewing: "#f59e0b",
+                  approved: "#22c55e",
+                  rejected: "#ef4444",
+                };
+                return (
+                  <span key={s} style={{
+                    fontSize: "9px", fontWeight: 900, letterSpacing: "1px",
+                    color: colors[s],
+                    padding: "2px 8px",
+                    border: `1px solid ${colors[s]}35`,
+                    borderRadius: "999px",
+                  }}>
+                    {count} {s.toUpperCase()}
+                  </span>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={() => onNavigate("submit")}
+                style={{
+                  fontSize: "10px", fontWeight: 900, letterSpacing: "0.8px", padding: "5px 12px",
+                  background: "#fff", color: "#000", border: "none", borderRadius: "8px", cursor: "pointer",
+                }}
+              >
+                + Submit New
+              </button>
+              <button
+                onClick={() => onNavigate("demos")}
+                style={{
+                  fontSize: "10px", fontWeight: 800, padding: "5px 12px",
+                  background: "rgba(255,255,255,0.05)", color: DASHBOARD_THEME.muted,
+                  border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: "8px", cursor: "pointer",
+                }}
+              >
+                View All
+              </button>
+            </div>
+          </div>
+
+          {/* Demo rows */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {demos.slice(0, 5).map((demo) => {
+              const statusColors: Record<string, string> = {
+                pending: "#666",
+                reviewing: "#f59e0b",
+                approved: "#22c55e",
+                rejected: "#ef4444",
+              };
+              const status = (demo.status ?? "pending") as string;
+              const color = statusColors[status] ?? "#666";
+              return (
+                <a
+                  key={demo.id}
+                  href={`/dashboard/demo/${demo.id}`}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "10px",
+                    padding: "9px 12px",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    borderRadius: "10px",
+                    textDecoration: "none",
+                    transition: "border-color 0.16s ease, background 0.16s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+                  }}
+                >
+                  {/* Status dot */}
+                  <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}80` }} />
+
+                  {/* Title */}
+                  <span style={{
+                    flex: 1, fontSize: "12px", fontWeight: 700, color: "#e5e7eb",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {String(demo.title ?? demo.name ?? "Untitled")}
+                  </span>
+
+                  {/* Genre */}
+                  {demo.genre && (
+                    <span style={{ fontSize: "10px", color: "#444", fontWeight: 600, flexShrink: 0 }}>
+                      {String(demo.genre)}
+                    </span>
+                  )}
+
+                  {/* Date */}
+                  <span style={{ fontSize: "10px", color: "#444", flexShrink: 0 }}>
+                    {demo.createdAt ? new Date(demo.createdAt as string).toLocaleDateString() : ""}
+                  </span>
+
+                  {/* Status label */}
+                  <span style={{
+                    fontSize: "9px", fontWeight: 900, letterSpacing: "0.8px",
+                    color: color, padding: "3px 8px",
+                    border: `1px solid ${color}35`, borderRadius: "999px", flexShrink: 0,
+                  }}>
+                    {status.toUpperCase()}
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       <div
         className="overview-main-grid"
