@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import WaveSurfer from "wavesurfer.js";
 import {
   Pause,
   Play,
@@ -29,13 +28,15 @@ export default function WaveformPlayer({ src, filename }: WaveformPlayerProps) {
 }
 
 function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WaveSurfer | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressRef = useRef<HTMLDivElement | null>(null);
   const volumeSliderRef = useRef<HTMLInputElement>(null);
+  const frameRef = useRef<number | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
@@ -43,95 +44,66 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   const [isLoop, setIsLoop] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pre-fetch audio as a complete blob to avoid ERR_REQUEST_RANGE_NOT_SATISFIABLE.
-  // Pass the Blob directly to WaveSurfer so it doesn't try to fetch a blob: URL,
-  // which would be blocked by the app CSP.
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const progressPct = duration > 0 ? Math.max(0, Math.min(100, (currentTime / duration) * 100)) : 0;
 
   useEffect(() => {
-    let cancelled = false;
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    setIsLoading(true);
-    setError(null);
-    setAudioBlob(null);
-
-    fetch(src)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        setAudioBlob(blob);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setError("Audio file could not be loaded.");
-        setIsLoading(false);
-      });
+    audio.pause();
+    audio.src = src;
+    audio.load();
 
     return () => {
-      cancelled = true;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
     };
   }, [src]);
 
   useEffect(() => {
-    if (!audioBlob || !containerRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    const ws = WaveSurfer.create({
-      container: containerRef.current,
-      waveColor: "rgba(255,255,255,0.12)",
-      progressColor: "rgba(255,255,255,0.72)",
-      cursorColor: "#ffffff",
-      cursorWidth: 2,
-      barWidth: 2,
-      barGap: 1.5,
-      barRadius: 2,
-      height: 64,
-      normalize: true,
-      interact: true,
-    });
-
-    wsRef.current = ws;
-
-    ws.loadBlob(audioBlob);
-
-    ws.on("ready", (dur) => {
-      setDuration(dur);
-      setIsLoading(false);
-      setIsReady(true);
-      ws.setVolume(volume ** 2);
-    });
-
-    ws.on("audioprocess", (t) => setCurrentTime(t));
-    ws.on("seeking", (t) => setCurrentTime(t));
-    ws.on("play", () => setIsPlaying(true));
-    ws.on("pause", () => setIsPlaying(false));
-    ws.on("finish", () => {
-      setIsPlaying(false);
-      if (isLoop) ws.play();
-      else setCurrentTime(0);
-    });
-    ws.on("error", () => {
-      setError("Audio file could not be loaded.");
-      setIsLoading(false);
-    });
-
-    return () => {
-      ws.destroy();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioBlob]);
-
-  // Sync volume
-  useEffect(() => {
-    if (!wsRef.current) return;
     if (isMuted) {
-      wsRef.current.setVolume(0);
+      audio.volume = 0;
     } else {
-      wsRef.current.setVolume(volume ** 2);
+      audio.volume = volume ** 2;
     }
   }, [volume, isMuted]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.loop = isLoop;
+  }, [isLoop]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      return;
+    }
+
+    const tick = () => {
+      const audio = audioRef.current;
+      if (audio) {
+        setCurrentTime(audio.currentTime);
+      }
+      frameRef.current = requestAnimationFrame(tick);
+    };
+
+    frameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+  }, [isPlaying]);
 
   // CSS variable for volume slider fill
   useEffect(() => {
@@ -142,14 +114,27 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   }, [volume, isMuted]);
 
   const togglePlay = useCallback(async () => {
-    if (!wsRef.current || !isReady) return;
-    await wsRef.current.playPause();
+    const audio = audioRef.current;
+    if (!audio || !isReady) return;
+
+    try {
+      if (audio.paused) {
+        await audio.play();
+      } else {
+        audio.pause();
+      }
+    } catch {
+      setError("Audio file could not be loaded.");
+    }
   }, [isReady]);
 
   const skip = useCallback((delta: number) => {
-    if (!wsRef.current) return;
-    const t = wsRef.current.getCurrentTime();
-    wsRef.current.setTime(Math.max(0, Math.min(t + delta, duration)));
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const nextTime = Math.max(0, Math.min(audio.currentTime + delta, duration || audio.duration || 0));
+    audio.currentTime = nextTime;
+    setCurrentTime(nextTime);
   }, [duration]);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +145,20 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   };
 
   const displayVol = isMuted ? 0 : Math.round(volume * 100);
+
+  const handleSeek = useCallback((clientX: number) => {
+    const audio = audioRef.current;
+    const progress = progressRef.current;
+    if (!audio || !progress || !duration) return;
+
+    const rect = progress.getBoundingClientRect();
+    if (!rect.width) return;
+
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const nextTime = ratio * duration;
+    audio.currentTime = nextTime;
+    setCurrentTime(nextTime);
+  }, [duration]);
 
   return (
     <div style={{
@@ -195,15 +194,106 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
         }}>
           {filename?.toUpperCase() ?? "UNKNOWN TRACK"}
         </span>
-        {isLoading && (
+        {(isLoading || isBuffering) && (
           <span style={{ fontSize: "9px", fontWeight: 700, color: "#f59e0b", letterSpacing: "1px", animation: "wspulse 1s ease infinite" }}>
-            LOADING…
+            {isBuffering ? "BUFFERING…" : "LOADING…"}
           </span>
         )}
       </div>
 
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        playsInline
+        onLoadedMetadata={() => {
+          const audio = audioRef.current;
+          const nextDuration = audio?.duration;
+          if (nextDuration && Number.isFinite(nextDuration)) {
+            setDuration(nextDuration);
+          }
+          setIsReady(true);
+          setIsLoading(false);
+          setError(null);
+        }}
+        onDurationChange={() => {
+          const audio = audioRef.current;
+          const nextDuration = audio?.duration;
+          if (nextDuration && Number.isFinite(nextDuration)) {
+            setDuration(nextDuration);
+          }
+        }}
+        onPlay={() => {
+          setIsPlaying(true);
+          setIsBuffering(false);
+        }}
+        onPause={() => setIsPlaying(false)}
+        onWaiting={() => setIsBuffering(true)}
+        onCanPlay={() => {
+          setIsReady(true);
+          setIsLoading(false);
+          setIsBuffering(false);
+        }}
+        onCanPlayThrough={() => {
+          setIsReady(true);
+          setIsLoading(false);
+          setIsBuffering(false);
+        }}
+        onSeeking={() => setIsBuffering(true)}
+        onSeeked={() => setIsBuffering(false)}
+        onTimeUpdate={() => {
+          const audio = audioRef.current;
+          if (audio) {
+            setCurrentTime(audio.currentTime);
+          }
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          setCurrentTime(isLoop ? currentTime : 0);
+        }}
+        onError={() => {
+          setError("Audio file could not be loaded.");
+          setIsLoading(false);
+          setIsBuffering(false);
+          setIsReady(false);
+        }}
+      />
+
       {/* Waveform */}
-      <div ref={containerRef} style={{ marginBottom: "10px", cursor: "pointer", opacity: isLoading ? 0.4 : 1, transition: "opacity 0.3s" }} />
+      <div
+        ref={progressRef}
+        onClick={(e) => handleSeek(e.clientX)}
+        style={{
+          marginBottom: "10px",
+          cursor: isReady ? "pointer" : "default",
+          opacity: isLoading ? 0.4 : 1,
+          transition: "opacity 0.3s",
+          height: "64px",
+          display: "flex",
+          alignItems: "flex-end",
+          gap: "3px",
+          padding: "4px 0",
+        }}
+      >
+        {Array.from({ length: 48 }).map((_, index) => {
+          const normalizedIndex = index / 47;
+          const active = normalizedIndex <= progressPct / 100;
+          const height = 18 + Math.round((Math.sin(index * 0.7) + 1) * 16);
+
+          return (
+            <div
+              key={index}
+              style={{
+                flex: 1,
+                minWidth: "2px",
+                height: `${height}px`,
+                borderRadius: "999px",
+                background: active ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.12)",
+                transition: "background 0.18s ease",
+              }}
+            />
+          );
+        })}
+      </div>
 
       {/* Time row */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "14px" }}>
