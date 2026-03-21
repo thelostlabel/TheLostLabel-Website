@@ -39,12 +39,36 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [bufferedUntil, setBufferedUntil] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoop, setIsLoop] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const progressPct = duration > 0 ? Math.max(0, Math.min(100, (currentTime / duration) * 100)) : 0;
+  const bufferedPct = duration > 0 ? Math.max(progressPct, Math.min(100, (bufferedUntil / duration) * 100)) : 0;
+
+  const syncBuffered = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const { buffered, currentTime: now } = audio;
+    if (!buffered || buffered.length === 0) {
+      setBufferedUntil(now);
+      return;
+    }
+
+    for (let index = 0; index < buffered.length; index += 1) {
+      const start = buffered.start(index);
+      const end = buffered.end(index);
+      if (now >= start && now <= end) {
+        setBufferedUntil(end);
+        return;
+      }
+    }
+
+    setBufferedUntil(buffered.end(buffered.length - 1));
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -203,7 +227,7 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
 
       <audio
         ref={audioRef}
-        preload="metadata"
+        preload="auto"
         playsInline
         onLoadedMetadata={() => {
           const audio = audioRef.current;
@@ -211,6 +235,7 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
           if (nextDuration && Number.isFinite(nextDuration)) {
             setDuration(nextDuration);
           }
+          syncBuffered();
           setIsReady(true);
           setIsLoading(false);
           setError(null);
@@ -221,30 +246,45 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
           if (nextDuration && Number.isFinite(nextDuration)) {
             setDuration(nextDuration);
           }
+          syncBuffered();
         }}
         onPlay={() => {
           setIsPlaying(true);
           setIsBuffering(false);
+          syncBuffered();
         }}
         onPause={() => setIsPlaying(false)}
-        onWaiting={() => setIsBuffering(true)}
+        onWaiting={() => {
+          setIsBuffering(true);
+          syncBuffered();
+        }}
         onCanPlay={() => {
           setIsReady(true);
           setIsLoading(false);
           setIsBuffering(false);
+          syncBuffered();
         }}
         onCanPlayThrough={() => {
           setIsReady(true);
           setIsLoading(false);
           setIsBuffering(false);
+          syncBuffered();
         }}
-        onSeeking={() => setIsBuffering(true)}
-        onSeeked={() => setIsBuffering(false)}
+        onProgress={syncBuffered}
+        onSeeking={() => {
+          setIsBuffering(true);
+          syncBuffered();
+        }}
+        onSeeked={() => {
+          setIsBuffering(false);
+          syncBuffered();
+        }}
         onTimeUpdate={() => {
           const audio = audioRef.current;
           if (audio) {
             setCurrentTime(audio.currentTime);
           }
+          syncBuffered();
         }}
         onEnded={() => {
           setIsPlaying(false);
@@ -267,27 +307,32 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
           cursor: isReady ? "pointer" : "default",
           opacity: isLoading ? 0.4 : 1,
           transition: "opacity 0.3s",
-          height: "64px",
+          height: "46px",
           display: "flex",
-          alignItems: "flex-end",
-          gap: "3px",
-          padding: "4px 0",
+          alignItems: "center",
+          gap: "2px",
+          padding: "2px 0",
         }}
       >
-        {Array.from({ length: 48 }).map((_, index) => {
-          const normalizedIndex = index / 47;
+        {Array.from({ length: 72 }).map((_, index) => {
+          const normalizedIndex = index / 71;
           const active = normalizedIndex <= progressPct / 100;
-          const height = 18 + Math.round((Math.sin(index * 0.7) + 1) * 16);
+          const buffered = normalizedIndex <= bufferedPct / 100;
+          const height = 8 + Math.round((Math.sin(index * 0.55) + 1) * 8);
 
           return (
             <div
               key={index}
               style={{
                 flex: 1,
-                minWidth: "2px",
+                minWidth: "1px",
                 height: `${height}px`,
                 borderRadius: "999px",
-                background: active ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.12)",
+                background: active
+                  ? "rgba(255,255,255,0.74)"
+                  : buffered
+                    ? "rgba(255,255,255,0.26)"
+                    : "rgba(255,255,255,0.1)",
                 transition: "background 0.18s ease",
               }}
             />
