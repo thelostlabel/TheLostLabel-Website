@@ -19,7 +19,7 @@ type ContractFormProps = {
   demos: any[];
   saving: boolean;
   uploadingPdf: boolean;
-  pdfInputRef: React.RefObject<HTMLInputElement>;
+  pdfInputRef: React.RefObject<HTMLInputElement | null>;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   onPdfUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;

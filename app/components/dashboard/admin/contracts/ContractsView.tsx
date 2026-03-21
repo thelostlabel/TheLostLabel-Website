@@ -25,6 +25,25 @@ type ContractsViewProps = {
   demos?: any[];
 };
 
+type ContractUploadParsedMetadata = {
+  artistShare?: number;
+  labelShare?: number;
+  extractedTextLength?: number;
+  parsedText?: string;
+};
+
+type ContractUploadResponse =
+  | {
+      success: true;
+      pdfUrl: string;
+      parsedMetadata?: ContractUploadParsedMetadata;
+    }
+  | {
+      success: false;
+      error?: string;
+      parsedMetadata?: ContractUploadParsedMetadata;
+    };
+
 export default function ContractsView({
   contracts,
   onRefresh,
@@ -78,12 +97,15 @@ export default function ContractsView({
       try {
         const formData = new FormData();
         formData.append('file', file);
-        const uploadData: any = await dashboardRequestJson('/api/contracts/upload', {
+        const uploadData = await dashboardRequestJson<ContractUploadResponse>(
+          '/api/contracts/upload',
+          {
           method: 'POST',
           body: formData,
           context: 'upload contract pdf',
           retry: false,
-        });
+          }
+        );
         if (!uploadData.success) throw new Error(uploadData.error || 'Upload failed');
 
         const meta = uploadData.parsedMetadata || {};
@@ -385,12 +407,15 @@ export default function ContractsView({
     formData.append('file', file);
 
     try {
-      const data = await dashboardRequestJson('/api/contracts/upload', {
+      const data = await dashboardRequestJson<ContractUploadResponse>(
+        '/api/contracts/upload',
+        {
         method: 'POST',
         body: formData,
         context: 'upload contract pdf',
         retry: false,
-      });
+        }
+      );
       if (data.success) {
         setForm({ ...form, pdfUrl: data.pdfUrl });
         showToast('PDF uploaded successfully', 'success');
