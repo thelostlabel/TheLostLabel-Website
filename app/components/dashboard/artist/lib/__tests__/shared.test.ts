@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { getBaseTitle, resolveImageSrc, FALLBACK_IMAGE } from '../shared.ts';
+import { getBaseTitle, resolveImageSrc, FALLBACK_IMAGE } from '../shared';
 
 describe('Artist Shared View Lib', () => {
   describe('getBaseTitle', () => {

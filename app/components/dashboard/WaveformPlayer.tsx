@@ -21,14 +21,20 @@ function formatTime(seconds: number): string {
 
 interface WaveformPlayerProps {
   src: string;
+  waveformUrl?: string;
   filename?: string;
 }
 
-export default function WaveformPlayer({ src, filename }: WaveformPlayerProps) {
-  return <WaveformPlayerInner key={src} src={src} filename={filename} />;
+interface WaveformResponse {
+  duration: number;
+  peaks: Array<number[]>;
 }
 
-function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
+export default function WaveformPlayer({ src, waveformUrl, filename }: WaveformPlayerProps) {
+  return <WaveformPlayerInner key={src} src={src} waveformUrl={waveformUrl} filename={filename} />;
+}
+
+function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WaveSurfer | null>(null);
   const volumeSliderRef = useRef<HTMLInputElement>(null);
@@ -36,7 +42,8 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   const mutedRef = useRef(false);
   const loopRef = useRef(false);
 
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [waveformData, setWaveformData] = useState<WaveformResponse | null>(null);
+  const [waveformFetchFailed, setWaveformFetchFailed] = useState(() => !waveformUrl);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,28 +58,38 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
     const controller = new AbortController();
     let cancelled = false;
 
-    fetch(src, { signal: controller.signal })
+    if (!waveformUrl) {
+      return () => {
+        cancelled = true;
+        controller.abort();
+      };
+    }
+
+    fetch(waveformUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
-        return res.blob();
+        return res.json();
       })
-      .then((blob) => {
+      .then((data: WaveformResponse) => {
         if (cancelled) return;
-        setAudioBlob(blob);
+        if (!Array.isArray(data?.peaks) || typeof data?.duration !== "number") {
+          throw new Error("Invalid waveform payload");
+        }
+
+        setWaveformData(data);
       })
       .catch((fetchError) => {
         if (cancelled || fetchError?.name === "AbortError") return;
-        setError("Audio file could not be loaded.");
-        setIsLoading(false);
+        setWaveformFetchFailed(true);
       });
 
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [src]);
+  }, [waveformUrl]);
 
   useEffect(() => {
     volumeRef.current = volume;
@@ -88,7 +105,8 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   }, [isLoop]);
 
   useEffect(() => {
-    if (!audioBlob || !containerRef.current) return;
+    if (!containerRef.current) return;
+    if (!waveformData && waveformUrl && !waveformFetchFailed) return;
 
     const ws = WaveSurfer.create({
       container: containerRef.current,
@@ -102,10 +120,14 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
       height: 64,
       normalize: true,
       interact: true,
+      backend: "MediaElement",
     });
 
     wsRef.current = ws;
 
+    ws.on("loading", () => {
+      setIsLoading(true);
+    });
     ws.on("ready", (nextDuration) => {
       setDuration(nextDuration);
       setCurrentTime(0);
@@ -133,13 +155,21 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
       setIsReady(false);
     });
 
-    ws.loadBlob(audioBlob);
+    const loadPromise = waveformData
+      ? ws.load(src, waveformData.peaks, waveformData.duration)
+      : ws.load(src);
+
+    loadPromise.catch(() => {
+      setError("Audio file could not be loaded.");
+      setIsLoading(false);
+      setIsReady(false);
+    });
 
     return () => {
       ws.destroy();
       wsRef.current = null;
     };
-  }, [audioBlob]);
+  }, [src, waveformData, waveformFetchFailed, waveformUrl]);
 
   // CSS variable for volume slider fill
   useEffect(() => {

@@ -156,7 +156,9 @@ export default function DemoReviewPage({ params }) {
         }
     };
 
-    const activeFileUrl = activeFile ? `/api/files/demo/${activeFile.id}` : null;
+    const activeFileDownloadUrl = activeFile ? `/api/files/demo/${activeFile.id}` : null;
+    const activeFileAudioUrl = activeFile ? `/api/files/demo/${activeFile.id}/audio` : null;
+    const activeFileWaveformUrl = activeFile ? `/api/files/demo/${activeFile.id}/waveform` : null;
 
     return (
         <div className="demo-review-shell">
@@ -224,11 +226,12 @@ export default function DemoReviewPage({ params }) {
                         {activeFile ? (
                             <div>
                                 <WaveformPlayer
-                                    src={activeFileUrl}
+                                    src={activeFileAudioUrl}
+                                    waveformUrl={activeFileWaveformUrl}
                                     filename={activeFile.filename}
                                 />
                                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-                                    <a href={`${activeFileUrl}?download=1`} download className="secondary-btn" style={{ padding: '10px 16px', fontSize: '10px' }}>
+                                    <a href={`${activeFileDownloadUrl}?download=1`} download className="secondary-btn" style={{ padding: '10px 16px', fontSize: '10px' }}>
                                         DOWNLOAD SOURCE FILE
                                     </a>
                                 </div>
