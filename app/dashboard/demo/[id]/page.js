@@ -219,7 +219,7 @@ export default function DemoReviewPage({ params }) {
                     </div>
 
                     <div className="panel" style={{ marginTop: '14px' }}>
-                        <h4 className="kicker" style={{ marginBottom: '16px' }}>STUDIO PLAYER</h4>
+                        <h4 className="kicker" style={{ marginBottom: '16px' }}>WAVEFORM PLAYER</h4>
 
                         {activeFile ? (
                             <div>

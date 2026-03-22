@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import WaveSurfer from "wavesurfer.js";
 import {
   Pause,
   Play,
@@ -28,106 +29,117 @@ export default function WaveformPlayer({ src, filename }: WaveformPlayerProps) {
 }
 
 function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const progressRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const wsRef = useRef<WaveSurfer | null>(null);
   const volumeSliderRef = useRef<HTMLInputElement>(null);
-  const frameRef = useRef<number | null>(null);
+  const volumeRef = useRef(0.8);
+  const mutedRef = useRef(false);
+  const loopRef = useRef(false);
 
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [bufferedUntil, setBufferedUntil] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoop, setIsLoop] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const progressPct = duration > 0 ? Math.max(0, Math.min(100, (currentTime / duration) * 100)) : 0;
-  const bufferedPct = duration > 0 ? Math.max(progressPct, Math.min(100, (bufferedUntil / duration) * 100)) : 0;
-
-  const syncBuffered = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const { buffered, currentTime: now } = audio;
-    if (!buffered || buffered.length === 0) {
-      setBufferedUntil(now);
-      return;
-    }
-
-    for (let index = 0; index < buffered.length; index += 1) {
-      const start = buffered.start(index);
-      const end = buffered.end(index);
-      if (now >= start && now <= end) {
-        setBufferedUntil(end);
-        return;
-      }
-    }
-
-    setBufferedUntil(buffered.end(buffered.length - 1));
-  }, []);
-
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const controller = new AbortController();
+    let cancelled = false;
 
-    audio.pause();
-    audio.src = src;
-    audio.load();
+    fetch(src, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        setAudioBlob(blob);
+      })
+      .catch((fetchError) => {
+        if (cancelled || fetchError?.name === "AbortError") return;
+        setError("Audio file could not be loaded.");
+        setIsLoading(false);
+      });
 
     return () => {
-      audio.pause();
-      audio.removeAttribute("src");
-      audio.load();
+      cancelled = true;
+      controller.abort();
     };
   }, [src]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    volumeRef.current = volume;
+    mutedRef.current = isMuted;
 
-    if (isMuted) {
-      audio.volume = 0;
-    } else {
-      audio.volume = volume ** 2;
-    }
+    const ws = wsRef.current;
+    if (!ws) return;
+    ws.setVolume(isMuted ? 0 : volume ** 2);
   }, [volume, isMuted]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.loop = isLoop;
+    loopRef.current = isLoop;
   }, [isLoop]);
 
   useEffect(() => {
-    if (!isPlaying) {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-      }
-      return;
-    }
+    if (!audioBlob || !containerRef.current) return;
 
-    const tick = () => {
-      const audio = audioRef.current;
-      if (audio) {
-        setCurrentTime(audio.currentTime);
-      }
-      frameRef.current = requestAnimationFrame(tick);
-    };
+    const ws = WaveSurfer.create({
+      container: containerRef.current,
+      waveColor: "rgba(255,255,255,0.12)",
+      progressColor: "rgba(255,255,255,0.72)",
+      cursorColor: "#ffffff",
+      cursorWidth: 2,
+      barWidth: 2,
+      barGap: 1.5,
+      barRadius: 2,
+      height: 64,
+      normalize: true,
+      interact: true,
+    });
 
-    frameRef.current = requestAnimationFrame(tick);
+    wsRef.current = ws;
+
+    ws.on("ready", (nextDuration) => {
+      setDuration(nextDuration);
+      setCurrentTime(0);
+      setIsLoading(false);
+      setIsReady(true);
+      setError(null);
+      ws.setVolume(mutedRef.current ? 0 : volumeRef.current ** 2);
+    });
+    ws.on("audioprocess", (time) => setCurrentTime(time));
+    ws.on("timeupdate", (time) => setCurrentTime(time));
+    ws.on("seeking", (time) => setCurrentTime(time));
+    ws.on("play", () => setIsPlaying(true));
+    ws.on("pause", () => setIsPlaying(false));
+    ws.on("finish", () => {
+      setIsPlaying(false);
+      if (loopRef.current) {
+        void ws.play();
+        return;
+      }
+      setCurrentTime(0);
+    });
+    ws.on("error", () => {
+      setError("Audio file could not be loaded.");
+      setIsLoading(false);
+      setIsReady(false);
+    });
+
+    ws.loadBlob(audioBlob);
 
     return () => {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-      }
+      ws.destroy();
+      wsRef.current = null;
     };
-  }, [isPlaying]);
+  }, [audioBlob]);
 
   // CSS variable for volume slider fill
   useEffect(() => {
@@ -138,26 +150,22 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   }, [volume, isMuted]);
 
   const togglePlay = useCallback(async () => {
-    const audio = audioRef.current;
-    if (!audio || !isReady) return;
+    const ws = wsRef.current;
+    if (!ws || !isReady) return;
 
     try {
-      if (audio.paused) {
-        await audio.play();
-      } else {
-        audio.pause();
-      }
+      await ws.playPause();
     } catch {
       setError("Audio file could not be loaded.");
     }
   }, [isReady]);
 
   const skip = useCallback((delta: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const ws = wsRef.current;
+    if (!ws) return;
 
-    const nextTime = Math.max(0, Math.min(audio.currentTime + delta, duration || audio.duration || 0));
-    audio.currentTime = nextTime;
+    const nextTime = Math.max(0, Math.min(ws.getCurrentTime() + delta, duration));
+    ws.setTime(nextTime);
     setCurrentTime(nextTime);
   }, [duration]);
 
@@ -169,20 +177,6 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
   };
 
   const displayVol = isMuted ? 0 : Math.round(volume * 100);
-
-  const handleSeek = useCallback((clientX: number) => {
-    const audio = audioRef.current;
-    const progress = progressRef.current;
-    if (!audio || !progress || !duration) return;
-
-    const rect = progress.getBoundingClientRect();
-    if (!rect.width) return;
-
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const nextTime = ratio * duration;
-    audio.currentTime = nextTime;
-    setCurrentTime(nextTime);
-  }, [duration]);
 
   return (
     <div style={{
@@ -218,127 +212,25 @@ function WaveformPlayerInner({ src, filename }: WaveformPlayerProps) {
         }}>
           {filename?.toUpperCase() ?? "UNKNOWN TRACK"}
         </span>
-        {(isLoading || isBuffering) && (
+        {isLoading && (
           <span style={{ fontSize: "9px", fontWeight: 700, color: "#f59e0b", letterSpacing: "1px", animation: "wspulse 1s ease infinite" }}>
-            {isBuffering ? "BUFFERING…" : "LOADING…"}
+            LOADING…
           </span>
         )}
       </div>
 
-      <audio
-        ref={audioRef}
-        preload="auto"
-        playsInline
-        onLoadedMetadata={() => {
-          const audio = audioRef.current;
-          const nextDuration = audio?.duration;
-          if (nextDuration && Number.isFinite(nextDuration)) {
-            setDuration(nextDuration);
-          }
-          syncBuffered();
-          setIsReady(true);
-          setIsLoading(false);
-          setError(null);
-        }}
-        onDurationChange={() => {
-          const audio = audioRef.current;
-          const nextDuration = audio?.duration;
-          if (nextDuration && Number.isFinite(nextDuration)) {
-            setDuration(nextDuration);
-          }
-          syncBuffered();
-        }}
-        onPlay={() => {
-          setIsPlaying(true);
-          setIsBuffering(false);
-          syncBuffered();
-        }}
-        onPause={() => setIsPlaying(false)}
-        onWaiting={() => {
-          setIsBuffering(true);
-          syncBuffered();
-        }}
-        onCanPlay={() => {
-          setIsReady(true);
-          setIsLoading(false);
-          setIsBuffering(false);
-          syncBuffered();
-        }}
-        onCanPlayThrough={() => {
-          setIsReady(true);
-          setIsLoading(false);
-          setIsBuffering(false);
-          syncBuffered();
-        }}
-        onProgress={syncBuffered}
-        onSeeking={() => {
-          setIsBuffering(true);
-          syncBuffered();
-        }}
-        onSeeked={() => {
-          setIsBuffering(false);
-          syncBuffered();
-        }}
-        onTimeUpdate={() => {
-          const audio = audioRef.current;
-          if (audio) {
-            setCurrentTime(audio.currentTime);
-          }
-          syncBuffered();
-        }}
-        onEnded={() => {
-          setIsPlaying(false);
-          setCurrentTime(isLoop ? currentTime : 0);
-        }}
-        onError={() => {
-          setError("Audio file could not be loaded.");
-          setIsLoading(false);
-          setIsBuffering(false);
-          setIsReady(false);
-        }}
-      />
-
       {/* Waveform */}
       <div
-        ref={progressRef}
-        onClick={(e) => handleSeek(e.clientX)}
+        ref={containerRef}
         style={{
           marginBottom: "10px",
           cursor: isReady ? "pointer" : "default",
           opacity: isLoading ? 0.4 : 1,
           transition: "opacity 0.3s",
-          height: "46px",
-          display: "flex",
-          alignItems: "center",
-          gap: "2px",
+          minHeight: "68px",
           padding: "2px 0",
         }}
-      >
-        {Array.from({ length: 72 }).map((_, index) => {
-          const normalizedIndex = index / 71;
-          const active = normalizedIndex <= progressPct / 100;
-          const buffered = normalizedIndex <= bufferedPct / 100;
-          const height = 8 + Math.round((Math.sin(index * 0.55) + 1) * 8);
-
-          return (
-            <div
-              key={index}
-              style={{
-                flex: 1,
-                minWidth: "1px",
-                height: `${height}px`,
-                borderRadius: "999px",
-                background: active
-                  ? "rgba(255,255,255,0.74)"
-                  : buffered
-                    ? "rgba(255,255,255,0.26)"
-                    : "rgba(255,255,255,0.1)",
-                transition: "background 0.18s ease",
-              }}
-            />
-          );
-        })}
-      </div>
+      />
 
       {/* Time row */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "14px" }}>
