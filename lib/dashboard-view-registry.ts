@@ -77,7 +77,6 @@ export const PORTAL_VIEW_DEFINITIONS: Array<{
   { view: "demos", routeView: "my-demos", navLabel: "MY DEMOS", title: "MY DEMOS", iconKey: "music", perm: "view_demos" },
   { view: "submit", routeView: "my-submit", navLabel: "NEW SUBMISSION", title: "NEW SUBMISSION", iconKey: "upload", perm: "submit_demos" },
   { view: "earnings", routeView: "my-earnings", navLabel: "EARNINGS", title: "MY EARNINGS", iconKey: "dollar-sign", perm: "view_earnings" },
-  { view: "contracts", routeView: "my-contracts", navLabel: "CONTRACTS", title: "MY CONTRACTS", iconKey: "briefcase", perm: "view_contracts" },
   { view: "support", routeView: "my-support", navLabel: "SUPPORT", title: "SUPPORT", iconKey: "inbox", perm: "view_support" },
   { view: "profile", routeView: "my-profile", navLabel: "MY PROFILE", title: "MY PROFILE", iconKey: "user", perm: "view_profile" },
   { view: "project", routeView: "my-project", navLabel: "PROJECT", title: "PROJECT", iconKey: "file-text", perm: "view_demos", hidden: true },

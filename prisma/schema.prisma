@@ -423,6 +423,25 @@ model SyncJob {
   @@index([status, runAfter, createdAt], map: "idx_sync_job_pending")
   @@index([dedupeKey], map: "idx_sync_job_dedupe_key")
 }
+
+model EmailDeliveryLog {
+  id                String   @id @default(uuid())
+  toEmail           String
+  fromEmail         String?
+  subject           String
+  status            String
+  provider          String   @default("smtp")
+  providerMessageId String?
+  providerResponse  String?
+  errorMessage      String?
+  errorCode         String?
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([status, createdAt(sort: Desc)], map: "idx_email_delivery_log_status_created_at")
+  @@index([toEmail, createdAt(sort: Desc)], map: "idx_email_delivery_log_to_email_created_at")
+}
+
 model Announcement {
   id        String   @id @default(uuid())
   title     String

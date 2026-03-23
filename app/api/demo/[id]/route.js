@@ -13,11 +13,9 @@ import {
     canViewAllDemos,
     hasPortalPermission
 } from "@/lib/permissions";
-import { randomUUID } from "crypto";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
-import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
 
 const REVIEWABLE_STATUSES = new Set(["pending", "reviewing"]);
 
@@ -129,6 +127,14 @@ export async function PATCH(req, { params }) {
     }
 
     if (isStaffAction) {
+        if (nextStatus === "contract_sent") {
+            return new Response(JSON.stringify({ error: "Contract stage is disabled." }), { status: 400 });
+        }
+
+        if (finalizeData) {
+            return new Response(JSON.stringify({ error: "Contract finalization flow is disabled." }), { status: 400 });
+        }
+
         if (nextStatus && REVIEWABLE_STATUSES.has(nextStatus) && !canReviewDemos(session.user)) {
             return new Response(JSON.stringify({ error: "You do not have permission to move demos through review." }), { status: 403 });
         }
@@ -170,98 +176,20 @@ export async function PATCH(req, { params }) {
             updateData.scheduledReleaseDate = body.scheduledReleaseDate;
         }
 
-        const updatedDemo = await prisma.$transaction(async (tx) => {
-            // NEW: If "Finalize & Send Contract" was clicked
-            if (isStaffAction && finalizeData) {
-                const { releaseName, artistShare, labelShare, notes, contractPdf, splits, artistId: finalizedArtistId } = finalizeData;
-
-                await tx.contract.create({
-                    data: {
-                        demoId: id,
-                        artistId: finalizedArtistId || null, // Use the actual Artist Profile ID from frontend
-                        userId: existingDemo.artistId, // existingDemo.artistId is the UserId in the Demo model
-                        title: releaseName || existingDemo.title,
-                        artistShare: parseFloat(artistShare) || 0.7,
-                        labelShare: parseFloat(labelShare) || 0.3,
-                        notes: notes || null,
-                        pdfUrl: contractPdf || null,
-                        status: 'active', // Active immediately, no signing needed per user request
-                        splits: splits && Array.isArray(splits) ? {
-                            create: splits.filter(s => s.name && s.percentage).map(s => ({
-                                name: s.name,
-                                email: s.email || null,
-                                percentage: parseFloat(s.percentage),
-                                userId: s.userId || null,
-                                artistId: s.artistId || null
-                            }))
-                        } : undefined
-                    }
-                });
-
-                updateData.status = 'contract_sent';
-            }
-
-            // 1. Update Demo
-            const d = await tx.demo.update({
-                where: { id },
-                data: updateData,
-                include: { artist: true, contract: true }
-            });
-
-            // 2. RELEASE CREATION LOGIC
-            const releaseDateToUse = normalizeReleaseDate(body.scheduledReleaseDate || (finalizeData && finalizeData.releaseDate));
-
-            // If we just finalized (created a contract) OR we are scheduling, ensure Release exists
-            if (finalizeData || (body.scheduledReleaseDate && d.contract)) {
-                // We need the contract ID. If we just created it, we can't easily get it from 'd.contract' 
-                // reliably without re-fetching or using the created instance if we had explicitly captured it.
-                // However, since we did `tx.demo.update` with `include: { contract: true }`, `d.contract` SHOULD be defined.
-
-                if (d.contract) {
-                    if (!d.contract.releaseId) {
-                        const release = await tx.release.create({
-                            data: {
-                                id: `rel_${randomUUID()}`,
-                                name: finalizeData?.releaseName || d.title, // Use explicit release name if provided
-                                artistName: d.artist.stageName || d.artist.fullName,
-                                image: body.coverArtUrl || null,
-                                releaseDate: releaseDateToUse,
-                                spotifyUrl: d.artist.spotifyUrl,
-                                artistsJson: JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }]),
-                                releaseArtists: buildReleaseArtistNestedWrite(
-                                    JSON.stringify([{ id: d.artist.id, name: d.artist.stageName || d.artist.fullName }]),
-                                    "create"
-                                )
-                            }
-                        });
-
-                        await tx.contract.update({
-                            where: { id: d.contract.id },
-                            data: { releaseId: release.id }
-                        });
-                    } else if (releaseDateToUse || body.coverArtUrl) {
-                        // Update existing release
-                        await tx.release.update({
-                            where: { id: d.contract.releaseId },
-                            data: {
-                                ...(releaseDateToUse ? { releaseDate: releaseDateToUse } : {}),
-                                ...(body.coverArtUrl ? { image: body.coverArtUrl } : {})
-                            }
-                        });
-                    }
-                }
-            }
-            return d;
+        const updatedDemo = await prisma.demo.update({
+            where: { id },
+            data: updateData,
+            include: { artist: true, contract: true }
         });
         const shouldNotifyStatusChange = Boolean(nextStatus || finalizeData);
-        const notifiedStatus = shouldNotifyStatusChange && ["approved", "rejected", "contract_sent"].includes(updatedDemo.status)
+        const notifiedStatus = shouldNotifyStatusChange && ["approved", "rejected"].includes(updatedDemo.status)
             ? updatedDemo.status
             : shouldNotifyStatusChange
                 ? nextStatus
                 : null;
 
         // If status changed to approved, we might want to notify
-        if ((notifiedStatus === 'approved' || notifiedStatus === 'contract_sent') && updatedDemo.artist?.email) {
+        if (notifiedStatus === 'approved' && updatedDemo.artist?.email) {
             try {
                 await sendMail({
                     to: updatedDemo.artist.email,
@@ -278,18 +206,16 @@ export async function PATCH(req, { params }) {
             await notifyDemoApproval(
                 updatedDemo.artist.stageName || updatedDemo.artist.fullName,
                 updatedDemo.title,
-                notifiedStatus === 'contract_sent' ? "Contract Sent" : "Pending Deal Configuration"
+                "Approved"
             );
         }
 
-        if (notifiedStatus && ["approved", "rejected", "contract_sent"].includes(notifiedStatus)) {
+        if (notifiedStatus && ["approved", "rejected"].includes(notifiedStatus)) {
             try {
                 await insertDiscordOutboxEvent(
                     notifiedStatus === "approved"
                         ? "demo_approved"
-                        : notifiedStatus === "rejected"
-                            ? "demo_rejected"
-                            : "demo_contract_sent",
+                        : "demo_rejected",
                     {
                         demoId: updatedDemo.id,
                         title: updatedDemo.title,
@@ -309,18 +235,15 @@ export async function PATCH(req, { params }) {
                 const artistName = updatedDemo.artist?.stageName || updatedDemo.artist?.fullName || "Artist";
                 const notifyType = notifiedStatus === "rejected"
                     ? DISCORD_NOTIFY_TYPES.DEMO_REJECTED
-                    : notifiedStatus === "contract_sent"
-                        ? DISCORD_NOTIFY_TYPES.DEMO_CONTRACT_SENT
-                        : DISCORD_NOTIFY_TYPES.DEMO_APPROVED;
+                    : DISCORD_NOTIFY_TYPES.DEMO_APPROVED;
 
                 const statusMeta = {
                     approved: { color: 0x00ff88, description: `Your demo **${updatedDemo.title}** has been approved! 🎉` },
-                    rejected: { color: 0xff4444, description: `Your demo **${updatedDemo.title}** was not accepted.${rejectionReason ? `\n\n**Reason:** ${rejectionReason}` : ""}` },
-                    contract_sent: { color: 0x00aaff, description: `A contract has been sent for your demo **${updatedDemo.title}**. Please check your dashboard.` }
+                    rejected: { color: 0xff4444, description: `Your demo **${updatedDemo.title}** was not accepted.${rejectionReason ? `\n\n**Reason:** ${rejectionReason}` : ""}` }
                 };
 
                 await queueDiscordNotification(updatedDemo.artistId, notifyType, {
-                    title: `Demo ${notifiedStatus === "contract_sent" ? "Contract Sent" : notifiedStatus.charAt(0).toUpperCase() + notifiedStatus.slice(1)}`,
+                    title: `Demo ${notifiedStatus.charAt(0).toUpperCase() + notifiedStatus.slice(1)}`,
                     description: statusMeta[notifiedStatus]?.description,
                     color: statusMeta[notifiedStatus]?.color ?? 0x7c3aed,
                     fields: [

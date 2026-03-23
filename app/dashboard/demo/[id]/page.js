@@ -10,7 +10,6 @@ import WaveformPlayer from '@/app/components/dashboard/WaveformPlayer';
 import {
     canApproveDemos,
     canDeleteDemos,
-    canFinalizeDemos,
     canRejectDemos,
     canReviewDemos,
     canViewAllDemos
@@ -62,7 +61,6 @@ export default function DemoReviewPage({ params }) {
     const canReviewDemo = canReviewDemos(session?.user);
     const canApproveDemo = canApproveDemos(session?.user);
     const canRejectDemo = canRejectDemos(session?.user);
-    const canFinalizeDemo = canFinalizeDemos(session?.user);
     const canDeleteDemo = canDeleteDemos(session?.user);
     const isOwnDemo = demo && session?.user && demo.artist?.id === session.user.id;
 
@@ -324,17 +322,6 @@ export default function DemoReviewPage({ params }) {
                                 }}>
                                     <p style={{ margin: 0, marginBottom: '6px', fontSize: '9px', letterSpacing: '1px', fontWeight: 900, color: '#fca5a5' }}>REJECTION REASON</p>
                                     <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.5, color: '#fee2e2', whiteSpace: 'pre-wrap' }}>{demo.rejectionReason}</p>
-                                </div>
-                            )}
-
-                            {demo.status === 'approved' && canFinalizeDemo && (
-                                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-                                    <Link href={`/dashboard/demo/${id}/finalize`} className="primary-btn" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: '12px 14px' }}>
-                                        PROCEED TO FINALIZATION
-                                    </Link>
-                                    <p style={{ fontSize: '9px', color: '#555', textAlign: 'center', marginTop: '8px', letterSpacing: '0.8px' }}>
-                                        Identity, financials and contract setup.
-                                    </p>
                                 </div>
                             )}
 

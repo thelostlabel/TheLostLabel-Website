@@ -1,0 +1,657 @@
+.page {
+  --dark-bg: #04070d;
+  --light-bg: #f4f4f2;
+  --grid-light: rgba(20, 24, 31, 0.14);
+  --ink: #0f1319;
+  color: #f1f3f8;
+  background: var(--dark-bg);
+  overflow-x: clip;
+}
+
+.page * {
+  box-sizing: border-box;
+}
+
+/* ── TOP BAR ── */
+.topBar {
+  position: absolute;
+  top: 30px;
+  left: 36px;
+  right: 36px;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  font-size: 46px;
+  line-height: 0.8;
+  letter-spacing: 0.02em;
+  color: inherit;
+}
+
+.menuButton {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 1 — HERO  (pinned, dark)
+   ═══════════════════════════════════════════════ */
+.heroPin {
+  position: relative;
+  width: 100%;
+  /* height is set to 100vh; GSAP pin adds scroll room via end:"+=150%" */
+}
+
+.darkGrid {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  /* NO overflow:hidden — lets transforms extend */
+  background:
+    radial-gradient(circle at 30% 15%, rgba(65, 78, 101, 0.16), transparent 42%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(170deg, #05070d 0%, #05070d 45%, #03050a 100%);
+  background-size: cover, 86px 86px, 86px 86px, cover;
+}
+
+.heroShell {
+  position: relative;
+  z-index: 5;
+  width: min(1320px, calc(100vw - 90px));
+  margin: 0 auto;
+  padding-top: clamp(108px, 14vh, 148px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: transform;
+  /* perspective is set by GSAP */
+}
+
+.heroTextWrap {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: clamp(3.7rem, 11vw, 10.3rem);
+  line-height: 0.86;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fafbfd 0%, #aeb6c2 54%, #f2f4f8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.heroSub {
+  margin: 16px 0 0;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 10px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(13, 18, 26, 0.54);
+  color: rgba(234, 239, 248, 0.76);
+  font-size: clamp(0.88rem, 1.45vw, 1.26rem);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+}
+
+/* Hero bottom row: video left, links right */
+.heroBottom {
+  display: flex;
+  gap: clamp(24px, 3vw, 48px);
+  width: 100%;
+  align-items: flex-start;
+  margin-top: 40px;
+}
+
+.heroMedia {
+  position: relative;
+  flex: 1 1 60%;
+  height: clamp(240px, 34vh, 410px);
+  border: 1px solid rgba(207, 216, 233, 0.26);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(170, 180, 196, 0.33), rgba(74, 84, 99, 0.16) 42%, rgba(14, 18, 24, 0.9) 100%),
+    linear-gradient(rgba(16, 20, 27, 0.26) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 20, 27, 0.26) 1px, transparent 1px);
+  background-size: cover, 31px 31px, 31px 31px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.recordLight {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ef3131;
+  z-index: 2;
+}
+
+.recordLight::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 999px;
+  margin-right: 8px;
+  background: #ff3f3f;
+  box-shadow: 0 0 10px #ff3f3f;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.heroMediaTitle {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font-size: clamp(1.9rem, 4vw, 4.2rem);
+  color: rgba(209, 45, 57, 0.82);
+  text-shadow:
+    0 0 0 #2c0f15,
+    0 1px 0 #f2e5e5,
+    0 2px 10px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+.playButton {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.95);
+  background: radial-gradient(circle, rgba(15, 18, 24, 0.68), rgba(9, 11, 15, 0.92));
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.playButton svg {
+  margin-left: 5px;
+}
+
+/* Streaming links — positioned absolutely on right side */
+.heroLinks {
+  position: absolute;
+  right: clamp(30px, 5vw, 70px);
+  top: 50%;
+  transform: translateY(-30%);
+  z-index: 7;
+  width: clamp(200px, 22vw, 280px);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  will-change: transform, opacity;
+}
+
+.streamLink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  padding: 14px 16px;
+  color: #edf0f7;
+  font-size: clamp(0.85rem, 1.4vw, 1.1rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(6, 8, 12, 0.52);
+  transition: background-color 220ms ease, border-color 220ms ease, transform 220ms ease;
+}
+
+.streamLink:hover {
+  background: rgba(236, 242, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(4px);
+}
+
+/* Decorative cursor dot */
+.heroCursor {
+  position: absolute;
+  width: 40px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 2px solid rgba(198, 205, 223, 0.35);
+  top: 88px;
+  left: 280px;
+  z-index: 4;
+}
+
+.heroCursor::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  top: -5px;
+  left: -10px;
+  background: #f5f7fc;
+}
+
+/* Ambient glow */
+.heroGlow {
+  position: absolute;
+  width: 740px;
+  height: 740px;
+  border-radius: 999px;
+  right: -220px;
+  top: 12%;
+  background: radial-gradient(circle, rgba(133, 154, 197, 0.22) 0%, rgba(133, 154, 197, 0) 70%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 2 — DISCOGRAPHY  (pinned, light)
+   ═══════════════════════════════════════════════ */
+.discPin {
+  position: relative;
+  width: 100%;
+}
+
+.lightGrid {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  /* NO overflow hidden — critical for card transforms */
+  background:
+    linear-gradient(var(--grid-light) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-light) 1px, transparent 1px),
+    radial-gradient(circle at 80% 16%, rgba(255, 255, 255, 0.66), rgba(244, 244, 242, 0.8) 46%, transparent 75%),
+    var(--light-bg);
+  background-size: 72px 72px, 72px 72px, cover, cover;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: filter, transform;
+}
+
+.lightGrid .brand {
+  color: var(--ink);
+}
+
+.discHeading {
+  margin: 0;
+  padding-top: clamp(90px, 13vh, 140px);
+  text-align: center;
+  font-size: clamp(3rem, 8.5vw, 8.5rem);
+  line-height: 0.86;
+  letter-spacing: 0.015em;
+  color: #0f1217;
+  text-shadow:
+    0 1px 0 #161b22,
+    0 7px 0 #191d24,
+    0 19px 24px rgba(0, 0, 0, 0.2);
+  will-change: transform, opacity;
+  z-index: 5;
+}
+
+/* Card scene — wrapper for card deck + portal */
+.cardScene {
+  position: relative;
+  margin-top: clamp(20px, 5vh, 50px);
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  /* allow transforms to overflow */
+  overflow: visible;
+}
+
+/* Card deck — the whole group that GSAP transforms */
+.cardDeck {
+  position: relative;
+  width: min(880px, 80vw);
+  will-change: transform;
+  /* perspective + preserve-3d set by GSAP */
+}
+
+/* Stacked tabs above the card */
+.stackTab {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 24px;
+  border-radius: 14px 14px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: none;
+}
+
+.tab1 {
+  top: -52px;
+  background: #a8c5d9;
+}
+
+.tab2 {
+  top: -36px;
+  background: #38567c;
+}
+
+.tab3 {
+  top: -20px;
+  background: #e0e0e0;
+}
+
+/* Main album card */
+.recordCardMain {
+  position: relative;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.75) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.08) inset,
+    0 22px 46px rgba(0, 0, 0, 0.23);
+  background: radial-gradient(circle at 70% 25%, #eb4756 0%, #cb1f27 50%, #a1151d 100%);
+  padding: clamp(20px, 3vw, 36px);
+}
+
+.cardHeadLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: clamp(2rem, 3.9vw, 4rem);
+  color: #12151b;
+  text-shadow:
+    -1px -1px 0 rgba(236, 241, 250, 0.65),
+    2px 2px 0 rgba(9, 11, 15, 0.34);
+}
+
+.cardYear {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 2.7rem);
+  color: rgba(16, 20, 28, 0.95);
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.38);
+}
+
+.cardBody {
+  display: grid;
+  gap: clamp(14px, 2vw, 30px);
+  grid-template-columns: 1.1fr 0.9fr 1.1fr;
+}
+
+.cardLabel {
+  margin: 0 0 8px;
+  font-size: clamp(0.85rem, 1.2vw, 1.1rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: rgba(19, 24, 33, 0.65);
+  text-transform: uppercase;
+}
+
+.cardDescription {
+  margin: 0;
+  color: rgba(10, 12, 16, 0.88);
+  font-size: clamp(0.78rem, 1.1vw, 0.95rem);
+  line-height: 1.45;
+}
+
+.cardCover {
+  border-radius: 14px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  background:
+    radial-gradient(circle at 64% 25%, rgba(255, 255, 255, 0.42), transparent 38%),
+    conic-gradient(from 120deg, #0f1319, #ca2432, #3f141b, #0f1319);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+}
+
+.trackList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(10, 12, 17, 0.88);
+  font-size: clamp(0.78rem, 1.1vw, 0.95rem);
+  line-height: 1.2;
+}
+
+/* ── Stacked layer cards (behind the main card) ── */
+.layerCard {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  will-change: transform, opacity;
+  overflow: hidden;
+}
+
+.backCard {
+  z-index: 1;
+  transform: translate(-18px, 96px) rotate(-10deg) scale(0.92);
+}
+
+.midCard {
+  z-index: 2;
+  transform: translate(-10px, 64px) rotate(-7deg) scale(0.94);
+}
+
+.nearCard {
+  z-index: 3;
+  transform: translate(-4px, 36px) rotate(-4deg) scale(0.97);
+}
+
+.recordCardMain.layerCard {
+  position: relative;
+  z-index: 4;
+  transform: translate(0, 6px) rotate(-1deg);
+}
+
+/* Tone colors for ghost cards */
+.paper {
+  background: linear-gradient(160deg, #e8e4df 0%, #d5cfc8 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.blue {
+  background: linear-gradient(160deg, #5d7a9e 0%, #3a567a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sand {
+  background: linear-gradient(160deg, #d4b896 0%, #bfa07a 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Ghost card header (simplified version of the card) */
+.ghostCardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: clamp(18px, 2.5vw, 32px);
+}
+
+.ghostTitle {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.8vw, 2.6rem);
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.ghostYear {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 2rem);
+  color: rgba(0, 0, 0, 0.2);
+}
+
+/* Portal — dark circle that expands to fill the screen */
+.portalPulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    var(--dark-bg) 0%,
+    rgba(4, 7, 13, 0.6) 50%,
+    rgba(4, 7, 13, 0) 72%
+  );
+  pointer-events: none;
+  z-index: 14;
+  will-change: transform, opacity;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION 3 — OUTRO (dark)
+   ═══════════════════════════════════════════════ */
+.outro {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 60px 20px;
+  background:
+    radial-gradient(circle at 80% 18%, rgba(82, 108, 150, 0.32), transparent 44%),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(160deg, #080c14 0%, #0a101a 48%, #06090f 100%);
+  background-size: cover, 64px 64px, 64px 64px, cover;
+}
+
+.outroInner {
+  width: min(930px, 94vw);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(160deg, rgba(21, 29, 44, 0.66), rgba(6, 10, 16, 0.72));
+  padding: clamp(22px, 5vw, 60px);
+  box-shadow: 0 30px 50px rgba(0, 0, 0, 0.35);
+  will-change: transform, opacity;
+}
+
+.outroKicker {
+  margin: 0 0 8px;
+  font-size: clamp(0.9rem, 1.4vw, 1.1rem);
+  letter-spacing: 0.32em;
+  color: rgba(223, 232, 249, 0.7);
+}
+
+.outroTitle {
+  margin: 0 0 16px;
+  font-size: clamp(2rem, 5.2vw, 4.5rem);
+  line-height: 0.9;
+  color: #f2f5fc;
+}
+
+.outroText {
+  margin: 0;
+  max-width: 820px;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.5;
+  color: rgba(224, 231, 246, 0.88);
+}
+
+.outroActions {
+  margin-top: 26px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.primaryBtn {
+  border: 1px solid rgba(252, 255, 255, 0.24);
+  color: #0d1016;
+  background: linear-gradient(180deg, #f5f7fb, #ccd4e2);
+}
+
+.primaryBtn:hover {
+  transform: translateY(-2px);
+}
+
+.secondaryBtn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #dce3f4;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.secondaryBtn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 960px) {
+  .heroLinks {
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: 100%;
+    max-width: 400px;
+    margin: 24px auto 0;
+  }
+
+  .cardBody {
+    grid-template-columns: 1fr;
+  }
+
+  .cardCover {
+    width: min(200px, 50vw);
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .topBar {
+    left: 18px;
+    right: 18px;
+    top: 18px;
+  }
+
+  .brand {
+    font-size: 32px;
+  }
+
+  .heroShell {
+    width: calc(100vw - 24px);
+    padding-top: 80px;
+  }
+
+  .recordCardMain {
+    padding: 16px;
+  }
+}

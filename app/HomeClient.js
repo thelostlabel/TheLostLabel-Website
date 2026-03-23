@@ -885,16 +885,18 @@ export default function Home({ initialContent }) {
         }
         setHeroRelease(featured);
 
-        // Fetch Phonk Playlist Info (Official API)
+        // Fetch featured playlist info (Official API)
         try {
-          const phonkId = "37i9dQZF1DWWY64wDtewQt";
-          const resPhonk = await fetch(`/api/spotify/playlist/${phonkId}/details`);
-          if (resPhonk.ok) {
-            const data = await resPhonk.json();
-            setPhonkPlaylistInfo(data);
+          const playlistId = publicSettings?.defaultPlaylistId || "6QHy5LPKDRHDdKZGBFxRY8";
+          if (playlistId) {
+            const resPhonk = await fetch(`/api/spotify/playlist/${playlistId}/details`);
+            if (resPhonk.ok) {
+              const data = await resPhonk.json();
+              setPhonkPlaylistInfo(data);
+            }
           }
         } catch (err) {
-          console.error("Failed to fetch Phonk playlist info:", err);
+          console.error("Failed to fetch featured playlist info:", err);
         }
       } catch (e) {
         console.error(e);
@@ -906,7 +908,7 @@ export default function Home({ initialContent }) {
     // Run fetch and minimum preloader duration in parallel
     Promise.all([fetchData(), delay(1500)]).then(() => setIntroDone(true));
 
-  }, [featuredReleaseId]);
+  }, [featuredReleaseId, publicSettings?.defaultPlaylistId]);
 
   return (
     <>

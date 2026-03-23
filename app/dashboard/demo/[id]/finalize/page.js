@@ -45,12 +45,28 @@ export default function FinalizeReleasePage({ params }) {
     const { data: session } = useSession();
     const router = useRouter();
     const { showToast } = useToast();
+    const contractFlowEnabled = false;
     const [demo, setDemo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [step, setStep] = useState(1);
     const canFinalizeDemo = canFinalizeDemos(session?.user);
     const canViewDemo = canViewAllDemos(session?.user);
+
+    if (!contractFlowEnabled) return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d' }}>
+            <div style={{ textAlign: 'center', ...glassStyle, padding: '40px', maxWidth: '560px' }}>
+                <Info size={32} style={{ color: '#ffb347', marginBottom: '20px', opacity: 0.8 }} />
+                <h2 style={{ color: '#fff', fontSize: '14px', letterSpacing: '2px', fontWeight: '900', marginBottom: '10px' }}>CONTRACT_STAGE_DISABLED</h2>
+                <p style={{ color: '#888', fontSize: '12px', lineHeight: 1.7, marginBottom: '22px' }}>
+                    Contract finalization flow is disabled. Demo approvals continue without contract steps.
+                </p>
+                <Link href={canViewDemo ? `/dashboard/demo/${id}` : '/dashboard'} style={{ color: 'var(--accent)', fontSize: '11px', fontWeight: '900', letterSpacing: '1px', textDecoration: 'none' }}>
+                    RETURN
+                </Link>
+            </div>
+        </div>
+    );
 
     // Artist Selection State
     const [artists, setArtists] = useState([]);

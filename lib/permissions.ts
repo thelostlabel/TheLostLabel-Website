@@ -104,6 +104,13 @@ export function hasPortalPermission(user: PermissionAwareUser | null | undefined
   return explicit !== false;
 }
 
+export function hasStrictPortalPermission(user: PermissionAwareUser | null | undefined, permission: string): boolean {
+  if (!permission) return false;
+  if (isAdminUser(user)) return true;
+
+  return getExplicitPermission(user, permission) === true;
+}
+
 export function hasAdminViewPermission(user: PermissionAwareUser | null | undefined, permission: string): boolean {
   if (!permission) return false;
   if (isAdminUser(user)) return true;

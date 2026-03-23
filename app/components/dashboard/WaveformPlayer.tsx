@@ -54,6 +54,13 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
   const [isLoop, setIsLoop] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const showSourceMissing = useCallback(() => {
+    setError("Source file is no longer available on the server.");
+    setIsLoading(false);
+    setIsReady(false);
+    setIsPlaying(false);
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
@@ -150,9 +157,7 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
       setCurrentTime(0);
     });
     ws.on("error", () => {
-      setError("Audio file could not be loaded.");
-      setIsLoading(false);
-      setIsReady(false);
+      showSourceMissing();
     });
 
     const loadPromise = waveformData
@@ -160,16 +165,14 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
       : ws.load(src);
 
     loadPromise.catch(() => {
-      setError("Audio file could not be loaded.");
-      setIsLoading(false);
-      setIsReady(false);
+      showSourceMissing();
     });
 
     return () => {
       ws.destroy();
       wsRef.current = null;
     };
-  }, [src, waveformData, waveformFetchFailed, waveformUrl]);
+  }, [showSourceMissing, src, waveformData, waveformFetchFailed, waveformUrl]);
 
   // CSS variable for volume slider fill
   useEffect(() => {

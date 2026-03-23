@@ -15,7 +15,7 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }) 
     }, [searchTerm]);
 
     const availableTabs = useMemo(() => {
-        const preferredOrder = ['all', 'pending', 'reviewing', 'approved', 'rejected', 'contract_sent'];
+        const preferredOrder = ['all', 'pending', 'reviewing', 'approved', 'rejected'];
         const demoStatuses = Array.from(new Set(demos.map((demo) => String(demo.status || '').toLowerCase()).filter(Boolean)));
         const orderedKnownTabs = preferredOrder.filter((tab) => tab === 'all' || demoStatuses.includes(tab));
         const extraTabs = demoStatuses.filter((status) => !preferredOrder.includes(status)).sort();

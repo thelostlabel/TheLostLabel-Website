@@ -5,6 +5,21 @@ import { sendMail } from "@/lib/mail";
 import { settleSideEffects } from "@/lib/async-effects";
 import { getReleaseArtistWhereById } from "@/lib/release-artists";
 import { normalizeSystemSettingsConfig, parseSystemSettingsConfig } from "@/lib/system-settings";
+import { hasStrictPortalPermission } from "@/lib/permissions";
+
+const ARTIST_SUPPORT_TYPES = new Set([
+    "general_support",
+    "metadata_correction",
+    "technical_issue",
+    "earnings_billing",
+    "take_down",
+    "marketing_request",
+]);
+
+function isSupportRequestType(type, releaseId) {
+    if (!releaseId) return true;
+    return ARTIST_SUPPORT_TYPES.has(type);
+}
 
 function escapeHtml(value) {
     return String(value || '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -29,6 +44,7 @@ export async function POST(req) {
         const { releaseId, type, details } = body;
         const normalizedType = typeof type === "string" ? type.trim().toLowerCase() : "";
         const normalizedDetails = typeof details === "string" ? details.trim() : "";
+        const isSupportRequest = isSupportRequestType(normalizedType, releaseId);
 
         if (!normalizedType) {
             return new Response(JSON.stringify({ error: "Request type is required." }), { status: 400 });
@@ -41,6 +57,14 @@ export async function POST(req) {
         }
         if (normalizedDetails.length > 5000) {
             return new Response(JSON.stringify({ error: "Request details are too long." }), { status: 400 });
+        }
+
+        if (isSupportRequest && !hasStrictPortalPermission(session.user, "view_support")) {
+            return new Response(JSON.stringify({ error: "You do not have permission to open support tickets." }), { status: 403 });
+        }
+
+        if (!isSupportRequest && !hasStrictPortalPermission(session.user, "request_changes")) {
+            return new Response(JSON.stringify({ error: "You do not have permission to request release changes." }), { status: 403 });
         }
 
         // Verify System Settings (optional: check if request type is enabled)
@@ -121,6 +145,10 @@ export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
+    if (!hasStrictPortalPermission(session.user, "view_support")) {
+        return new Response(JSON.stringify({ error: "You do not have permission to access support requests." }), { status: 403 });
     }
 
     try {

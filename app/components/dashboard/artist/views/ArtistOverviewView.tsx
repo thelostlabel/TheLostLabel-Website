@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import NextImage from "next/image";
 import {
-  Briefcase,
   ChevronRight,
   Disc,
   MessageSquare,
@@ -355,7 +354,6 @@ export function ArtistQuickAccessBar({
       <div className="quick-nav-grid">
         {[
           { view: "submit", label: "Submit", icon: <Upload size={13} /> },
-          { view: "contracts", label: "Contracts", icon: <Briefcase size={13} /> },
           { view: "support", label: "Support", icon: <MessageSquare size={13} /> },
           { view: "releases", label: "Catalog", icon: <Disc size={13} /> },
         ].map((item) => {

@@ -22,8 +22,13 @@ export default function Navbar() {
         youtube: publicSettings.youtube
     };
 
-    // Hide Navbar on Dashboard and Auth pages
-    if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/auth')) {
+    // Hide Navbar on dashboard/auth and isolated design experiments
+    if (
+        pathname?.startsWith('/dashboard') ||
+        pathname?.startsWith('/auth') ||
+        pathname?.startsWith('/deneme') ||
+        pathname?.startsWith('/landing1111')
+    ) {
         return null;
     }
 
