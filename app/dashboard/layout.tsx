@@ -5,7 +5,6 @@ import { getServerSession } from "next-auth/next";
 import type { AppSessionUser } from "@/lib/auth-types";
 import { authOptions } from "@/lib/auth";
 import DashboardShell from "@/app/components/dashboard/shell/DashboardShell";
-import { DashboardHeroUIProvider } from "@/app/components/dashboard/DashboardHeroUIProvider";
 
 export default async function DashboardLayout({
   children,
@@ -17,10 +16,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <DashboardHeroUIProvider>
-      <DashboardShell initialUser={session.user as AppSessionUser}>
-        {children}
-      </DashboardShell>
-    </DashboardHeroUIProvider>
+    <DashboardShell initialUser={session.user as AppSessionUser}>
+      {children}
+    </DashboardShell>
   );
 }
