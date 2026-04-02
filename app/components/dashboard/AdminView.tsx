@@ -11,6 +11,7 @@ import { useToast } from "@/app/components/ToastContext";
 import { useDashboardAuth } from "@/app/components/dashboard/context/DashboardAuthProvider";
 import { useAdminDashboardData } from "@/app/components/dashboard/hooks/useAdminDashboardData";
 import { useDashboardRoute } from "@/app/components/dashboard/hooks/useDashboardRoute";
+import { useMinimumLoader } from "@/lib/use-minimum-loader";
 import {
   dashboardRequestJson,
   getDashboardErrorMessage,
@@ -22,45 +23,33 @@ import {
 import {
   getAdminFeatureFlags,
   getAdminViewDisplayName,
+  getAdminViewLoaders,
   getAdminViewPermission,
   normalizeAdminView,
 } from "./admin-view-registry";
 
 const lazyView = (loader: any): any =>
-  dynamic(loader, {
-    loading: () => (
-      <DashboardLoader label="LOADING MODULE" subLabel="Fetching admin view..." />
-    ),
-  });
+  dynamic(loader, { ssr: false });
 
 const HomeView = lazyView(() => import("./admin/HomeView"));
+const AnalyticsView = lazyView(() => import("./admin/AnalyticsView"));
 const SubmissionsView = lazyView(() => import("./admin/SubmissionsView"));
 const ArtistsView = lazyView(() => import("./admin/ArtistsView"));
 const UsersView = lazyView(() => import("./admin/UsersView"));
 const RequestsView = lazyView(() => import("./admin/RequestsView"));
-const ContractsView = lazyView(() => import("./admin/ContractsView"));
+const ContractsView = lazyView(() => import("./admin/contracts/ContractsView"));
 const ReleasesView = lazyView(() => import("./admin/ReleasesView"));
 const EarningsView = lazyView(() => import("./admin/EarningsView"));
 const PaymentsView = lazyView(() => import("./admin/PaymentsView"));
 const ContentView = lazyView(() => import("./admin/ContentView"));
 const WebhooksView = lazyView(() => import("./admin/WebhooksView"));
 const CommunicationsView = lazyView(() => import("./admin/CommunicationsView"));
+const EmailTemplatesView = lazyView(() => import("./admin/EmailTemplatesView"));
 const SettingsView = lazyView(() => import("./admin/SettingsView"));
 const DiscordBridgeView = lazyView(() => import("./admin/DiscordBridgeView"));
 const AnnouncementsView = lazyView(() => import("./admin/AnnouncementsView"));
-
-function WisePayoutsView() {
-  return (
-    <div className="dashboard-view" style={{ padding: "32px", textAlign: "center" }}>
-      <h2 style={{ fontSize: "20px", fontWeight: 900, letterSpacing: "0.16em", color: "#e5e7eb" }}>
-        WISE_PAYOUTS
-      </h2>
-      <p style={{ marginTop: "8px", fontSize: "13px", color: "#94a3b8" }}>
-        This module is not wired into the current dashboard build yet.
-      </p>
-    </div>
-  );
-}
+const AuditLogsView = lazyView(() => import("./admin/AuditLogsView"));
+const WisePayoutsView = lazyView(() => import("./admin/WisePayoutsView"));
 
 export default function AdminView({ view: propView }: { view?: string }) {
   const { currentUser } = useDashboardAuth();
@@ -83,6 +72,7 @@ export default function AdminView({ view: propView }: { view?: string }) {
     discordBridge,
     announcements,
     earningsPagination,
+    datasetStatus,
     hasViewData,
     isViewLoading,
     viewError,
@@ -98,6 +88,19 @@ export default function AdminView({ view: propView }: { view?: string }) {
   const canViewCurrentSection =
     canAccessAdminView(currentUser, view, getAdminViewPermission(view));
   const canDeleteSubmission = canDeleteDemos(currentUser);
+  const viewLoaderKeys = (getAdminViewLoaders(view) || []) as string[];
+  const isViewInitializing = viewLoaderKeys.some(
+    (key: string) => datasetStatus[key] === "idle",
+  );
+  // Only show loading on initial fetch (isPending = no cached data yet).
+  // Background refetches (isFetching but data exists) render silently.
+  const isInitialFetch = viewLoaderKeys.some(
+    (key: string) => datasetStatus[key] === "loading" || datasetStatus[key] === "idle",
+  );
+  const showLoading = useMinimumLoader(
+    isInitialFetch && !hasViewData && !viewError,
+    300,
+  );
 
   const runSpotifySync = async (userId: string, spotifyUrl: string, artistId?: string | null) => {
     try {
@@ -188,10 +191,9 @@ export default function AdminView({ view: propView }: { view?: string }) {
     );
   }
 
-  if (isViewLoading && !hasViewData) {
+  if (showLoading && !hasViewData) {
     return (
       <DashboardLoader
-        fullScreen
         label="ADMIN PANEL"
         subLabel={`Preparing ${viewDisplayName.toLowerCase()} module...`}
       />
@@ -231,6 +233,7 @@ export default function AdminView({ view: propView }: { view?: string }) {
       {viewError && hasViewData ? <DashboardInlineAlert message={viewError} /> : null}
 
       {view === "overview" && <HomeView onNavigate={(nextView: string) => setView(nextView)} />}
+      {view === "analytics" && <AnalyticsView />}
       {view === "submissions" && features.submissions && (
         <SubmissionsView
           demos={submissions}
@@ -246,6 +249,7 @@ export default function AdminView({ view: propView }: { view?: string }) {
           contracts={contracts}
           onSync={handleSyncStats}
           onRefresh={refreshers.artists}
+          isLoading={isViewLoading}
         />
       )}
       {view === "users" && <UsersView users={users} onRefresh={refreshers.users} />}
@@ -287,6 +291,8 @@ export default function AdminView({ view: propView }: { view?: string }) {
       {view === "communications" && features.communications && (
         <CommunicationsView artists={artists} />
       )}
+      {view === "email-templates" && <EmailTemplatesView />}
+      {view === "audit-logs" && <AuditLogsView />}
       {view === "settings" && <SettingsView />}
       {view === "discord-bridge" && features.discordBridge && (
         <DiscordBridgeView data={discordBridge} onRefresh={refreshers.discordBridge} />
@@ -294,7 +300,9 @@ export default function AdminView({ view: propView }: { view?: string }) {
       {view === "announcements" && features.announcements && (
         <AnnouncementsView announcements={announcements} onRefresh={refreshers.announcements} />
       )}
-      {view === "wise-payouts" && features.wisePayouts && <WisePayoutsView />}
+      {view === "wise-payouts" && features.wisePayouts && (
+        <WisePayoutsView payments={payments} onRefresh={refreshers.payments} />
+      )}
 
       {syncDialog ? (
         <DashboardModal

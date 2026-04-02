@@ -1,46 +1,27 @@
 "use client";
 import { useState, useEffect, use, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
+import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Card, Button, Chip, TextArea, Alert, Modal, ToggleButtonGroup, ToggleButton } from '@heroui/react';
 import { useToast } from '@/app/components/ToastContext';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import WaveformPlayer from '@/app/components/dashboard/WaveformPlayer';
+import DemoVersionHistory from '@/app/components/dashboard/primitives/DemoVersionHistory';
 import {
     canApproveDemos,
     canDeleteDemos,
-    canFinalizeDemos,
     canRejectDemos,
     canReviewDemos,
     canViewAllDemos
 } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
-
-const inputStyle = {
-    width: '100%',
-    padding: '12px 15px',
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    borderRadius: '8px',
-    color: '#fff',
-    fontSize: '12px',
-    outline: 'none',
-    transition: 'border-color 0.2s'
-};
-
-const btnStyle = {
-    padding: '12px 15px',
-    fontSize: '9px',
-    fontWeight: '900',
-    letterSpacing: '1px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    border: '1px solid rgba(255,255,255,0.1)',
-    transition: 'all 0.2s',
-    textTransform: 'uppercase',
-    width: '100%'
+const STATUS_COLOR_MAP = {
+    approved: 'success',
+    rejected: 'danger',
+    reviewing: 'warning',
+    pending: 'default',
 };
 
 export default function DemoReviewPage({ params }) {
@@ -62,7 +43,6 @@ export default function DemoReviewPage({ params }) {
     const canReviewDemo = canReviewDemos(session?.user);
     const canApproveDemo = canApproveDemos(session?.user);
     const canRejectDemo = canRejectDemos(session?.user);
-    const canFinalizeDemo = canFinalizeDemos(session?.user);
     const canDeleteDemo = canDeleteDemos(session?.user);
     const isOwnDemo = demo && session?.user && demo.artist?.id === session.user.id;
 
@@ -98,7 +78,6 @@ export default function DemoReviewPage({ params }) {
     const handleStatusUpdate = async (status, reason = null) => {
         setProcessing(true);
         try {
-            // Simple status update (Reviewing, Approved, Rejected)
             const res = await fetch(`/api/demo/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -143,297 +122,389 @@ export default function DemoReviewPage({ params }) {
     };
 
     if (showLoading) {
-        return <DashboardLoader fullScreen label="LOADING DEMO" subLabel="Fetching submission details and files..." />;
+        return <DashboardLoader label="LOADING DEMO" subLabel="Fetching submission details and files..." />;
     }
-    if (error || !demo) return <div style={{ padding: '40px', textAlign: 'center' }}><h2>ERROR: {error || "Demo not found"}</h2><Link href="/dashboard" style={{ color: 'var(--accent)' }}>GO BACK</Link></div>;
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'approved': return 'var(--accent)';
-            case 'rejected': return '#ff4444';
-            case 'reviewing': return '#F59E0B';
-            default: return '#888';
-        }
-    };
+    if (error || !demo) return (
+        <div className="flex flex-col items-center justify-center p-10 gap-4">
+            <h2 className="text-xl font-bold">ERROR: {error || "Demo not found"}</h2>
+            <NextLink href="/dashboard" className="demo-back-link">
+                GO BACK
+            </NextLink>
+        </div>
+    );
 
     const activeFileDownloadUrl = activeFile ? `/api/files/demo/${activeFile.id}` : null;
     const activeFileAudioUrl = activeFile ? `/api/files/demo/${activeFile.id}/audio` : null;
     const activeFileWaveformUrl = activeFile ? `/api/files/demo/${activeFile.id}/waveform` : null;
+    const reviewStageSelection = ['pending', 'reviewing'].includes(String(demo.status || ''))
+        ? [demo.status]
+        : [];
 
     return (
-        <div className="demo-review-shell">
-            <div className="demo-review-head">
-                <Link href={isOwnDemo ? "/dashboard?view=my-demos" : "/dashboard?view=submissions"} className="subtle-link">
+        <div className="demo-review-page max-w-[1320px] mx-auto">
+            {/* Header */}
+            <div className="dash-page-hdr">
+                <NextLink
+                    href={isOwnDemo ? "/dashboard?view=my-demos" : "/dashboard?view=submissions"}
+                    className="demo-back-link"
+                >
                     ← BACK TO {isOwnDemo ? "MY DEMOS" : "SUBMISSIONS"}
-                </Link>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span className="chip">ID: {demo.id.substring(0, 8)}</span>
-                    <span className="chip" style={{ color: getStatusColor(demo.status), borderColor: `${getStatusColor(demo.status)}55` }}>
+                </NextLink>
+                <div className="demo-status-group">
+                    <Chip variant="secondary" size="sm">ID: {demo.id.substring(0, 8)}</Chip>
+                    <Chip variant="soft" size="sm" color={STATUS_COLOR_MAP[demo.status] || 'default'}>
                         {demo.status.toUpperCase()}
-                    </span>
+                    </Chip>
                 </div>
             </div>
 
-            <div className="demo-review-grid">
-                <div>
-                    <div className="panel hero-panel">
-                        <p className="kicker">DEMO REVIEW</p>
-                        <h1 className="title">{demo.title}</h1>
-                        <div className="meta-row">
-                            <span>{demo.genre || 'Unknown Genre'}</span>
-                            <span>•</span>
-                            <span>{new Date(demo.createdAt).toLocaleDateString()} {new Date(demo.createdAt).toLocaleTimeString()}</span>
-                        </div>
-                        {demo.status === 'rejected' && demo.rejectionReason && (
-                            <div className="rejection-card">
-                                <div className="rejection-card-header">
-                                    <div className="rejection-icon">✕</div>
-                                    <div>
-                                        <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, letterSpacing: '1.5px', color: '#fca5a5' }}>REJECTION REASON</p>
-                                        <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#ef444480' }}>
-                                            {demo.reviewedBy ? `by ${demo.reviewedBy}` : ''}
-                                        </p>
+            {/* Main Grid */}
+            <div className="dash-two-col">
+                {/* Left Column */}
+                <div className="demo-main-column flex flex-col gap-4">
+                    {/* Demo Review Card */}
+                    <Card className="demo-card">
+                        <Card.Header className="demo-card-header">
+                            <Card.Description className="demo-card-kicker">DEMO REVIEW</Card.Description>
+                            <Card.Title className="demo-title">{demo.title}</Card.Title>
+                        </Card.Header>
+                        <Card.Content className="demo-card-content">
+                            <div className="demo-meta-row">
+                                <span className="demo-meta-pill">{demo.genre || 'Unknown Genre'}</span>
+                                <span className="demo-meta-divider">•</span>
+                                <span className="demo-meta-text">{new Date(demo.createdAt).toLocaleDateString()} {new Date(demo.createdAt).toLocaleTimeString()}</span>
+                            </div>
+                            {demo.status === 'rejected' && demo.rejectionReason && (
+                                <Alert status="danger" className="mt-4">
+                                    <Alert.Indicator />
+                                    <Alert.Content>
+                                        <Alert.Title>REJECTION REASON</Alert.Title>
+                                        <Alert.Description>
+                                            {demo.reviewedBy && (
+                                                <span className="text-[10px] opacity-50 block mb-1">by {demo.reviewedBy}</span>
+                                            )}
+                                            <span className="whitespace-pre-wrap">{demo.rejectionReason}</span>
+                                        </Alert.Description>
+                                    </Alert.Content>
+                                </Alert>
+                            )}
+                        </Card.Content>
+                    </Card>
+
+                    {/* Artist Profile Card */}
+                    <Card className="demo-card">
+                        <Card.Content className="demo-artist-card">
+                            <div className="demo-artist-copy">
+                                <p className="demo-card-kicker m-0">ARTIST PROFILE</p>
+                                <h2 className="demo-artist-name">{demo.artist?.stageName || 'Anonymous'}</h2>
+                                <p className="demo-artist-email">{demo.artist?.email}</p>
+                            </div>
+                            {demo.artist?.spotifyUrl && (
+                                <a
+                                    href={demo.artist.spotifyUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="demo-link-button"
+                                >
+                                    SPOTIFY PROFILE
+                                </a>
+                            )}
+                        </Card.Content>
+                    </Card>
+
+                    {/* Message Card */}
+                    <Card className="demo-card">
+                        <Card.Header className="demo-card-header">
+                            <Card.Title className="demo-card-kicker">MESSAGE FROM ARTIST</Card.Title>
+                        </Card.Header>
+                        <Card.Content className="demo-card-content">
+                            <div className="demo-message-box">
+                                {demo.message || "The artist did not include a message with this submission."}
+                            </div>
+                        </Card.Content>
+                    </Card>
+
+                    {/* Waveform Player Card */}
+                    <Card className="demo-card">
+                        <Card.Header className="demo-card-header">
+                            <Card.Title className="demo-card-kicker">WAVEFORM PLAYER</Card.Title>
+                        </Card.Header>
+                        <Card.Content className="demo-card-content">
+                            {activeFile ? (
+                                <div>
+                                    <WaveformPlayer
+                                        src={activeFileAudioUrl}
+                                        waveformUrl={activeFileWaveformUrl}
+                                        filename={activeFile.filename}
+                                    />
+                                    <div className="demo-link-row">
+                                        <a
+                                            href={`${activeFileDownloadUrl}?download=1`}
+                                            download
+                                            className="demo-link-button demo-link-button-secondary"
+                                        >
+                                            DOWNLOAD SOURCE FILE
+                                        </a>
                                     </div>
                                 </div>
-                                <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.7, color: '#fee2e2', whiteSpace: 'pre-wrap' }}>{demo.rejectionReason}</p>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="panel artist-panel">
-                        <div>
-                            <p className="kicker">ARTIST PROFILE</p>
-                            <h2 style={{ fontSize: '22px', margin: '6px 0 4px 0', fontWeight: 900 }}>{demo.artist?.stageName || 'Anonymous'}</h2>
-                            <p style={{ color: '#777', fontSize: '13px', margin: 0 }}>{demo.artist?.email}</p>
-                        </div>
-                        {demo.artist?.spotifyUrl && (
-                            <a href={demo.artist.spotifyUrl} target="_blank" rel="noreferrer" className="primary-btn" style={{ padding: '10px 16px', width: 'auto' }}>
-                                SPOTIFY PROFILE
-                            </a>
-                        )}
-                    </div>
-
-                    <div className="panel" style={{ marginTop: '14px' }}>
-                        <h4 className="kicker" style={{ marginBottom: '12px' }}>MESSAGE FROM ARTIST</h4>
-                        <div className="message-box">
-                            {demo.message || "The artist did not include a message with this submission."}
-                        </div>
-                    </div>
-
-                    <div className="panel" style={{ marginTop: '14px' }}>
-                        <h4 className="kicker" style={{ marginBottom: '16px' }}>WAVEFORM PLAYER</h4>
-
-                        {activeFile ? (
-                            <div>
-                                <WaveformPlayer
-                                    src={activeFileAudioUrl}
-                                    waveformUrl={activeFileWaveformUrl}
-                                    filename={activeFile.filename}
-                                />
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-                                    <a href={`${activeFileDownloadUrl}?download=1`} download className="secondary-btn" style={{ padding: '10px 16px', fontSize: '10px' }}>
-                                        DOWNLOAD SOURCE FILE
+                            ) : demo.trackLink ? (
+                                <div className="demo-empty-state">
+                                    <p className="text-[13px] text-default-400 mb-4">This submission is hosted on an external platform.</p>
+                                    <a
+                                        href={demo.trackLink}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="demo-link-button"
+                                    >
+                                        OPEN EXTERNAL LINK
                                     </a>
                                 </div>
-                            </div>
-                        ) : demo.trackLink ? (
-                            <div className="player-box" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-                                <p style={{ fontSize: '13px', color: '#666', marginBottom: '18px' }}>This submission is hosted on an external platform.</p>
-                                <a href={demo.trackLink} target="_blank" rel="noreferrer" className="primary-btn" style={{ width: 'auto', padding: '11px 20px' }}>
-                                    OPEN EXTERNAL LINK
-                                </a>
-                            </div>
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '36px', color: '#555' }}>No audio data provided.</div>
-                        )}
-                    </div>
+                            ) : (
+                                <div className="text-center p-9 text-default-400">No audio data provided.</div>
+                            )}
+                        </Card.Content>
+                    </Card>
                 </div>
 
-                <aside className="sidebar">
-                    <div className="panel">
-                        <h4 className="kicker" style={{ marginBottom: '12px' }}>SUBMITTED FILES ({demo.files?.length || 0})</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Sidebar */}
+                <aside className="dash-aside demo-sidebar-column">
+                    {/* Submitted Files */}
+                    <Card className="demo-card">
+                        <Card.Header className="demo-sidebar-header">
+                            <div className="demo-sidebar-heading-row">
+                                <p className="demo-sidebar-heading">SUBMITTED FILES</p>
+                                <span className="demo-sidebar-count">{demo.files?.length || 0}</span>
+                            </div>
+                            <p className="demo-sidebar-subheading">Select the active source file</p>
+                        </Card.Header>
+                        <Card.Content className="flex flex-col gap-2">
                             {demo.files?.map((file, idx) => (
-                                <button
+                                <Button
                                     key={idx}
-                                    onClick={() => setActiveFile(file)}
-                                    className={`file-item ${activeFile?.id === file.id ? 'active' : ''}`}
+                                    onPress={() => setActiveFile(file)}
+                                    variant={activeFile?.id === file.id ? 'outline' : 'ghost'}
+                                    className="demo-file-button"
                                 >
-                                    <span style={{ fontSize: '18px' }}>{activeFile?.id === file.id ? '🔊' : '📁'}</span>
-                                    <span style={{ flex: 1, overflow: 'hidden', textAlign: 'left' }}>
-                                        <span style={{ display: 'block', fontSize: '12px', fontWeight: 800, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{file.filename}</span>
-                                        <span style={{ display: 'block', fontSize: '10px', color: '#666' }}>{(file.filesize / (1024 * 1024)).toFixed(2)} MB</span>
+                                    <span className="text-lg">{activeFile?.id === file.id ? '🔊' : '📁'}</span>
+                                    <span className="flex-1 overflow-hidden text-left">
+                                        <span className="block text-xs font-extrabold whitespace-nowrap text-ellipsis overflow-hidden">{file.filename}</span>
+                                        <span className="block text-[10px] text-default-400">{(file.filesize / (1024 * 1024)).toFixed(2)} MB</span>
                                     </span>
-                                </button>
+                                </Button>
                             ))}
-                        </div>
-                    </div>
+                        </Card.Content>
+                    </Card>
 
                     {canViewDemo ? (
-                        <div className="panel" style={{ marginTop: '14px' }}>
-                            <h4 className="kicker" style={{ marginBottom: '14px' }}>A&R DECISION</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <>
+                        <Card className="demo-card mt-4">
+                            <Card.Header className="demo-sidebar-header">
+                                <div className="demo-sidebar-heading-row">
+                                    <p className="demo-sidebar-heading">A&R DECISION</p>
+                                    <span className="demo-sidebar-count demo-sidebar-count-accent">{String(demo.status || 'pending').toUpperCase()}</span>
+                                </div>
+                                <p className="demo-sidebar-subheading">Move the review stage or finalize the outcome.</p>
+                            </Card.Header>
+                            <Card.Content className="demo-decision-stack">
                                 {canReviewDemo && (
-                                    <>
-                                        <button
-                                            onClick={() => handleStatusUpdate('reviewing')}
-                                            disabled={processing}
-                                            style={{ ...btnStyle, background: demo.status === 'reviewing' ? 'rgba(245,158,11,0.14)' : 'transparent', color: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)', opacity: processing ? 0.5 : 1 }}
+                                    <div className="demo-decision-section">
+                                        <p className="demo-decision-label">REVIEW STAGE</p>
+                                        <ToggleButtonGroup
+                                            fullWidth
+                                            selectionMode="single"
+                                            selectedKeys={reviewStageSelection}
+                                            className="demo-review-stage-toggle"
+                                            onSelectionChange={(keys) => {
+                                                const nextStage = Array.from(keys || [])[0];
+                                                if (!nextStage || nextStage === demo.status) return;
+                                                handleStatusUpdate(nextStage);
+                                            }}
                                         >
-                                            REVIEWING
-                                        </button>
-                                        <button
-                                            onClick={() => handleStatusUpdate('pending')}
-                                            disabled={processing}
-                                            style={{ ...btnStyle, background: demo.status === 'pending' ? 'rgba(255,255,255,0.06)' : 'transparent', color: '#ddd', borderColor: 'rgba(255,255,255,0.12)', opacity: processing ? 0.5 : 1 }}
-                                        >
-                                            PENDING
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                            {canApproveDemo && (
-                                <button
-                                    onClick={() => handleStatusUpdate('approved')}
-                                    disabled={processing}
-                                    style={{ ...btnStyle, background: demo.status === 'approved' ? 'rgba(209,213,219,0.18)' : 'transparent', color: '#d1d5db', borderColor: 'rgba(209,213,219,0.35)', marginBottom: '8px', opacity: processing ? 0.5 : 1 }}
-                                >
-                                    {demo.status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
-                                </button>
-                            )}
-                            {canRejectDemo && (
-                                <button
-                                    onClick={() => {
-                                        setRejectionReason(demo.rejectionReason || "");
-                                        setShowRejectModal(true);
-                                    }}
-                                    disabled={processing}
-                                    style={{ ...btnStyle, background: demo.status === 'rejected' ? 'rgba(239,68,68,0.18)' : 'transparent', color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)', opacity: processing ? 0.5 : 1 }}
-                                >
-                                    {demo.status === 'rejected' ? '✖ REJECTED' : 'REJECT'}
-                                </button>
-                            )}
-
-                            {demo.rejectionReason && (
-                                <div style={{
-                                    marginTop: '12px',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    border: '1px solid rgba(239,68,68,0.25)',
-                                    background: 'rgba(239,68,68,0.08)'
-                                }}>
-                                    <p style={{ margin: 0, marginBottom: '6px', fontSize: '9px', letterSpacing: '1px', fontWeight: 900, color: '#fca5a5' }}>REJECTION REASON</p>
-                                    <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.5, color: '#fee2e2', whiteSpace: 'pre-wrap' }}>{demo.rejectionReason}</p>
-                                </div>
-                            )}
-
-                            {demo.status === 'approved' && canFinalizeDemo && (
-                                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-                                    <Link href={`/dashboard/demo/${id}/finalize`} className="primary-btn" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: '12px 14px' }}>
-                                        PROCEED TO FINALIZATION
-                                    </Link>
-                                    <p style={{ fontSize: '9px', color: '#555', textAlign: 'center', marginTop: '8px', letterSpacing: '0.8px' }}>
-                                        Identity, financials and contract setup.
-                                    </p>
-                                </div>
-                            )}
-
-                            {demo.reviewedBy && (
-                                <p style={{ marginTop: '12px', fontSize: '10px', color: '#666', textAlign: 'center' }}>
-                                    Last handled by <strong style={{ color: '#bbb' }}>{demo.reviewedBy}</strong>
-                                </p>
-                            )}
-
-                            {canDeleteDemo && (
-                                <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-                                    <button
-                                        onClick={() => {
-                                            showConfirm(
-                                                "DELETE RECORD?",
-                                                "Are you absolutely sure you want to PERMANENTLY delete this demo? This action is irreversible.",
-                                                () => {
-                                                    fetch(`/api/demo/${id}`, { method: 'DELETE' })
-                                                        .then(() => {
-                                                            showToast("Demo deleted successfully", "success");
-                                                            router.push('/dashboard?view=submissions');
-                                                        })
-                                                        .catch(() => showToast("Failed to delete demo", "error"));
-                                                }
-                                            );
-                                        }}
-                                        style={{ background: 'none', border: 'none', color: '#555', fontSize: '10px', fontWeight: 800, cursor: 'pointer', width: '100%' }}
-                                    >
-                                        DELETE RECORD
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <>
-                            <div className="panel" style={{ marginTop: '14px' }}>
-                                <h4 className="kicker" style={{ marginBottom: '14px' }}>STATUS</h4>
-                                <div style={{
-                                    padding: '14px',
-                                    borderRadius: '10px',
-                                    border: `1px solid ${getStatusColor(demo.status)}30`,
-                                    background: `${getStatusColor(demo.status)}10`,
-                                    textAlign: 'center'
-                                }}>
-                                    <span style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '2px', color: getStatusColor(demo.status) }}>
-                                        {demo.status.toUpperCase()}
-                                    </span>
-                                </div>
-
-                                {demo.rejectionReason && (
-                                    <div style={{
-                                        marginTop: '12px',
-                                        padding: '12px',
-                                        borderRadius: '10px',
-                                        border: '1px solid rgba(239,68,68,0.25)',
-                                        background: 'rgba(239,68,68,0.08)'
-                                    }}>
-                                        <p style={{ margin: 0, marginBottom: '6px', fontSize: '9px', letterSpacing: '1px', fontWeight: 900, color: '#fca5a5' }}>REJECTION REASON</p>
-                                        <p style={{ margin: 0, fontSize: '12px', lineHeight: 1.5, color: '#fee2e2', whiteSpace: 'pre-wrap' }}>{demo.rejectionReason}</p>
+                                            <ToggleButton
+                                                id="reviewing"
+                                                isDisabled={processing}
+                                                className="demo-review-stage-button"
+                                            >
+                                                REVIEWING
+                                            </ToggleButton>
+                                            <ToggleButton
+                                                id="pending"
+                                                isDisabled={processing}
+                                                className="demo-review-stage-button"
+                                            >
+                                                <ToggleButtonGroup.Separator />
+                                                PENDING
+                                            </ToggleButton>
+                                        </ToggleButtonGroup>
                                     </div>
                                 )}
-                            </div>
+                                {(canApproveDemo || canRejectDemo) && (
+                                    <div className="demo-decision-section">
+                                        <p className="demo-decision-label">FINAL ACTION</p>
+                                        {canApproveDemo && (
+                                            <Button
+                                                onPress={() => handleStatusUpdate('approved')}
+                                                isDisabled={processing}
+                                                variant="primary"
+                                                fullWidth
+                                                size="md"
+                                                className="demo-action-button"
+                                            >
+                                                {demo.status === 'approved' ? 'APPROVED' : 'APPROVE'}
+                                            </Button>
+                                        )}
+                                        {canRejectDemo && (
+                                            <Button
+                                                onPress={() => {
+                                                    setRejectionReason(demo.rejectionReason || "");
+                                                    setShowRejectModal(true);
+                                                }}
+                                                isDisabled={processing}
+                                                variant={demo.status === 'rejected' ? 'danger' : 'danger-soft'}
+                                                fullWidth
+                                                size="md"
+                                                className="demo-action-button"
+                                            >
+                                                {demo.status === 'rejected' ? 'REJECTED' : 'REJECT'}
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
 
-                            <div className="panel" style={{ marginTop: '14px' }}>
-                                <h4 className="kicker" style={{ marginBottom: '12px' }}>YOUR NOTE</h4>
-                                <textarea
-                                    value={artistNote}
-                                    onChange={(e) => setArtistNote(e.target.value)}
-                                    placeholder="Add a note about this demo..."
-                                    rows={4}
-                                    disabled={savingNote}
-                                    style={{
-                                        ...inputStyle,
-                                        resize: 'vertical',
-                                        minHeight: '90px',
-                                        lineHeight: '1.5',
-                                        marginBottom: '10px'
-                                    }}
-                                />
-                                <button
-                                    onClick={handleSaveNote}
-                                    disabled={savingNote || artistNote === (demo.artistNote || "")}
-                                    className="primary-btn"
-                                    style={{
-                                        width: '100%',
-                                        padding: '11px',
-                                        fontSize: '10px',
-                                        opacity: savingNote || artistNote === (demo.artistNote || "") ? 0.5 : 1
-                                    }}
-                                >
-                                    {savingNote ? 'SAVING...' : 'SAVE NOTE'}
-                                </button>
-                            </div>
+                                {demo.rejectionReason && (
+                                    <Alert status="danger" className="mt-2">
+                                        <Alert.Indicator />
+                                        <Alert.Content>
+                                            <Alert.Title>REJECTION REASON</Alert.Title>
+                                            <Alert.Description className="whitespace-pre-wrap">{demo.rejectionReason}</Alert.Description>
+                                        </Alert.Content>
+                                    </Alert>
+                                )}
 
-                            <div style={{ marginTop: '14px' }}>
-                                <button
-                                    onClick={() => {
+                                {demo.reviewedBy && (
+                                    <p className="mt-3 text-[10px] text-default-400 text-center">
+                                        Last handled by <strong className="text-default-300">{demo.reviewedBy}</strong>
+                                    </p>
+                                )}
+
+                                {canDeleteDemo && (
+                                    <div className="demo-danger-zone">
+                                        <p className="demo-decision-label demo-decision-label-danger">DANGER ZONE</p>
+                                        <Button
+                                            onPress={() => {
+                                                showConfirm(
+                                                    "Delete Record?",
+                                                    "Are you absolutely sure you want to permanently delete this demo? This action is irreversible.",
+                                                    () => {
+                                                        fetch(`/api/demo/${id}`, { method: 'DELETE' })
+                                                            .then(() => {
+                                                                showToast("Demo deleted successfully", "success");
+                                                                router.push('/dashboard?view=submissions');
+                                                            })
+                                                            .catch(() => showToast("Failed to delete demo", "error"));
+                                                    }
+                                                );
+                                            }}
+                                            variant="danger"
+                                            size="md"
+                                            fullWidth
+                                            className="demo-delete-button"
+                                        >
+                                            DELETE RECORD
+                                        </Button>
+                                    </div>
+                                )}
+                            </Card.Content>
+                        </Card>
+                    {/* Version History - Admin */}
+                        <Card className="demo-card mt-4">
+                            <Card.Header className="demo-sidebar-header">
+                                <div className="demo-sidebar-heading-row">
+                                    <p className="demo-sidebar-heading">VERSION HISTORY</p>
+                                </div>
+                                <p className="demo-sidebar-subheading">Previous revisions of this demo.</p>
+                            </Card.Header>
+                            <Card.Content>
+                                <DemoVersionHistory demoId={id} canRestore={true} onRestore={fetchDemo} />
+                            </Card.Content>
+                        </Card>
+                      </>
+                    ) : (
+                        <>
+                            {/* Status Card */}
+                            <Card className="demo-card mt-4">
+                                <Card.Header className="demo-card-header">
+                                    <Card.Title className="demo-card-kicker">STATUS</Card.Title>
+                                </Card.Header>
+                                <Card.Content>
+                                    <div className="text-center">
+                                        <Chip
+                                            variant="soft"
+                                            color={STATUS_COLOR_MAP[demo.status] || 'default'}
+                                            size="lg"
+                                            className="text-xs font-black tracking-[2px]"
+                                        >
+                                            {demo.status.toUpperCase()}
+                                        </Chip>
+                                    </div>
+
+                                    {demo.rejectionReason && (
+                                        <Alert status="danger" className="mt-3">
+                                            <Alert.Indicator />
+                                            <Alert.Content>
+                                                <Alert.Title>REJECTION REASON</Alert.Title>
+                                                <Alert.Description className="whitespace-pre-wrap">{demo.rejectionReason}</Alert.Description>
+                                            </Alert.Content>
+                                        </Alert>
+                                    )}
+                                </Card.Content>
+                            </Card>
+
+                            {/* Artist Note Card */}
+                            <Card className="demo-card mt-4">
+                                <Card.Header className="demo-card-header">
+                                    <Card.Title className="demo-card-kicker">YOUR NOTE</Card.Title>
+                                </Card.Header>
+                                <Card.Content className="flex flex-col gap-3">
+                                    <TextArea
+                                        value={artistNote}
+                                        onChange={(e) => setArtistNote(e.target.value)}
+                                        placeholder="Add a note about this demo..."
+                                        isDisabled={savingNote}
+                                        className="min-h-30"
+                                        aria-label="Your note"
+                                    />
+                                    <Button
+                                        onPress={handleSaveNote}
+                                        isDisabled={savingNote || artistNote === (demo.artistNote || "")}
+                                        variant="primary"
+                                        size="sm"
+                                        className="w-full"
+                                    >
+                                        {savingNote ? 'SAVING...' : 'SAVE NOTE'}
+                                    </Button>
+                                </Card.Content>
+                            </Card>
+
+                            {/* Version History - Artist (read-only) */}
+                            <Card className="demo-card mt-4">
+                                <Card.Header className="demo-sidebar-header">
+                                    <div className="demo-sidebar-heading-row">
+                                        <p className="demo-sidebar-heading">VERSION HISTORY</p>
+                                    </div>
+                                    <p className="demo-sidebar-subheading">Previous revisions of this demo.</p>
+                                </Card.Header>
+                                <Card.Content>
+                                    <DemoVersionHistory demoId={id} canRestore={false} />
+                                </Card.Content>
+                            </Card>
+
+                            {/* Delete Button */}
+                            <div className="mt-4">
+                                <Button
+                                    onPress={() => {
                                         showConfirm(
-                                            "DELETE DEMO?",
+                                            "Delete Demo?",
                                             "Are you sure you want to permanently delete this demo? This action cannot be undone.",
                                             () => {
                                                 fetch(`/api/demo/${id}`, { method: 'DELETE' })
@@ -445,306 +516,410 @@ export default function DemoReviewPage({ params }) {
                                             }
                                         );
                                     }}
-                                    style={{
-                                        ...btnStyle,
-                                        background: 'rgba(255,0,0,0.05)',
-                                        color: '#ef4444',
-                                        borderColor: 'rgba(239,68,68,0.2)',
-                                        textAlign: 'center'
-                                    }}
+                                    variant="danger"
+                                    fullWidth
+                                    size="md"
+                                    className="font-semibold"
                                 >
-                                    DELETE DEMO
-                                </button>
+                                    Delete Demo
+                                </Button>
                             </div>
                         </>
                     )}
                 </aside>
             </div>
 
-            <AnimatePresence>
-                {showRejectModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="reject-modal-backdrop"
-                        onClick={() => !processing && setShowRejectModal(false)}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, y: 18, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-                            transition={{ duration: 0.18 }}
-                            className="reject-modal-card"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <p className="kicker" style={{ marginBottom: '8px' }}>REJECTION REASON</p>
-                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, marginBottom: '12px' }}>Reason visible to artist</h3>
-                            <textarea
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                placeholder="Write a clear rejection reason..."
-                                rows={5}
-                                className="reject-textarea"
-                                disabled={processing}
-                            />
-                            <div className="reject-modal-actions">
-                                <button
-                                    className="secondary-btn"
-                                    style={{ padding: '10px 12px', fontSize: '10px', background: 'transparent', cursor: processing ? 'not-allowed' : 'pointer' }}
-                                    onClick={() => setShowRejectModal(false)}
-                                    disabled={processing}
+            {/* Reject Modal */}
+            <Modal isOpen={showRejectModal} onOpenChange={(open) => !processing && setShowRejectModal(open)}>
+                <Modal.Backdrop>
+                    <Modal.Container>
+                        <Modal.Dialog className="sm:max-w-[560px]">
+                            <Modal.CloseTrigger />
+                            <Modal.Header>
+                                <Modal.Heading>Rejection Reason</Modal.Heading>
+                            </Modal.Header>
+                            <Modal.Body>
+                                <p className="text-sm text-default-400 mb-3">This reason will be visible to the artist.</p>
+                                <TextArea
+                                    value={rejectionReason}
+                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                    placeholder="Write a clear rejection reason..."
+                                    isDisabled={processing}
+                                    className="min-h-40 w-full"
+                                    aria-label="Rejection reason"
+                                />
+                            </Modal.Body>
+                            <Modal.Footer className="flex justify-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    size="md"
+                                    onPress={() => setShowRejectModal(false)}
+                                    isDisabled={processing}
+                                    className="font-semibold"
                                 >
-                                    CANCEL
-                                </button>
-                                <button
-                                    className="primary-btn"
-                                    style={{ padding: '10px 12px', fontSize: '10px', border: 'none' }}
-                                    disabled={processing || !rejectionReason.trim()}
-                                    onClick={async () => {
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    size="md"
+                                    isDisabled={processing || !rejectionReason.trim()}
+                                    onPress={async () => {
                                         const reason = rejectionReason.trim();
                                         if (!reason) return;
                                         await handleStatusUpdate('rejected', reason);
                                         setShowRejectModal(false);
                                     }}
+                                    className="font-semibold"
                                 >
-                                    {processing ? "SAVING..." : "REJECT DEMO"}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                    {processing ? "Saving..." : "Reject Demo"}
+                                </Button>
+                            </Modal.Footer>
+                        </Modal.Dialog>
+                    </Modal.Container>
+                </Modal.Backdrop>
+            </Modal>
 
             <style jsx>{`
-                .demo-review-shell {
-                    max-width: 1240px;
-                    margin: 0 auto;
+                .demo-review-page {
+                    width: 100%;
+                    padding-bottom: 24px;
+                    padding-inline: 16px;
+                    min-width: 0;
                 }
-                .demo-review-head {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 22px;
-                    gap: 12px;
-                }
-                .demo-review-grid {
-                    display: grid;
-                    grid-template-columns: minmax(0, 1fr) 360px;
-                    gap: 18px;
-                    align-items: start;
-                }
-                .sidebar {
-                    position: sticky;
-                    top: 24px;
-                }
-                .subtle-link {
-                    font-size: 10px;
-                    font-weight: 800;
-                    letter-spacing: 1.6px;
+                .demo-back-link {
                     color: #8b8b8b;
                     text-decoration: none;
                     display: inline-flex;
                     align-items: center;
                     gap: 8px;
-                }
-                .chip {
                     font-size: 10px;
                     font-weight: 800;
-                    letter-spacing: 1px;
-                    color: #777;
-                    border: 1px solid var(--border);
-                    border-radius: 999px;
-                    padding: 6px 10px;
-                    background: rgba(255,255,255,0.02);
+                    letter-spacing: 1.6px;
+                    min-height: 44px;
+                    transition: color 0.2s ease, transform 0.2s ease;
                 }
-                .panel {
-                    background: var(--surface);
-                    border: 1px solid var(--border);
-                    border-radius: 14px;
-                    padding: 22px;
-                    box-shadow: 0 14px 36px rgba(0,0,0,0.32);
+                .demo-back-link:hover {
+                    color: #d4d4d8;
+                    transform: translateX(-2px);
                 }
-                .hero-panel {
-                    margin-bottom: 14px;
-                }
-                .artist-panel {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 14px;
-                }
-                .kicker {
-                    margin: 0;
-                    font-size: 10px;
-                    letter-spacing: 2px;
-                    font-weight: 800;
-                    color: #666;
-                }
-                .title {
-                    font-size: clamp(30px, 4vw, 46px);
-                    margin: 10px 0 10px 0;
-                    font-weight: 900;
-                    letter-spacing: -0.8px;
-                }
-                .meta-row {
-                    display: flex;
-                    gap: 14px;
-                    align-items: center;
-                    color: #8b8b8b;
-                    font-size: 12px;
-                    font-weight: 600;
-                    flex-wrap: wrap;
-                }
-                .message-box {
-                    background: #101010;
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    padding: 18px;
-                    white-space: pre-wrap;
-                    color: #c9c9c9;
-                    line-height: 1.7;
-                    font-size: 14px;
-                }
-                .player-box {
-                    background: #101010;
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    padding: 16px;
-                }
-                .file-item {
-                    width: 100%;
-                    padding: 12px;
-                    border-radius: 10px;
-                    border: 1px solid var(--border);
-                    background: #101010;
-                    color: #bbb;
-                    cursor: pointer;
-                    transition: all 0.18s ease;
+                .demo-status-group {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
-                }
-                .file-item:hover {
-                    border-color: #3a3a3a;
-                }
-                .file-item.active {
-                    border-color: #9ca3af;
-                    background: #151515;
-                    color: #fff;
-                }
-                .primary-btn {
-                    background: #fff;
-                    color: #000;
-                    border: none;
-                    border-radius: 10px;
-                    font-size: 10px;
-                    font-weight: 900;
-                    letter-spacing: 1px;
-                    cursor: pointer;
-                    transition: transform .16s ease, opacity .16s ease;
-                }
-                .primary-btn:hover {
-                    transform: translateY(-1px);
-                    opacity: .92;
-                }
-                .secondary-btn {
-                    border: 1px solid var(--border);
-                    background: transparent;
-                    color: #d1d5db;
-                    border-radius: 10px;
-                    text-decoration: none;
-                    font-weight: 800;
-                    letter-spacing: 1px;
-                }
-                .reject-modal-backdrop {
-                    position: fixed;
-                    inset: 0;
-                    background: rgba(0,0,0,0.62);
-                    backdrop-filter: blur(3px);
-                    display: grid;
-                    place-items: center;
-                    z-index: 200;
-                    padding: 18px;
-                }
-                .reject-modal-card {
-                    width: 100%;
-                    max-width: 560px;
-                    border-radius: 14px;
-                    border: 1px solid var(--border);
-                    background: #0e0e0e;
-                    box-shadow: 0 26px 70px rgba(0,0,0,0.45);
-                    padding: 18px;
-                }
-                .reject-textarea {
-                    width: 100%;
-                    border-radius: 10px;
-                    border: 1px solid var(--border);
-                    background: #121212;
-                    color: #f3f4f6;
-                    font-size: 13px;
-                    line-height: 1.5;
-                    padding: 12px;
-                    resize: vertical;
-                    min-height: 110px;
-                    outline: none;
-                    margin-bottom: 14px;
-                }
-                .reject-textarea:focus {
-                    border-color: #6b7280;
-                }
-                .reject-modal-actions {
-                    display: flex;
                     justify-content: flex-end;
                     gap: 8px;
+                    flex-wrap: wrap;
+                    min-width: 0;
                 }
-                .rejection-card {
-                    margin-top: 18px;
-                    padding: 18px;
-                    border-radius: 12px;
-                    border: 1px solid rgba(239,68,68,0.25);
-                    background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04));
-                    position: relative;
+                .demo-main-column,
+                .demo-sidebar-column {
+                    min-width: 0;
+                }
+                .demo-card {
                     overflow: hidden;
+                    min-width: 0;
                 }
-                .rejection-card::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    height: 2px;
-                    background: linear-gradient(90deg, transparent, #ef4444, transparent);
-                    opacity: 0.5;
+                .demo-card-header {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 8px;
                 }
-                .rejection-card-header {
+                .demo-card-content {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .demo-sidebar-header {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    align-items: stretch;
+                }
+                .demo-sidebar-heading-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    min-width: 0;
+                }
+                .demo-sidebar-heading {
+                    margin: 0;
+                    font-size: 10px;
+                    font-weight: 950;
+                    letter-spacing: 2.6px;
+                    text-transform: uppercase;
+                    color: #8f8f96;
+                }
+                .demo-sidebar-count {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 28px;
+                    height: 24px;
+                    padding: 0 9px;
+                    border-radius: 999px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                    background: rgba(255,255,255,0.04);
+                    color: #f5f5f5;
+                    font-size: 10px;
+                    font-weight: 900;
+                    letter-spacing: 1px;
+                    line-height: 1;
+                }
+                .demo-sidebar-count-accent {
+                    color: #8dc2ff;
+                }
+                .demo-sidebar-subheading {
+                    margin: 0;
+                    font-size: 11px;
+                    line-height: 1.5;
+                    color: #686870;
+                }
+                .demo-card-kicker {
+                    margin: 0;
+                    color: var(--text-muted, #8b8b8b);
+                    font-size: 10px;
+                    font-weight: 900;
+                    letter-spacing: 2px;
+                    text-transform: uppercase;
+                }
+                .demo-title {
+                    margin: 0;
+                    font-size: clamp(28px, 5vw, 52px);
+                    font-weight: 950;
+                    letter-spacing: -0.04em;
+                    line-height: 1;
+                    text-wrap: balance;
+                }
+                .demo-meta-row {
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    margin-bottom: 12px;
+                    flex-wrap: wrap;
+                    color: #8b8b8b;
                 }
-                .rejection-icon {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    background: rgba(239,68,68,0.15);
-                    color: #ef4444;
-                    display: grid;
-                    place-items: center;
-                    font-size: 14px;
+                .demo-meta-pill {
+                    padding: 6px 10px;
+                    border-radius: 999px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                    background: rgba(255,255,255,0.03);
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #d4d4d8;
+                }
+                .demo-meta-divider {
+                    opacity: 0.5;
+                    font-size: 12px;
+                }
+                .demo-meta-text {
+                    font-size: 12px;
+                    font-weight: 600;
+                }
+                .demo-artist-card {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 20px;
+                    flex-wrap: wrap;
+                }
+                .demo-artist-copy {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .demo-artist-name {
+                    margin: 0;
+                    font-size: clamp(20px, 3vw, 30px);
                     font-weight: 900;
-                    flex-shrink: 0;
+                    line-height: 1;
                 }
-                @media (max-width: 980px) {
-                    .demo-review-grid {
-                        grid-template-columns: 1fr;
+                .demo-artist-email {
+                    margin: 0;
+                    font-size: 13px;
+                    color: #777;
+                    word-break: break-all;
+                }
+                .demo-message-box {
+                    white-space: pre-wrap;
+                    border-radius: 16px;
+                    border: 1px solid var(--ds-item-border);
+                    background: var(--ds-item-bg);
+                    padding: 18px;
+                    color: var(--ds-text-sub);
+                    line-height: 1.8;
+                    font-size: 14px;
+                }
+                .demo-link-row {
+                    display: flex;
+                    justify-content: center;
+                    margin-top: 16px;
+                    width: 100%;
+                }
+                .demo-link-button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 7px;
+                    min-height: 44px;
+                    padding: 0 20px;
+                    border-radius: 999px;
+                    border: 1px solid var(--ds-glass-border);
+                    background: var(--ds-text);
+                    color: var(--background);
+                    text-decoration: none;
+                    font-size: 11px;
+                    font-weight: 900;
+                    letter-spacing: 1px;
+                    transition: transform 0.2s ease, opacity 0.2s ease;
+                    max-width: 100%;
+                    text-align: center;
+                }
+                .demo-link-button:hover {
+                    transform: translateY(-1px);
+                    opacity: 0.88;
+                }
+                .demo-link-button-secondary {
+                    background: var(--ds-item-bg);
+                    border-color: var(--ds-item-border-hover);
+                    color: var(--ds-text-sub);
+                }
+                .demo-link-button-secondary:hover {
+                    background: var(--ds-item-bg-hover);
+                }
+                .demo-empty-state {
+                    text-align: center;
+                    border: 1px dashed rgba(255,255,255,0.12);
+                    border-radius: 16px;
+                    padding: 20px;
+                }
+                .demo-file-button {
+                    width: 100%;
+                    justify-content: flex-start;
+                    align-items: flex-start;
+                    gap: 12px;
+                    height: auto;
+                    min-height: 62px;
+                    padding: 14px 16px;
+                    border-radius: 18px;
+                    min-width: 0;
+                }
+                .demo-decision-stack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    min-width: 0;
+                }
+                .demo-decision-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .demo-decision-label {
+                    margin: 0;
+                    font-size: 9px;
+                    font-weight: 900;
+                    letter-spacing: 2.2px;
+                    text-transform: uppercase;
+                    color: #6e6e76;
+                }
+                .demo-review-stage-toggle {
+                    width: 100%;
+                }
+                .demo-review-stage-button {
+                    min-height: 48px;
+                    font-size: 10px;
+                    font-weight: 900;
+                    letter-spacing: 1.2px;
+                }
+                .demo-review-stage-button[data-selected="true"] {
+                    color: #f5f5f5;
+                }
+                .demo-action-button {
+                    min-height: 52px;
+                    border-radius: 18px;
+                    font-size: 11px;
+                    font-weight: 900;
+                    letter-spacing: 1.2px;
+                }
+                .demo-danger-zone {
+                    margin-top: 2px;
+                    padding-top: 16px;
+                    border-top: 1px solid rgba(255,255,255,0.08);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .demo-decision-label-danger {
+                    color: #8a7373;
+                }
+                .demo-delete-button {
+                    min-height: 48px;
+                    font-size: 10px;
+                    font-weight: 900;
+                    letter-spacing: 1.2px;
+                }
+
+                @media (max-width: 640px) {
+                    .demo-review-page {
+                        padding-bottom: 16px;
+                        padding-inline: 12px;
                     }
-                    .sidebar {
-                        position: static;
+                    .demo-status-group {
+                        justify-content: flex-start;
+                        width: 100%;
                     }
-                    .artist-panel {
+                    .demo-artist-card {
                         flex-direction: column;
                         align-items: flex-start;
+                    }
+                    .demo-sidebar-heading-row {
+                        align-items: flex-start;
+                    }
+                    .demo-title {
+                        font-size: clamp(22px, 8vw, 34px);
+                    }
+                    .demo-meta-row {
+                        gap: 8px;
+                    }
+                    .demo-meta-divider {
+                        display: none;
+                    }
+                    .demo-card-content {
+                        gap: 14px;
+                    }
+                    .demo-link-button {
+                        width: 100%;
+                        padding-inline: 16px;
+                    }
+                    .demo-link-row {
+                        margin-top: 12px;
+                    }
+                    .demo-file-button {
+                        padding: 12px 14px;
+                        border-radius: 16px;
+                    }
+                    .demo-decision-section {
+                        gap: 8px;
+                    }
+                }
+
+                @media (max-width: 420px) {
+                    .demo-review-page {
+                        padding-inline: 10px;
+                    }
+                    .demo-back-link {
+                        font-size: 9px;
+                        letter-spacing: 1.2px;
+                    }
+                    .demo-title {
+                        font-size: 22px;
+                    }
+                    .demo-artist-name {
+                        font-size: 18px;
+                    }
+                    .demo-message-box {
+                        padding: 14px;
+                        font-size: 13px;
                     }
                 }
             `}</style>

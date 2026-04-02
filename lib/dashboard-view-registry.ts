@@ -2,6 +2,7 @@ import type { AdminDashboardFeatureKey } from "@/lib/dashboard-features";
 
 export type AdminViewKey =
   | "overview"
+  | "analytics"
   | "submissions"
   | "artists"
   | "users"
@@ -14,9 +15,11 @@ export type AdminViewKey =
   | "payments"
   | "releases"
   | "communications"
+  | "email-templates"
   | "discord-bridge"
   | "wise-payouts"
-  | "announcements";
+  | "announcements"
+  | "audit-logs";
 
 export type PortalViewKey =
   | "overview"
@@ -46,6 +49,7 @@ export const ADMIN_VIEW_DEFINITIONS: Array<{
   alwaysHasData?: boolean;
 }> = [
   { view: "overview", navLabel: "OVERVIEW", displayName: "Overview", iconKey: "layout-dashboard", perm: "admin_view_overview", access: "admin", loaders: [], alwaysHasData: true },
+  { view: "analytics", navLabel: "ANALYTICS", displayName: "Analytics", iconKey: "bar-chart-3", perm: "admin_view_overview", access: "admin", loaders: [], alwaysHasData: true },
   { view: "submissions", navLabel: "SUBMISSIONS", displayName: "Submissions", iconKey: "inbox", perm: "admin_view_submissions", featureKey: "submissions", access: "all-demos", loaders: ["submissions"], dataKey: "submissions" },
   { view: "artists", navLabel: "ARTISTS", displayName: "Artists", iconKey: "mic-2", perm: "admin_view_artists", access: "admin", loaders: ["artists", "users", "releases", "contracts"], dataKey: "artists" },
   { view: "contracts", navLabel: "CONTRACTS", displayName: "Contracts", iconKey: "briefcase", perm: "admin_view_contracts", featureKey: "contracts", access: "admin", loaders: ["contracts", "artists", "releases", "submissions"], dataKey: "contracts" },
@@ -55,10 +59,12 @@ export const ADMIN_VIEW_DEFINITIONS: Array<{
   { view: "requests", navLabel: "REQUESTS", displayName: "Requests", iconKey: "file-text", perm: "admin_view_requests", access: "admin", loaders: ["requests"], dataKey: "requests" },
   { view: "users", navLabel: "USERS", displayName: "Users", iconKey: "users", perm: "admin_view_users", access: "users", loaders: ["users"], dataKey: "users" },
   { view: "communications", navLabel: "COMMUNICATIONS", displayName: "Communications", iconKey: "mail", perm: "admin_view_communications", featureKey: "communications", access: "admin", loaders: ["artists"], dataKey: "artists" },
+  { view: "email-templates", navLabel: "EMAIL TEMPLATES", displayName: "Email Templates", iconKey: "mail", perm: "admin_view_communications", access: "admin", loaders: [], alwaysHasData: true },
   { view: "content", navLabel: "CONTENT", displayName: "Content", iconKey: "file", perm: "admin_view_content", access: "admin", loaders: ["content"], dataKey: "siteContent" },
   { view: "webhooks", navLabel: "WEBHOOKS", displayName: "Webhooks", iconKey: "bell", perm: "admin_view_webhooks", access: "admin", loaders: ["webhooks"], dataKey: "webhooks" },
   { view: "discord-bridge", navLabel: "DISCORD BRIDGE", displayName: "Discord Bridge", iconKey: "bot", perm: "admin_view_discord_bridge", featureKey: "discordBridge", access: "admin", loaders: ["discordBridge"], dataKey: "discordBridge" },
-  { view: "wise-payouts", navLabel: "WISE PAYOUTS", displayName: "Wise Payouts", iconKey: "credit-card", perm: "admin_view_wise_payouts", featureKey: "wisePayouts", access: "admin", loaders: [], alwaysHasData: true },
+  { view: "wise-payouts", navLabel: "WISE PAYOUTS", displayName: "Wise Payouts", iconKey: "credit-card", perm: "admin_view_wise_payouts", featureKey: "wisePayouts", access: "admin", loaders: ["payments", "users"], dataKey: "payments", alwaysHasData: true },
+  { view: "audit-logs", navLabel: "AUDIT LOGS", displayName: "Audit Logs", iconKey: "file-text", perm: "admin_view_settings", access: "admin", loaders: [], alwaysHasData: true },
   { view: "settings", navLabel: "SETTINGS", displayName: "Settings", iconKey: "settings", perm: "admin_view_settings", access: "admin", loaders: [], alwaysHasData: true },
   { view: "announcements", navLabel: "ANNOUNCEMENTS", displayName: "Announcements", iconKey: "bell", perm: "admin_view_announcements", featureKey: "announcements", access: "admin", loaders: ["announcements"], dataKey: "announcements" },
 ];

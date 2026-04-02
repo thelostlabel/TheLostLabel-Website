@@ -68,6 +68,7 @@ model Demo {
   artist               User       @relation(fields: [artistId], references: [id], onDelete: Cascade)
   artistProfile        Artist?    @relation(fields: [artistProfileId], references: [id])
   files                DemoFile[]
+  versions             DemoVersion[]
 
   @@index([artistId, createdAt(sort: Desc)], map: "idx_demo_artist_id_created_at")
   @@index([artistProfileId, createdAt(sort: Desc)], map: "idx_demo_artist_profile_id_created_at")
@@ -433,4 +434,68 @@ model Announcement {
   linkText  String?  @default("Learn more")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entity     String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_audit_log_user_created_at")
+  @@index([entity, createdAt(sort: Desc)], map: "idx_audit_log_entity_created_at")
+  @@index([action, createdAt(sort: Desc)], map: "idx_audit_log_action_created_at")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt(sort: Desc)], map: "idx_notification_user_read_created_at")
+}
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  subject   String
+  body      String
+  variables String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DemoVersion {
+  id        String   @id @default(uuid())
+  demoId    String
+  version   Int      @default(1)
+  title     String
+  genre     String?
+  message   String?
+  createdAt DateTime @default(now())
+  demo      Demo     @relation(fields: [demoId], references: [id], onDelete: Cascade)
+  files     DemoVersionFile[]
+
+  @@index([demoId, version(sort: Desc)], map: "idx_demo_version_demo_version")
+}
+
+model DemoVersionFile {
+  id            String   @id @default(uuid())
+  demoVersionId String
+  filename      String
+  filepath      String
+  filesize      Int
+  createdAt     DateTime @default(now())
+  demoVersion   DemoVersion @relation(fields: [demoVersionId], references: [id], onDelete: Cascade)
 }

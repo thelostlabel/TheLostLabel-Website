@@ -128,7 +128,7 @@ const fetchAdminDataset = async <TKey extends AdminDatasetKey>(
         context: "admin submissions",
       });
     case "artists":
-      return dashboardRequestJson<DatasetResponseMap[TKey]>("/api/admin/artists?limit=50", {
+      return dashboardRequestJson<DatasetResponseMap[TKey]>("/api/admin/artists?limit=500", {
         context: "admin artists",
       });
     case "users":
@@ -152,7 +152,7 @@ const fetchAdminDataset = async <TKey extends AdminDatasetKey>(
         context: "admin payments",
       });
     case "releases":
-      return dashboardRequestJson<DatasetResponseMap[TKey]>("/api/admin/releases?limit=50", {
+      return dashboardRequestJson<DatasetResponseMap[TKey]>("/api/admin/releases?limit=500", {
         context: "admin releases",
       });
     case "discordBridge":
@@ -211,6 +211,9 @@ export function useAdminDashboardData(view: string) {
       queryKey: getDatasetQueryKey(key, key === "earnings" ? earningsPage : 1),
       queryFn: () => fetchAdminDataset(key, key === "earnings" ? earningsPage : 1),
       enabled: Boolean(viewLoaderKeys.length),
+      staleTime: 3 * 60 * 1000,   // 3 min — prevents refetch on every navigation
+      gcTime: 10 * 60 * 1000,     // 10 min — keep data in memory
+      refetchOnWindowFocus: false, // don't refetch when user switches browser tabs
     })),
   });
 
@@ -327,9 +330,8 @@ export function useAdminDashboardData(view: string) {
 
       await Promise.all(
         datasetKeys.map((key) =>
-          queryClient.fetchQuery({
+          queryClient.invalidateQueries({
             queryKey: getDatasetQueryKey(key, key === "earnings" ? page : 1),
-            queryFn: () => fetchAdminDataset(key, key === "earnings" ? page : 1),
           }),
         ),
       );

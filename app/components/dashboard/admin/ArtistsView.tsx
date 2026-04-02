@@ -1,27 +1,89 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import NextImage from 'next/image';
-import { RefreshCw, Plus, AlertCircle } from 'lucide-react';
+import { RefreshCw, Plus, AlertCircle, Edit2, Settings2, CheckCircle, Mail } from 'lucide-react';
+import BulkActionsBar from '@/app/components/dashboard/primitives/BulkActionsBar';
+import type { BulkAction } from '@/app/components/dashboard/primitives/BulkActionsBar';
 import { useToast } from '@/app/components/ToastContext';
+import ExportButtons from '@/app/components/dashboard/primitives/ExportButtons';
+import type { ExportColumn } from '@/app/components/dashboard/lib/export-utils';
 import { useDashboardAuth } from '@/app/components/dashboard/context/DashboardAuthProvider';
 import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
 import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
-import { Button, Input, Table, Chip, Modal, Card, Skeleton, Pagination, Checkbox } from '@heroui/react';
+import { Button, Input, Table, Chip, Modal, Card, Skeleton, Pagination, Checkbox, Tooltip } from '@heroui/react';
+import type { DashboardArtist, DashboardUser, DashboardContract } from '@/app/components/dashboard/types';
+
+// ---------------------------------------------------------------------------
+// Local types
+// ---------------------------------------------------------------------------
+
+interface Release {
+    id: string;
+    name?: string | null;
+    image?: string | null;
+    releaseDate?: string | null;
+    artistName?: string | null;
+    artistsJson?: string | null;
+    [key: string]: unknown;
+}
+
+/** Artist as returned by the admin endpoint – extends the shared type with
+ *  the fields that are only present in this view. */
+interface AdminArtist extends DashboardArtist {
+    email?: string | null;
+    lastSyncedAt?: string | null;
+    user?: (DashboardUser & { image?: string | null }) | null;
+}
+
+interface BalanceStats {
+    available?: number;
+    totalEarnings?: number;
+    totalPaid?: number;
+    totalPending?: number;
+    manualAdjustments?: number;
+}
+
+interface BalanceAdjustment {
+    id: string;
+    amount?: number | string | null;
+    reason?: string | null;
+    createdAt?: string | null;
+    createdBy?: {
+        stageName?: string | null;
+        fullName?: string | null;
+        email?: string | null;
+    } | null;
+}
+
+interface SkeletonRow {
+    id: string;
+    _skeleton: true;
+}
+
+type TableItem = AdminArtist | SkeletonRow;
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const ARTISTS_PAGE_SIZE = 25;
 const LONG_PRESS_SELECTION_MS = 420;
 
-const normalizeSelectionKeys = (keys, availableIds = []) => {
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+const normalizeSelectionKeys = (keys: 'all' | Iterable<string>, availableIds: string[] = []): Set<string> => {
     if (keys === 'all') return new Set(availableIds);
     return new Set(Array.from(keys || []));
 };
 
-const getVisiblePageNumbers = (page, totalPages) => {
+const getVisiblePageNumbers = (page: number, totalPages: number): (number | string)[] => {
     if (totalPages <= 7) {
         return Array.from({ length: totalPages }, (_, index) => index + 1);
     }
 
-    const pages = [1];
+    const pages: (number | string)[] = [1];
     if (page > 3) pages.push('ellipsis-left');
 
     const start = Math.max(2, page - 1);
@@ -37,20 +99,31 @@ const getVisiblePageNumbers = (page, totalPages) => {
     return pages;
 };
 
-function UserLinker({ artistId, users, artistEmail, onLinked }) {
+// ---------------------------------------------------------------------------
+// UserLinker sub-component
+// ---------------------------------------------------------------------------
+
+interface UserLinkerProps {
+    artistId: string;
+    users: DashboardUser[];
+    artistEmail?: string | null;
+    onLinked?: () => Promise<void>;
+}
+
+function UserLinker({ artistId, users, artistEmail, onLinked }: UserLinkerProps) {
     const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUser, setSelectedUser] = useState<DashboardUser | null>(null);
     const [linking, setLinking] = useState(false);
 
-    const suggestedUser = artistEmail ? users.find(u => u.email.toLowerCase() === artistEmail.toLowerCase()) : null;
+    const suggestedUser = artistEmail ? users.find(u => u.email?.toLowerCase() === artistEmail.toLowerCase()) : null;
 
     const filteredUsers = users?.filter(u =>
         (u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             u.stageName?.toLowerCase().includes(searchTerm.toLowerCase()))
     ).slice(0, 5) || [];
 
-    const handleLink = async (userToLink) => {
+    const handleLink = async (userToLink?: DashboardUser) => {
         const user = userToLink || selectedUser;
         if (!user) return;
         setLinking(true);
@@ -116,7 +189,7 @@ function UserLinker({ artistId, users, artistEmail, onLinked }) {
             ) : (
                 <div className="text-center p-6 bg-surface rounded-lg border border-border">
                     <div className="mb-5 text-xs font-black">
-                        LINK USER ACCOUNT:<br /><span className="text-accent text-sm">{selectedUser.email.toUpperCase()}</span>?
+                        LINK USER ACCOUNT:<br /><span className="text-accent text-sm">{selectedUser.email?.toUpperCase()}</span>?
                     </div>
                     <div className="flex gap-3">
                         <Button variant="primary" className="flex-[2]" onPress={() => handleLink()} isDisabled={linking}>
@@ -130,9 +203,31 @@ function UserLinker({ artistId, users, artistEmail, onLinked }) {
     );
 }
 
-const SKELETON_IDS = Array.from({ length: 7 }, (_, i) => ({ id: `sk-${i}`, _skeleton: true }));
+// ---------------------------------------------------------------------------
+// Skeleton constant
+// ---------------------------------------------------------------------------
 
-export default function ArtistsView({ artists, users, releases = [], contracts = [], onSync, onRefresh, isLoading = false }) {
+const SKELETON_IDS: SkeletonRow[] = Array.from({ length: 7 }, (_, i) => ({ id: `sk-${i}`, _skeleton: true as const }));
+
+// ---------------------------------------------------------------------------
+// ArtistsView props
+// ---------------------------------------------------------------------------
+
+interface ArtistsViewProps {
+    artists: AdminArtist[];
+    users: DashboardUser[];
+    releases?: Release[];
+    contracts?: DashboardContract[];
+    onSync: (userId: string | null | undefined, spotifyUrl: string | null | undefined, artistId: string) => Promise<void> | void;
+    onRefresh?: () => Promise<void> | void;
+    isLoading?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export default function ArtistsView({ artists, users, releases = [], contracts = [], onSync, onRefresh, isLoading = false }: ArtistsViewProps) {
     const { showToast, showConfirm } = useToast();
     const { currentUser } = useDashboardAuth();
     const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
@@ -142,23 +237,24 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [selectionMode, setSelectionMode] = useState(false);
-    const [selectedArtistIds, setSelectedArtistIds] = useState(() => new Set());
-    const [selectedArtist, setSelectedArtist] = useState(null);
+    const [selectedArtistIds, setSelectedArtistIds] = useState<Set<string>>(() => new Set());
+    const [selectedArtist, setSelectedArtist] = useState<AdminArtist | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [newArtist, setNewArtist] = useState({ name: '', spotifyUrl: '', email: '' });
     const [saving, setSaving] = useState(false);
-    const [syncingArtistId, setSyncingArtistId] = useState(null);
+    const [syncingArtistId, setSyncingArtistId] = useState<string | null>(null);
     const [isSyncingAll, setIsSyncingAll] = useState(false);
     const [balanceLoading, setBalanceLoading] = useState(false);
-    const [balanceStats, setBalanceStats] = useState(null);
-    const [balanceAdjustments, setBalanceAdjustments] = useState([]);
+    const [balanceStats, setBalanceStats] = useState<BalanceStats | null>(null);
+    const [balanceAdjustments, setBalanceAdjustments] = useState<BalanceAdjustment[]>([]);
     const [adjustAmount, setAdjustAmount] = useState('');
     const [adjustReason, setAdjustReason] = useState('');
     const [adjustSaving, setAdjustSaving] = useState(false);
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [editFields, setEditFields] = useState({ name: '', email: '', spotifyUrl: '' });
     const [editSaving, setEditSaving] = useState(false);
-    const touchSelectionTimerRef = useRef(null);
+    const [bulkProcessing, setBulkProcessing] = useState(false);
+    const touchSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -183,6 +279,14 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
             artist.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
         );
     }, [artists, debouncedSearch]);
+
+    const artistsExportColumns: ExportColumn[] = [
+        { key: 'name', label: 'Name', format: (v) => v || 'Unknown' },
+        { key: 'email', label: 'Email', format: (v) => v || '' },
+        { key: 'status', label: 'Status', format: (v) => (v || 'active').toUpperCase() },
+        { key: 'spotifyUrl', label: 'Spotify URL', format: (v) => v || '' },
+        { key: 'lastSyncedAt', label: 'Last Synced', format: (v) => v ? new Date(v).toLocaleDateString() : 'Never' },
+    ];
 
     const totalArtistCount = filteredArtists.length;
     const totalPages = Math.max(1, Math.ceil(totalArtistCount / ARTISTS_PAGE_SIZE));
@@ -216,11 +320,11 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         }
     }, [selectedArtistIds, selectionMode]);
 
-    const fetchArtistBalance = useCallback(async (artistId) => {
+    const fetchArtistBalance = useCallback(async (artistId: string) => {
         if (!artistId) return;
         setBalanceLoading(true);
         try {
-            const data = await dashboardRequestJson(`/api/admin/artist-balance?artistId=${artistId}`, { context: 'artist balance' });
+            const data = await dashboardRequestJson(`/api/admin/artist-balance?artistId=${artistId}`, { context: 'artist balance' }) as { stats?: BalanceStats; adjustments?: BalanceAdjustment[] };
             setBalanceStats(data.stats || null);
             setBalanceAdjustments(data.adjustments || []);
         } catch (e) {
@@ -259,12 +363,12 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         fetchArtistBalance(selectedArtist.id);
     }, [fetchArtistBalance, selectedArtist?.id]);
 
-    const startEdit = (artist) => {
+    const startEdit = (artist: AdminArtist) => {
         setEditingId(artist.id);
         setEditFields({ name: artist.name || '', email: artist.email || '', spotifyUrl: artist.spotifyUrl || '' });
     };
     const cancelEdit = () => setEditingId(null);
-    const saveEdit = async (artistId) => {
+    const saveEdit = async (artistId: string) => {
         setEditSaving(true);
         try {
             await dashboardRequestJson('/api/admin/artists', {
@@ -282,7 +386,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         } finally { setEditSaving(false); }
     };
 
-    const enterSelectionMode = useCallback((artistId) => {
+    const enterSelectionMode = useCallback((artistId?: string) => {
         setSelectionMode(true);
         if (!artistId) return;
         setSelectedArtistIds((prev) => {
@@ -297,7 +401,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         setSelectedArtistIds(new Set());
     }, []);
 
-    const toggleArtistSelection = useCallback((artistId) => {
+    const toggleArtistSelection = useCallback((artistId: string) => {
         setSelectedArtistIds((prev) => {
             const next = new Set(prev);
             if (next.has(artistId)) next.delete(artistId);
@@ -323,9 +427,87 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
         setSelectedArtistIds(new Set(filteredArtists.map((artist) => artist.id)));
     }, [filteredArtists]);
 
-    const handleSelectionChange = useCallback((keys) => {
+    const handleSelectionChange = useCallback((keys: any) => {
         setSelectedArtistIds(normalizeSelectionKeys(keys, filteredArtists.map((artist) => artist.id)));
     }, [filteredArtists]);
+
+    // -----------------------------------------------------------------------
+    // Bulk actions
+    // -----------------------------------------------------------------------
+
+    const handleBulkApprove = useCallback(async () => {
+        if (selectedArtistIds.size === 0) return;
+        setBulkProcessing(true);
+        try {
+            const result = await dashboardRequestJson<{ success: string[]; failed: Array<{ id: string; error: string }> }>(
+                '/api/admin/bulk',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'approve-artists', ids: Array.from(selectedArtistIds) }),
+                    context: 'bulk approve artists',
+                    retry: false,
+                },
+            );
+            const successCount = result.success?.length ?? 0;
+            const failCount = result.failed?.length ?? 0;
+            if (failCount === 0) {
+                showToast(`${successCount} artist${successCount === 1 ? '' : 's'} approved`, 'success');
+            } else {
+                showToast(`Approved ${successCount}, failed ${failCount}`, 'warning');
+            }
+            exitSelectionMode();
+            await onRefresh?.();
+        } catch (e) {
+            showToast(getDashboardErrorMessage(e, 'Bulk approve failed'), 'error');
+        } finally {
+            setBulkProcessing(false);
+        }
+    }, [selectedArtistIds, showToast, exitSelectionMode, onRefresh]);
+
+    const handleBulkSync = useCallback(async () => {
+        if (selectedArtistIds.size === 0) return;
+        setBulkProcessing(true);
+        try {
+            const selectedList = artists.filter((a) => selectedArtistIds.has(a.id));
+            const results = await Promise.allSettled(
+                selectedList.map((a) => onSync(a.userId, a.spotifyUrl, a.id)),
+            );
+            const successCount = results.filter((r) => r.status === 'fulfilled').length;
+            const failCount = results.filter((r) => r.status === 'rejected').length;
+            if (failCount === 0) {
+                showToast(`${successCount} artist${successCount === 1 ? '' : 's'} synced`, 'success');
+            } else {
+                showToast(`Synced ${successCount}, failed ${failCount}`, 'warning');
+            }
+            exitSelectionMode();
+            await onRefresh?.();
+        } catch (e) {
+            showToast(getDashboardErrorMessage(e, 'Bulk sync failed'), 'error');
+        } finally {
+            setBulkProcessing(false);
+        }
+    }, [selectedArtistIds, artists, onSync, showToast, exitSelectionMode, onRefresh]);
+
+    const handleBulkEmail = useCallback(() => {
+        if (selectedArtistIds.size === 0) return;
+        const selectedList = artists.filter((a) => selectedArtistIds.has(a.id));
+        const emails = selectedList
+            .map((a) => a.email || a.user?.email)
+            .filter(Boolean) as string[];
+        if (emails.length === 0) {
+            showToast('No email addresses found for selected artists', 'warning');
+            return;
+        }
+        window.open(`mailto:${emails.join(',')}`, '_blank');
+        showToast(`Opened email compose for ${emails.length} recipient${emails.length === 1 ? '' : 's'}`, 'success');
+    }, [selectedArtistIds, artists, showToast]);
+
+    const bulkActions: BulkAction[] = useMemo(() => [
+        { label: 'APPROVE', icon: <CheckCircle size={14} />, onClick: handleBulkApprove, variant: 'primary' as const, isDisabled: bulkProcessing },
+        { label: 'SYNC', icon: <RefreshCw size={14} />, onClick: handleBulkSync, variant: 'secondary' as const, isDisabled: bulkProcessing },
+        { label: 'EMAIL', icon: <Mail size={14} />, onClick: handleBulkEmail, variant: 'secondary' as const, isDisabled: bulkProcessing },
+    ], [handleBulkApprove, handleBulkSync, handleBulkEmail, bulkProcessing]);
 
     const handleCreate = async () => {
         if (!newArtist.name) return showToast('Name Required', "warning");
@@ -370,7 +552,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                 <div className="flex gap-8 items-center">
                     <div className="w-28 h-28 rounded-2xl bg-surface flex items-center justify-center border border-border overflow-hidden shrink-0">
                         {selectedArtist.image
-                            ? <NextImage src={selectedArtist.image} alt={selectedArtist.name} width={120} height={120} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ? <NextImage src={selectedArtist.image} alt={selectedArtist.name ?? ''} width={120} height={120} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             : <span className="text-4xl opacity-50">👤</span>
                         }
                     </div>
@@ -463,12 +645,12 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                     <div className="text-center py-10 text-muted text-[10px] font-black tracking-widest">LOADING RELEASES...</div>
                                 ) : (() => {
                                     const artistReleases = releases.filter(r => {
-                                        const nameMatch = r.artistName?.toLowerCase().includes(selectedArtist.name?.toLowerCase());
-                                        const titleMatch = r.name?.toLowerCase().includes(selectedArtist.name?.toLowerCase());
+                                        const nameMatch = r.artistName?.toLowerCase().includes(selectedArtist.name?.toLowerCase() ?? '');
+                                        const titleMatch = r.name?.toLowerCase().includes(selectedArtist.name?.toLowerCase() ?? '');
                                         let jsonMatch = false;
                                         if (r.artistsJson) {
                                             try {
-                                                const parsedArtists = JSON.parse(r.artistsJson);
+                                                const parsedArtists = JSON.parse(r.artistsJson) as Array<{ id?: string; name?: string }>;
                                                 jsonMatch = parsedArtists.some(a =>
                                                     a.id === selectedArtist.id ||
                                                     a.name?.toLowerCase() === selectedArtist.name?.toLowerCase() ||
@@ -485,7 +667,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                                 <div key={release.id} className="text-center">
                                                     <div className="w-full aspect-square bg-surface rounded overflow-hidden border border-border mb-2">
                                                         {release.image
-                                                            ? <NextImage src={release.image} alt={release.name} width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            ? <NextImage src={release.image} alt={release.name ?? ''} width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                             : <div className="w-full h-full flex items-center justify-center text-xl">💿</div>
                                                         }
                                                     </div>
@@ -541,7 +723,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                         (c.splits?.some(s =>
                                             s.artistId === selectedArtist.id ||
                                             (selectedArtist.userId && s.userId === selectedArtist.userId) ||
-                                            (selectedArtist.email && s.email?.toLowerCase() === selectedArtist.email?.toLowerCase())
+                                            (selectedArtist.email && (s as any).email?.toLowerCase() === selectedArtist.email?.toLowerCase()) // TODO: type split.email
                                         ))
                                     );
                                     if (artistContracts.length === 0) {
@@ -552,12 +734,12 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                             {artistContracts.map(contract => (
                                                 <div key={contract.id} className="p-3 bg-surface rounded-lg border border-border">
                                                     <div className="text-xs font-black mb-0.5">{contract.title || contract.release?.name || 'Untitled Contract'}</div>
-                                                    <div className="text-[10px] text-muted font-black">REF: {contract.contractDetails?.agreementReferenceNo || 'N/A'}</div>
+                                                    <div className="text-[10px] text-muted font-black">REF: {(contract as any).contractDetails?.agreementReferenceNo || 'N/A'}</div>{/* TODO: type contractDetails */}
                                                     <div className="flex justify-between mt-2 items-center">
                                                         <Chip size="sm" variant="soft" color="success">
                                                             <Chip.Label>{contract.status?.toUpperCase()}</Chip.Label>
                                                         </Chip>
-                                                        <span className="text-[10px] text-accent font-black">{Math.round(contract.artistShare * 100)}% SHARE</span>
+                                                        <span className="text-[10px] text-accent font-black">{Math.round(Number(contract.artistShare) * 100)}% SHARE</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -623,7 +805,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                                         <span className={`text-xs font-black ${Number(item.amount) >= 0 ? 'text-success' : 'text-danger'}`}>
                                                             {Number(item.amount) >= 0 ? '+' : ''}${Number(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                         </span>
-                                                        <span className="text-[9px] text-muted font-black">{new Date(item.createdAt).toLocaleDateString()}</span>
+                                                        <span className="text-[9px] text-muted font-black">{new Date(item.createdAt!).toLocaleDateString()}</span>
                                                     </div>
                                                     {item.reason && <div className="text-[10px] text-muted mt-1">{item.reason}</div>}
                                                     <div className="text-[9px] text-muted mt-0.5">by {item.createdBy?.stageName || item.createdBy?.fullName || item.createdBy?.email || 'admin'}</div>
@@ -661,7 +843,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
 
     return (
         <div className="flex flex-col gap-6">
-            <Modal isOpen={isCreating} onOpenChange={(open) => { if (!open) setIsCreating(false); }}>
+            <Modal isOpen={isCreating} onOpenChange={(open: boolean) => { if (!open) setIsCreating(false); }}>
                 <Modal.Backdrop />
                 <Modal.Container>
                     <Modal.Dialog className="w-full max-w-md">
@@ -731,7 +913,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                     setIsSyncingAll(true);
                                     try {
                                         const res = await fetch('/api/admin/scrape/batch', { method: 'POST' });
-                                        const data = await res.json();
+                                        const data = await res.json() as { queued?: boolean; jobId?: string; success?: boolean; successCount?: number; failCount?: number };
                                         if (data.queued) {
                                             showToast(`Batch sync queued. Job: ${data.jobId?.slice(0, 8) || 'pending'}`, "success");
                                         } else if (data.success) {
@@ -750,6 +932,12 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                             <Button variant="primary" onPress={() => setIsCreating(true)}>
                                 <Plus size={14} /> NEW ARTIST
                             </Button>
+                            <ExportButtons
+                                data={filteredArtists}
+                                columns={artistsExportColumns}
+                                filename="artists-export"
+                                title="Artists Report"
+                            />
                         </div>
                     )}
                 </div>
@@ -815,7 +1003,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                 )
                             )}
                         >
-                            {(item) => item._skeleton ? (
+                            {(item: TableItem) => (item as SkeletonRow)._skeleton ? (
                                 <Table.Row key={item.id} id={item.id}>
                                     <Table.Cell className={selectionMode ? '' : 'hidden'}>
                                         {selectionMode && (
@@ -846,167 +1034,170 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                         </div>
                                     </Table.Cell>
                                 </Table.Row>
-                            ) : (
-                                <Table.Row
-                                    key={item.id}
-                                    id={item.id}
-                                    className={`${editingId === item.id ? '' : 'cursor-pointer'} ${selectionMode && selectedArtistIds.has(item.id) ? 'bg-default/10' : ''}`}
-                                    onContextMenu={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        enterSelectionMode(item.id);
-                                    }}
-                                    onTouchStart={() => {
-                                        clearTouchSelectionTimer();
-                                        touchSelectionTimerRef.current = setTimeout(() => {
-                                            enterSelectionMode(item.id);
-                                            touchSelectionTimerRef.current = null;
-                                        }, LONG_PRESS_SELECTION_MS);
-                                    }}
-                                    onTouchEnd={clearTouchSelectionTimer}
-                                    onTouchMove={clearTouchSelectionTimer}
-                                    onTouchCancel={clearTouchSelectionTimer}
-                                    onPress={() => {
-                                        if (selectionMode) return;
-                                        if (editingId === item.id) return;
-                                        setSelectedArtist(item);
-                                        setRecordId(item.id);
-                                    }}
-                                >
-                                    <Table.Cell className={`pr-0 ${selectionMode ? '' : 'hidden'}`}>
-                                        {selectionMode && (
-                                            <Checkbox
-                                                aria-label={`Select ${item.name}`}
-                                                slot="selection"
-                                                variant="secondary"
-                                            >
-                                                <Checkbox.Control>
-                                                    <Checkbox.Indicator />
-                                                </Checkbox.Control>
-                                            </Checkbox>
-                                        )}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-xl overflow-hidden border border-border bg-surface shrink-0 flex items-center justify-center">
-                                                {item.image ? (
-                                                    <NextImage unoptimized src={item.image} alt={item.name} width={36} height={36} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                ) : (
-                                                    <span className="text-sm font-black text-muted">{item.name?.[0]?.toUpperCase() || '?'}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col gap-0.5">
-                                                {editingId === item.id ? (
-                                                    <input
-                                                        value={editFields.name}
-                                                        onChange={e => setEditFields(f => ({ ...f, name: e.target.value }))}
-                                                        onClick={e => e.stopPropagation()}
-                                                        className="text-sm font-black bg-surface border border-border/60 rounded-lg px-2 py-1 text-foreground outline-none focus:border-foreground/40 w-36"
-                                                        autoFocus
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm font-black">{item.name}</span>
-                                                )}
-                                                {item.spotifyUrl ? (
-                                                    editingId === item.id ? (
-                                                        <input
-                                                            value={editFields.spotifyUrl}
-                                                            onChange={e => setEditFields(f => ({ ...f, spotifyUrl: e.target.value }))}
-                                                            onClick={e => e.stopPropagation()}
-                                                            placeholder="Spotify URL"
-                                                            className="text-[10px] font-black bg-surface border border-border/60 rounded-lg px-2 py-0.5 text-muted outline-none focus:border-foreground/40 w-36"
-                                                        />
+                            ) : (() => {
+                                const artist = item as AdminArtist;
+                                return (
+                                    <Table.Row
+                                        key={artist.id}
+                                        id={artist.id}
+                                        className={`${editingId === artist.id ? '' : 'cursor-pointer'} ${selectionMode && selectedArtistIds.has(artist.id) ? 'bg-default/10' : ''}`}
+                                        onContextMenu={(event: React.MouseEvent) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            enterSelectionMode(artist.id);
+                                        }}
+                                        onTouchStart={() => {
+                                            clearTouchSelectionTimer();
+                                            touchSelectionTimerRef.current = setTimeout(() => {
+                                                enterSelectionMode(artist.id);
+                                                touchSelectionTimerRef.current = null;
+                                            }, LONG_PRESS_SELECTION_MS);
+                                        }}
+                                        onTouchEnd={clearTouchSelectionTimer}
+                                        onTouchMove={clearTouchSelectionTimer}
+                                        onTouchCancel={clearTouchSelectionTimer}
+                                        onPress={() => {
+                                            if (selectionMode) return;
+                                            if (editingId === artist.id) return;
+                                            setSelectedArtist(artist);
+                                            setRecordId(artist.id);
+                                        }}
+                                    >
+                                        <Table.Cell className={`pr-0 ${selectionMode ? '' : 'hidden'}`}>
+                                            {selectionMode && (
+                                                <Checkbox
+                                                    aria-label={`Select ${artist.name}`}
+                                                    slot="selection"
+                                                    variant="secondary"
+                                                >
+                                                    <Checkbox.Control>
+                                                        <Checkbox.Indicator />
+                                                    </Checkbox.Control>
+                                                </Checkbox>
+                                            )}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl overflow-hidden border border-border bg-surface shrink-0 flex items-center justify-center">
+                                                    {artist.image ? (
+                                                        <NextImage unoptimized src={artist.image} alt={artist.name ?? ''} width={36} height={36} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                     ) : (
-                                                        <span className="text-[9px] text-muted font-black tracking-widest flex items-center gap-1">
-                                                            <span className="inline-block w-2 h-2 rounded-full bg-[#1DB954]" />
-                                                            SPOTIFY
-                                                        </span>
-                                                    )
-                                                ) : (
-                                                    editingId === item.id && (
-                                                        <input
-                                                            value={editFields.spotifyUrl}
-                                                            onChange={e => setEditFields(f => ({ ...f, spotifyUrl: e.target.value }))}
-                                                            onClick={e => e.stopPropagation()}
-                                                            placeholder="Spotify URL"
-                                                            className="text-[10px] font-black bg-surface border border-border/60 rounded-lg px-2 py-0.5 text-muted outline-none focus:border-foreground/40 w-36"
-                                                        />
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-xs font-black text-foreground">
-                                                {(item.monthlyListeners !== null && item.monthlyListeners !== undefined) ? item.monthlyListeners.toLocaleString() : '---'}
-                                            </span>
-                                            <span className="text-[9px] text-muted font-black tracking-widest">
-                                                {item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleDateString() : 'NEVER SYNCED'}
-                                            </span>
-                                        </div>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        {item.user ? (
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-7 h-7 rounded-full overflow-hidden border border-border bg-surface shrink-0 flex items-center justify-center">
-                                                    {item.user.image ? (
-                                                        <NextImage unoptimized src={item.user.image} alt={item.user.email} width={28} height={28} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                    ) : (
-                                                        <span className="text-[10px] font-black text-muted">{item.user.email?.[0]?.toUpperCase()}</span>
+                                                        <span className="text-sm font-black text-muted">{artist.name?.[0]?.toUpperCase() || '?'}</span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span className="text-xs font-black">{item.user.stageName || item.user.name || item.user.email}</span>
-                                                    <span className="text-[9px] text-muted font-black tracking-widest">{item.user.email}</span>
+                                                    {editingId === artist.id ? (
+                                                        <input
+                                                            value={editFields.name}
+                                                            onChange={e => setEditFields(f => ({ ...f, name: e.target.value }))}
+                                                            onClick={e => e.stopPropagation()}
+                                                            className="text-sm font-black bg-surface border border-border/60 rounded-lg px-2 py-1 text-foreground outline-none focus:border-foreground/40 w-36"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-black">{artist.name}</span>
+                                                    )}
+                                                    {artist.spotifyUrl ? (
+                                                        editingId === artist.id ? (
+                                                            <input
+                                                                value={editFields.spotifyUrl}
+                                                                onChange={e => setEditFields(f => ({ ...f, spotifyUrl: e.target.value }))}
+                                                                onClick={e => e.stopPropagation()}
+                                                                placeholder="Spotify URL"
+                                                                className="text-[10px] font-black bg-surface border border-border/60 rounded-lg px-2 py-0.5 text-muted outline-none focus:border-foreground/40 w-36"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-[9px] text-muted font-black tracking-widest flex items-center gap-1">
+                                                                <span className="inline-block w-2 h-2 rounded-full bg-[#1DB954]" />
+                                                                SPOTIFY
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        editingId === artist.id && (
+                                                            <input
+                                                                value={editFields.spotifyUrl}
+                                                                onChange={e => setEditFields(f => ({ ...f, spotifyUrl: e.target.value }))}
+                                                                onClick={e => e.stopPropagation()}
+                                                                placeholder="Spotify URL"
+                                                                className="text-[10px] font-black bg-surface border border-border/60 rounded-lg px-2 py-0.5 text-muted outline-none focus:border-foreground/40 w-36"
+                                                            />
+                                                        )
+                                                    )}
                                                 </div>
                                             </div>
-                                        ) : (
-                                            editingId === item.id ? (
-                                                <input
-                                                    value={editFields.email}
-                                                    onChange={e => setEditFields(f => ({ ...f, email: e.target.value }))}
-                                                    onClick={e => e.stopPropagation()}
-                                                    placeholder="artist@email.com"
-                                                    className="text-xs font-black bg-surface border border-border/60 rounded-lg px-2 py-1 text-foreground outline-none focus:border-foreground/40 w-44"
-                                                />
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xs font-black text-foreground">
+                                                    {(artist.monthlyListeners !== null && artist.monthlyListeners !== undefined) ? artist.monthlyListeners.toLocaleString() : '---'}
+                                                </span>
+                                                <span className="text-[9px] text-muted font-black tracking-widest">
+                                                    {artist.lastSyncedAt ? new Date(artist.lastSyncedAt).toLocaleDateString() : 'NEVER SYNCED'}
+                                                </span>
+                                            </div>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            {artist.user ? (
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full overflow-hidden border border-border bg-surface shrink-0 flex items-center justify-center">
+                                                        {artist.user.image ? (
+                                                            <NextImage unoptimized src={artist.user.image} alt={artist.user.email ?? ''} width={28} height={28} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <span className="text-[10px] font-black text-muted">{artist.user.email?.[0]?.toUpperCase()}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-black">{artist.user.stageName || artist.user.name || artist.user.email}</span>
+                                                        <span className="text-[9px] text-muted font-black tracking-widest">{artist.user.email}</span>
+                                                    </div>
+                                                </div>
                                             ) : (
-                                                <span className="text-[10px] text-muted font-black tracking-widest">UNLINKED</span>
-                                            )
-                                        )}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                                            {selectionMode ? (
-                                                <Chip size="sm" variant="soft" color={selectedArtistIds.has(item.id) ? 'accent' : 'default'}>
-                                                    <Chip.Label>{selectedArtistIds.has(item.id) ? 'SELECTED' : 'SELECT'}</Chip.Label>
-                                                </Chip>
-                                            ) : editingId === item.id ? (
-                                                <>
-                                                    <Button size="sm" variant="primary" isDisabled={editSaving} onPress={() => saveEdit(item.id)}>
-                                                        {editSaving ? '...' : 'SAVE'}
-                                                    </Button>
-                                                    <Button size="sm" variant="secondary" isDisabled={editSaving} onPress={cancelEdit}>
-                                                        CANCEL
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Button size="sm" variant="secondary" onPress={() => { onSync(item.userId, item.spotifyUrl, item.id); }}>
-                                                        <RefreshCw size={10} /> SYNC
-                                                    </Button>
-                                                    <Button size="sm" variant="secondary" onPress={(e) => { startEdit(item); }}>
-                                                        EDIT
-                                                    </Button>
-                                                    <Button size="sm" variant="secondary" onPress={() => { setSelectedArtist(item); setRecordId(item.id); }}>
-                                                        MANAGE
-                                                    </Button>
-                                                </>
+                                                editingId === artist.id ? (
+                                                    <input
+                                                        value={editFields.email}
+                                                        onChange={e => setEditFields(f => ({ ...f, email: e.target.value }))}
+                                                        onClick={e => e.stopPropagation()}
+                                                        placeholder="artist@email.com"
+                                                        className="text-xs font-black bg-surface border border-border/60 rounded-lg px-2 py-1 text-foreground outline-none focus:border-foreground/40 w-44"
+                                                    />
+                                                ) : (
+                                                    <span className="text-[10px] text-muted font-black tracking-widest">UNLINKED</span>
+                                                )
                                             )}
-                                        </div>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <div className="flex items-center justify-end gap-1" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                                {selectionMode ? (
+                                                    <Chip size="sm" variant="soft" color={selectedArtistIds.has(artist.id) ? 'accent' : 'default'}>
+                                                        <Chip.Label>{selectedArtistIds.has(artist.id) ? 'SELECTED' : 'SELECT'}</Chip.Label>
+                                                    </Chip>
+                                                ) : editingId === artist.id ? (
+                                                    <>
+                                                        <Button size="sm" variant="primary" isDisabled={editSaving} onPress={() => saveEdit(artist.id)}>
+                                                            {editSaving ? '...' : 'SAVE'}
+                                                        </Button>
+                                                        <Button size="sm" variant="secondary" isDisabled={editSaving} onPress={cancelEdit}>
+                                                            CANCEL
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Button size="sm" variant="ghost" isIconOnly aria-label="Sync" onPress={() => { onSync(artist.userId, artist.spotifyUrl, artist.id); }}>
+                                                            <RefreshCw size={12} />
+                                                        </Button>
+                                                        <Button size="sm" variant="ghost" isIconOnly aria-label="Edit" onPress={() => { startEdit(artist); }}>
+                                                            <Edit2 size={12} />
+                                                        </Button>
+                                                        <Button size="sm" variant="ghost" isIconOnly aria-label="Manage" onPress={() => { setSelectedArtist(artist); setRecordId(artist.id); }}>
+                                                            <Settings2 size={12} />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                );
+                            })()}
                         </Table.Body>
                     </Table.Content>
                 </Table.ScrollContainer>
@@ -1028,14 +1219,14 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                 </Pagination.Item>
                                 {getVisiblePageNumbers(currentPage, totalPages).map((page) => (
                                     page === 'ellipsis-left' || page === 'ellipsis-right' ? (
-                                        <Pagination.Item key={page}>
+                                        <Pagination.Item key={page as string}>
                                             <Pagination.Ellipsis />
                                         </Pagination.Item>
                                     ) : (
-                                        <Pagination.Item key={page}>
+                                        <Pagination.Item key={page as number}>
                                             <Pagination.Link
                                                 isActive={page === currentPage}
-                                                onPress={() => setCurrentPage(page)}
+                                                onPress={() => setCurrentPage(page as number)}
                                             >
                                                 {page}
                                             </Pagination.Link>
@@ -1056,6 +1247,12 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                     </Table.Footer>
                 )}
             </Table>
+
+            <BulkActionsBar
+                selectedCount={selectedArtistIds.size}
+                actions={bulkActions}
+                onClear={exitSelectionMode}
+            />
         </div>
     );
 }

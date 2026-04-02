@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Button,
+  Toolbar,
+  Separator,
+  Modal,
+  ScrollShadow,
+} from '@heroui/react';
 import { Upload, Plus } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
@@ -435,9 +442,9 @@ export default function ContractsView({
     try {
       const url = '/api/contracts';
       const method = editingContract ? 'PATCH' : 'POST';
-      const validSplits = form.splits.filter((s) => s.name.trim() !== '');
+      const validSplits = form.splits.filter((s: any) => s.name.trim() !== '');
       const primaryContributor =
-        validSplits.find((s) => (s.role || '').toLowerCase() === 'primary') ||
+        validSplits.find((s: any) => (s.role || '').toLowerCase() === 'primary') ||
         validSplits[0] ||
         null;
       const body: any = {
@@ -451,14 +458,14 @@ export default function ContractsView({
           artistAddress:
             primaryContributor?.address || form.contractDetails.artistAddress || '',
         },
-        splits: validSplits.map((s) => ({
+        splits: validSplits.map((s: any) => ({
           name: s.name,
           percentage: Number(s.percentage || 0),
           userId: s.userId || '',
           artistId: s.artistId || '',
           email: s.email || '',
         })),
-        featuredArtists: validSplits.map((s, idx) => ({
+        featuredArtists: validSplits.map((s: any, idx: number) => ({
           name: s.name,
           percentage: Number(s.percentage || 0),
           userId: s.userId || null,
@@ -516,8 +523,8 @@ export default function ContractsView({
   };
 
   const setPrimaryContributor = (targetIndex: number) => {
-    setForm((prev) => {
-      const newSplits = prev.splits.map((s, idx) => ({
+    setForm((prev: ContractFormType) => {
+      const newSplits = prev.splits.map((s: any, idx: number) => ({
         ...s,
         role:
           idx === targetIndex
@@ -538,19 +545,19 @@ export default function ContractsView({
   };
 
   const addContributor = () => {
-    setForm((prev) => ({
+    setForm((prev: ContractFormType) => ({
       ...prev,
       splits: [...prev.splits, createEmptySplit()],
     }));
   };
 
   const removeContributor = (removeIndex: number) => {
-    setForm((prev) => {
+    setForm((prev: ContractFormType) => {
       if (prev.splits.length <= 1) return prev;
       const wasPrimary = prev.splits[removeIndex]?.role === 'primary';
-      let newSplits = prev.splits.filter((_, idx) => idx !== removeIndex);
+      let newSplits = prev.splits.filter((_: any, idx: number) => idx !== removeIndex);
       if (wasPrimary && newSplits.length > 0) {
-        newSplits = newSplits.map((s, idx) => ({
+        newSplits = newSplits.map((s: any, idx: number) => ({
           ...s,
           role:
             idx === 0
@@ -560,7 +567,7 @@ export default function ContractsView({
                 : s.role || 'featured',
         }));
       }
-      const primary = newSplits.find((s) => s.role === 'primary') || newSplits[0];
+      const primary = newSplits.find((s: any) => s.role === 'primary') || newSplits[0];
       return {
         ...prev,
         artistId: primary?.artistId || '',
@@ -579,62 +586,83 @@ export default function ContractsView({
   };
 
   return (
-    <div>
-      {/* Action Bar */}
-      <div className="mb-5 flex justify-end gap-2.5">
-        <input
-          type="file"
-          multiple
-          accept="application/pdf"
-          id="batch-upload-pdf"
-          className="hidden"
-          onChange={handleBatchAutoUpload}
-        />
-        <button
-          onClick={() => document.getElementById('batch-upload-pdf')?.click()}
-          disabled={batchProcessing}
-          className="dash-btn"
-          style={{ cursor: batchProcessing ? 'wait' : 'pointer' }}
-        >
-          <Upload size={14} /> {batchProcessing ? 'PROCESSING...' : 'BATCH AUTO-UPLOAD'}
-        </button>
-        <button
-          onClick={() => {
-            if (showAdd) {
-              closeEditor();
-              return;
-            }
-            setForm(createDefaultContractForm());
-            setEditingContract(null);
-            clearRecordId({ replace: true });
-            setShowAdd(true);
-          }}
-          className="dash-btn-primary"
-        >
-          <Plus size={14} /> NEW CONTRACT
-        </button>
+    <div className="space-y-6">
+      {/* Header + Action Bar */}
+      <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[16px] font-black tracking-[0.18em] uppercase text-foreground">
+              Contracts
+            </h2>
+            <p className="mt-1 text-[11px] text-muted">
+              {contracts.length} contract{contracts.length !== 1 ? 's' : ''} total. Manage artist agreements and royalty splits.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              multiple
+              accept="application/pdf"
+              id="batch-upload-pdf"
+              className="hidden"
+              onChange={handleBatchAutoUpload}
+            />
+            <Button
+              variant="tertiary"
+              size="md"
+              onPress={() => document.getElementById('batch-upload-pdf')?.click()}
+              isDisabled={batchProcessing}
+            >
+              <Upload size={18} className="mr-2" />
+              {batchProcessing ? 'Processing' : 'Batch Upload'}
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="md"
+              onPress={() => {
+                setForm(createDefaultContractForm());
+                setEditingContract(null);
+                clearRecordId({ replace: true });
+                setShowAdd(true);
+              }}
+            >
+              <Plus size={18} className="mr-2" /> New Contract
+            </Button>
+          </div>
       </div>
 
-      {/* Form */}
-      {showAdd && (
-        <ContractForm
-          form={form}
-          setForm={setForm}
-          editingContract={editingContract}
-          artists={artists}
-          releases={releases}
-          demos={demos}
-          saving={saving}
-          uploadingPdf={uploadingPdf}
-          pdfInputRef={pdfInputRef}
-          onSubmit={handleSubmitContract}
-          onCancel={() => closeEditor()}
-          onPdfUpload={handlePdfUpload}
-          onAddContributor={addContributor}
-          onRemoveContributor={removeContributor}
-          onSetPrimaryContributor={setPrimaryContributor}
-        />
-      )}
+      {/* Contract Form Modal */}
+      <Modal.Backdrop isOpen={showAdd} onOpenChange={(open) => { if (!open) closeEditor(); }}>
+        <Modal.Container>
+          <Modal.Dialog className="w-full max-w-4xl h-[90vh] flex flex-col">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Heading>
+                {editingContract ? 'Edit Contract' : 'New Contract'}
+              </Modal.Heading>
+            </Modal.Header>
+            <ScrollShadow hideScrollBar className="flex-1 overflow-y-auto px-6 pb-6">
+              <ContractForm
+                form={form}
+                setForm={setForm}
+                editingContract={editingContract}
+                artists={artists}
+                releases={releases}
+                demos={demos}
+                saving={saving}
+                uploadingPdf={uploadingPdf}
+                pdfInputRef={pdfInputRef}
+                onSubmit={handleSubmitContract}
+                onCancel={() => closeEditor()}
+                onPdfUpload={handlePdfUpload}
+                onAddContributor={addContributor}
+                onRemoveContributor={removeContributor}
+                onSetPrimaryContributor={setPrimaryContributor}
+              />
+            </ScrollShadow>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
 
       {/* Table */}
       <ContractTable
