@@ -11,6 +11,10 @@ export const cinematicAuthStyles = `
     .ca-centered {
         align-items: center;
         justify-content: center;
+        background:
+            linear-gradient(180deg, rgba(5,5,7,0.55) 0%, rgba(5,5,7,0.82) 100%),
+            url('/lostbanner.png') center center / cover no-repeat;
+        background-color: #050507;
     }
 
     /* ── Film grain ── */
