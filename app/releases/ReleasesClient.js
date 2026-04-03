@@ -166,11 +166,20 @@ export default function ReleasesClient() {
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [sortBy, setSortBy] = useState('popularity');
     const [pagination, setPagination] = useState({ page: 1, hasNextPage: false, total: 0 });
+    const [isMobile, setIsMobile] = useState(false);
     const heroRef = useRef(null);
     const { scrollY } = useScroll();
     const heroOpacity = useTransform(scrollY, [0, 280], [1, 0]);
     const heroY = useTransform(scrollY, [0, 280], [0, -80]);
     const heroScale = useTransform(scrollY, [0, 280], [1, 0.94]);
+
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 768px)');
+        setIsMobile(mq.matches);
+        const handler = (e) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
 
     const fetchReleases = useCallback(async (page = 1, append = false) => {
         if (append) setLoadingMore(true);
@@ -224,26 +233,29 @@ export default function ReleasesClient() {
                 position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
                 backgroundImage: "url('/lostbanner.png')",
                 backgroundSize: 'cover', backgroundPosition: 'center',
-                opacity: 0.055, filter: 'grayscale(30%)',
+                opacity: isMobile ? 0 : 0.055,
+                filter: isMobile ? 'none' : 'grayscale(30%)',
             }} />
 
-            {/* Grain */}
-            <div style={{
-                position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, opacity: 0.03,
-                backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
-                mixBlendMode: 'overlay',
-            }} />
+            {/* Grain — desktop only */}
+            {!isMobile && (
+                <div style={{
+                    position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, opacity: 0.03,
+                    backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+                    mixBlendMode: 'overlay',
+                }} />
+            )}
 
-            {/* Hero header — parallax */}
+            {/* Hero header — parallax (desktop only) */}
             <motion.div
                 ref={heroRef}
-                style={{ opacity: heroOpacity, y: heroY, scale: heroScale, position: 'relative', zIndex: 2, transformOrigin: 'top center' }}
+                style={isMobile ? { position: 'relative', zIndex: 2 } : { opacity: heroOpacity, y: heroY, scale: heroScale, position: 'relative', zIndex: 2, transformOrigin: 'top center' }}
             >
                 <div style={{ padding: 'clamp(130px, 20vh, 220px) clamp(24px, 5vw, 80px) 60px' }}>
                     <motion.div
-                        initial={{ opacity: 0, y: 70, filter: 'blur(24px)' }}
+                        initial={{ opacity: 0, y: isMobile ? 20 : 70, filter: isMobile ? 'none' : 'blur(24px)' }}
                         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        transition={{ duration: 1.3, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: isMobile ? 0.5 : 1.3, delay: isMobile ? 0.1 : 0.75, ease: [0.16, 1, 0.3, 1] }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
                             <Link href="/"
@@ -287,9 +299,9 @@ export default function ReleasesClient() {
                 transition={{ duration: 0.6, delay: 1.2 }}
                 style={{
                     position: 'sticky', top: 0, zIndex: 50,
-                    background: 'rgba(5,5,5,0.88)',
-                    backdropFilter: 'blur(28px)',
-                    WebkitBackdropFilter: 'blur(28px)',
+                    background: isMobile ? 'rgba(5,5,5,0.97)' : 'rgba(5,5,5,0.88)',
+                    backdropFilter: isMobile ? 'none' : 'blur(28px)',
+                    WebkitBackdropFilter: isMobile ? 'none' : 'blur(28px)',
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     padding: '12px clamp(24px, 5vw, 80px)',
                     display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center',

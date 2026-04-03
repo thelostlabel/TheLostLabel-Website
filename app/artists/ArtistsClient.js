@@ -273,6 +273,15 @@ export default function ArtistsPage() {
                     filter: grayscale(40%);
                 }
 
+                @media (max-width: 768px) {
+                    .artists-bg {
+                        display: none;
+                    }
+                    .artists-progress {
+                        display: none;
+                    }
+                }
+
                 .artists-progress {
                     position: fixed;
                     top: 0;
