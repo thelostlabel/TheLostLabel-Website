@@ -27,36 +27,29 @@ function ReleaseItem({ release, index, featured, isMobile }) {
     const artistName = release.artists?.map(a => a.name).join(', ') || release.artist || release.artistName || '';
     const slug = toReleaseSlug(release.name, artistName, release.id);
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: isMobile ? 20 : 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: isMobile ? 0.3 : 0.6, delay: isMobile ? 0 : Math.min((index % 6) * 0.07, 0.35), ease: [0.16, 1, 0.3, 1] }}
-            style={{ gridColumn: featured ? 'span 2' : 'span 1', perspective: isMobile ? 'none' : '800px' }}
-        >
-            <Link href={`/releases/${slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-                <div
-                    ref={cardRef}
-                    onMouseEnter={isMobile ? undefined : () => setHovered(true)}
-                    onMouseLeave={isMobile ? undefined : () => { setHovered(false); reset(); }}
-                    onMouseMove={isMobile ? undefined : handleMove}
-                    style={{
-                        position: 'relative',
-                        borderRadius: featured ? '20px' : '14px',
-                        overflow: 'hidden',
-                        background: '#0a0a0a',
-                        border: `1px solid ${hovered ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.05)'}`,
-                        transition: 'border-color 0.3s, box-shadow 0.4s',
-                        boxShadow: hovered ? '0 30px 80px rgba(0,0,0,0.7)' : '0 4px 24px rgba(0,0,0,0.4)',
-                        cursor: 'pointer',
-                        transform: (!isMobile && hovered) ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) translateY(-6px)` : 'none',
-                        transformStyle: isMobile ? 'flat' : 'preserve-3d',
-                        transitionProperty: 'transform, border-color, box-shadow',
-                        transitionDuration: hovered ? '0.1s, 0.3s, 0.4s' : '0.6s, 0.3s, 0.4s',
-                        transitionTimingFunction: 'ease-out',
-                    }}
-                >
+    const cardContent = (
+        <Link href={`/releases/${slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+            <div
+                ref={isMobile ? undefined : cardRef}
+                onMouseEnter={isMobile ? undefined : () => setHovered(true)}
+                onMouseLeave={isMobile ? undefined : () => { setHovered(false); reset(); }}
+                onMouseMove={isMobile ? undefined : handleMove}
+                style={{
+                    position: 'relative',
+                    borderRadius: featured ? '20px' : '14px',
+                    overflow: 'hidden',
+                    background: '#0a0a0a',
+                    border: `1px solid ${hovered ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.05)'}`,
+                    transition: isMobile ? 'none' : 'border-color 0.3s, box-shadow 0.4s',
+                    boxShadow: isMobile ? 'none' : (hovered ? '0 30px 80px rgba(0,0,0,0.7)' : '0 4px 24px rgba(0,0,0,0.4)'),
+                    cursor: 'pointer',
+                    transform: (!isMobile && hovered) ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) translateY(-6px)` : 'none',
+                    transformStyle: isMobile ? 'flat' : 'preserve-3d',
+                    transitionProperty: 'transform, border-color, box-shadow',
+                    transitionDuration: hovered ? '0.1s, 0.3s, 0.4s' : '0.6s, 0.3s, 0.4s',
+                    transitionTimingFunction: 'ease-out',
+                }}
+            >
                     {/* Cover art — 3/4 ratio */}
                     <div style={{ position: 'relative', width: '100%', paddingBottom: featured ? '60%' : '133%', background: '#111' }}>
                         {release.image ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Play, Pause } from "lucide-react";
 import { gsap } from "gsap";
@@ -226,9 +226,49 @@ function ReleaseSlide({
   );
 }
 
+/* ── Mobile static card ── */
+function MobileReleaseCard({ item }: { item: { id: string; artist: string; music: string; albumArt: string; previewUrl: string | null; spotifyUrl: string | null } }) {
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const isThis = currentTrack?.id === item.id;
+  const isThisPlaying = isThis && isPlaying;
+
+  const handlePlay = () => {
+    if (isThis) { togglePlay(); return; }
+    playTrack({ id: item.id, name: item.music, artist: item.artist, image: item.albumArt, previewUrl: item.previewUrl, spotifyUrl: item.spotifyUrl });
+  };
+
+  return (
+    <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1', background: '#111' }}>
+        <Image src={item.albumArt} alt={item.music} fill style={{ objectFit: 'cover' }} sizes="100vw" unoptimized />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%)' }} />
+        <button onClick={handlePlay} style={{ position: 'absolute', bottom: 12, right: 12, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          {isThisPlaying ? <Pause size={14} fill="#000" color="#000" /> : <Play size={14} fill="#000" color="#000" style={{ marginLeft: 2 }} />}
+        </button>
+      </div>
+      <div style={{ padding: '12px 14px 14px' }}>
+        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4 }}>{item.artist}</p>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{item.music}</p>
+        {item.spotifyUrl && (
+          <a href={item.spotifyUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 10, color: 'rgba(255,255,255,0.25)', textDecoration: 'none', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Open in Spotify</a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main section ── */
 export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const items = releases
     .map((release) => {
@@ -255,7 +295,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
   const count = items.length;
 
   useEffect(() => {
-    if (count === 0) return;
+    if (count === 0 || isMobile) return;
 
     const ctx = gsap.context(() => {
       /*
@@ -332,9 +372,26 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [count]);
+  }, [count, isMobile]);
 
   if (items.length === 0) return null;
+
+  // Mobile: simple static card list, no pin/scrub
+  if (isMobile) {
+    return (
+      <div style={{ background: '#050505', padding: '60px 20px' }}>
+        <div style={{ marginBottom: 32, textAlign: 'center' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.4em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 8 }}>Catalog</p>
+          <h2 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.04em', color: '#fff', margin: 0 }}>Most played from the catalog.</h2>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {items.map((item) => (
+            <MobileReleaseCard key={item.id} item={item} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
