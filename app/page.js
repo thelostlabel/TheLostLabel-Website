@@ -86,7 +86,7 @@ export default async function HomePage() {
     const featuredReleases = [...pinnedRelease, ...remainingReleases];
 
     const [artistCount, releaseCount, demoCount, showcaseArtists] = await Promise.all([
-        prisma.user.count({ where: { role: 'artist', status: 'active' } }).catch(() => 50),
+        prisma.artist.count({ where: { status: 'active' } }).catch(() => 50),
         prisma.release.count().catch(() => 80),
         prisma.demo.count().catch(() => 300),
         prisma.artist.findMany({
