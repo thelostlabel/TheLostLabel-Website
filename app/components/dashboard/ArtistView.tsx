@@ -235,7 +235,7 @@ export default function ArtistView({ view: propView }: { view?: string }) {
         <ArtistCatalogReleasesView
           stats={stats}
           showToast={showToast}
-          onOpenSupport={(id: string) => {
+          onOpenSupport={(id?: string) => {
             setView("my-support", { params: { id }, preserveRecordId: true });
           }}
           onOpenProfile={() => navigateToView("profile")}
