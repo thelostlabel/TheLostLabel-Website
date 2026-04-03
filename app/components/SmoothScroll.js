@@ -14,7 +14,9 @@ export default function SmoothScroll() {
   const pathname = usePathname();
 
   useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
     const shouldDisable =
+      isMobile ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
       pathname?.startsWith("/dashboard");
 
@@ -27,7 +29,7 @@ export default function SmoothScroll() {
     const lenis = new Lenis({
       duration: isDesktop ? 1.35 : 1.05,
       smoothWheel: true,
-      syncTouch: true,
+      syncTouch: false,
       touchMultiplier: 0.95,
       wheelMultiplier: isDesktop ? 0.55 : 0.9,
       easing: (t) => 1 - Math.pow(1 - t, 4),

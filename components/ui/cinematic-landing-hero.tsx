@@ -75,20 +75,22 @@ export function CinematicHero({
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
     const ctx = gsap.context(() => {
       gsap.set(".text-track", {
         autoAlpha: 0,
-        y: 60,
-        scale: 0.85,
-        filter: "blur(20px)",
-        rotationX: -20,
+        y: isMobile ? 30 : 60,
+        scale: isMobile ? 0.95 : 0.85,
+        filter: isMobile ? "none" : "blur(20px)",
+        rotationX: isMobile ? 0 : -20,
       });
       gsap.set(".text-days", { autoAlpha: 1, clipPath: "inset(0 100% 0 0)" });
 
       const introTl = gsap.timeline({ delay: 0.3 });
       introTl
         .to(".text-track", {
-          duration: 1.8,
+          duration: isMobile ? 0.8 : 1.8,
           autoAlpha: 1,
           y: 0,
           scale: 1,
@@ -97,18 +99,21 @@ export function CinematicHero({
           ease: "expo.out",
         })
         .to(".text-days", {
-          duration: 1.4,
+          duration: isMobile ? 0.7 : 1.4,
           clipPath: "inset(0 0% 0 0)",
           ease: "power4.inOut",
         }, "-=1.0");
+
+      // On mobile: skip the heavy pin/scrub scroll effect entirely
+      if (isMobile) return;
 
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: containerRef.current,
           start: "top top",
-          end: prefersReducedMotion ? "+=1600" : "+=2200",
+          end: prefersReducedMotion ? "+=1000" : "+=1400",
           pin: true,
-          scrub: prefersReducedMotion ? 0.25 : 1,
+          scrub: prefersReducedMotion ? 0.25 : 0.6,
           anticipatePin: 1,
         },
       });
