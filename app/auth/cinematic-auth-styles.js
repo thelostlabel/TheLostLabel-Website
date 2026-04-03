@@ -175,7 +175,12 @@ export const cinematicAuthStyles = `
         z-index: 10;
         width: 100%;
         max-width: 420px;
-        padding: 0 20px;
+        padding: 48px 44px;
+        background: rgba(8,8,10,0.72);
+        backdrop-filter: blur(40px) saturate(1.3);
+        -webkit-backdrop-filter: blur(40px) saturate(1.3);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 24px;
     }
 
     /* ── Header ── */
