@@ -24,7 +24,13 @@ export async function generateMetadata() {
       template: `%s | ${siteName}`
     },
     description,
-    keywords: [siteName, BRANDING.fullName, "Music Distribution", "Independent Label", "Artist Portal", "Demo Submission"],
+    keywords: [
+      "The Lost Label", "Lost Label", "LOST.", "thelostlabel",
+      "phonk label", "phonk music", "independent music label",
+      "music distribution", "artist portal", "demo submission",
+      "submit demo", "sign to label", "underground music",
+      siteName, BRANDING.fullName,
+    ],
     category: "music",
     verification: {
       google: "3ghNlS-ul1NRXkqu9LWBoAmsKORus0SUMahs332IHFY",

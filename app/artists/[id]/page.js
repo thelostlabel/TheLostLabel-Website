@@ -17,9 +17,31 @@ export async function generateMetadata({ params }) {
     const artistDetails = await getArtistsDetails([spotifyId]);
     const artist = artistDetails?.[0] || dbArtist;
 
+    const name = artist?.name || dbArtist?.name;
+    const image = artist?.images?.[0]?.url || null;
+    const url = `https://thelostlabel.com/artists/${id}`;
+    const description = name
+        ? `${name} is signed to The Lost Label. Stream their releases, explore their profile and discography on LOST.`
+        : 'The requested artist could not be found.';
+
     return {
-        title: artist ? `${artist.name} | LOST. Roster` : 'Artist Not Found | LOST.',
-        description: artist ? `Explore ${artist.name}'s profile and releases on LOST.` : 'The requested artist could not be found.',
+        title: name ? `${name} | LOST. Roster` : 'Artist Not Found | LOST.',
+        description,
+        keywords: name ? [name, `${name} Lost Label`, `${name} music`, 'The Lost Label', 'Lost Label', 'LOST. roster'] : [],
+        openGraph: {
+            title: name ? `${name} | LOST. Roster` : 'Artist Not Found',
+            description,
+            url,
+            type: 'profile',
+            images: image ? [{ url: image, width: 640, height: 640, alt: name }] : [{ url: '/logo.png' }],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: name ? `${name} | LOST. Roster` : 'Artist Not Found',
+            description,
+            images: [image || '/logo.png'],
+        },
+        alternates: { canonical: url },
     };
 }
 
@@ -105,6 +127,37 @@ export default async function ArtistDetailPage({ params }) {
     // Sort by date
     releases.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'MusicGroup',
+        name: artist.name,
+        image: artist.images?.[0]?.url || undefined,
+        url: `https://thelostlabel.com/artists/${artistId}`,
+        sameAs: [
+            dbArtist?.spotifyUrl,
+            dbArtist?.instagramUrl,
+        ].filter(Boolean),
+        memberOf: {
+            '@type': 'Organization',
+            name: 'The Lost Label',
+            url: 'https://thelostlabel.com',
+        },
+        track: releases.slice(0, 10).map((r) => ({
+            '@type': 'MusicRecording',
+            name: r.name,
+            url: `https://thelostlabel.com/releases/${r.id}`,
+            sameAs: r.spotify_url || undefined,
+        })),
+    };
+
     // Pass data to Client Component for interactivity
-    return <ArtistDetailClient artist={artist} releases={releases} />;
+    return (
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <ArtistDetailClient artist={artist} releases={releases} />
+        </>
+    );
 }
