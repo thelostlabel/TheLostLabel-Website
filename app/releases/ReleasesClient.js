@@ -27,7 +27,14 @@ function ReleaseItem({ release, index, featured, isMobile }) {
     const artistName = release.artists?.map(a => a.name).join(', ') || release.artist || release.artistName || '';
     const slug = toReleaseSlug(release.name, artistName, release.id);
 
-    const cardContent = (
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: isMobile ? 20 : 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: isMobile ? 0.3 : 0.6, delay: isMobile ? 0 : Math.min((index % 6) * 0.07, 0.35), ease: [0.16, 1, 0.3, 1] }}
+            style={{ gridColumn: featured ? 'span 2' : 'span 1', perspective: isMobile ? 'none' : '800px' }}
+        >
         <Link href={`/releases/${slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
             <div
                 ref={isMobile ? undefined : cardRef}
@@ -147,6 +154,7 @@ function ReleaseItem({ release, index, featured, isMobile }) {
         </motion.div>
     );
 }
+
 
 export default function ReleasesClient() {
     const [releases, setReleases] = useState([]);
