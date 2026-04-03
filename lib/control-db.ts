@@ -1,6 +1,5 @@
 /**
  * Prisma client for the Control Panel database.
- * Used by tenant apps to fetch their config from the central control DB.
  * Only instantiated when CONTROL_DB_URL is set — safe to import without the
  * control-panel project present (e.g. standalone Docker builds).
  */
@@ -14,9 +13,11 @@ const globalForControlDb = globalThis as unknown as {
 function createControlDb(): PrismaClientType | null {
   if (!process.env.CONTROL_DB_URL) return null;
   try {
+    // Use indirect require path so bundlers skip static analysis on this import.
+    const clientPath = ["..", "control-panel", "node_modules", ".prisma", "control-panel-client"].join("/");
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PrismaClient } = require("../control-panel/node_modules/.prisma/control-panel-client");
-    return new PrismaClient({
+    const mod = require(/* webpackIgnore: true */ clientPath);
+    return new mod.PrismaClient({
       datasources: { db: { url: process.env.CONTROL_DB_URL } },
       log: [],
     }) as PrismaClientType;

@@ -56,7 +56,7 @@ export default function AdminView({ view: propView }: { view?: string }) {
   const { showToast, showConfirm } = useToast() as any;
   const { rawView, setView } = useDashboardRoute<string>();
   const features = getAdminFeatureFlags();
-  const view = normalizeAdminView(propView || rawView);
+  const view = normalizeAdminView(propView || rawView || undefined);
   const viewDisplayName = getAdminViewDisplayName(view);
   const {
     submissions,
