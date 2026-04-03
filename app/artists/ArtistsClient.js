@@ -117,7 +117,7 @@ export default function ArtistsPage() {
             </AnimatePresence>
 
             <div className="artists-page">
-                <BackgroundEffects />
+                <div className="artists-bg" />
 
                 {/* Progress Bar */}
                 <motion.div className="artists-progress" style={{ scaleX }} />
@@ -284,12 +284,25 @@ export default function ArtistsPage() {
 
             <style jsx global>{`
                 .artists-page {
-                    background: transparent;
+                    background: #050505;
                     color: #fff;
                     min-height: 100vh;
                     position: relative;
                     overflow-x: hidden;
                     padding-top: 100px;
+                }
+
+                .artists-bg {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 0;
+                    background-image: url('/lostbanner2.png');
+                    background-size: cover;
+                    background-position: center;
+                    background-repeat: no-repeat;
+                    opacity: 0.06;
+                    pointer-events: none;
+                    filter: grayscale(40%);
                 }
 
                 .artists-loader-title {
