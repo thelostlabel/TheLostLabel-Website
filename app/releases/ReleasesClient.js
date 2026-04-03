@@ -20,7 +20,7 @@ function useMouseTilt(ref) {
     return { tilt, handleMove, reset };
 }
 
-function ReleaseItem({ release, index, featured }) {
+function ReleaseItem({ release, index, featured, isMobile }) {
     const [hovered, setHovered] = useState(false);
     const cardRef = useRef(null);
     const { tilt, handleMove, reset } = useMouseTilt(cardRef);
@@ -29,19 +29,18 @@ function ReleaseItem({ release, index, featured }) {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: isMobile ? 20 : 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.6, delay: Math.min((index % 6) * 0.07, 0.35), ease: [0.16, 1, 0.3, 1] }}
-            layout
-            style={{ gridColumn: featured ? 'span 2' : 'span 1', perspective: '800px' }}
+            transition={{ duration: isMobile ? 0.3 : 0.6, delay: isMobile ? 0 : Math.min((index % 6) * 0.07, 0.35), ease: [0.16, 1, 0.3, 1] }}
+            style={{ gridColumn: featured ? 'span 2' : 'span 1', perspective: isMobile ? 'none' : '800px' }}
         >
             <Link href={`/releases/${slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
                 <div
                     ref={cardRef}
-                    onMouseEnter={() => setHovered(true)}
-                    onMouseLeave={() => { setHovered(false); reset(); }}
-                    onMouseMove={handleMove}
+                    onMouseEnter={isMobile ? undefined : () => setHovered(true)}
+                    onMouseLeave={isMobile ? undefined : () => { setHovered(false); reset(); }}
+                    onMouseMove={isMobile ? undefined : handleMove}
                     style={{
                         position: 'relative',
                         borderRadius: featured ? '20px' : '14px',
@@ -51,9 +50,8 @@ function ReleaseItem({ release, index, featured }) {
                         transition: 'border-color 0.3s, box-shadow 0.4s',
                         boxShadow: hovered ? '0 30px 80px rgba(0,0,0,0.7)' : '0 4px 24px rgba(0,0,0,0.4)',
                         cursor: 'pointer',
-                        transform: hovered ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) translateY(-6px)` : 'rotateX(0) rotateY(0) translateY(0)',
-                        transformStyle: 'preserve-3d',
-                        willChange: 'transform',
+                        transform: (!isMobile && hovered) ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) translateY(-6px)` : 'none',
+                        transformStyle: isMobile ? 'flat' : 'preserve-3d',
                         transitionProperty: 'transform, border-color, box-shadow',
                         transitionDuration: hovered ? '0.1s, 0.3s, 0.4s' : '0.6s, 0.3s, 0.4s',
                         transitionTimingFunction: 'ease-out',
@@ -112,7 +110,7 @@ function ReleaseItem({ release, index, featured }) {
                             <div style={{
                                 position: 'absolute', top: 12, right: 12,
                                 background: 'rgba(0,0,0,0.75)',
-                                backdropFilter: 'blur(10px)',
+                                backdropFilter: isMobile ? 'none' : 'blur(10px)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '999px',
                                 padding: '3px 10px',
@@ -372,6 +370,7 @@ export default function ReleasesClient() {
                                 release={release}
                                 index={i}
                                 featured={false}
+                                isMobile={isMobile}
                             />
                         ))}
                     </div>
