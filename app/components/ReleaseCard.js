@@ -5,6 +5,7 @@ import { Play, Pause } from 'lucide-react';
 import { usePlayer } from './PlayerContext';
 import { motion } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
+import { toReleaseSlug } from '@/lib/release-slug';
 
 export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initialData }) {
     const data = initialData || null;
@@ -88,7 +89,7 @@ export default function ReleaseCard({ id, fallbackTitle, fallbackArtist, initial
             }}>
             {/* Removed Hover Spotlight */}
 
-            <Link href={`/releases/${data?.id || id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
+            <Link href={`/releases/${toReleaseSlug(data?.name || fallbackTitle || '', data?.artists?.[0]?.name || data?.artist || fallbackArtist || '', data?.id || id)}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
                 <div className="card-image-container" style={{
                     height: '100%',
                     width: '100%',

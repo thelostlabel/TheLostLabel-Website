@@ -1,8 +1,8 @@
 import ReleasesClient from "./ReleasesClient";
 
 export const metadata = {
-    title: "RELEASES | LOST MUSIC Catalog",
-    description: "Explore the full discography of LOST MUSIC. Stream the latest Brazilian Phonk and Funk projects from our global collective.",
+    title: "Releases | The Lost Label",
+    description: "Explore the full catalog of The Lost Label. Stream phonk, trap, and underground music from our artists worldwide.",
 };
 
 export default function ReleasesPage() {

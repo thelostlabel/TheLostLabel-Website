@@ -8,9 +8,11 @@ import { usePublicSettings } from "@/app/components/PublicSettingsContext";
 
 const NAV_ITEMS = [
   { label: "Home",         href: "/",              index: "00" },
-  { label: "Submit Demo",  href: "/auth/register", index: "01" },
-  { label: "Sign In",      href: "/auth/login",    index: "02" },
-  { label: "Dashboard",    href: "/dashboard",     index: "03" },
+  { label: "Releases",     href: "/releases",      index: "01" },
+  { label: "Artists",      href: "/artists",       index: "02" },
+  { label: "Submit Demo",  href: "/auth/register", index: "03" },
+  { label: "Sign In",      href: "/auth/login",    index: "04" },
+  { label: "Dashboard",    href: "/dashboard",     index: "05" },
 ];
 
 type SocialEntry = { label: string; href: string };

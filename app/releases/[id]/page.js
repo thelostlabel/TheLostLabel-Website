@@ -1,10 +1,12 @@
 import prisma from "@/lib/prisma";
+import { fromReleaseSlug } from "@/lib/release-slug";
 import ReleaseDetailClient from "./ReleaseDetailClient";
 
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
-    const { id } = await params;
+    const { id: rawSlug } = await params;
+    const id = fromReleaseSlug(rawSlug);
 
     const release = await prisma.release.findUnique({
         where: { id },
@@ -62,7 +64,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ReleaseDetailPage({ params }) {
-    const { id } = await params;
+    const { id: rawSlug } = await params;
+    const id = fromReleaseSlug(rawSlug);
 
     const release = await prisma.release.findUnique({
         where: { id },
