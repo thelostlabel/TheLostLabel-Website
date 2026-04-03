@@ -1,810 +1,466 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { useParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Clock, ExternalLink, ChevronLeft, Music } from 'lucide-react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { Play, Pause, ExternalLink } from 'lucide-react';
 import { usePlayer } from '@/app/components/PlayerContext';
-import BackgroundEffects from '@/app/components/BackgroundEffects';
+import { toReleaseSlug } from '@/lib/release-slug';
+import { SiteNavbar } from '@/components/ui/site-navbar';
+import { PageReveal } from '@/components/ui/page-reveal';
 
-export default function ReleaseDetailPage() {
+function fromSlug(slug) {
+    if (!slug) return slug;
+    const idx = slug.lastIndexOf('--');
+    return idx !== -1 ? slug.slice(idx + 2) : slug;
+}
+function fmt(ms) {
+    const m = Math.floor(ms / 60000);
+    const s = ((ms % 60000) / 1000).toFixed(0).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+// Extract dominant vibrant color from image via canvas
+function useDominantColor(src) {
+    const [color, setColor] = useState('100,100,120');
+    useEffect(() => {
+        if (!src) return;
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 40; canvas.height = 40;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 40, 40);
+                const data = ctx.getImageData(0, 0, 40, 40).data;
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < data.length; i += 16) {
+                    const pr = data[i], pg = data[i+1], pb = data[i+2];
+                    const max = Math.max(pr, pg, pb), min = Math.min(pr, pg, pb);
+                    if (max - min > 40 && max > 50) { r += pr; g += pg; b += pb; count++; }
+                }
+                if (count > 0) setColor(`${Math.round(r/count)},${Math.round(g/count)},${Math.round(b/count)}`);
+            } catch {}
+        };
+        img.src = src;
+    }, [src]);
+    return color;
+}
+
+function TrackRow({ track, index, active, playing, accentColor, onPlay, image }) {
+    const [hovered, setHovered] = useState(false);
+    return (
+        <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onClick={() => track.preview_url && onPlay(track)}
+            style={{
+                display: 'grid',
+                gridTemplateColumns: '40px 44px 1fr auto',
+                alignItems: 'center',
+                gap: 12,
+                padding: '7px 10px',
+                borderRadius: 8,
+                cursor: track.preview_url ? 'pointer' : 'default',
+                background: active
+                    ? `rgba(${accentColor},0.1)`
+                    : hovered ? 'rgba(255,255,255,0.06)' : 'transparent',
+                transition: 'background 0.18s',
+            }}
+        >
+            {/* Number / play indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40 }}>
+                {playing ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 2.5, height: 14 }}>
+                        {[0, 0.13, 0.26].map((d, j) => (
+                            <motion.span key={j}
+                                animate={{ height: ['3px','12px','3px'] }}
+                                transition={{ repeat: Infinity, duration: 0.5, delay: d }}
+                                style={{ width: 2.5, background: `rgb(${accentColor})`, borderRadius: 1.5, display: 'block' }}
+                            />
+                        ))}
+                    </span>
+                ) : (hovered && track.preview_url) ? (
+                    <Play size={14} fill="rgba(255,255,255,0.85)" color="rgba(255,255,255,0.85)" />
+                ) : active ? (
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: `rgb(${accentColor})`, fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
+                ) : (
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.3)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
+                )}
+            </div>
+
+            {/* Thumbnail */}
+            <div style={{ width: 44, height: 44, borderRadius: 5, overflow: 'hidden', flexShrink: 0, position: 'relative', background: '#1a1a1a' }}>
+                {image && <NextImage src={image} alt="" fill style={{ objectFit: 'cover' }} />}
+            </div>
+
+            {/* Name + artist */}
+            <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                        fontSize: '14px', fontWeight: 600, letterSpacing: '-0.01em',
+                        color: active ? `rgb(${accentColor})` : '#fff',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        transition: 'color 0.15s',
+                    }}>{track.name}</span>
+                    {track.is_version && (
+                        <span style={{ fontSize: '8px', fontWeight: 800, letterSpacing: '1.5px', color: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 3, padding: '2px 5px', flexShrink: 0 }}>VERSION</span>
+                    )}
+                </div>
+                {track.artists?.length > 0 && (
+                    <div style={{ marginTop: 2, fontSize: '12px', color: 'rgba(255,255,255,0.4)', fontWeight: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {track.artists.map((a, j) => (
+                            <span key={a.id}>
+                                <Link href={`/artists/${a.id}`} onClick={e => e.stopPropagation()}
+                                    style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.15s' }}
+                                    onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.75)'}
+                                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+                                >{a.name}</Link>
+                                {j < track.artists.length - 1 && ', '}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Duration */}
+            <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.3)', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em', paddingRight: 4 }}>
+                {track.duration_ms > 0 ? fmt(track.duration_ms) : '—'}
+            </span>
+        </div>
+    );
+}
+
+export default function ReleaseDetailClient() {
     const params = useParams();
-    const releaseId = params.id;
+    const releaseId = fromSlug(params.id);
     const { playTrack, currentTrack, isPlaying } = usePlayer();
-
     const [release, setRelease] = useState(null);
+    const [moreReleases, setMoreReleases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [introDone, setIntroDone] = useState(false);
+    const [scrolledPastHero, setScrolledPastHero] = useState(false);
+    const heroRef = useRef(null);
+    const { scrollY } = useScroll();
+    const bgY = useTransform(scrollY, [0, 700], [0, 150]);
 
     useEffect(() => {
-        async function fetchRelease() {
+        return scrollY.on('change', v => setScrolledPastHero(v > (heroRef.current?.offsetHeight || 600)));
+    }, [scrollY]);
+
+    useEffect(() => {
+        async function load() {
             try {
-                let baseRelease = null;
                 const baseRes = await fetch(`/api/releases/${releaseId}`);
-                if (baseRes.ok) {
-                    baseRelease = await baseRes.json();
-                }
+                const base = baseRes.ok ? await baseRes.json() : null;
+                let final = null;
 
-                let finalRelease = null;
-
-                const buildFromTrack = (track) => ({
-                    id: baseRelease?.id || releaseId,
-                    name: track.name || baseRelease?.name,
-                    image: track.image || baseRelease?.image,
-                    artists: track.artists || baseRelease?.artists || (track.artist ? [{ id: 'unknown', name: track.artist }] : []),
-                    release_date: track.release_date || baseRelease?.release_date,
-                    total_tracks: 1,
-                    tracks: [
-                        {
-                            id: track.id || releaseId,
-                            name: track.name,
-                            artists: track.artists || (track.artist ? [{ id: 'unknown', name: track.artist }] : []),
-                            duration_ms: track.duration_ms || 0,
-                            preview_url: track.preview_url
-                        }
-                    ],
-                    spotify_url: track.spotify_url || baseRelease?.spotify_url,
-                    versions: baseRelease?.versions || []
+                const buildFromTrack = (t) => ({
+                    id: base?.id || releaseId, name: t.name || base?.name, image: t.image || base?.image,
+                    artists: t.artists || base?.artists || [], release_date: t.release_date || base?.release_date,
+                    total_tracks: 1, spotify_url: t.spotify_url || base?.spotify_url,
+                    streamCountText: base?.streamCountText, versions: base?.versions || [],
+                    tracks: [{ id: t.id || releaseId, name: t.name, artists: t.artists || [], duration_ms: t.duration_ms || 0, preview_url: t.preview_url }],
                 });
 
-                const resolveSpotifyEndpoint = (spotifyUrl) => {
-                    if (!spotifyUrl) return null;
-                    const albumMatch = spotifyUrl.match(/album\/([a-zA-Z0-9]+)/);
-                    if (albumMatch?.[1]) return `/api/spotify/album/${albumMatch[1]}`;
-                    const trackMatch = spotifyUrl.match(/track\/([a-zA-Z0-9]+)/);
-                    if (trackMatch?.[1]) return `/api/spotify/track/${trackMatch[1]}`;
-                    return null;
-                };
-
-                // Strategy 1: Smart Endpoint Resolution
-                const spotifyEndpoint = resolveSpotifyEndpoint(baseRelease?.spotify_url);
-                if (spotifyEndpoint) {
-                    const res = await fetch(spotifyEndpoint);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.tracks) {
-                            finalRelease = {
-                                ...baseRelease,
-                                ...data,
-                                artists: data.artists || baseRelease?.artists
-                            };
-                        } else {
-                            finalRelease = buildFromTrack(data);
+                if (base?.spotify_url) {
+                    const aM = base.spotify_url.match(/album\/([a-zA-Z0-9]+)/);
+                    const tM = base.spotify_url.match(/track\/([a-zA-Z0-9]+)/);
+                    const ep = aM ? `/api/spotify/album/${aM[1]}` : tM ? `/api/spotify/track/${tM[1]}` : null;
+                    if (ep) {
+                        const r = await fetch(ep);
+                        if (r.ok) {
+                            const d = await r.json();
+                            final = d.tracks ? { ...base, ...d, artists: d.artists || base?.artists } : buildFromTrack(d);
                         }
                     }
                 }
+                if (!final && base) {
+                    final = { ...base, total_tracks: 1, tracks: [{ id: base.id, name: base.name, artists: base.artists || [], duration_ms: 0, preview_url: null }] };
+                }
+                if (!final) throw new Error('not found');
 
-                // Strategy 2: Explicit Album Fetch
-                if (!finalRelease) {
-                    let res = await fetch(`/api/spotify/album/${releaseId}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        finalRelease = { ...baseRelease, ...data, artists: data.artists || baseRelease?.artists };
-                    }
+                if (final.versions?.length > 0) {
+                    const ids = new Set(final.tracks.map(t => t.id));
+                    const names = new Set(final.tracks.map(t => t.name.trim().toLowerCase()));
+                    const extra = final.versions
+                        .filter(v => !ids.has(v.id) && !names.has(v.name.trim().toLowerCase()))
+                        .map(v => ({ id: v.id, name: v.name, artists: v.artists || final.artists, duration_ms: 0, preview_url: v.preview_url, is_version: true }));
+                    final.tracks = [...final.tracks, ...extra];
+                    final.total_tracks = final.tracks.length;
                 }
 
-                // Strategy 3: Explicit Track Fetch
-                if (!finalRelease) {
-                    const trackRes = await fetch(`/api/spotify/track/${releaseId}`);
-                    if (trackRes.ok) {
-                        const track = await trackRes.json();
-                        finalRelease = buildFromTrack(track);
-                    }
+                setRelease(final);
+
+                // Fetch more from same artist — use base.artists for DB IDs
+                const dbArtistId = base?.artists?.[0]?.id;
+                if (dbArtistId) {
+                    try {
+                        const moreRes = await fetch(`/api/releases?artist=${dbArtistId}&limit=6`);
+                        if (moreRes.ok) {
+                            const moreData = await moreRes.json();
+                            setMoreReleases((moreData.releases || []).filter(r => r.id !== final.id).slice(0, 5));
+                        }
+                    } catch {}
                 }
-
-                // Fallback: Use Database Data
-                if (!finalRelease && baseRelease) {
-                    // Create a track entry for the release itself so it appears in the list
-                    const mainTrack = {
-                        id: baseRelease.id,
-                        name: baseRelease.name,
-                        artists: baseRelease.artists || [],
-                        duration_ms: 0,
-                        preview_url: baseRelease.preview_url || null
-                    };
-
-                    finalRelease = {
-                        ...baseRelease,
-                        total_tracks: baseRelease.total_tracks || 1,
-                        tracks: [mainTrack]
-                    };
-                }
-
-                if (!finalRelease) throw new Error('Release not found');
-
-                // Merge Versions
-                if (finalRelease.versions && finalRelease.versions.length > 0) {
-                    const existingTrackIds = new Set(finalRelease.tracks?.map(t => t.id) || []);
-                    const existingTrackNames = new Set((finalRelease.tracks || []).map(t => t.name.trim().toLowerCase()));
-
-                    // Filter duplicates (some versions might be the release itself)
-                    const versionTracks = finalRelease.versions
-                        .filter(v =>
-                            v.id !== finalRelease.id &&
-                            v.id !== releaseId &&
-                            !existingTrackIds.has(v.id) &&
-                            !existingTrackNames.has(v.name.trim().toLowerCase())
-                        )
-                        .map(v => ({
-                            id: v.id,
-                            name: v.name,
-                            artists: v.artists || finalRelease.artists,
-                            duration_ms: 0,
-                            preview_url: v.preview_url,
-                            is_version: true
-                        }));
-
-                    finalRelease.tracks = [...(finalRelease.tracks || []), ...versionTracks];
-                    finalRelease.total_tracks = finalRelease.tracks.length;
-                }
-
-                setRelease(finalRelease);
-
-            } catch (e) {
-                console.error(e);
-                setError(true);
-            } finally {
-                setLoading(false);
-            }
+            } catch { setError(true); }
+            finally { setLoading(false); }
         }
-
-        if (releaseId) fetchRelease();
-
-        setTimeout(() => {
-            setIntroDone(true);
-        }, 1500);
-
+        if (releaseId) load();
+        // ready state removed — PageReveal handles loader
     }, [releaseId]);
 
-    const formatDuration = (ms) => {
-        const min = Math.floor(ms / 60000);
-        const sec = ((ms % 60000) / 1000).toFixed(0);
-        return `${min}:${sec.padStart(2, '0')}`;
-    };
-    const releaseDateLabel = release?.release_date
+    const img = release?.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release?.image;
+    const accentColor = useDominantColor(img);
+    const artistStr = release?.artists?.map(a => a.name).join(' & ') || '';
+    const year = release?.release_date ? new Date(release.release_date).getFullYear() : '';
+    const releaseDate = release?.release_date
         ? new Date(release.release_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-        : 'Unknown';
-    const firstPreview = release?.tracks?.find((t) => t.preview_url);
-    const formatArtists = (artists) => artists?.map(a => a.name).join(", ") || 'Unknown Artist';
+        : null;
+    const firstPreview = release?.tracks?.find(t => t.preview_url);
 
-    if (error || (!loading && !release)) {
-        return (
-            <div style={{ background: '#080808', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <h1 style={{ fontSize: 'clamp(30px, 5vw, 60px)', fontWeight: '900', color: '#ff4444' }}>LOST_IN_VOID</h1>
-                <Link href="/releases" style={{ color: 'rgba(229,231,235,0.9)', marginTop: '20px', textDecoration: 'none', fontSize: '12px', fontWeight: '900', letterSpacing: '2px' }}>
-                    ← RETURN_TO_CATALOG
-                </Link>
-            </div>
-        );
-    }
+    const handlePlay = useCallback((track) => {
+        playTrack({ id: track.id, name: track.name, artist: track.artists?.map(a => a.name).join(', '), image: img, previewUrl: track.preview_url });
+    }, [playTrack, img]);
 
-    const normalizedImage = release?.image?.startsWith('private/')
-        ? `/api/files/release/${release.id}`
-        : release?.image;
+    if (error || (!loading && !release)) return (
+        <div style={{ background: '#050505', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+            <p style={{ fontSize: '10px', letterSpacing: '4px', color: 'rgba(255,255,255,0.25)', fontWeight: 700 }}>RELEASE NOT FOUND</p>
+            <Link href="/releases" style={{ fontSize: '10px', letterSpacing: '2px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontWeight: 700 }}>← CATALOG</Link>
+        </div>
+    );
 
     return (
-        <>
+        <div style={{ background: '#050505', color: '#fff', minHeight: '100vh', overflowX: 'hidden' }}>
+            <PageReveal />
+            <SiteNavbar />
+
+            {/* Grain */}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none', opacity: 0.03, mixBlendMode: 'overlay',
+                backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")` }} />
+
+            {/* Sticky mini header */}
             <AnimatePresence>
-                {(loading || !introDone) && (
+                {scrolledPastHero && release && (
                     <motion.div
-                        initial={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: "-100%" }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.35 }}
                         style={{
-                            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                            background: "#050505", zIndex: 9999,
-                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                            overflow: "hidden"
+                            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+                            background: 'rgba(5,5,5,0.92)', backdropFilter: 'blur(24px)',
+                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            padding: '10px clamp(24px,5vw,80px)',
+                            display: 'flex', alignItems: 'center', gap: 14,
                         }}
                     >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                            style={{ fontSize: "64px", fontWeight: "900", letterSpacing: "-2px", color: "#FFFFFF" }}
-                        >
-                            LOST.
-                        </motion.div>
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: "200px" }}
-                            transition={{ duration: 1.5, ease: "easeInOut" }}
-                            style={{ height: "2px", background: "rgba(255,255,255,0.45)", marginTop: "24px", borderRadius: "2px" }}
-                        />
+                        <div style={{ width: 36, height: 36, borderRadius: 5, overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+                            {img && <NextImage src={img} alt="" fill style={{ objectFit: 'cover' }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.name}</p>
+                            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>{artistStr}</p>
+                        </div>
+                        {firstPreview && (
+                            <button onClick={() => handlePlay(firstPreview)}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 999, background: `rgba(${accentColor},0.15)`, border: `1px solid rgba(${accentColor},0.3)`, color: `rgb(${accentColor})`, fontSize: '10px', fontWeight: 800, letterSpacing: '1.5px', cursor: 'pointer' }}>
+                                <Play size={11} fill={`rgb(${accentColor})`} /> PLAY
+                            </button>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {release && (
-                <div style={{ color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
-                    <BackgroundEffects />
+                <>
+                    {/* ── HERO ── */}
+                    <div ref={heroRef} style={{ position: 'relative', overflow: 'hidden' }}>
 
-                    {/* Blurred album art ambient background */}
-                    <div
-                        className="hero-backdrop"
-                        style={normalizedImage ? { backgroundImage: `url(${normalizedImage})` } : undefined}
-                    />
-                    <div className="hero-backdrop-gradient" />
+                        {/* Saturated blurred BG */}
+                        {img && (
+                            <motion.div style={{ y: bgY, position: 'absolute', inset: '-20%', zIndex: 0, pointerEvents: 'none' }}>
+                                <NextImage src={img} alt="" fill style={{ objectFit: 'cover', filter: 'blur(70px) saturate(2.5) brightness(0.38)' }} priority />
+                            </motion.div>
+                        )}
 
-                    <section className="release-hero">
-                        <div className="hero-inner">
+                        {/* Color-to-black gradient */}
+                        <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+                            background: `linear-gradient(180deg, rgba(${accentColor},0.12) 0%, rgba(5,5,5,0.3) 40%, rgba(5,5,5,0.85) 85%, #050505 100%)` }} />
+                        <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+                            background: 'radial-gradient(ellipse at 70% 50%, transparent 30%, rgba(0,0,0,0.5) 100%)' }} />
+
+                        {/* Back */}
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1, duration: 0.5 }}
+                            style={{ position: 'absolute', top: 88, left: 'clamp(24px,5vw,80px)', zIndex: 10 }}>
+                            <Link href="/releases" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '2.5px', color: 'rgba(255,255,255,0.35)', textDecoration: 'none', transition: 'color 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.35)'}
+                            >← CATALOG</Link>
+                        </motion.div>
+
+                        {/* Split layout */}
+                        <div style={{
+                            position: 'relative', zIndex: 2,
+                            display: 'flex', alignItems: 'center',
+                            padding: 'clamp(100px,14vh,160px) clamp(24px,5vw,80px) clamp(40px,6vh,80px)',
+                            gap: 'clamp(40px,5vw,80px)',
+                            flexWrap: 'wrap',
+                        }}>
+                            {/* LEFT: Cover */}
                             <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ duration: 0.6, delay: 0.3 }}
+                                initial={{ opacity: 0, x: -40, rotateY: 8 }}
+                                animate={{ opacity: 1, x: 0, rotateY: 0 }}
+                                transition={{ duration: 1.3, delay: 0.85, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ flexShrink: 0, width: 'clamp(200px,28vw,360px)' }}
                             >
-                                <Link href="/releases" className="back-link">
-                                    <ChevronLeft size={14} strokeWidth={3} /> CATALOG
-                                </Link>
+                                {/* Cover */}
+                                <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', aspectRatio: '1',
+                                    boxShadow: `0 50px 120px rgba(0,0,0,0.8), 0 0 80px rgba(${accentColor},0.2), 0 0 0 1px rgba(255,255,255,0.07)` }}>
+                                    {img && <NextImage src={img} alt={release.name} fill style={{ objectFit: 'cover' }} priority />}
+                                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 55%)', pointerEvents: 'none' }} />
+                                </div>
+                                {/* Reflection */}
+                                <div style={{ position: 'relative', height: 60, overflow: 'hidden', marginTop: 1,
+                                    maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.25), transparent)',
+                                    WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.25), transparent)' }}>
+                                    {img && <NextImage src={img} alt="" fill style={{ objectFit: 'cover', transform: 'scaleY(-1)', filter: 'blur(3px)' }} />}
+                                </div>
                             </motion.div>
 
-                            <div className="hero-grid">
-                                {/* Cover Art */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                                    className="cover-wrap"
-                                >
-                                    <NextImage
-                                        src={normalizedImage || '/placeholder.png'}
-                                        alt={release.name}
-                                        width={800}
-                                        height={800}
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        priority
-                                    />
-                                    <div className="cover-glare" />
-                                    {/* Reflection */}
-                                    <div className="cover-reflection">
-                                        <NextImage
-                                            src={normalizedImage || '/placeholder.png'}
-                                            alt=""
-                                            width={400}
-                                            height={400}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleY(-1)' }}
-                                        />
-                                    </div>
-                                </motion.div>
+                            {/* RIGHT: Info */}
+                            <motion.div
+                                initial={{ opacity: 0, x: 40 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 1.2, delay: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ flex: 1, minWidth: 'min(100%, 300px)' }}
+                            >
+                                <p style={{ margin: '0 0 12px', fontSize: '10px', fontWeight: 700, letterSpacing: '3px', color: `rgba(${accentColor},0.7)`, textTransform: 'uppercase' }}>
+                                    {release.type || 'SINGLE'}{year ? ` · ${year}` : ''}
+                                </p>
+                                <h1 style={{ margin: '0 0 16px', fontSize: 'clamp(32px,5.5vw,72px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, color: '#fff' }}>
+                                    {release.name}
+                                </h1>
+                                <p style={{ margin: '0 0 32px', fontSize: 'clamp(14px,1.6vw,20px)', fontWeight: 500, color: 'rgba(255,255,255,0.45)' }}>
+                                    {release.artists?.map((a, i) => (
+                                        <span key={a.id}>
+                                            <Link href={`/artists/${a.id}`} style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }}
+                                                onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                                                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}
+                                            >{a.name}</Link>
+                                            {i < release.artists.length - 1 && <span style={{ color: 'rgba(255,255,255,0.2)' }}> & </span>}
+                                        </span>
+                                    ))}
+                                </p>
 
-                                {/* Metadata */}
-                                <motion.div
-                                    initial={{ opacity: 0, x: 30 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                                    className="meta-card"
-                                >
-                                    <div className="meta-kicker">
-                                        <span className="kicker-dot" />
-                                        <span>{release?.type?.toUpperCase() || 'RELEASE'}</span>
-                                    </div>
-
-                                    <h1 className="release-title">{release.name}</h1>
-
-                                    <div className="artist-list">
-                                        {release.artists?.map((art, idx) => (
-                                            <span key={art.id} className="artist-pill">
-                                                <Link href={`/artists/${art.id}`}>{art.name}</Link>
-                                                {idx < release.artists.length - 1 && <span className="artist-sep">&</span>}
-                                            </span>
-                                        ))}
-                                    </div>
-
-                                    <div className="stat-row">
-                                        <div className="stat-chip">
-                                            <Clock size={12} />
-                                            <span>{releaseDateLabel}</span>
+                                {/* Stat chips */}
+                                <div style={{ display: 'flex', gap: 10, marginBottom: 32, flexWrap: 'wrap' }}>
+                                    {releaseDate && (
+                                        <div style={{ padding: '8px 16px', borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>
+                                            {releaseDate}
                                         </div>
-                                        <div className="stat-chip">
-                                            <Music size={12} />
-                                            <span>{release.total_tracks} {release.total_tracks === 1 ? 'Track' : 'Tracks'}</span>
+                                    )}
+                                    {release.streamCountText && (
+                                        <div style={{ padding: '8px 16px', borderRadius: 999, background: `rgba(${accentColor},0.08)`, border: `1px solid rgba(${accentColor},0.2)`, fontSize: '11px', fontWeight: 700, color: `rgba(${accentColor},0.9)` }}>
+                                            {release.streamCountText}
                                         </div>
-                                    </div>
+                                    )}
+                                    {release.total_tracks > 1 && (
+                                        <div style={{ padding: '8px 16px', borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>
+                                            {release.total_tracks} tracks
+                                        </div>
+                                    )}
+                                </div>
 
-                                    <div className="action-row">
-                                        {firstPreview && (
-                                            <button
-                                                className="primary-btn"
-                                                onClick={() => {
-                                                    playTrack({
-                                                        id: firstPreview.id,
-                                                        name: firstPreview.name,
-                                                        artist: formatArtists(firstPreview.artists),
-                                                        image: normalizedImage,
-                                                        previewUrl: firstPreview.preview_url
-                                                    });
-                                                }}
-                                            >
-                                                <Play size={14} fill="#000" />
-                                                PLAY PREVIEW
-                                            </button>
-                                        )}
-                                        {release.spotify_url && (
-                                            <a href={release.spotify_url} target="_blank" rel="noopener noreferrer" className="secondary-btn">
-                                                <ExternalLink size={14} /> OPEN IN SPOTIFY
-                                            </a>
-                                        )}
-                                    </div>
-                                </motion.div>
-                            </div>
+                                {/* Buttons */}
+                                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    {firstPreview && (
+                                        <button onClick={() => handlePlay(firstPreview)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 26px', borderRadius: 999, background: '#fff', color: '#000', border: 'none', fontSize: '11px', fontWeight: 800, letterSpacing: '1.5px', cursor: 'pointer', transition: 'all 0.2s' }}
+                                            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 10px 30px rgba(255,255,255,0.2)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; }}
+                                        ><Play size={12} fill="#000" /> PLAY PREVIEW</button>
+                                    )}
+                                    {release.spotify_url && (
+                                        <a href={release.spotify_url} target="_blank" rel="noopener noreferrer"
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 26px', borderRadius: 999, background: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.14)', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textDecoration: 'none', transition: 'all 0.2s' }}
+                                            onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.color='#fff'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; }}
+                                        ><ExternalLink size={12} /> OPEN IN SPOTIFY</a>
+                                    )}
+                                </div>
+                            </motion.div>
                         </div>
-                    </section>
-
-                    {/* Tracklist */}
-                    <div style={{ position: 'relative', zIndex: 2, maxWidth: '1200px', margin: '0 auto', padding: '20px 5vw 120px' }}>
-                        <motion.section
-                            initial={{ opacity: 0, y: 40 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        >
-                            <div className="tracklist-header">
-                                <div className="tracklist-kicker">TRACKLIST</div>
-                                <div className="tracklist-count">{release.total_tracks} SONGS</div>
-                            </div>
-
-                            <div className="tracklist-panel">
-                                {release.tracks?.map((track, index) => {
-                                    const isCurrent = currentTrack?.id === track.id;
-                                    const isActive = isCurrent && isPlaying;
-
-                                    return (
-                                        <motion.div
-                                            key={track.id}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ duration: 0.4, delay: 0.6 + index * 0.05 }}
-                                            className={`track-row ${isCurrent ? 'active' : ''} ${track.preview_url ? 'playable' : ''}`}
-                                            onClick={() => {
-                                                if (track.preview_url) {
-                                                    playTrack({
-                                                        id: track.id,
-                                                        name: track.name,
-                                                        artist: track.artists,
-                                                        image: normalizedImage,
-                                                        previewUrl: track.preview_url
-                                                    });
-                                                }
-                                            }}
-                                        >
-                                            <div className="track-number">
-                                                {isActive ? <Pause size={14} className="active-icon" /> :
-                                                    isCurrent ? <Play size={14} className="active-icon" /> :
-                                                        <>
-                                                            <span className="number-text">{String(index + 1).padStart(2, '0')}</span>
-                                                            {track.preview_url && <Play size={14} className="play-icon" />}
-                                                        </>}
-                                            </div>
-                                            <div className="track-info">
-                                                <div className="track-name">
-                                                    {track.name}
-                                                    {isActive && (
-                                                        <span className="eq-bars">
-                                                            <motion.span animate={{ height: [3, 14, 3] }} transition={{ repeat: Infinity, duration: 0.45, delay: 0 }} />
-                                                            <motion.span animate={{ height: [8, 3, 8] }} transition={{ repeat: Infinity, duration: 0.45, delay: 0.15 }} />
-                                                            <motion.span animate={{ height: [5, 12, 5] }} transition={{ repeat: Infinity, duration: 0.45, delay: 0.3 }} />
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="track-artists">
-                                                    {track.artists?.map((art, idx) => (
-                                                        <span key={art.id}>
-                                                            <Link
-                                                                href={`/artists/${art.id}`}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                className="track-artist-link"
-                                                            >
-                                                                {art.name}
-                                                            </Link>
-                                                            {idx < track.artists.length - 1 && <span>, </span>}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="track-end">
-                                                {track.duration_ms > 0 && (
-                                                    <span className="track-duration">
-                                                        {formatDuration(track.duration_ms)}
-                                                    </span>
-                                                )}
-                                                {track.is_version && (
-                                                    <span className="version-badge">VERSION</span>
-                                                )}
-                                            </div>
-                                        </motion.div>
-                                    );
-                                })}
-                            </div>
-                        </motion.section>
                     </div>
 
-                    <style jsx>{`
-                .release-hero {
-                    position: relative;
-                    z-index: 3;
-                    padding: 130px 0 80px;
-                }
-                .hero-backdrop {
-                    position: absolute;
-                    top: 0; left: 0; right: 0;
-                    height: 120vh;
-                    background-size: cover;
-                    background-position: center;
-                    filter: blur(120px) saturate(1.8) brightness(0.6);
-                    opacity: 0.45;
-                    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 20%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0) 100%);
-                    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 20%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0) 100%);
-                    z-index: 1;
-                    pointer-events: none;
-                    transform: scale(1.2);
-                }
-                .hero-backdrop-gradient {
-                    position: absolute;
-                    top: 0; left: 0; right: 0;
-                    height: 120vh;
-                    background: linear-gradient(to bottom, transparent 0%, rgba(5,5,7,0.4) 50%, rgba(5,5,7,0.9) 100%);
-                    z-index: 2;
-                    pointer-events: none;
-                }
-                .hero-inner {
-                    position: relative;
-                    z-index: 3;
-                    max-width: 1240px;
-                    margin: 0 auto;
-                    padding: 40px 5vw 0;
-                }
-                .back-link {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    color: rgba(255,255,255,0.6);
-                    text-decoration: none;
-                    font-size: 10px;
-                    font-weight: 800;
-                    letter-spacing: 3px;
-                    margin-bottom: 28px;
-                    padding: 10px 20px 10px 16px;
-                    border: 1px solid rgba(255,255,255,0.12);
-                    border-radius: 100px;
-                    background: rgba(255,255,255,0.04);
-                    backdrop-filter: blur(10px);
-                    transition: all 0.3s ease;
-                }
-                .back-link:hover {
-                    color: #fff;
-                    background: rgba(255,255,255,0.1);
-                    border-color: rgba(255,255,255,0.25);
-                    transform: translateX(-4px);
-                }
-                .hero-grid {
-                    display: grid;
-                    grid-template-columns: minmax(300px, 420px) 1fr;
-                    gap: 64px;
-                    align-items: start;
-                }
-                .cover-wrap {
-                    width: 100%;
-                    aspect-ratio: 1 / 1;
-                    border-radius: 6px;
-                    overflow: visible;
-                    position: relative;
-                }
-                .cover-wrap > :first-child {
-                    border-radius: 6px;
-                    overflow: hidden;
-                    box-shadow:
-                        0 40px 80px rgba(0,0,0,0.5),
-                        0 10px 30px rgba(0,0,0,0.4),
-                        0 0 0 1px rgba(255,255,255,0.06);
-                }
-                .cover-glare {
-                    position: absolute;
-                    inset: 0;
-                    border-radius: 6px;
-                    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%);
-                    pointer-events: none;
-                    z-index: 2;
-                }
-                .cover-reflection {
-                    position: absolute;
-                    bottom: -30%;
-                    left: 5%; right: 5%;
-                    height: 30%;
-                    overflow: hidden;
-                    border-radius: 0 0 6px 6px;
-                    opacity: 0.08;
-                    filter: blur(6px);
-                    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
-                    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
-                    pointer-events: none;
-                }
-                .meta-card {
-                    padding-top: 12px;
-                }
-                .meta-kicker {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 10px;
-                    font-size: 10px;
-                    letter-spacing: 4px;
-                    color: rgba(255,255,255,0.5);
-                    font-weight: 900;
-                    margin-bottom: 20px;
-                }
-                .kicker-dot {
-                    width: 6px; height: 6px;
-                    border-radius: 50%;
-                    background: rgba(255,255,255,0.4);
-                }
-                .release-title {
-                    font-size: clamp(32px, 5vw, 72px);
-                    font-weight: 900;
-                    letter-spacing: -0.04em;
-                    line-height: 0.95;
-                    text-transform: uppercase;
-                    margin-bottom: 20px;
-                    color: #fff;
-                    text-wrap: balance;
-                }
-                .artist-list {
-                    display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
-                    gap: 6px;
-                    margin-bottom: 28px;
-                }
-                .artist-pill a {
-                    color: rgba(255,255,255,0.7);
-                    text-decoration: none;
-                    font-size: 17px;
-                    font-weight: 600;
-                    transition: color 0.2s ease;
-                }
-                .artist-pill a:hover {
-                    color: #fff;
-                }
-                .artist-sep {
-                    color: rgba(255,255,255,0.2);
-                    margin: 0 2px;
-                    font-weight: 400;
-                }
-                .stat-row {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 32px;
-                    flex-wrap: wrap;
-                }
-                .stat-chip {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 8px 16px;
-                    border-radius: 100px;
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(255,255,255,0.06);
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: rgba(255,255,255,0.5);
-                }
-                .action-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                    margin-top: 8px;
-                }
-                .primary-btn {
-                    background: #fff;
-                    color: #000;
-                    border: none;
-                    padding: 14px 28px;
-                    border-radius: 100px;
-                    font-size: 11px;
-                    font-weight: 900;
-                    letter-spacing: 1.5px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 10px;
-                    cursor: pointer;
-                    transition: all 0.25s ease;
-                }
-                .primary-btn:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 24px rgba(255,255,255,0.15);
-                }
-                .secondary-btn {
-                    color: rgba(255,255,255,0.7);
-                    border: 1px solid rgba(255,255,255,0.12);
-                    padding: 14px 28px;
-                    border-radius: 100px;
-                    font-size: 11px;
-                    font-weight: 800;
-                    letter-spacing: 1.5px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    text-decoration: none;
-                    background: rgba(255,255,255,0.02);
-                    transition: all 0.25s ease;
-                }
-                .secondary-btn:hover {
-                    background: rgba(255,255,255,0.08);
-                    color: #fff;
-                    border-color: rgba(255,255,255,0.2);
-                }
-                .tracklist-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 8px;
-                    padding: 0 16px 16px;
-                }
-                .tracklist-kicker {
-                    font-size: 11px;
-                    font-weight: 900;
-                    letter-spacing: 4px;
-                    color: rgba(255,255,255,0.5);
-                }
-                .tracklist-count {
-                    font-size: 11px;
-                    font-weight: 700;
-                    color: rgba(255,255,255,0.3);
-                }
-                .tracklist-panel {
-                    background: rgba(255,255,255,0.02);
-                    border: 1px solid rgba(255,255,255,0.04);
-                    border-radius: 16px;
-                    padding: 8px 0;
-                    backdrop-filter: blur(20px);
-                }
-                .track-row {
-                    display: grid;
-                    grid-template-columns: 52px 1fr 100px;
-                    align-items: center;
-                    padding: 16px 20px;
-                    margin: 0 8px;
-                    border-radius: 10px;
-                    transition: all 0.2s ease;
-                }
-                .track-row.playable {
-                    cursor: pointer;
-                }
-                .track-row:hover {
-                    background: rgba(255,255,255,0.03);
-                }
-                .track-row.active {
-                    background: rgba(255,255,255,0.05);
-                }
-                .track-row:hover .track-name {
-                    color: #fff;
-                }
-                .track-row.active .track-name {
-                    color: #fff;
-                }
-                .track-number {
-                    position: relative;
-                    font-size: 12px;
-                    font-weight: 800;
-                    color: rgba(255,255,255,0.25);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 32px;
-                }
-                .number-text {
-                    transition: opacity 0.2s ease;
-                }
-                .play-icon {
-                    position: absolute;
-                    opacity: 0;
-                    color: #fff;
-                    transition: opacity 0.2s ease;
-                }
-                .active-icon {
-                    color: #fff;
-                }
-                .track-row.playable:hover .number-text {
-                    opacity: 0;
-                }
-                .track-row.playable:hover .play-icon {
-                    opacity: 1;
-                }
-                .track-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                }
-                .track-name {
-                    font-size: 15px;
-                    font-weight: 700;
-                    color: rgba(255,255,255,0.75);
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    transition: color 0.2s ease;
-                }
-                .eq-bars {
-                    display: inline-flex;
-                    align-items: flex-end;
-                    gap: 2px;
-                    height: 14px;
-                    margin-left: 4px;
-                }
-                .eq-bars span {
-                    width: 2px;
-                    background: #fff;
-                    border-radius: 1px;
-                }
-                .track-artists {
-                    font-size: 12px;
-                    font-weight: 600;
-                    color: rgba(255,255,255,0.35);
-                }
-                .track-artist-link {
-                    color: inherit;
-                    text-decoration: none;
-                    transition: color 0.2s ease;
-                }
-                .track-artist-link:hover {
-                    color: rgba(255,255,255,0.7);
-                }
-                .track-end {
-                    display: flex;
-                    align-items: center;
-                    justify-content: flex-end;
-                    gap: 12px;
-                }
-                .track-duration {
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: rgba(255,255,255,0.3);
-                    font-variant-numeric: tabular-nums;
-                }
-                .version-badge {
-                    font-size: 9px;
-                    color: rgba(255,255,255,0.5);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    padding: 3px 8px;
-                    border-radius: 4px;
-                    font-weight: 700;
-                    letter-spacing: 1px;
-                }
-                @media (max-width: 980px) {
-                    .hero-grid {
-                        grid-template-columns: 1fr;
-                        text-align: center;
-                        gap: 40px;
-                    }
-                    .meta-card {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                    }
-                    .cover-wrap {
-                        max-width: 360px;
-                        margin: 0 auto;
-                    }
-                    .cover-reflection { display: none; }
-                    .stat-row { justify-content: center; }
-                    .action-row { justify-content: center; }
-                }
-                @media (max-width: 600px) {
-                    .track-row {
-                        grid-template-columns: 36px 1fr 60px;
-                        padding: 14px 14px;
-                    }
-                    .action-row {
-                        flex-direction: column;
-                        width: 100%;
-                    }
-                    .primary-btn, .secondary-btn {
-                        width: 100%;
-                        justify-content: center;
-                    }
-                }
-            `}</style>
-                </div>
+                    {/* ── TRACKLIST ── */}
+                    <section style={{ position: 'relative', zIndex: 2, maxWidth: 860, margin: '0 auto', padding: '0 clamp(24px,5vw,80px) 80px' }}>
+                        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+                                <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '4px', color: 'rgba(255,255,255,0.2)' }}>TRACKLIST</span>
+                                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '2px', color: 'rgba(255,255,255,0.15)' }}>
+                                    {release.total_tracks} {release.total_tracks === 1 ? 'SONG' : 'SONGS'}
+                                </span>
+                            </div>
+
+                            {release.tracks?.map((track, i) => (
+                                <motion.div key={track.id}
+                                    initial={{ opacity: 0, x: -16 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.4, delay: i * 0.05 }}
+                                >
+                                    <TrackRow
+                                        track={track} index={i} total={release.tracks.length}
+                                        active={currentTrack?.id === track.id}
+                                        playing={currentTrack?.id === track.id && isPlaying}
+                                        accentColor={accentColor}
+                                        onPlay={handlePlay} image={img}
+                                    />
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    </section>
+
+                    {/* ── MORE FROM ARTIST ── */}
+                    {moreReleases.length > 0 && (
+                        <section style={{ position: 'relative', zIndex: 2, maxWidth: 860, margin: '0 auto', padding: '0 clamp(24px,5vw,80px) 120px' }}>
+                            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '4px', color: 'rgba(255,255,255,0.2)', whiteSpace: 'nowrap' }}>
+                                        MORE FROM {release.artists?.[0]?.name?.toUpperCase()}
+                                    </span>
+                                    <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px,1fr))', gap: 14 }}>
+                                    {moreReleases.map((r, i) => {
+                                        const rArtist = r.artists?.map(a => a.name).join(', ') || r.artist || '';
+                                        const rSlug = toReleaseSlug(r.name, rArtist, r.id);
+                                        return (
+                                            <motion.div key={r.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.07 }}>
+                                                <Link href={`/releases/${rSlug}`} style={{ textDecoration: 'none', display: 'block' }}>
+                                                    <div style={{ borderRadius: 10, overflow: 'hidden', position: 'relative', aspectRatio: '1', background: '#111', marginBottom: 10,
+                                                        transition: 'transform 0.3s, box-shadow 0.3s' }}
+                                                        onMouseEnter={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow='0 16px 40px rgba(0,0,0,0.6)'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; }}
+                                                    >
+                                                        {r.image && <NextImage src={r.image} alt={r.name} fill style={{ objectFit: 'cover', transition: 'transform 0.4s' }} />}
+                                                    </div>
+                                                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.75)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
+                                                    <p style={{ margin: '3px 0 0', fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rArtist}</p>
+                                                </Link>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        </section>
+                    )}
+                </>
             )}
-        </>
+        </div>
     );
 }

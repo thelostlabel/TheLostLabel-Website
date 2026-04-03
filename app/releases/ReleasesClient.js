@@ -2,92 +2,154 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { toReleaseSlug } from '@/lib/release-slug';
+import { SiteNavbar } from '@/components/ui/site-navbar';
+import { PageReveal } from '@/components/ui/page-reveal';
 
-function ReleaseItem({ release, index }) {
+function useMouseTilt(ref) {
+    const [tilt, setTilt] = useState({ x: 0, y: 0 });
+    const handleMove = (e) => {
+        if (!ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width - 0.5) * 12;
+        const y = ((e.clientY - rect.top) / rect.height - 0.5) * -12;
+        setTilt({ x, y });
+    };
+    const reset = () => setTilt({ x: 0, y: 0 });
+    return { tilt, handleMove, reset };
+}
+
+function ReleaseItem({ release, index, featured }) {
     const [hovered, setHovered] = useState(false);
+    const cardRef = useRef(null);
+    const { tilt, handleMove, reset } = useMouseTilt(cardRef);
     const artistName = release.artists?.map(a => a.name).join(', ') || release.artist || release.artistName || '';
     const slug = toReleaseSlug(release.name, artistName, release.id);
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.4), ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.6, delay: Math.min((index % 6) * 0.07, 0.35), ease: [0.16, 1, 0.3, 1] }}
             layout
+            style={{ gridColumn: featured ? 'span 2' : 'span 1', perspective: '800px' }}
         >
-            <Link href={`/releases/${slug}`} style={{ textDecoration: 'none', display: 'block' }}>
+            <Link href={`/releases/${slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
                 <div
+                    ref={cardRef}
                     onMouseEnter={() => setHovered(true)}
-                    onMouseLeave={() => setHovered(false)}
+                    onMouseLeave={() => { setHovered(false); reset(); }}
+                    onMouseMove={handleMove}
                     style={{
                         position: 'relative',
-                        borderRadius: '16px',
+                        borderRadius: featured ? '20px' : '14px',
                         overflow: 'hidden',
                         background: '#0a0a0a',
-                        border: `1px solid ${hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
-                        transition: 'border-color 0.3s, transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s',
-                        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
-                        boxShadow: hovered ? '0 20px 60px rgba(0,0,0,0.6)' : '0 4px 20px rgba(0,0,0,0.3)',
+                        border: `1px solid ${hovered ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.05)'}`,
+                        transition: 'border-color 0.3s, box-shadow 0.4s',
+                        boxShadow: hovered ? '0 30px 80px rgba(0,0,0,0.7)' : '0 4px 24px rgba(0,0,0,0.4)',
                         cursor: 'pointer',
+                        transform: hovered ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) translateY(-6px)` : 'rotateX(0) rotateY(0) translateY(0)',
+                        transformStyle: 'preserve-3d',
+                        willChange: 'transform',
+                        transitionProperty: 'transform, border-color, box-shadow',
+                        transitionDuration: hovered ? '0.1s, 0.3s, 0.4s' : '0.6s, 0.3s, 0.4s',
+                        transitionTimingFunction: 'ease-out',
                     }}
                 >
-                    {/* Cover art */}
-                    <div style={{ position: 'relative', width: '100%', paddingBottom: '100%', background: '#111' }}>
+                    {/* Cover art — 3/4 ratio */}
+                    <div style={{ position: 'relative', width: '100%', paddingBottom: featured ? '60%' : '133%', background: '#111' }}>
                         {release.image ? (
                             <NextImage
                                 src={release.image}
                                 alt={release.name}
                                 fill
-                                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                                style={{ objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.16,1,0.3,1)', transform: hovered ? 'scale(1.06)' : 'scale(1)' }}
+                                sizes={featured ? '(max-width: 768px) 100vw, 50vw' : '(max-width: 640px) 50vw, 25vw'}
+                                style={{
+                                    objectFit: 'cover',
+                                    transition: 'transform 0.7s cubic-bezier(0.16,1,0.3,1)',
+                                    transform: hovered ? 'scale(1.08)' : 'scale(1)',
+                                }}
                             />
                         ) : (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
-                                <span style={{ fontSize: '32px', opacity: 0.2 }}>♪</span>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '40px', opacity: 0.15 }}>♪</span>
                             </div>
                         )}
-                        {/* Overlay on hover */}
+
+                        {/* Gradient overlay — always subtle, strong on hover */}
                         <div style={{
                             position: 'absolute', inset: 0,
-                            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)',
-                            opacity: hovered ? 1 : 0,
-                            transition: 'opacity 0.3s',
+                            background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 40%, transparent 70%)',
+                            opacity: hovered ? 1 : 0.5,
+                            transition: 'opacity 0.35s',
                         }} />
-                        {/* Popularity badge */}
-                        {release.popularity > 60 && (
+
+                        {/* LISTEN button — slides in on hover */}
+                        <motion.div
+                            animate={{ opacity: hovered ? 1 : 0, y: hovered ? 0 : 10 }}
+                            transition={{ duration: 0.25 }}
+                            style={{
+                                position: 'absolute', bottom: 16, left: 16,
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                            }}
+                        >
                             <div style={{
-                                position: 'absolute', top: 10, right: 10,
-                                background: 'rgba(0,0,0,0.7)',
-                                backdropFilter: 'blur(8px)',
+                                width: 32, height: 32, borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.9)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0,
+                            }}>
+                                <span style={{ fontSize: '11px', marginLeft: '2px', color: '#000' }}>▶</span>
+                            </div>
+                            <span style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '2px', color: '#fff' }}>LISTEN</span>
+                        </motion.div>
+
+                        {/* Popularity badge */}
+                        {release.popularity > 65 && (
+                            <div style={{
+                                position: 'absolute', top: 12, right: 12,
+                                background: 'rgba(0,0,0,0.75)',
+                                backdropFilter: 'blur(10px)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '999px',
                                 padding: '3px 10px',
-                                fontSize: '9px',
-                                fontWeight: '900',
-                                letterSpacing: '1.5px',
-                                color: 'rgba(255,255,255,0.7)',
+                                fontSize: '9px', fontWeight: '900', letterSpacing: '1.5px',
+                                color: 'rgba(255,255,255,0.8)',
                             }}>
-                                #{release.chartPosition || Math.round(100 - release.popularity / 10)}
+                                HOT
                             </div>
                         )}
                     </div>
 
                     {/* Info */}
-                    <div style={{ padding: '14px 16px 16px' }}>
-                        <p style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ padding: featured ? '18px 20px 20px' : '12px 14px 14px' }}>
+                        <p style={{
+                            margin: 0,
+                            fontSize: featured ? '15px' : '12px',
+                            fontWeight: '700',
+                            color: '#fff',
+                            letterSpacing: '-0.02em',
+                            lineHeight: 1.3,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
                             {release.name}
                         </p>
-                        <p style={{ margin: '4px 0 0', fontSize: '11px', fontWeight: '500', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p style={{
+                            margin: '4px 0 0',
+                            fontSize: '10px', fontWeight: '500',
+                            color: 'rgba(255,255,255,0.35)',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
                             {artistName}
+                            {release.release_date && (
+                                <span style={{ color: 'rgba(255,255,255,0.15)', marginLeft: 8 }}>
+                                    {new Date(release.release_date).getFullYear()}
+                                </span>
+                            )}
                         </p>
-                        {release.release_date && (
-                            <p style={{ margin: '6px 0 0', fontSize: '9px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(255,255,255,0.15)', textTransform: 'uppercase' }}>
-                                {new Date(release.release_date).getFullYear()}
-                            </p>
-                        )}
                     </div>
                 </div>
             </Link>
@@ -104,11 +166,11 @@ export default function ReleasesClient() {
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [sortBy, setSortBy] = useState('popularity');
     const [pagination, setPagination] = useState({ page: 1, hasNextPage: false, total: 0 });
-    const [revealed, setRevealed] = useState(false);
     const heroRef = useRef(null);
     const { scrollY } = useScroll();
-    const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
-    const heroY = useTransform(scrollY, [0, 300], [0, -60]);
+    const heroOpacity = useTransform(scrollY, [0, 280], [1, 0]);
+    const heroY = useTransform(scrollY, [0, 280], [0, -80]);
+    const heroScale = useTransform(scrollY, [0, 280], [1, 0.94]);
 
     const fetchReleases = useCallback(async (page = 1, append = false) => {
         if (append) setLoadingMore(true);
@@ -123,29 +185,19 @@ export default function ReleasesClient() {
                     : data.releases
                 );
                 if (data.pagination) setPagination(data.pagination);
-            } else {
-                setError(true);
-            }
-        } catch {
-            setError(true);
-        } finally {
+            } else setError(true);
+        } catch { setError(true); }
+        finally {
             if (append) setLoadingMore(false);
             else setLoading(false);
         }
     }, []);
 
     useEffect(() => { fetchReleases(); }, [fetchReleases]);
-
     useEffect(() => {
         const t = setTimeout(() => setDebouncedQuery(searchQuery), 280);
         return () => clearTimeout(t);
     }, [searchQuery]);
-
-    useEffect(() => {
-        const t = setTimeout(() => setRevealed(true), 600);
-        return () => clearTimeout(t);
-    }, []);
-
     const filtered = useMemo(() => {
         let result = [...releases];
         if (debouncedQuery) {
@@ -163,94 +215,84 @@ export default function ReleasesClient() {
     }, [releases, debouncedQuery, sortBy]);
 
     return (
-        <div style={{ background: '#050505', color: '#fff', minHeight: '100vh', overflowX: 'hidden' }}>
+        <div style={{ background: '#050505', color: '#fff', minHeight: '100vh', overflowX: 'hidden', position: 'relative' }}>
+            <PageReveal />
+            <SiteNavbar />
 
-            {/* Intro reveal */}
-            <AnimatePresence>
-                {!revealed && (
-                    <motion.div
-                        key="reveal"
-                        exit={{ opacity: 0, y: '-100%' }}
-                        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                        style={{ position: 'fixed', inset: 0, background: '#050505', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.85, filter: 'blur(20px)' }}
-                            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                            transition={{ duration: 0.7 }}
-                            style={{ fontSize: '72px', fontWeight: '900', letterSpacing: '-3px', color: '#fff' }}
-                        >
-                            LOST.
-                        </motion.div>
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: '180px' }}
-                            transition={{ duration: 0.8, delay: 0.2, ease: 'easeInOut' }}
-                            style={{ height: '1.5px', background: 'rgba(255,255,255,0.3)', marginTop: '20px', borderRadius: '2px' }}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Banner background */}
+            <div style={{
+                position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+                backgroundImage: "url('/lostbanner.png')",
+                backgroundSize: 'cover', backgroundPosition: 'center',
+                opacity: 0.055, filter: 'grayscale(30%)',
+            }} />
 
-            {/* Grain overlay */}
+            {/* Grain */}
             <div style={{
                 position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1, opacity: 0.03,
                 backgroundImage: `url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
                 mixBlendMode: 'overlay',
             }} />
 
-            {/* Hero header */}
+            {/* Hero header — parallax */}
             <motion.div
                 ref={heroRef}
-                style={{ opacity: heroOpacity, y: heroY, position: 'relative', zIndex: 2 }}
+                style={{ opacity: heroOpacity, y: heroY, scale: heroScale, position: 'relative', zIndex: 2, transformOrigin: 'top center' }}
             >
-                <div style={{ padding: 'clamp(120px, 18vh, 200px) clamp(24px, 5vw, 80px) 80px' }}>
+                <div style={{ padding: 'clamp(130px, 20vh, 220px) clamp(24px, 5vw, 80px) 60px' }}>
                     <motion.div
-                        initial={{ opacity: 0, y: 60, filter: 'blur(20px)' }}
+                        initial={{ opacity: 0, y: 70, filter: 'blur(24px)' }}
                         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        transition={{ duration: 1.2, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 1.3, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
-                            <Link href="/" style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '2.5px', color: 'rgba(255,255,255,0.2)', textDecoration: 'none', transition: 'color 0.2s' }}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+                            <Link href="/"
+                                style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '2.5px', color: 'rgba(255,255,255,0.2)', textDecoration: 'none' }}
                                 onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
                                 onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.2)'}
-                            >
-                                ← HOME
-                            </Link>
+                            >← HOME</Link>
                             <span style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.1)' }} />
-                            <span style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '3px', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
-                                {loading ? '...' : `${pagination.total || filtered.length} RELEASES`}
+                            <span style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '3px', color: 'rgba(255,255,255,0.18)', textTransform: 'uppercase' }}>
+                                {loading ? '···' : `${pagination.total || filtered.length} RELEASES`}
                             </span>
                         </div>
                         <h1 style={{
-                            fontSize: 'clamp(52px, 10vw, 120px)',
+                            fontSize: 'clamp(64px, 13vw, 160px)',
                             fontWeight: '900',
-                            letterSpacing: '-0.05em',
-                            lineHeight: 0.88,
+                            letterSpacing: '-0.055em',
+                            lineHeight: 0.85,
                             margin: 0,
-                            background: 'linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.25) 100%)',
+                            background: 'linear-gradient(180deg, #ffffff 30%, rgba(255,255,255,0.15) 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                             backgroundClip: 'text',
                         }}>
                             CATALOG
                         </h1>
+                        <p style={{
+                            marginTop: '20px', fontSize: '11px', fontWeight: '600',
+                            letterSpacing: '0.15em', color: 'rgba(255,255,255,0.2)',
+                            textTransform: 'uppercase',
+                        }}>
+                            The Lost Label — Full Discography
+                        </p>
                     </motion.div>
                 </div>
             </motion.div>
 
             {/* Sticky controls */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 1.1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 1.2 }}
                 style={{
                     position: 'sticky', top: 0, zIndex: 50,
-                    background: 'rgba(5,5,5,0.85)',
-                    backdropFilter: 'blur(24px)',
+                    background: 'rgba(5,5,5,0.88)',
+                    backdropFilter: 'blur(28px)',
+                    WebkitBackdropFilter: 'blur(28px)',
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
-                    padding: '14px clamp(24px, 5vw, 80px)',
-                    display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center',
+                    padding: '12px clamp(24px, 5vw, 80px)',
+                    display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center',
                 }}
             >
                 <input
@@ -260,29 +302,24 @@ export default function ReleasesClient() {
                     onChange={e => setSearchQuery(e.target.value)}
                     style={{
                         flex: 1, minWidth: '200px',
-                        padding: '10px 16px',
+                        padding: '9px 15px',
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: '10px',
+                        borderRadius: '9px',
                         color: '#fff', fontSize: '12px', fontWeight: '500',
-                        outline: 'none',
+                        outline: 'none', letterSpacing: '0.02em',
                     }}
                 />
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
                     {[['popularity', 'Popular'], ['date', 'Newest'], ['name', 'A–Z']].map(([val, label]) => (
-                        <button
-                            key={val}
-                            onClick={() => setSortBy(val)}
-                            style={{
-                                padding: '8px 14px',
-                                borderRadius: '8px',
-                                border: `1px solid ${sortBy === val ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.06)'}`,
-                                background: sortBy === val ? 'rgba(255,255,255,0.08)' : 'transparent',
-                                color: sortBy === val ? '#fff' : 'rgba(255,255,255,0.3)',
-                                fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
-                                cursor: 'pointer', transition: 'all 0.2s',
-                            }}
-                        >
+                        <button key={val} onClick={() => setSortBy(val)} style={{
+                            padding: '7px 13px', borderRadius: '7px',
+                            border: `1px solid ${sortBy === val ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.06)'}`,
+                            background: sortBy === val ? 'rgba(255,255,255,0.08)' : 'transparent',
+                            color: sortBy === val ? '#fff' : 'rgba(255,255,255,0.28)',
+                            fontSize: '10px', fontWeight: '700', letterSpacing: '0.08em',
+                            cursor: 'pointer', transition: 'all 0.2s',
+                        }}>
                             {label}
                         </button>
                     ))}
@@ -290,15 +327,15 @@ export default function ReleasesClient() {
             </motion.div>
 
             {/* Grid */}
-            <div style={{ padding: '40px clamp(24px, 5vw, 80px) 100px', position: 'relative', zIndex: 2 }}>
+            <div style={{ padding: '48px clamp(24px, 5vw, 80px) 0', position: 'relative', zIndex: 2 }}>
                 {loading ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
                         {Array.from({ length: 12 }).map((_, i) => (
-                            <div key={i} style={{ borderRadius: '16px', overflow: 'hidden', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                                <div style={{ paddingBottom: '100%', background: 'rgba(255,255,255,0.02)' }} />
-                                <div style={{ padding: '14px 16px 16px' }}>
-                                    <div style={{ height: 13, borderRadius: 4, background: 'rgba(255,255,255,0.04)', marginBottom: 8 }} />
-                                    <div style={{ height: 10, borderRadius: 4, background: 'rgba(255,255,255,0.025)', width: '60%' }} />
+                            <div key={i} style={{ borderRadius: '14px', overflow: 'hidden', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                <div style={{ paddingBottom: '133%', background: 'linear-gradient(110deg, rgba(255,255,255,0.02) 30%, rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.02) 70%)', backgroundSize: '200%', animation: 'shimmer 1.8s ease infinite' }} />
+                                <div style={{ padding: '12px 14px 14px' }}>
+                                    <div style={{ height: 12, borderRadius: 4, background: 'rgba(255,255,255,0.04)', marginBottom: 7 }} />
+                                    <div style={{ height: 9, borderRadius: 4, background: 'rgba(255,255,255,0.025)', width: '55%' }} />
                                 </div>
                             </div>
                         ))}
@@ -312,15 +349,20 @@ export default function ReleasesClient() {
                         NO RELEASES FOUND
                     </div>
                 ) : (
-                    <motion.div
-                        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}
-                    >
-                        <AnimatePresence mode="popLayout">
-                            {filtered.map((release, i) => (
-                                <ReleaseItem key={release.id} release={release} index={i} />
-                            ))}
-                        </AnimatePresence>
-                    </motion.div>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                        gap: '16px',
+                    }}>
+                        {filtered.map((release, i) => (
+                            <ReleaseItem
+                                key={release.id}
+                                release={release}
+                                index={i}
+                                featured={false}
+                            />
+                        ))}
+                    </div>
                 )}
 
                 {!loading && !error && pagination.hasNextPage && (
@@ -329,23 +371,34 @@ export default function ReleasesClient() {
                             onClick={() => fetchReleases(pagination.page + 1, true)}
                             disabled={loadingMore}
                             style={{
-                                padding: '14px 36px',
-                                background: 'transparent',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '999px',
-                                color: 'rgba(255,255,255,0.5)',
-                                fontSize: '10px', fontWeight: '700', letterSpacing: '2px',
-                                cursor: loadingMore ? 'wait' : 'pointer',
-                                transition: 'all 0.2s',
+                                padding: '13px 36px', background: 'transparent',
+                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '999px',
+                                color: 'rgba(255,255,255,0.45)', fontSize: '10px',
+                                fontWeight: '700', letterSpacing: '2px',
+                                cursor: loadingMore ? 'wait' : 'pointer', transition: 'all 0.2s',
                             }}
-                            onMouseEnter={e => { e.target.style.borderColor = 'rgba(255,255,255,0.3)'; e.target.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.color = 'rgba(255,255,255,0.5)'; }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; }}
                         >
                             {loadingMore ? 'LOADING...' : 'LOAD MORE'}
                         </button>
                     </div>
                 )}
+
+                {/* Bottom fade */}
+                <div style={{
+                    position: 'relative', height: '120px', marginTop: '40px',
+                    background: 'linear-gradient(to bottom, transparent, #050505)',
+                    pointerEvents: 'none',
+                }} />
             </div>
+
+            <style>{`
+                @keyframes shimmer {
+                    0% { background-position: 200% 0; }
+                    100% { background-position: -200% 0; }
+                }
+            `}</style>
         </div>
     );
 }

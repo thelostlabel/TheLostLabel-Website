@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { TextRoll } from "@/components/ui/animated-menu";
+import { HandwrittenLogo } from "@/components/ui/handwritten-logo";
 import { usePublicSettings } from "@/app/components/PublicSettingsContext";
 
 const NAV_ITEMS = [
@@ -166,9 +167,14 @@ export function SiteNavbar() {
           transition={{ delay: open ? 0.45 : 0, duration: 0.5, ease: "easeOut" }}
           className="relative z-10 flex items-end justify-between px-8 md:px-12 pb-8 md:pb-10"
         >
-          <p className="text-white/20 text-xs font-light tracking-widest uppercase">
-            Independent Music Label
-          </p>
+          <div style={{ width: "clamp(120px, 20vw, 200px)", opacity: 0.18, filter: "drop-shadow(0 0 12px rgba(255,255,255,0.08))" }}>
+            <HandwrittenLogo
+              text="The Lost Company"
+              animate={false}
+              color="#ffffff"
+              font="bofly"
+            />
+          </div>
           <div className="flex items-center gap-6">
             {socials.map((s) => (
               <a

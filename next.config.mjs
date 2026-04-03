@@ -67,7 +67,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; media-src 'self' blob:; img-src 'self' https://i.scdn.co https://images.unsplash.com https://pngimg.com data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://i.scdn.co https://thelostlabel.com; frame-ancestors 'none';"
+            value: "default-src 'self'; media-src 'self' blob:; img-src 'self' https://i.scdn.co https://images.unsplash.com https://pngimg.com data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://i.scdn.co https://thelostlabel.com https://soundcloud.com; frame-src https://w.soundcloud.com; frame-ancestors 'none';"
           }
         ]
       }

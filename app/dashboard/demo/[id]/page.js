@@ -7,6 +7,7 @@ import { Card, Button, Chip, TextArea, Alert, Modal, ToggleButtonGroup, ToggleBu
 import { useToast } from '@/app/components/ToastContext';
 import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import WaveformPlayer from '@/app/components/dashboard/WaveformPlayer';
+import SoundCloudPlayer, { isSoundCloudUrl } from '@/app/components/dashboard/SoundCloudPlayer';
 import DemoVersionHistory from '@/app/components/dashboard/primitives/DemoVersionHistory';
 import {
     canApproveDemos,
@@ -248,16 +249,34 @@ export default function DemoReviewPage({ params }) {
                                     </div>
                                 </div>
                             ) : demo.trackLink ? (
-                                <div className="demo-empty-state">
-                                    <p className="text-[13px] text-default-400 mb-4">This submission is hosted on an external platform.</p>
-                                    <a
-                                        href={demo.trackLink}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="demo-link-button"
-                                    >
-                                        OPEN EXTERNAL LINK
-                                    </a>
+                                <div className="demo-external-player">
+                                    {isSoundCloudUrl(demo.trackLink) ? (
+                                        <>
+                                            <SoundCloudPlayer url={demo.trackLink} />
+                                            <div className="demo-link-row">
+                                                <a
+                                                    href={demo.trackLink}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="demo-link-button demo-link-button-secondary"
+                                                >
+                                                    OPEN IN SOUNDCLOUD
+                                                </a>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="demo-empty-state">
+                                            <p className="text-[13px] text-default-400 mb-4">This submission is hosted on an external platform.</p>
+                                            <a
+                                                href={demo.trackLink}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="demo-link-button"
+                                            >
+                                                OPEN EXTERNAL LINK
+                                            </a>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="text-center p-9 text-default-400">No audio data provided.</div>
@@ -785,6 +804,11 @@ export default function DemoReviewPage({ params }) {
                 }
                 .demo-link-button-secondary:hover {
                     background: var(--ds-item-bg-hover);
+                }
+                .demo-external-player {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0;
                 }
                 .demo-empty-state {
                     text-align: center;

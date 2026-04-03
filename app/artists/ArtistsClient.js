@@ -6,12 +6,13 @@ import NextImage from 'next/image';
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 
 import BackgroundEffects from "../components/BackgroundEffects";
+import { SiteNavbar } from '@/components/ui/site-navbar';
+import { PageReveal } from '@/components/ui/page-reveal';
 
 export default function ArtistsPage() {
     const [artists, setArtists] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [introDone, setIntroDone] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [sortBy, setSortBy] = useState('listeners');
@@ -60,11 +61,6 @@ export default function ArtistsPage() {
 
     useEffect(() => {
         fetchRoster(1, false);
-
-        setTimeout(() => {
-            setIntroDone(true);
-        }, 1500);
-
     }, [fetchRoster]);
 
     const filteredArtists = useMemo(() => {
@@ -85,36 +81,8 @@ export default function ArtistsPage() {
 
     return (
         <>
-            <AnimatePresence>
-                {(loading || !introDone) && (
-                    <motion.div
-                        initial={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: "-100%" }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                        style={{
-                            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                            background: "#050505", zIndex: 9999,
-                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                            overflow: "hidden"
-                        }}
-                    >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-                            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                            className="artists-loader-title"
-                        >
-                            LOST.
-                        </motion.div>
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: "120px" }}
-                            transition={{ duration: 1.5, ease: "easeInOut" }}
-                            className="artists-loader-bar"
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <PageReveal />
+            <SiteNavbar />
 
             <div className="artists-page">
                 <div className="artists-bg" />
@@ -303,20 +271,6 @@ export default function ArtistsPage() {
                     opacity: 0.06;
                     pointer-events: none;
                     filter: grayscale(40%);
-                }
-
-                .artists-loader-title {
-                    font-size: 56px;
-                    font-weight: 900;
-                    letter-spacing: -2px;
-                    color: #fff;
-                }
-
-                .artists-loader-bar {
-                    height: 1px;
-                    background: rgba(255, 255, 255, 0.3);
-                    margin-top: 24px;
-                    border-radius: 2px;
                 }
 
                 .artists-progress {
