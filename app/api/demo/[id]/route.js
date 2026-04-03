@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateDemoApprovalEmail, generateDemoRejectionEmail } from "@/lib/mail-templates";
@@ -35,6 +36,12 @@ export async function GET(req, { params }) {
     const { id } = await params;
 
     try {
+        const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+        const accessError = getDashboardAccessError(accessUser);
+        if (accessError) {
+            return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+        }
+
         const artistContext = await resolveArtistContextForUser(session.user.id);
         const demo = await prisma.demo.findUnique({
             where: { id },
@@ -81,6 +88,12 @@ export async function PATCH(req, { params }) {
     const session = await getServerSession(authOptions);
     if (!session) {
         return new Response("Unauthorized", { status: 401 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     const { id } = await params;
@@ -368,6 +381,12 @@ export async function DELETE(req, { params }) {
     const session = await getServerSession(authOptions);
     if (!session) {
         return new Response("Unauthorized", { status: 401 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     const { id } = await params;

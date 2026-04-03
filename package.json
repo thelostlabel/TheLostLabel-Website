@@ -16,7 +16,7 @@
     "typecheck:app": "tsc -p tsconfig.json --noEmit",
     "typecheck:discord": "npm --prefix \"Discord Bot/frontend\" run typecheck",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit",
-    "test": "node --test 'app/**/*.test.ts'"
+    "test": "tsx --test test/**/*.test.ts app/**/*.test.ts"
   },
   "dependencies": {
     "@heroui/react": "^3.0.1",

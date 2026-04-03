@@ -2,11 +2,32 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canFinalizeDemos, hasAdminViewPermission } from "@/lib/permissions";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { linkUserToArtist, normalizeArtistValue } from "@/lib/userArtistLink";
 
 function canAccessArtists(user) {
     return hasAdminViewPermission(user, "admin_view_artists") || canFinalizeDemos(user);
+}
+
+function canViewArtistDirectoryPii(user) {
+    return hasAdminViewPermission(user, "admin_view_artists");
+}
+
+export function sanitizeArtistDirectoryPayload(payload) {
+    return {
+        ...payload,
+        email: null,
+        user: payload.user ? {
+            id: payload.user.id,
+            stageName: payload.user.stageName,
+            fullName: null,
+            legalName: null,
+            phoneNumber: null,
+            address: null,
+            email: null,
+        } : null,
+    };
 }
 
 // GET: List all artists
@@ -16,9 +37,16 @@ export async function GET(req) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+    }
+
     try {
         const { searchParams } = new URL(req.url);
         const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 50, maxLimit: 500 });
+        const canViewPii = canViewArtistDirectoryPii(session.user);
 
         const [artists, total] = await Promise.all([
             prisma.artist.findMany({
@@ -45,17 +73,18 @@ export async function GET(req) {
             prisma.artist.count()
         ]);
 
-        // Also fetch Users who are NOT linked to any artist, to show as "Available for Linking"
-        const unlistedUsers = await prisma.user.findMany({
-            where: {
-                role: { in: ['artist', 'a&r'] }, // Include A&R as they might need profiles too? Or just artist. Let's stick to 'artist' primarily but maybe 'a&r' if they release music.
-                artist: null
-            },
-            select: { id: true, email: true, stageName: true, fullName: true, role: true }
-        });
+        const unlistedUsers = canViewPii
+            ? await prisma.user.findMany({
+                where: {
+                    role: { in: ['artist', 'a&r'] },
+                    artist: null
+                },
+                select: { id: true, email: true, stageName: true, fullName: true, role: true }
+            })
+            : [];
 
         return new Response(JSON.stringify({
-            artists,
+            artists: canViewPii ? artists : artists.map(sanitizeArtistDirectoryPayload),
             unlistedUsers,
             pagination: buildOffsetPaginationMeta(total, page, limit)
         }), { status: 200 });
@@ -69,6 +98,12 @@ export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session || !canAccessArtists(session.user)) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     try {
@@ -171,6 +206,12 @@ export async function PUT(req) {
     const session = await getServerSession(authOptions);
     if (!session || !canAccessArtists(session.user)) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     try {

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { handleApiError } from "@/lib/api-errors";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import { paymentCreateBodySchema, paymentUpdateBodySchema } from "@/lib/finance-schemas";
 import { hasAdminOrArRole, parseFloatInput } from "@/lib/finance-utils";
 import { logger } from "@/lib/logger";
@@ -76,6 +77,12 @@ export async function GET(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const { role, id: userId } = session.user;
     const artistContext = await resolveArtistContextForUser(userId);
     typedLogger.debug("Fetching payments", { userRole: role, userId });
@@ -133,6 +140,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => null);
     const parsedBody = paymentCreateBodySchema.safeParse(body);
     if (!parsedBody.success) {
@@ -201,6 +214,12 @@ export async function PATCH(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => null);
     const parsedBody = paymentUpdateBodySchema.safeParse(body);
     if (!parsedBody.success) {
@@ -333,6 +352,12 @@ export async function DELETE(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 

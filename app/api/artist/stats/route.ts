@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { getArtistBalanceStats } from "@/lib/artist-balance";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import type { ArtistStatsResponse, ListenerTrendPoint } from "@/lib/finance-types";
 import { extractSpotifyArtistIdFromUrl, getErrorMessage } from "@/lib/finance-utils";
 import prisma from "@/lib/prisma";
@@ -22,6 +23,12 @@ export async function GET(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const userId = session.user.id;
     const userEmail = session.user.email;
     const stageName = session.user.stageName;
@@ -83,7 +90,7 @@ export async function GET(req: Request) {
         },
       }),
       prisma.demo.count({ where: { artistId: userId } }),
-      getArtistBalanceStats({ userId, userEmail }),
+      getArtistBalanceStats({ userId, userEmail, artistId }),
     ]);
 
     const releasesCount = releasesAgg._count.id ?? 0;

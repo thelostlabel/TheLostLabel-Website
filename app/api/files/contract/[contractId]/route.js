@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { stat, readFile } from "fs/promises";
 import { extname, join } from "path";
@@ -292,6 +293,12 @@ const resolveStoragePath = (filepath) => {
 export async function GET(req, { params }) {
   const session = await getServerSession(authOptions);
   if (!session) return new Response("Unauthorized", { status: 401 });
+
+  const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+  const accessError = getDashboardAccessError(accessUser);
+  if (accessError) {
+    return new Response(accessError, { status: 403 });
+  }
 
   const contractId = (await params)?.contractId;
   if (!contractId) return new Response("Missing contract id", { status: 400 });

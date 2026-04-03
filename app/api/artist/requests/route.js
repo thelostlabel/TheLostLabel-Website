@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { settleSideEffects } from "@/lib/async-effects";
@@ -22,6 +23,12 @@ export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     try {
@@ -121,6 +128,12 @@ export async function GET(req) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     try {

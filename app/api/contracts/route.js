@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { sanitizeContractForViewer } from "@/lib/contract-visibility";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { embedContractMetaInNotes, extractContractMetaAndNotes } from "@/lib/contract-template";
 
@@ -138,6 +139,12 @@ export async function GET(req) {
     }
 
     try {
+        const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+        const accessError = getDashboardAccessError(accessUser);
+        if (accessError) {
+            return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+        }
+
         const { role, id: userId } = session.user;
         let contracts;
         let total = 0;
@@ -216,6 +223,12 @@ export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     try {
@@ -340,6 +353,12 @@ export async function PATCH(req) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
     }
 
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+    }
+
     try {
         const body = await req.json();
         const { id, title, artistId, userId, primaryArtistName, primaryArtistEmail, artistShare, labelShare, notes, status, pdfUrl, splits, featuredArtists, contractDetails } = body;
@@ -431,6 +450,12 @@ export async function DELETE(req) {
     const session = await getServerSession(authOptions);
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'a&r')) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+    }
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
     }
 
     try {

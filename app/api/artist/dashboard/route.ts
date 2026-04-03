@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { resolveArtistContextForUser, buildArtistOwnedContractScope } from "@/lib/artist-identity";
 import { getArtistBalanceStats } from "@/lib/artist-balance";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import { extractSpotifyArtistIdFromUrl, getErrorMessage } from "@/lib/finance-utils";
 import prisma from "@/lib/prisma";
 import { getReleaseArtistWhereById, getReleaseArtistWhereByName } from "@/lib/release-artists";
@@ -22,6 +23,12 @@ export async function GET() {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const userId = session.user.id;
     const artistContext = await resolveArtistContextForUser(userId);
     const userProfile = artistContext.user;

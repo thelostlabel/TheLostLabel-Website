@@ -50,7 +50,10 @@ site.log
 *.tmp
 *.mp3
 codex-*.txt
+app/components/dashboard/admin/codex-test.txt
 label-panels-db-incident.md
+trash/
+.playwright-cli/
 
 # claude internal
 .claude/
@@ -58,4 +61,3 @@ label-panels-db-incident.md
 
 # separate sub-projects
 control-panel/
-

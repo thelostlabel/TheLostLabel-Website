@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 
+import { buildArtistOwnedContractScope } from "@/lib/artist-identity";
 import prisma from "@/lib/prisma";
 import type {
   ArtistBalanceQuery,
@@ -67,6 +68,68 @@ function emptyArtistBalanceStats(): ArtistBalanceStats {
   };
 }
 
+type BalanceContractViewer = {
+  userId?: string | null;
+  userEmail?: string | null;
+  artistId?: string | null;
+};
+
+type BalanceContractIdentity = {
+  userId: string | null;
+  primaryArtistEmail: string | null;
+  artist: { id: string; userId: string | null; email: string | null } | null;
+};
+
+type BalanceSplitIdentity = {
+  percentage: number | null;
+  userId: string | null;
+  artistId: string | null;
+  email: string | null;
+  user: { email: string | null } | null;
+};
+
+export function calculateOwnedArtistSharePercent({
+  viewer,
+  contract,
+  splits,
+}: {
+  viewer: BalanceContractViewer;
+  contract: BalanceContractIdentity;
+  splits: BalanceSplitIdentity[];
+}): number {
+  const normalizedEmail = String(viewer.userEmail || "").trim().toLowerCase();
+  const matchesViewerEmail = (value: string | null | undefined) =>
+    Boolean(normalizedEmail) && String(value || "").trim().toLowerCase() === normalizedEmail;
+
+  const viewerOwnsPrimaryContract =
+    contract.userId === viewer.userId ||
+    (viewer.artistId && contract.artist?.id === viewer.artistId) ||
+    contract.artist?.userId === viewer.userId ||
+    matchesViewerEmail(contract.primaryArtistEmail) ||
+    matchesViewerEmail(contract.artist?.email);
+
+  const ownedSplitPercent = splits.reduce((sum, split) => {
+    const matches =
+      split.userId === viewer.userId ||
+      split.artistId === viewer.artistId ||
+      matchesViewerEmail(split.email) ||
+      matchesViewerEmail(split.user?.email);
+
+    return matches ? sum + toNumber(split.percentage) : sum;
+  }, 0);
+
+  const allSplitPercent = splits.reduce(
+    (sum, split) => sum + toNumber(split.percentage),
+    0,
+  );
+
+  const primaryPercent = viewerOwnsPrimaryContract
+    ? Math.max(0, 100 - allSplitPercent)
+    : 0;
+
+  return ownedSplitPercent + primaryPercent;
+}
+
 export async function getArtistBalanceStats({
   userId,
   userEmail,
@@ -76,25 +139,10 @@ export async function getArtistBalanceStats({
     return emptyArtistBalanceStats();
   }
 
-  const splitFilters: Prisma.Sql[] = [];
-
-  if (userId) {
-    splitFilters.push(Prisma.sql`rs."userId" = ${userId}`);
+  const contractScope = buildArtistOwnedContractScope({ userId, userEmail, artistId });
+  if (!contractScope.length) {
+    return emptyArtistBalanceStats();
   }
-
-  if (userEmail) {
-    splitFilters.push(Prisma.sql`LOWER(rs."email") = LOWER(${userEmail})`);
-  }
-
-  if (artistId) {
-    splitFilters.push(Prisma.sql`rs."artistId" = ${artistId}`);
-  }
-
-  let splitWhere = splitFilters[0]!;
-  for (let index = 1; index < splitFilters.length; index += 1) {
-    splitWhere = Prisma.sql`${splitWhere} OR ${splitFilters[index]}`;
-  }
-  splitWhere = Prisma.sql`(${splitWhere})`;
 
   const adjustmentWhere: Prisma.BalanceAdjustmentWhereInput = userId && artistId
     ? { OR: [{ userId }, { artistId }] }
@@ -104,48 +152,46 @@ export async function getArtistBalanceStats({
         ? { artistId }
         : {};
 
-  const [totalsRows, sourceRows, monthlyRows, dailyRows, paymentRows, adjustmentTotals] = await Promise.all([
-    prisma.$queryRaw<ArtistTotalsRow[]>`
-      SELECT
-        COALESCE(SUM(e."artistAmount" * rs."percentage" / 100.0), 0) AS "totalEarnings",
-        COALESCE(SUM(COALESCE(e."streams", 0)), 0) AS "totalStreams"
-      FROM "RoyaltySplit" rs
-      JOIN "Contract" c ON c."id" = rs."contractId"
-      JOIN "Earning" e ON e."contractId" = c."id"
-      WHERE ${splitWhere}
-    `,
-    prisma.$queryRaw<SourceStreamsRow[]>`
-      SELECT
-        LOWER(COALESCE(e."source", 'other')) AS "source",
-        COALESCE(SUM(COALESCE(e."streams", 0)), 0) AS "streams"
-      FROM "RoyaltySplit" rs
-      JOIN "Contract" c ON c."id" = rs."contractId"
-      JOIN "Earning" e ON e."contractId" = c."id"
-      WHERE ${splitWhere}
-      GROUP BY LOWER(COALESCE(e."source", 'other'))
-    `,
-    prisma.$queryRaw<SeriesRow[]>`
-      SELECT
-        TO_CHAR(DATE_TRUNC('month', e."createdAt"), 'YYYY-MM') AS "label",
-        COALESCE(SUM(e."artistAmount" * rs."percentage" / 100.0), 0) AS "value"
-      FROM "RoyaltySplit" rs
-      JOIN "Contract" c ON c."id" = rs."contractId"
-      JOIN "Earning" e ON e."contractId" = c."id"
-      WHERE ${splitWhere}
-        AND e."createdAt" >= DATE_TRUNC('month', NOW()) - INTERVAL '5 months'
-      GROUP BY TO_CHAR(DATE_TRUNC('month', e."createdAt"), 'YYYY-MM')
-    `,
-    prisma.$queryRaw<SeriesRow[]>`
-      SELECT
-        TO_CHAR(DATE_TRUNC('day', e."createdAt"), 'YYYY-MM-DD') AS "label",
-        COALESCE(SUM(e."artistAmount" * rs."percentage" / 100.0), 0) AS "value"
-      FROM "RoyaltySplit" rs
-      JOIN "Contract" c ON c."id" = rs."contractId"
-      JOIN "Earning" e ON e."contractId" = c."id"
-      WHERE ${splitWhere}
-        AND e."createdAt" >= CURRENT_DATE - INTERVAL '29 days'
-      GROUP BY TO_CHAR(DATE_TRUNC('day', e."createdAt"), 'YYYY-MM-DD')
-    `,
+  const [earnings, paymentRows, adjustmentTotals] = await Promise.all([
+    prisma.earning.findMany({
+      where: {
+        contract: {
+          OR: contractScope,
+        },
+      },
+      select: {
+        artistAmount: true,
+        createdAt: true,
+        source: true,
+        streams: true,
+        contract: {
+          select: {
+            userId: true,
+            primaryArtistEmail: true,
+            artist: {
+              select: {
+                id: true,
+                userId: true,
+                email: true,
+              },
+            },
+            splits: {
+              select: {
+                percentage: true,
+                userId: true,
+                artistId: true,
+                email: true,
+                user: {
+                  select: {
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
     (userId || artistId)
       ? prisma.payment.groupBy({
           by: ["status"],
@@ -165,13 +211,45 @@ export async function getArtistBalanceStats({
     }),
   ]);
 
-  const totals = totalsRows[0];
-  const totalEarnings = toNumber(totals?.totalEarnings);
-  const totalStreams = toNumber(totals?.totalStreams);
-
   const sourceStreams: SourceStreams = {};
-  for (const row of sourceRows) {
-    sourceStreams[row.source || "other"] = toNumber(row.streams);
+  const monthlyRows = new Map<string, number>();
+  const dailyRows = new Map<string, number>();
+  const monthCutoff = new Date(new Date().getFullYear(), new Date().getMonth() - (MONTH_WINDOW - 1), 1);
+  const dayCutoff = new Date();
+  dayCutoff.setHours(0, 0, 0, 0);
+  dayCutoff.setDate(dayCutoff.getDate() - (DAY_WINDOW - 1));
+
+  let totalEarnings = 0;
+  let totalStreams = 0;
+
+  for (const earning of earnings) {
+    const ownedPercent = calculateOwnedArtistSharePercent({
+      viewer: { userId, userEmail, artistId },
+      contract: earning.contract,
+      splits: earning.contract?.splits || [],
+    });
+    const earnedAmount = toNumber(earning.artistAmount) * (ownedPercent / 100);
+
+    if (earnedAmount <= 0) {
+      continue;
+    }
+
+    totalEarnings += earnedAmount;
+
+    const streamCount = toNumber(earning.streams);
+    totalStreams += streamCount;
+    const sourceKey = String(earning.source || "other").toLowerCase();
+    sourceStreams[sourceKey] = (sourceStreams[sourceKey] || 0) + streamCount;
+
+    if (earning.createdAt >= monthCutoff) {
+      const label = monthKey(earning.createdAt);
+      monthlyRows.set(label, (monthlyRows.get(label) || 0) + earnedAmount);
+    }
+
+    if (earning.createdAt >= dayCutoff) {
+      const label = dayKey(earning.createdAt);
+      dailyRows.set(label, (dailyRows.get(label) || 0) + earnedAmount);
+    }
   }
 
   let totalPaid = 0;
@@ -193,8 +271,12 @@ export async function getArtistBalanceStats({
     totalEarnings,
     totalStreams,
     sourceStreams,
-    monthlyTrend: buildMonthlySeries(monthlyRows),
-    dailyTrend: buildDailySeries(dailyRows),
+    monthlyTrend: buildMonthlySeries(
+      Array.from(monthlyRows.entries()).map(([label, value]) => ({ label, value })),
+    ),
+    dailyTrend: buildDailySeries(
+      Array.from(dailyRows.entries()).map(([label, value]) => ({ label, value })),
+    ),
     manualAdjustments,
     totalPaid,
     totalPending,

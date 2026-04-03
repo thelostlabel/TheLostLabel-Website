@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import {
   earningCreateBodySchema,
   earningsDeleteBodySchema,
@@ -29,6 +30,12 @@ export async function GET(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const page = Number.parseInt(searchParams.get("page") || "1", 10) || 1;
     const limit = Number.parseInt(searchParams.get("limit") || "50", 10) || 50;
@@ -94,6 +101,12 @@ export async function DELETE(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => null);
     const parsedBody = earningsDeleteBodySchema.safeParse(body);
     if (!parsedBody.success) {
@@ -144,6 +157,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
+    }
+
     const body = await req.json().catch(() => null);
     const parsedBody = earningCreateBodySchema.safeParse(body);
     if (!parsedBody.success) {

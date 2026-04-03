@@ -1,11 +1,13 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { stat } from "fs/promises";
 import { extname } from "path";
 import { createFileWebStream } from "@/lib/file-stream-response";
 import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
+import { resolveArtistContextForUser } from "@/lib/artist-identity";
 
 const MIME_BY_EXT = {
   ".jpg": "image/jpeg",
@@ -58,6 +60,18 @@ function hasContractAccess(user, contract) {
     );
 }
 
+export function ownsDemoFileAsset({
+  viewerUserId,
+  viewerArtistProfileId,
+  demoUserId,
+  demoArtistProfileId,
+}) {
+  return Boolean(
+    (viewerUserId && demoUserId && viewerUserId === demoUserId) ||
+    (viewerArtistProfileId && demoArtistProfileId && viewerArtistProfileId === demoArtistProfileId)
+  );
+}
+
 async function canAccessAsset(user, normalizedPath) {
   const variants = getPathVariants(normalizedPath);
 
@@ -68,6 +82,7 @@ async function canAccessAsset(user, normalizedPath) {
         demo: {
           select: {
             artistId: true,
+            artistProfileId: true,
           },
         },
       },
@@ -76,7 +91,15 @@ async function canAccessAsset(user, normalizedPath) {
     if (!demoFile) return { allowed: false, status: 404 };
 
     const canViewAll = canViewAllDemos(user);
-    const isOwner = demoFile.demo?.artistId === user?.id;
+    const artistContext = !canViewAll && user?.id
+      ? await resolveArtistContextForUser(user.id)
+      : null;
+    const isOwner = ownsDemoFileAsset({
+      viewerUserId: user?.id || null,
+      viewerArtistProfileId: artistContext?.artistId || null,
+      demoUserId: demoFile.demo?.artistId || null,
+      demoArtistProfileId: demoFile.demo?.artistProfileId || null,
+    });
     if (!canViewAll && !isOwner) return { allowed: false, status: 403 };
     if (isOwner && !hasPortalPermission(user, "view_demos")) {
       return { allowed: false, status: 403 };
@@ -163,6 +186,12 @@ async function canAccessAsset(user, normalizedPath) {
 export async function GET(req) {
   const session = await getServerSession(authOptions);
   if (!session) return new Response("Unauthorized", { status: 401 });
+
+  const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+  const accessError = getDashboardAccessError(accessUser);
+  if (accessError) {
+    return new Response(accessError, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const pathParam = searchParams.get("path");

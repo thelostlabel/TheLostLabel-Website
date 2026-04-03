@@ -38,6 +38,18 @@ const registerRateLimiter = rateLimit({
   uniqueTokenPerInterval: 3000,
 });
 
+export function getCredentialRegisterError(password: string, registrationsOpen: boolean): string | null {
+  if (!registrationsOpen) {
+    return "REGISTRATIONS CLOSED";
+  }
+
+  if (!hasMinimumPasswordLength(password)) {
+    return `PASSWORD MUST BE AT LEAST ${MIN_PASSWORD_LENGTH} CHARACTERS`;
+  }
+
+  return "REGISTRATION FLOW DISABLED";
+}
+
 type UserWithArtist = Prisma.UserGetPayload<{
   include: {
     artist: {
@@ -124,46 +136,10 @@ export const authOptions = {
           if (credentials?.type === "register") {
             const settings = await prisma.systemSettings.findFirst({ where: { id: "default" } });
             const config = normalizeSystemSettingsConfig(parseSystemSettingsConfig(settings?.config ?? null));
-            if (config.registrationsOpen === false) {
-              throw new Error("REGISTRATIONS CLOSED");
+            const registerError = getCredentialRegisterError(password, config.registrationsOpen !== false);
+            if (registerError) {
+              throw new Error(registerError);
             }
-
-            if (!hasMinimumPasswordLength(password)) {
-              throw new Error(`PASSWORD MUST BE AT LEAST ${MIN_PASSWORD_LENGTH} CHARACTERS`);
-            }
-
-            const existingUser = await prisma.user.findUnique({
-              where: { email },
-            });
-
-            if (existingUser) {
-              throw new Error("USER ALREADY EXISTS");
-            }
-
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            const user = await prisma.user.create({
-              data: {
-                email,
-                password: hashedPassword,
-                fullName: credentials.fullName,
-                stageName: credentials.stageName,
-                role: "artist",
-                status: "pending",
-              },
-            });
-
-            return {
-              id: user.id,
-              email: user.email,
-              name: user.stageName || user.email,
-              role: user.role,
-              status: user.status,
-              permissions: user.permissions ?? null,
-              spotifyUrl: user.spotifyUrl ?? null,
-              stageName: user.stageName ?? null,
-              image: null,
-            };
           }
 
           const user = await prisma.user.findUnique({

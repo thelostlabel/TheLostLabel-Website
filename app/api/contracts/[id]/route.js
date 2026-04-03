@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { sanitizeContractForViewer } from "@/lib/contract-visibility";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 
 function normalizeShare(value, defaultValue) {
@@ -22,6 +23,12 @@ export async function GET(req, { params }) {
     const { id } = await params;
 
     try {
+        const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+        const accessError = getDashboardAccessError(accessUser);
+        if (accessError) {
+            return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+        }
+
         const contract = await prisma.contract.findUnique({
             where: { id },
             include: {
@@ -78,6 +85,12 @@ export async function PUT(req, { params }) {
     const { id } = await params;
 
     try {
+        const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+        const accessError = getDashboardAccessError(accessUser);
+        if (accessError) {
+            return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+        }
+
         const body = await req.json();
         const { artistShare, labelShare, status, notes, signedAt, terminatedAt, pdfUrl } = body;
 
@@ -127,6 +140,12 @@ export async function DELETE(req, { params }) {
     const { id } = await params;
 
     try {
+        const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+        const accessError = getDashboardAccessError(accessUser);
+        if (accessError) {
+            return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+        }
+
         await prisma.contract.delete({
             where: { id }
         });

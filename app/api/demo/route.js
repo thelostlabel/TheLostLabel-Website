@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateDemoReceivedEmail } from "@/lib/mail-templates";
@@ -40,6 +41,13 @@ const demoSchema = z.object({
 export async function POST(req) {
     const session = await getServerSession(authOptions);
     if (!session) return new Response("Unauthorized", { status: 401 });
+
+    const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+    const accessError = getDashboardAccessError(accessUser);
+    if (accessError) {
+        return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+    }
+
     if (!hasPortalPermission(session.user, "submit_demos")) {
         return new Response(JSON.stringify({ error: "You do not have permission to submit demos." }), { status: 403 });
     }
@@ -189,6 +197,12 @@ export async function GET(req) {
     if (!session) return new Response("Unauthorized", { status: 401 });
 
     try {
+        const accessUser = await getAuthoritativeDashboardAccessUser(session.user.id);
+        const accessError = getDashboardAccessError(accessUser);
+        if (accessError) {
+            return new Response(JSON.stringify({ error: accessError }), { status: 403 });
+        }
+
         const { searchParams } = new URL(req.url);
         const filterMine = searchParams.get('filter') === 'mine';
         const canViewAll = canViewAllDemos(session.user);
