@@ -59,6 +59,3 @@ label-panels-db-incident.md
 # separate sub-projects
 control-panel/
 
-# duplicate root-level assets (kept in public/)
-lostbanner.png
-lostbanner2.png
