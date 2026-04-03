@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { cinematicAuthStyles } from '../cinematic-auth-styles';
 
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
@@ -24,9 +27,7 @@ function VerifyEmailContent() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token })
                 });
-
                 const data = await res.json();
-
                 if (res.ok) {
                     if (isCancelled) return;
                     setStatus('success');
@@ -45,71 +46,128 @@ function VerifyEmailContent() {
         };
 
         verify();
-        return () => {
-            isCancelled = true;
-        };
+        return () => { isCancelled = true; };
     }, [token]);
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            background: '#050505',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            padding: '20px'
-        }}>
-            <div className="glass" style={{ padding: '40px', maxWidth: '400px', width: '100%', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <h1 style={{ marginBottom: '16px', fontSize: '24px', fontWeight: 'bold' }}>Email Verification</h1>
-                <p style={{ color: '#888', fontSize: '14px', marginBottom: '22px' }}>
-                    We are verifying your email link for account security.
-                </p>
-
+        <div className="ca-center" style={{ maxWidth: 440 }}>
+            <AnimatePresence mode="wait">
                 {status === 'verifying' && (
-                    <div style={{ color: '#888' }}>
-                        <div className="spinner" style={{ margin: '0 auto 20px' }}></div>
-                        <p>{message}</p>
-                    </div>
+                    <motion.div
+                        key="verifying"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        style={{ textAlign: 'center' }}
+                    >
+                        <div style={{
+                            width: 64, height: 64, borderRadius: 18,
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 24px',
+                        }}>
+                            <Loader size={24} style={{ color: 'rgba(255,255,255,0.4)', animation: 'caSpin 1.2s linear infinite' }} />
+                        </div>
+                        <h1 style={{
+                            fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 10,
+                            background: 'linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.45) 100%)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                        }}>
+                            Verifying
+                        </h1>
+                        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.7 }}>
+                            {message}
+                        </p>
+                    </motion.div>
                 )}
 
                 {status === 'success' && (
-                    <div style={{ color: '#4ade80' }}>
-                        <div style={{ fontSize: '40px', marginBottom: '14px' }}>OK</div>
+                    <motion.div
+                        key="success"
+                        initial={{ opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        className="ca-success"
+                    >
+                        <div style={{
+                            width: 56, height: 56, borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 4,
+                        }}>
+                            <CheckCircle size={24} style={{ color: 'rgba(255,255,255,0.7)' }} />
+                        </div>
+                        <h3>EMAIL VERIFIED</h3>
                         <p>{message}</p>
-                        <div style={{ marginTop: '22px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <Link href="/auth/login?status=verified" style={{ padding: '10px 16px', borderRadius: '10px', background: '#fff', color: '#000', fontWeight: '700', textDecoration: 'none' }}>
+                        <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <Link href="/auth/login?status=verified" className="ca-success-btn">
                                 Sign In
                             </Link>
                             <Link
                                 href={`/auth/verify-pending?step=approval${verifiedEmail ? `&email=${encodeURIComponent(verifiedEmail)}` : ''}`}
-                                style={{ padding: '10px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontWeight: '700', textDecoration: 'none' }}
+                                style={{
+                                    padding: '12px 24px', borderRadius: 12, textAlign: 'center',
+                                    border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)',
+                                    fontWeight: 700, textDecoration: 'none', fontSize: 11, letterSpacing: 1,
+                                }}
                             >
                                 Approval Status
                             </Link>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
 
                 {status === 'error' && (
-                    <div style={{ color: '#ef4444' }}>
-                        <div style={{ fontSize: '40px', marginBottom: '14px' }}>X</div>
-                        <p>{message}</p>
-                        <Link href="/auth/login" style={{ display: 'inline-block', marginTop: '20px', color: '#fff', textDecoration: 'underline' }}>
+                    <motion.div
+                        key="error"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        style={{ textAlign: 'center' }}
+                    >
+                        <div style={{
+                            width: 64, height: 64, borderRadius: 18,
+                            background: 'rgba(255,60,60,0.06)',
+                            border: '1px solid rgba(255,60,60,0.12)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 24px',
+                        }}>
+                            <AlertCircle size={24} style={{ color: 'rgba(255,120,120,0.7)' }} />
+                        </div>
+                        <h1 style={{
+                            fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 10,
+                            color: 'rgba(255,120,120,0.8)',
+                        }}>
+                            Verification Failed
+                        </h1>
+                        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.7, marginBottom: 24 }}>
+                            {message}
+                        </p>
+                        <Link href="/auth/login" className="ca-success-btn">
                             Back to Sign In
                         </Link>
-                    </div>
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
         </div>
     );
 }
 
 export default function VerifyEmailPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <VerifyEmailContent />
-        </Suspense>
+        <div className="ca-root ca-centered">
+            <div className="ca-grid" />
+            <style jsx>{cinematicAuthStyles}</style>
+            <Suspense fallback={
+                <div style={{ color: 'rgba(255,255,255,0.1)', fontWeight: 700, letterSpacing: 4, fontSize: 9 }}>
+                    LOADING...
+                </div>
+            }>
+                <VerifyEmailContent />
+            </Suspense>
+        </div>
     );
 }

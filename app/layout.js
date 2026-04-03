@@ -1,13 +1,15 @@
 import "./globals.css";
-import Navbar from "./components/Navbar";
 import AuthProvider from "./components/AuthProvider";
 import QueryProvider from "./components/QueryProvider";
 import { PublicSettingsProvider } from "./components/PublicSettingsContext";
 import { ToastProvider } from "./components/ToastContext";
 import { PlayerProvider } from "./components/PlayerContext";
 import Player from "./components/Player";
+import SmoothScroll from "./components/SmoothScroll";
+import { ThemeProvider } from "./components/ThemeProvider";
 import { getPublicSettings } from "@/lib/public-settings";
 import { BRANDING } from "@/lib/branding";
+import { TENANT } from "@/lib/tenant";
 
 export async function generateMetadata() {
   const publicSettings = await getPublicSettings();
@@ -79,21 +81,29 @@ export default async function RootLayout({ children }) {
   const publicSettings = await getPublicSettings();
 
   return (
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" data-tenant={TENANT.id}>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="shortcut icon" href="/logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo.png" />
+        {/* Prevent flash of wrong theme */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('theme')||((window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.className=t;})();`,
+          }}
+        />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         <PublicSettingsProvider value={publicSettings}>
           <QueryProvider>
             <AuthProvider>
               <ToastProvider>
                 <PlayerProvider>
-                  <Navbar />
-                  <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
-                  <Player />
+                  <ThemeProvider>
+                    <SmoothScroll />
+                    <main style={{ position: 'relative', zIndex: 1 }}>{children}</main>
+                    <Player />
+                  </ThemeProvider>
                 </PlayerProvider>
               </ToastProvider>
             </AuthProvider>

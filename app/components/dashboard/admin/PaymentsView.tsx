@@ -468,8 +468,8 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
 
             {/* Toolbar */}
             <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="relative flex-1 max-w-xs">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 sm:max-w-xs">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                         <Input
                             aria-label="Search payments"
@@ -480,25 +480,10 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                             fullWidth
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <ExportButtons
-                            data={paymentsExportData}
-                            columns={paymentsExportColumns}
-                            filename="payments-export"
-                            title="Payments Report"
-                        />
-                        <Button
-                            variant={selectionMode ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onPress={() => {
-                                if (selectionMode) exitSelectionMode();
-                                else setSelectionMode(true);
-                            }}
-                        >
-                            {selectionMode ? 'EXIT SELECT' : 'SELECT'}
-                        </Button>
+                    <div className="flex items-center gap-2 shrink-0">
                         <Button
                             variant="primary"
+                            size="sm"
                             onPress={() => {
                                 if (!showAdd) {
                                     setForm({ artistId: '', userId: '', amount: '', method: 'bank_transfer', reference: '', notes: '', status: 'completed' });
@@ -507,8 +492,24 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                 setShowAdd(!showAdd);
                             }}
                         >
-                            <Plus size={14} /> {showAdd ? 'CLOSE FORM' : 'RECORD PAYOUT'}
+                            <Plus size={14} /> {showAdd ? 'CLOSE' : 'RECORD PAYOUT'}
                         </Button>
+                        <Button
+                            variant={selectionMode ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onPress={() => {
+                                if (selectionMode) exitSelectionMode();
+                                else setSelectionMode(true);
+                            }}
+                        >
+                            {selectionMode ? 'EXIT' : 'SELECT'}
+                        </Button>
+                        <ExportButtons
+                            data={paymentsExportData}
+                            columns={paymentsExportColumns}
+                            filename="payments-export"
+                            title="Payments Report"
+                        />
                     </div>
                 </div>
                 <DateRangeFilter onChange={setDateRange} />

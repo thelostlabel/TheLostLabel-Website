@@ -1,21 +1,10 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
-import { stat } from "fs/promises";
 import { extname } from "path";
 import prisma from "@/lib/prisma";
-import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
 import { getCachedWavWaveform } from "@/lib/wav-waveform";
-
-const getCandidatePaths = (filepath) => {
-  if (!filepath) return [];
-  const normalized = filepath.replace(/^\/+/, "");
-
-  if (normalized.includes("..")) return [];
-  if (!normalized.startsWith("private/uploads/demos/")) return [];
-
-  return resolvePrivateStorageCandidates(normalized, ["private/uploads/demos/"]);
-};
+import { resolveDemoFileForRead } from "@/lib/demo-file-storage";
 
 export async function GET(req, { params }) {
   const session = await getServerSession(authOptions);
@@ -49,22 +38,12 @@ export async function GET(req, { params }) {
       });
     }
 
-    const candidates = getCandidatePaths(demoFile.filepath);
-    let filePath = null;
-
-    for (const candidate of candidates) {
-      try {
-        await stat(candidate);
-        filePath = candidate;
-        break;
-      } catch {
-        // Try next candidate.
-      }
-    }
-
-    if (!filePath) {
+    const resolvedFile = await resolveDemoFileForRead(demoFile.filepath);
+    if (!resolvedFile) {
       return new Response("File not found", { status: 404 });
     }
+
+    const filePath = resolvedFile.path;
 
     const url = new URL(req.url);
     const requestedPeaks = Number.parseInt(url.searchParams.get("peaks") || "", 10);

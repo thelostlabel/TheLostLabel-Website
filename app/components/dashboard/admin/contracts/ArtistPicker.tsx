@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { Key } from 'react';
+import { ComboBox, Input, ListBox } from '@heroui/react';
 
 type Artist = {
   id: string;
@@ -32,104 +33,43 @@ export default function ArtistPicker({
   placeholder = "Select Artist...",
   onClear,
 }: ArtistPickerProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  const selectedArtist = artists.find((a) => a.id === value);
-  const displayValue = searchTerm || (selectedArtist ? selectedArtist.name : '');
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
+  const handleSelectionChange = (key: Key | null) => {
+    if (!key) {
+      onClear?.();
+      return;
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filteredArtists = useMemo(() => {
-    return artists.filter(
-      (a) =>
-        a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.user?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.user?.stageName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [artists, searchTerm]);
+    const artist = artists.find((a) => a.id === key);
+    if (artist) onChange(artist);
+  };
 
   return (
-    <div ref={wrapperRef} className="relative">
-      <input
-        placeholder={placeholder}
-        value={displayValue}
-        onFocus={() => {
-          setSearchTerm('');
-          setShowDropdown(true);
-        }}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setShowDropdown(true);
-        }}
-        className="dash-input"
-        style={{ padding: '12px 20px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '2px' }}
-      />
-      {value && !showDropdown && onClear && (
-        <button
-          type="button"
-          onClick={() => {
-            onClear();
-            setSearchTerm('');
-          }}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-none text-[var(--status-error)] text-base cursor-pointer"
-        >
-          &times;
-        </button>
-      )}
-
-      {showDropdown && (
-        <div
-          className="absolute top-full left-0 right-0 mt-1 z-[100] overflow-y-auto max-h-[200px] rounded-sm"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
-          }}
-        >
-          {filteredArtists.length > 0 ? (
-            filteredArtists.map((a) => (
-              <div
-                key={a.id}
-                onClick={() => {
-                  onChange(a);
-                  setSearchTerm('');
-                  setShowDropdown(false);
-                }}
-                className="p-2.5 border-b border-white/[0.08] cursor-pointer text-xs text-[#ccc] hover:bg-white/[0.06]"
-              >
-                <div className="font-bold">{a.name}</div>
-                {a.user && (
-                  <div className="text-[10px] text-[#666]">
-                    {a.user.email} {a.user.stageName ? `(${a.user.stageName})` : ''}
-                  </div>
+    <ComboBox
+      className="w-full"
+      selectedKey={value || null}
+      onSelectionChange={handleSelectionChange}
+      allowsCustomValue={false}
+    >
+      <ComboBox.InputGroup>
+        <Input placeholder={placeholder} fullWidth />
+        <ComboBox.Trigger />
+      </ComboBox.InputGroup>
+      <ComboBox.Popover>
+        <ListBox>
+          {artists.map((artist) => (
+            <ListBox.Item key={artist.id} id={artist.id} textValue={artist.name}>
+              <div className="flex flex-col py-0.5">
+                <span className="font-medium text-sm">{artist.name}</span>
+                {artist.user?.email && (
+                  <span className="text-xs text-muted">
+                    {artist.user.email}
+                    {artist.user.stageName ? ` · ${artist.user.stageName}` : ''}
+                  </span>
                 )}
               </div>
-            ))
-          ) : (
-            <div className="p-2.5 text-[#666] text-xs">No matches found</div>
-          )}
-          <div
-            onClick={() => {
-              if (onClear) onClear();
-              setSearchTerm('');
-              setShowDropdown(false);
-            }}
-            className="p-2.5 border-t border-white/[0.08] text-[var(--status-error)] cursor-pointer text-xs text-center"
-          >
-            CLEAR SELECTION
-          </div>
-        </div>
-      )}
-    </div>
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </ComboBox.Popover>
+    </ComboBox>
   );
 }

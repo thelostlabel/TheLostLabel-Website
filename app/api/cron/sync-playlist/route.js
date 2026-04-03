@@ -348,7 +348,7 @@ export async function POST(req) {
                     for (const release of newReleases) {
                         const embed = {
                             title: "💿 NEW PLAYLIST ADDITION",
-                            description: `A new track was detected in **${playlistId === DEFAULT_PLAYLIST_ID ? 'LOST OFFICIAL' : 'Custom Playlist'}**. Album details:`,
+                            description: `A new track was detected in **${playlistId === DEFAULT_PLAYLIST_ID ? `${process.env.NEXT_PUBLIC_SITE_NAME || 'LOST'} OFFICIAL` : 'Custom Playlist'}**. Album details:`,
                             color: 0x00ff88,
                             fields: [
                                 { name: "Album", value: release.name, inline: true },
@@ -369,7 +369,7 @@ export async function POST(req) {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
-                                            username: "LOST Music Bot",
+                                            username: `${process.env.NEXT_PUBLIC_SITE_NAME || "LOST"} Music Bot`,
                                             avatar_url: "https://i.imgur.com/AfFp7pu.png",
                                             embeds: [embed]
                                         })

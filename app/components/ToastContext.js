@@ -3,7 +3,8 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo } 
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle, Sparkles } from 'lucide-react';
+import { Alert, AlertDialog, Button, CloseButton } from '@heroui/react';
+import { X, Sparkles } from 'lucide-react';
 
 const ToastContext = createContext(null);
 const CHANGELOG_STORAGE_PREFIX = 'seenChangelog';
@@ -109,25 +110,37 @@ export const ToastProvider = ({ children }) => {
                     />
                 )}
             </AnimatePresence>
-            <AnimatePresence>
-                {confirm && (
-                    <ConfirmModal
-                        title={confirm.title}
-                        message={confirm.message}
-                        onConfirm={handleConfirm}
-                        onCancel={handleCancel}
-                    />
-                )}
-            </AnimatePresence>
+            <AlertDialog.Backdrop
+                isOpen={Boolean(confirm)}
+                onOpenChange={(open) => { if (!open) handleCancel(); }}
+                variant="blur"
+            >
+                <AlertDialog.Container>
+                    <AlertDialog.Dialog className="sm:max-w-[400px]">
+                        <AlertDialog.Header>
+                            <AlertDialog.Icon status="danger" />
+                            <AlertDialog.Heading>{confirm?.title}</AlertDialog.Heading>
+                        </AlertDialog.Header>
+                        <AlertDialog.Body>
+                            <p>{confirm?.message}</p>
+                        </AlertDialog.Body>
+                        <AlertDialog.Footer>
+                            <Button variant="tertiary" onPress={handleCancel}>Cancel</Button>
+                            <Button variant="danger" onPress={handleConfirm}>Confirm</Button>
+                        </AlertDialog.Footer>
+                    </AlertDialog.Dialog>
+                </AlertDialog.Container>
+            </AlertDialog.Backdrop>
             <div style={{
                 position: 'fixed',
-                bottom: '40px',
-                right: '40px',
+                bottom: '24px',
+                right: '24px',
                 zIndex: 9999,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                width: 'min(calc(100vw - 32px), 420px)'
             }}>
                 <AnimatePresence mode="popLayout">
                     {toasts.map((toast) => (
@@ -139,193 +152,36 @@ export const ToastProvider = ({ children }) => {
     );
 };
 
-const Toast = ({ id, message, type, onRemove }) => {
-    const icons = {
-        success: <CheckCircle size={18} color="#00ff88" />,
-        error: <AlertCircle size={18} color="#ff4444" />,
-        warning: <AlertTriangle size={18} color="#ffaa00" />,
-        info: <Info size={18} color="#00aaff" />
-    };
+const TOAST_STATUS = {
+    success: 'success',
+    error: 'danger',
+    warning: 'warning',
+    info: 'accent',
+};
 
-    const colors = {
-        success: 'rgba(0, 255, 136, 0.1)',
-        error: 'rgba(255, 68, 68, 0.1)',
-        warning: 'rgba(255, 170, 0, 0.1)',
-        info: 'rgba(0, 170, 255, 0.1)'
-    };
-
-    const borders = {
-        success: 'rgba(0, 255, 136, 0.2)',
-        error: 'rgba(255, 68, 68, 0.2)',
-        warning: 'rgba(255, 170, 0, 0.2)',
-        info: 'rgba(0, 170, 255, 0.2)'
-    };
+const Toast = ({ message, type, onRemove }) => {
+    const status = TOAST_STATUS[type] || 'accent';
 
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, x: 50, scale: 0.9 }}
+            initial={{ opacity: 0, x: 32, scale: 0.96 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            style={{
-                background: 'rgba(10, 10, 10, 0.8)',
-                backdropFilter: 'blur(20px)',
-                border: `1px solid ${borders[type]}`,
-                padding: '16px 20px',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '15px',
-                minWidth: '300px',
-                maxWidth: '450px',
-                pointerEvents: 'auto',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                position: 'relative',
-                overflow: 'hidden'
-            }}
+            exit={{ opacity: 0, x: 18, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="pointer-events-auto w-full"
         >
-            <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                bottom: 0,
-                width: '4px',
-                background: type === 'success' ? '#00ff88' : type === 'error' ? '#ff4444' : type === 'warning' ? '#ffaa00' : '#00aaff',
-                opacity: 0.5
-            }} />
-
-            <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                background: colors[type],
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-            }}>
-                {icons[type]}
-            </div>
-
-            <div style={{ flex: 1 }}>
-                <p style={{
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    margin: 0,
-                    lineHeight: '1.4'
-                }}>
-                    {message}
-                </p>
-            </div>
-
-            <button
-                onClick={onRemove}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#444',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'color 0.2s'
-                }}
-            >
-                <X size={16} />
-            </button>
+            <Alert status={status}>
+                <Alert.Indicator />
+                <Alert.Content>
+                    <Alert.Description>{message}</Alert.Description>
+                </Alert.Content>
+                <CloseButton aria-label="Dismiss notification" onPress={onRemove} />
+            </Alert>
         </motion.div>
     );
 };
 
-const ConfirmModal = ({ title, message, onConfirm, onCancel }) => {
-    return (
-        <div style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 10000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.8)',
-            backdropFilter: 'blur(10px)',
-            padding: '20px'
-        }}>
-            <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                style={{
-                    background: '#0a0a0b',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    borderRadius: '24px',
-                    padding: '40px',
-                    maxWidth: '450px',
-                    width: '100%',
-                    textAlign: 'center',
-                    boxShadow: '0 40px 100px rgba(0,0,0,0.8)'
-                }}
-            >
-                <div style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '20px',
-                    background: 'rgba(255, 68, 68, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 25px'
-                }}>
-                    <AlertTriangle size={24} color="#ff4444" />
-                </div>
-
-                <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '12px' }}>{title}</h3>
-                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '35px' }}>{message}</p>
-
-                <div style={{ display: 'flex', gap: '15px' }}>
-                    <button
-                        onClick={onCancel}
-                        style={{
-                            flex: 1,
-                            padding: '15px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            color: '#666',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: '900',
-                            letterSpacing: '1px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        ABORT_ACTION
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        style={{
-                            flex: 1,
-                            padding: '15px',
-                            background: '#ff4444',
-                            border: 'none',
-                            color: '#fff',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: '900',
-                            letterSpacing: '1px',
-                            cursor: 'pointer',
-                            boxShadow: '0 10px 30px rgba(255, 68, 68, 0.2)',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        CONFIRM_EXECUTE
-                    </button>
-                </div>
-            </motion.div>
-        </div>
-    );
-};
 
 const ChangelogCard = ({ eyebrow, title, description, items, onClose }) => {
     useEffect(() => {

@@ -23,12 +23,14 @@ export function useArtistWithdrawal({
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("BANK_TRANSFER");
   const [notes, setNotes] = useState("");
+  const [wiseEmail, setWiseEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
     setAmount("");
     setMethod("BANK_TRANSFER");
     setNotes("");
+    setWiseEmail("");
   };
 
   const close = () => {
@@ -49,7 +51,18 @@ export function useArtistWithdrawal({
       return;
     }
 
+    if (method === "WISE" && !wiseEmail.trim()) {
+      showToast("Please enter your Wise account email.", "warning");
+      return;
+    }
+
     setSubmitting(true);
+
+    // For Wise payments, embed the account email at the start of notes so admins can find it.
+    const compiledNotes =
+      method === "WISE" && wiseEmail.trim()
+        ? [`Wise: ${wiseEmail.trim()}`, notes.trim()].filter(Boolean).join("\n")
+        : notes;
 
     try {
       await dashboardRequestJson("/api/artist/withdraw", {
@@ -58,7 +71,7 @@ export function useArtistWithdrawal({
         body: JSON.stringify({
           amount: Number.parseFloat(amount),
           method,
-          notes,
+          notes: compiledNotes,
         }),
         context: "submit withdrawal request",
         retry: false,
@@ -87,6 +100,8 @@ export function useArtistWithdrawal({
     setMethod,
     notes,
     setNotes,
+    wiseEmail,
+    setWiseEmail,
     submitting,
     handleSubmit,
   };

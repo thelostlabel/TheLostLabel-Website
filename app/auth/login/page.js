@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import BackgroundEffects from '../../components/BackgroundEffects';
 import { motion } from 'framer-motion';
+import { HandwrittenLogo } from '@/components/ui/handwritten-logo';
+import { cinematicAuthStyles } from '../cinematic-auth-styles';
 
 function LoginContent() {
     const searchParams = useSearchParams();
@@ -35,18 +36,12 @@ function LoginContent() {
 
     const getFriendlyError = (rawError) => {
         switch (rawError) {
-            case 'EMAIL NOT VERIFIED':
-                return 'Your email has not been verified yet. Go to the verification center to resend the link.';
-            case 'ACCOUNT PENDING APPROVAL':
-                return 'Your email is verified, but your account is pending admin approval.';
-            case 'INVALID EMAIL OR PASSWORD':
-                return 'Invalid email or password.';
-            case 'TOO MANY ATTEMPTS':
-                return 'Too many attempts. Please try again later.';
-            case 'REGISTRATIONS CLOSED':
-                return 'Registrations are currently closed.';
-            default:
-                return rawError || 'An error occurred while signing in.';
+            case 'EMAIL NOT VERIFIED': return 'Your email has not been verified yet.';
+            case 'ACCOUNT PENDING APPROVAL': return 'Your email is verified, but your account is pending admin approval.';
+            case 'INVALID EMAIL OR PASSWORD': return 'Invalid email or password.';
+            case 'TOO MANY ATTEMPTS': return 'Too many attempts. Please try again later.';
+            case 'REGISTRATIONS CLOSED': return 'Registrations are currently closed.';
+            default: return rawError || 'An error occurred while signing in.';
         }
     };
 
@@ -54,14 +49,7 @@ function LoginContent() {
         e.preventDefault();
         setLoading(true);
         setError(null);
-
-        const result = await signIn('credentials', {
-            redirect: false,
-            email,
-            password,
-            type: 'login'
-        });
-
+        const result = await signIn('credentials', { redirect: false, email, password, type: 'login' });
         if (result.error) {
             if (result.error === 'ACCOUNT PENDING APPROVAL') {
                 router.push(`/auth/verify-pending?step=approval&email=${encodeURIComponent(email)}`);
@@ -79,177 +67,104 @@ function LoginContent() {
         }
     };
 
-    const labelStyle = {
-        display: 'block',
-        marginBottom: '8px',
-        fontSize: '10px',
-        fontWeight: '900',
-        color: 'var(--accent)',
-        letterSpacing: '2px',
-        textTransform: 'uppercase'
-    };
-
-    const inputStyle = {
-        width: '100%',
-        padding: '16px',
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '12px',
-        color: 'white',
-        fontFamily: 'inherit',
-        fontSize: '14px',
-        outline: 'none',
-        transition: 'all 0.3s ease'
-    };
-
     return (
-        <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', display: 'flex' }}>
-            <BackgroundEffects />
+        <div className="ca-root">
+            <div className="ca-grid" />
+            <style jsx>{cinematicAuthStyles}</style>
 
-            {/* Left Side - Visuals (Hidden on Mobile) */}
-            <div style={{
-                flex: '1',
-                position: 'relative',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }} className="desktop-visual">
-
-                <div style={{ position: 'relative', zIndex: 2, padding: '80px' }}>
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                    >
-                        <h1 style={{ fontSize: 'clamp(50px, 5vw, 80px)', fontWeight: '900', lineHeight: '0.9', letterSpacing: '-0.04em', marginBottom: '30px' }}>
-                            WELCOME<br /><span style={{ color: 'var(--accent)' }}>BACK.</span>
-                        </h1>
-                        <p style={{ maxWidth: '400px', fontSize: '14px', color: '#888', lineHeight: '1.6', letterSpacing: '0.5px' }}>
-                            Access your artist portal, manage releases, and check your stats.
-                        </p>
-                    </motion.div>
-                </div>
-            </div>
-
-            {/* Right Side - Form */}
-            <div style={{
-                width: '100%',
-                maxWidth: '600px',
-                background: 'rgba(5, 6, 7, 0.8)',
-                backdropFilter: 'blur(20px)',
-                borderLeft: '1px solid rgba(255,255,255,0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                padding: '40px 8vw', // Responsive padding
-                position: 'relative',
-                zIndex: 10
-            }}>
+            {/* Left branding */}
+            <div className="ca-left">
                 <motion.div
-                    initial={{ opacity: 0, x: 30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                    className="ca-left-content"
                 >
-                    <div style={{ marginBottom: '60px' }}>
-                        <Link href="/" style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '2px', color: '#666', marginBottom: '20px', display: 'block', textDecoration: 'none' }}>← BACK TO HOME</Link>
-                        <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>LOGIN</h2>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600', letterSpacing: '1px' }}>
-                            ACCESS ARTIST PORTAL
-                        </p>
+                    <div className="ca-brand-logo">
+                        <HandwrittenLogo text="The Lost Company" animate={false} color="#ffffff" font="bofly" />
                     </div>
-
-                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                        {error && (
-                            <div style={{ padding: '15px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '12px', color: '#ff4444', fontSize: '11px', fontWeight: '800' }}>
-                                {getFriendlyError(error)}
-                                {error === 'EMAIL NOT VERIFIED' && (
-                                    <div style={{ marginTop: '10px' }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => router.push(`/auth/verify-pending?email=${encodeURIComponent(email)}`)}
-                                            style={{ background: 'transparent', border: '1px solid currentColor', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', color: 'inherit', fontSize: '10px' }}
-                                        >
-                                            GO TO VERIFICATION CENTER
-                                        </button>
-                                    </div>
-                                )}
-                                {error === 'ACCOUNT PENDING APPROVAL' && (
-                                    <div style={{ marginTop: '10px' }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => router.push(`/auth/verify-pending?step=approval&email=${encodeURIComponent(email)}`)}
-                                            style={{ background: 'transparent', border: '1px solid currentColor', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', color: 'inherit', fontSize: '10px' }}
-                                        >
-                                            CHECK APPROVAL STATUS
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div>
-                            <label style={labelStyle}>EMAIL ADDRESS</label>
-                            <input
-                                type="email"
-                                placeholder="artist@example.com"
-                                style={inputStyle}
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="input-focus-glow"
-                            />
-                        </div>
-
-                        <div>
-                            <label style={labelStyle}>PASSWORD</label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                style={inputStyle}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="input-focus-glow"
-                            />
-                            <div style={{ textAlign: 'right', marginTop: '10px' }}>
-                                <Link href="/auth/forgot-password" style={{ fontSize: '10px', fontWeight: '800', color: '#666', textDecoration: 'none', letterSpacing: '1px' }}>FORGOT PASSWORD?</Link>
-                            </div>
-                        </div>
-
-                        <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '20px', width: '100%', borderRadius: '16px', fontSize: '13px', letterSpacing: '1px' }}>
-                            {loading ? 'AUTHENTICATING...' : 'ENTER PORTAL'}
-                        </button>
-                    </form>
-
-                    <p style={{ marginTop: '40px', fontSize: '11px', color: '#666', fontWeight: '600', textAlign: 'center' }}>
-                        NO ACCOUNT? <Link href="/auth/register" style={{ color: '#fff', textDecoration: 'none', borderBottom: '1px solid #fff', paddingBottom: '2px' }}>APPLY NOW</Link>
+                    <h1 className="ca-headline">
+                        Welcome<br />back.
+                    </h1>
+                    <p className="ca-tagline">
+                        Access your artist portal, manage releases, and check your stats.
+                    </p>
+                    <div className="ca-divider" />
+                    <p className="ca-footnote">
+                        Don&apos;t have an account?{' '}
+                        <Link href="/auth/register">Apply now &rarr;</Link>
                     </p>
                 </motion.div>
             </div>
 
-            <style jsx>{`
-                .desktop-visual {
-                    display: none;
-                }
-                .input-focus-glow:focus {
-                    background: rgba(255,255,255,0.05) !important;
-                    border-color: var(--accent) !important;
-                    box-shadow: 0 0 15px rgba(158, 240, 26, 0.1);
-                }
-                @media (min-width: 1024px) {
-                    .desktop-visual {
-                        display: flex !important;
-                    }
-                }
-            `}</style>
+            {/* Right form */}
+            <motion.div
+                className="ca-right"
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.65, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            >
+                <div className="ca-header">
+                    <Link href="/" className="ca-back">&larr; BACK TO HOME</Link>
+                    <h2>Sign In</h2>
+                    <p>Access your artist portal</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="ca-form">
+                    {error && (
+                        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="ca-error">
+                            <span>{getFriendlyError(error)}</span>
+                            {error === 'EMAIL NOT VERIFIED' && (
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/auth/verify-pending?email=${encodeURIComponent(email)}`)}
+                                    className="ca-error-action"
+                                >
+                                    Go to verification center &rarr;
+                                </button>
+                            )}
+                            {error === 'ACCOUNT PENDING APPROVAL' && (
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/auth/verify-pending?step=approval&email=${encodeURIComponent(email)}`)}
+                                    className="ca-error-action"
+                                >
+                                    Check approval status &rarr;
+                                </button>
+                            )}
+                        </motion.div>
+                    )}
+
+                    <div className="ca-field">
+                        <label>EMAIL ADDRESS</label>
+                        <input type="email" placeholder="artist@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    </div>
+
+                    <div className="ca-field">
+                        <label>PASSWORD</label>
+                        <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        <div style={{ textAlign: 'right', marginTop: 2 }}>
+                            <Link href="/auth/forgot-password" className="ca-forgot">FORGOT PASSWORD?</Link>
+                        </div>
+                    </div>
+
+                    <button type="submit" disabled={loading} className="ca-submit">
+                        {loading ? <span className="ca-spinner" /> : 'ENTER PORTAL →'}
+                    </button>
+                </form>
+
+                <p className="ca-switch">
+                    No account?{' '}
+                    <Link href="/auth/register">Apply now</Link>
+                </p>
+            </motion.div>
         </div>
     );
 }
 
 export default function Login() {
     return (
-        <Suspense fallback={<div style={{ background: '#050607', minHeight: '100vh' }} />}>
+        <Suspense fallback={<div style={{ background: '#050507', minHeight: '100vh' }} />}>
             <LoginContent />
         </Suspense>
     );

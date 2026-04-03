@@ -1,16 +1,12 @@
 "use client";
 
-import { Briefcase, Disc } from "lucide-react";
+import { Disc } from "lucide-react";
+import { Button, Card } from "@heroui/react";
 
 import type { AppSessionUser } from "@/lib/auth-types";
 import type { DashboardContract } from "@/app/components/dashboard/types";
 import { BRANDING } from "@/lib/branding";
 import { extractContractMetaAndNotes } from "@/lib/contract-template";
-import {
-  DASHBOARD_THEME,
-  btnStyle,
-  glassStyle,
-} from "@/app/components/dashboard/artist/lib/shared";
 import DashboardEmptyState from "@/app/components/dashboard/primitives/DashboardEmptyState";
 
 type ArtistContractsViewProps = {
@@ -27,134 +23,185 @@ export default function ArtistContractsView({
   )?.artist?.id;
 
   return (
-    <div>
-      <div style={{ ...glassStyle, padding: "32px", marginBottom: "24px", borderRadius: "10px", border: `1px solid ${DASHBOARD_THEME.border}` }}>
-        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-          <div style={{ width: "50px", height: "50px", borderRadius: "8px", background: DASHBOARD_THEME.surfaceSoft, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${DASHBOARD_THEME.border}` }}>
-            <Briefcase size={20} color="var(--accent)" />
-          </div>
-          <div>
-            <h3 style={{ fontSize: "14px", letterSpacing: "3px", fontWeight: 950, color: "#fff", textTransform: "uppercase", margin: 0 }}>
-              Artist Agreement Portal
-            </h3>
-            <p style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, marginTop: "4px", fontWeight: 800, letterSpacing: "0.8px" }}>
-              Manage song-level contracts and royalty splits
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      {/* Contracts grid */}
+      {contracts.length > 0 && (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {contracts.map((contract) => {
+            const { userNotes } = extractContractMetaAndNotes(
+              String(contract.notes || ""),
+            );
+            const isOwner =
+              contract.userId === sessionUser?.id ||
+              contract.primaryArtistEmail === sessionUser?.email ||
+              contract.artist?.userId === sessionUser?.id;
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-        {contracts.map((contract) => {
-          const { userNotes } = extractContractMetaAndNotes(String(contract.notes || ""));
-          const isOwner =
-            contract.userId === sessionUser?.id ||
-            contract.primaryArtistEmail === sessionUser?.email ||
-            contract.artist?.userId === sessionUser?.id;
+            const isActive = contract.status === "active";
 
-          return (
-            <div key={contract.id} style={{ ...glassStyle, padding: "24px", borderRadius: "10px", border: isOwner ? `1px solid ${DASHBOARD_THEME.border}` : "1px solid rgba(34,197,94,0.3)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "25px" }}>
-                <div>
-                  <h4 style={{ fontSize: "15px", fontWeight: 950, color: "#fff", marginBottom: "6px", letterSpacing: "-0.5px" }}>
-                    {contract.release?.name || contract.title || "Untitled Contract"}
-                  </h4>
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <p style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, fontWeight: 900, letterSpacing: "0.8px", margin: 0 }}>
-                      Ref ID: {contract.id.slice(0, 8).toUpperCase()}
-                    </p>
-                    {!isOwner ? (
-                      <span style={{ fontSize: "7px", padding: "2px 6px", background: "rgba(57, 255, 20, 0.05)", color: "var(--accent)", borderRadius: "4px", fontWeight: 950, border: "1px solid rgba(57, 255, 20, 0.1)" }}>
-                        Collaborator
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                <span style={{ fontSize: "8px", padding: "4px 8px", borderRadius: "4px", background: contract.status === "active" ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.06)", color: contract.status === "active" ? DASHBOARD_THEME.success : DASHBOARD_THEME.muted, border: `1px solid ${contract.status === "active" ? "rgba(34,197,94,0.28)" : "rgba(255,255,255,0.1)"}`, fontWeight: 950, letterSpacing: "1px" }}>
-                  {String(contract.status || "draft").toUpperCase()}
-                </span>
-              </div>
-
-              <div style={{ padding: "20px", background: "rgba(255,255,255,0.01)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.03)", marginBottom: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
-                  <span style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, fontWeight: 950, letterSpacing: "0.8px" }}>
-                    {isOwner ? "Total Artist Share" : "Your Effective Share"}
-                  </span>
-                  <span style={{ fontSize: "15px", color: "var(--accent)", fontWeight: 950 }}>
-                    {isOwner
-                      ? `${Math.round(Number(contract.artistShare || 0) * 100)}%`
-                      : `${(
-                          ((Number(contract.artistShare || 0) *
-                            (contract.splits || [])
-                              .filter((split) => split.userId === sessionUser?.id || (split.artistId && currentArtistId === split.artistId))
-                              .reduce((sum, split) => sum + Number.parseFloat(String(split.percentage || 0)), 0)) /
-                            100) *
-                          100
-                        ).toFixed(1)}%`}
-                  </span>
-                </div>
-
-                {contract.splits?.length ? (
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.03)", paddingTop: "15px", marginTop: "5px" }}>
-                    <p style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, fontWeight: 950, letterSpacing: "1px", marginBottom: "12px" }}>
-                      Royalty Splits
-                    </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {contract.splits.map((split, index) => (
-                        <div key={split.id || `${contract.id}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: "12px", color: split.userId === sessionUser?.id ? "#fff" : DASHBOARD_THEME.muted, fontWeight: 950 }}>
-                            {String(split.name || "Unnamed split").toUpperCase()} {split.userId === sessionUser?.id ? "(YOU)" : ""}
+            return (
+              <Card
+                key={contract.id}
+                variant="default"
+                className={`ds-glass ${!isOwner ? "border-green-500/20" : ""}`}
+              >
+                <Card.Content className="flex flex-col gap-5 p-5">
+                  {/* Title row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-[14px] font-black tracking-tight text-foreground">
+                        {contract.release?.name ||
+                          contract.title ||
+                          "Untitled Contract"}
+                      </h4>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span className="text-[11px] font-black tracking-wide text-muted">
+                          Ref: {contract.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        {!isOwner && (
+                          <span className="rounded border border-green-500/15 bg-green-500/5 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-green-400">
+                            Collaborator
                           </span>
-                          <span style={{ fontSize: "12px", color: split.userId === sessionUser?.id ? "var(--accent)" : DASHBOARD_THEME.muted, fontWeight: 950 }}>
-                            {split.percentage}%
-                          </span>
-                        </div>
-                      ))}
+                        )}
+                      </div>
                     </div>
+                    <span
+                      className={`shrink-0 rounded px-2 py-1 text-[8px] font-black uppercase tracking-widest border ${
+                        isActive
+                          ? "border-green-500/25 bg-green-500/8 text-green-400"
+                          : "border-default/12 bg-default/6 text-muted"
+                      }`}
+                    >
+                      {String(contract.status || "draft").toUpperCase()}
+                    </span>
                   </div>
-                ) : null}
 
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "15px", borderTop: "1px solid rgba(255,255,255,0.03)", paddingTop: "15px" }}>
-                  <span style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, fontWeight: 950, letterSpacing: "0.8px" }}>
-                    Label Share
-                  </span>
-                  <span style={{ fontSize: "15px", color: "#fff", fontWeight: 950 }}>
-                    {Math.round(Number(contract.labelShare || 0) * 100)}%
-                  </span>
-                </div>
-              </div>
+                  {/* Splits card */}
+                  <Card variant="secondary" className="ds-item border-0 shadow-none">
+                    <Card.Content className="flex flex-col gap-3 p-4">
+                      {/* Main share */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black tracking-wide text-muted">
+                          {isOwner ? "Total Artist Share" : "Your Effective Share"}
+                        </span>
+                        <span className="text-[15px] font-black text-(--color-accent)">
+                          {isOwner
+                            ? `${Math.round(Number(contract.artistShare || 0) * 100)}%`
+                            : `${(
+                                ((Number(contract.artistShare || 0) *
+                                  (contract.splits || [])
+                                    .filter(
+                                      (split) =>
+                                        split.userId === sessionUser?.id ||
+                                        (split.artistId &&
+                                          currentArtistId === split.artistId),
+                                    )
+                                    .reduce(
+                                      (sum, split) =>
+                                        sum +
+                                        Number.parseFloat(
+                                          String(split.percentage || 0),
+                                        ),
+                                      0,
+                                    )) /
+                                  100) *
+                                100
+                              ).toFixed(1)}%`}
+                        </span>
+                      </div>
 
-              {userNotes ? (
-                <div style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, lineHeight: "1.5", fontStyle: "italic" }}>
-                  &quot;{userNotes}&quot;
-                </div>
-              ) : null}
+                      {/* Royalty splits */}
+                      {contract.splits?.length ? (
+                        <div className="flex flex-col gap-2 border-t border-default/8 pt-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted">
+                            Royalty Splits
+                          </p>
+                          {contract.splits.map((split, index) => {
+                            const isMe = split.userId === sessionUser?.id;
+                            return (
+                              <div
+                                key={split.id || `${contract.id}-${index}`}
+                                className="flex items-center justify-between"
+                              >
+                                <span
+                                  className={`text-[11px] font-black ${isMe ? "text-foreground" : "text-muted"}`}
+                                >
+                                  {String(split.name || "Unnamed").toUpperCase()}
+                                  {isMe && (
+                                    <span className="ml-1 text-muted">(YOU)</span>
+                                  )}
+                                </span>
+                                <span
+                                  className={`text-[12px] font-black ${isMe ? "text-(--color-accent)" : "text-muted"}`}
+                                >
+                                  {split.percentage}%
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
 
-              <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.03)", display: "flex", flexDirection: "column", gap: "16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px", color: DASHBOARD_THEME.muted, fontWeight: 950, letterSpacing: "0.8px" }}>
-                  <span>Since: {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : "—"}</span>
-                  <span>{BRANDING.shortName} Compliance Active</span>
-                </div>
-                {contract.pdfUrl ? (
-                  <a href={`/api/files/contract/${contract.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btnStyle, width: "100%", padding: "12px", background: DASHBOARD_THEME.accent, color: "#071311", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 950 }}>
-                    View Agreement
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                      {/* Label share */}
+                      <div className="flex items-center justify-between border-t border-default/8 pt-3">
+                        <span className="text-[11px] font-black tracking-wide text-muted">
+                          Label Share
+                        </span>
+                        <span className="text-[15px] font-black text-foreground">
+                          {Math.round(Number(contract.labelShare || 0) * 100)}%
+                        </span>
+                      </div>
+                    </Card.Content>
+                  </Card>
 
-      {contracts.length === 0 ? (
-        <div style={{ marginTop: "20px" }}>
-          <DashboardEmptyState
-            title="No active contracts"
-            description="Contact support if you believe a contract should already be visible in your workspace."
-            icon={<Disc size={40} style={{ opacity: 0.16 }} />}
-          />
+                  {/* Notes */}
+                  {userNotes && (
+                    <p className="text-[11px] italic leading-relaxed text-muted">
+                      &quot;{userNotes}&quot;
+                    </p>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex flex-col gap-3 border-t border-default/8 pt-4">
+                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wide text-muted">
+                      <span>
+                        Since:{" "}
+                        {contract.createdAt
+                          ? new Date(contract.createdAt).toLocaleDateString()
+                          : "—"}
+                      </span>
+                      <span>{BRANDING.shortName} Compliance Active</span>
+                    </div>
+                    {contract.pdfUrl && (
+                      <Button
+                        variant="primary"
+                        onPress={() => {
+                          window.open(
+                            `/api/files/contract/${contract.id}`,
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                        }}
+                        className="w-full"
+                      >
+                        View Agreement
+                      </Button>
+                    )}
+                  </div>
+                </Card.Content>
+              </Card>
+            );
+          })}
         </div>
-      ) : null}
+      )}
+
+      {/* Empty state */}
+      {contracts.length === 0 && (
+        <DashboardEmptyState
+          title="No active contracts"
+          description="Contact support if you believe a contract should already be visible in your workspace."
+          icon={<Disc size={40} className="opacity-15" />}
+        />
+      )}
     </div>
   );
 }

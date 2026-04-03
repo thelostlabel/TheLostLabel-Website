@@ -9,15 +9,15 @@ import DashboardLoader from "@/app/components/dashboard/DashboardLoader";
 import { useToast } from "@/app/components/ToastContext";
 import { useDashboardAuth } from "@/app/components/dashboard/context/DashboardAuthProvider";
 import { useArtistDashboardData } from "@/app/components/dashboard/hooks/useArtistDashboardData";
+import { getArtistViewDatasets } from "@/app/components/dashboard/hooks/useArtistDashboardData";
 import { useDashboardRoute } from "@/app/components/dashboard/hooks/useDashboardRoute";
 import {
   ReleasesView as ArtistCatalogReleasesView,
-  DemosView as ArtistCatalogDemosView,
   SubmitView as ArtistCatalogSubmitView,
 } from "@/app/components/dashboard/artist/ArtistCatalogViews";
+import DemosViewProfessional from "@/app/components/dashboard/artist/views/DemosViewProfessional";
 import { SupportView as ArtistSupportView } from "@/app/components/dashboard/artist/ArtistSupportViews";
 import {
-  ArtistQuickAccessBar,
   default as ArtistOverviewView,
 } from "@/app/components/dashboard/artist/views/ArtistOverviewView";
 import ArtistEarningsView from "@/app/components/dashboard/artist/views/ArtistEarningsView";
@@ -28,10 +28,8 @@ import { useArtistWithdrawal } from "@/app/components/dashboard/artist/hooks/use
 import {
   artistSharedViewProps,
   DASHBOARD_THEME,
-  inputStyle,
 } from "@/app/components/dashboard/artist/lib/shared";
 import { dashboardRequestJson } from "@/app/components/dashboard/lib/dashboard-request";
-import DashboardModal from "@/app/components/dashboard/primitives/DashboardModal";
 import DashboardSectionHeader from "@/app/components/dashboard/primitives/DashboardSectionHeader";
 import DiscordLinkSoftBlockNotice from "@/app/components/dashboard/discord/DiscordLinkSoftBlockNotice";
 import { useDiscordLink } from "@/app/components/dashboard/discord/useDiscordLink";
@@ -71,12 +69,12 @@ export default function ArtistView({ view: propView }: { view?: string }) {
     payments,
     requests,
     earningsPagination,
+    datasetStatus,
     refreshView,
     isViewLoading,
     viewError,
     hasViewData,
   } = useArtistDashboardData(view);
-  const showLoading = useMinimumLoader(isViewLoading(view), 250);
   const { discordLink, hasDiscordLink, refreshDiscordLink } = useDiscordLink(currentUser?.id);
   const selectedRequestId = recordId;
 
@@ -136,11 +134,18 @@ export default function ArtistView({ view: propView }: { view?: string }) {
   );
   const currentViewError = viewError(view);
   const currentViewHasData = hasViewData(view);
+  const viewDatasets = useMemo(() => getArtistViewDatasets(view), [view]);
+  const isViewInitializing = viewDatasets.some(
+    (dataset) => datasetStatus[dataset] === "idle",
+  );
+  const showLoading = useMinimumLoader(
+    (isViewLoading(view) || isViewInitializing) && !currentViewError,
+    250,
+  );
 
   if (showLoading && !currentViewHasData) {
     return (
       <DashboardLoader
-        fullScreen
         label="Artist Portal"
         subLabel={`Preparing ${String(viewTitle || "dashboard").toLowerCase()} module...`}
       />
@@ -159,10 +164,9 @@ export default function ArtistView({ view: propView }: { view?: string }) {
 
   return (
     <div
-      className="artist-dashboard-view dashboard-view"
+      className="artist-dashboard-view dashboard-view px-3 py-4 sm:px-5 sm:py-6 lg:px-7.5 lg:py-7.5"
       style={{
         flex: 1,
-        padding: "30px",
         overflowY: "auto",
         background: DASHBOARD_THEME.bg,
       }}
@@ -171,15 +175,12 @@ export default function ArtistView({ view: propView }: { view?: string }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-4 overflow-hidden rounded-2xl border border-default/10 px-4 py-4 sm:mb-4.5 sm:px-5 sm:py-5"
         style={{
-          marginBottom: "18px",
-          padding: "20px 20px",
-          borderRadius: "16px",
-          border: "1px solid rgba(255,255,255,0.06)",
-          background: `linear-gradient(180deg, ${DASHBOARD_THEME.surfaceElevated}, ${DASHBOARD_THEME.surface})`,
-          boxShadow: "0 14px 32px rgba(0, 0, 0, 0.35)",
+          background: "linear-gradient(180deg, var(--ds-glass-bg-hover), var(--ds-glass-bg))",
+          boxShadow: "0 14px 32px var(--ds-glass-shadow)",
           position: "relative",
-          overflow: "hidden",
+          display: view === "overview" ? "none" : undefined,
         }}
       >
         <div
@@ -190,7 +191,7 @@ export default function ArtistView({ view: propView }: { view?: string }) {
             right: 0,
             height: "1px",
             background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)",
+              "linear-gradient(90deg, transparent, var(--ds-glass-border), transparent)",
           }}
         />
         <DashboardSectionHeader eyebrow="ARTIST DASHBOARD" title={viewTitle || "Dashboard"} />
@@ -198,14 +199,6 @@ export default function ArtistView({ view: propView }: { view?: string }) {
 
       {currentViewError && currentViewHasData ? (
         <DashboardInlineAlert message={currentViewError} />
-      ) : null}
-
-      {!isViewLoading(view) && view === "overview" ? (
-        <ArtistQuickAccessBar
-          stats={stats}
-          currentView={view}
-          onNavigate={navigateToView}
-        />
       ) : null}
 
       {view === "overview" ? (
@@ -227,8 +220,8 @@ export default function ArtistView({ view: propView }: { view?: string }) {
               onLink={() => navigateToView("profile")}
             />
           ) : null}
-          <ArtistCatalogDemosView
-            demos={demos}
+          <DemosViewProfessional
+            demos={demos as any}
             onNavigate={() => {
               navigateToView("submit");
             }}
@@ -290,7 +283,7 @@ export default function ArtistView({ view: propView }: { view?: string }) {
             pagination={earningsPagination}
             onPageChange={(page) => refreshView("earnings", page)}
             stats={stats}
-            onWithdrawClick={withdrawal.open}
+            withdrawal={withdrawal}
           />
         </>
       ) : null}
@@ -338,124 +331,6 @@ export default function ArtistView({ view: propView }: { view?: string }) {
         />
       ) : null}
 
-      {withdrawal.isOpen ? (
-        <DashboardModal
-          title="Withdraw Funds"
-          description={
-            <>
-              Available balance:{" "}
-              <span style={{ color: "var(--accent)" }}>
-                $
-                {Number(stats.available ?? stats.balance ?? 0).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </>
-          }
-          onClose={withdrawal.close}
-        >
-          <form onSubmit={withdrawal.handleSubmit} style={{ display: "grid", gap: "20px" }}>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 900,
-                  color: DASHBOARD_THEME.muted,
-                  letterSpacing: "1px",
-                  marginBottom: "8px",
-                }}
-              >
-                Amount (USD)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={withdrawal.amount}
-                onChange={(event) => withdrawal.setAmount(event.target.value)}
-                placeholder="0.00"
-                style={inputStyle}
-              />
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 900,
-                  color: DASHBOARD_THEME.muted,
-                  letterSpacing: "1px",
-                  marginBottom: "8px",
-                }}
-              >
-                Payment Method
-              </label>
-              <select
-                value={withdrawal.method}
-                onChange={(event) => withdrawal.setMethod(event.target.value)}
-                style={inputStyle}
-              >
-                <option value="BANK_TRANSFER">Bank Transfer (IBAN)</option>
-                <option value="PAYPAL">PayPal</option>
-                <option value="CRYPTO">Crypto (USDT/BTC)</option>
-                <option value="WISE">Wise</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 900,
-                  color: DASHBOARD_THEME.muted,
-                  letterSpacing: "1px",
-                  marginBottom: "8px",
-                }}
-              >
-                Payment Details / Notes
-              </label>
-              <textarea
-                value={withdrawal.notes}
-                onChange={(event) => withdrawal.setNotes(event.target.value)}
-                placeholder="IBAN, email, wallet address, or other payout details"
-                style={{ ...inputStyle, minHeight: "90px", resize: "none" }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
-              <button
-                type="submit"
-                disabled={withdrawal.submitting}
-                style={{
-                  flex: 2,
-                  ...artistSharedViewProps.btnStyle,
-                  background: "var(--accent)",
-                  color: "#000",
-                  border: "none",
-                  height: "45px",
-                }}
-              >
-                {withdrawal.submitting ? "Processing..." : "Submit Request"}
-              </button>
-              <button
-                type="button"
-                onClick={withdrawal.close}
-                style={{
-                  flex: 1,
-                  ...artistSharedViewProps.btnStyle,
-                  background: "rgba(255,255,255,0.05)",
-                  height: "45px",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </DashboardModal>
-      ) : null}
     </div>
   );
 }

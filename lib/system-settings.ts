@@ -34,7 +34,7 @@ export type SystemSettingsConfig = PublicSettings & {
 
 export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   genres: ["Hip-Hop", "R&B", "Pop", "Electronic", "Phonk", "Brazilian Funk", "Other"],
-  siteName: "LOST MUSIC",
+  siteName: process.env.NEXT_PUBLIC_SITE_NAME ? `${process.env.NEXT_PUBLIC_SITE_NAME} MUSIC` : "LOST MUSIC",
   heroText: "THE NEW ORDER",
   heroSubText: "INDEPENDENT DISTRIBUTION REDEFINED.",
   featuredReleaseId: null,
@@ -50,7 +50,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   showStats: true,
   registrationsOpen: true,
   maintenanceMode: false,
-  joinHeroTitle: "WORK WITH THE LOST. COMPANY",
+  joinHeroTitle: `WORK WITH THE ${process.env.NEXT_PUBLIC_SITE_NAME || "LOST"}. COMPANY`,
   joinHeroSub: "A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS",
 };
 

@@ -39,26 +39,6 @@ export const glassStyle: CSSProperties = {
     "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
 };
 
-/** @deprecated Use Tailwind class `glass-card p-5` instead */
-export const glassCardStyle: CSSProperties = {
-  ...glassStyle,
-  padding: "20px",
-  position: "relative",
-};
-
-/** @deprecated Use Tailwind class `glass-card p-5` instead */
-export const statCardStyle: CSSProperties = {
-  ...glassStyle,
-  padding: "20px",
-  position: "relative",
-};
-
-/** @deprecated Use Tailwind class `glass-section` instead */
-export const glassSectionStyle: CSSProperties = {
-  ...glassStyle,
-  padding: "24px",
-  position: "relative",
-};
 
 /** @deprecated Use Tailwind class `dash-th` instead */
 export const thStyle: CSSProperties = {
@@ -101,14 +81,6 @@ export const btnStyle: CSSProperties = {
   WebkitBackdropFilter: "blur(10px)",
 };
 
-/** @deprecated Use Tailwind class `dash-btn-primary` instead */
-export const btnPrimaryStyle: CSSProperties = {
-  ...btnStyle,
-  background: "#fff",
-  color: "#000",
-  border: "none",
-  fontWeight: "900",
-};
 
 /** @deprecated Use Tailwind class `dash-input` instead */
 export const inputStyle: CSSProperties = {
@@ -125,33 +97,3 @@ export const inputStyle: CSSProperties = {
   WebkitBackdropFilter: "blur(10px)",
 };
 
-/** @deprecated Use Tailwind class `dash-modal-overlay` instead */
-export const modalOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.8)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  zIndex: 50,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-/** @deprecated Use Tailwind class `dash-modal` instead */
-export const modalStyle: CSSProperties = {
-  ...glassStyle,
-  background: "rgba(15,15,15,0.95)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  padding: "24px",
-  maxWidth: "600px",
-  width: "90%",
-  maxHeight: "85vh",
-  overflowY: "auto",
-};
-
-/** @deprecated Use Tailwind class `glass-card p-0` instead */
-export const tableContainerStyle: CSSProperties = {
-  ...glassStyle,
-  padding: 0,
-};

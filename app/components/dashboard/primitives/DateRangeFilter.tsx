@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback } from 'react';
 import { Calendar } from 'lucide-react';
-import { Button } from '@heroui/react';
+import { ToggleButton, ToggleButtonGroup } from '@heroui/react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,7 +70,7 @@ function buildPresets(): Preset[] {
     return [
         {
             label: 'Last 7 days',
-            shortLabel: '7d',
+            shortLabel: '7D',
             getRange: () => {
                 const start = new Date(today);
                 start.setDate(start.getDate() - 7);
@@ -79,7 +79,7 @@ function buildPresets(): Preset[] {
         },
         {
             label: 'Last 30 days',
-            shortLabel: '30d',
+            shortLabel: '30D',
             getRange: () => {
                 const start = new Date(today);
                 start.setDate(start.getDate() - 30);
@@ -88,7 +88,7 @@ function buildPresets(): Preset[] {
         },
         {
             label: 'This month',
-            shortLabel: 'Month',
+            shortLabel: 'MONTH',
             getRange: () => ({
                 start: new Date(now.getFullYear(), now.getMonth(), 1),
                 end: today,
@@ -96,7 +96,7 @@ function buildPresets(): Preset[] {
         },
         {
             label: 'Last month',
-            shortLabel: 'Prev',
+            shortLabel: 'PREV',
             getRange: () => ({
                 start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
                 end: new Date(now.getFullYear(), now.getMonth(), 0),
@@ -104,7 +104,7 @@ function buildPresets(): Preset[] {
         },
         {
             label: 'This year',
-            shortLabel: 'Year',
+            shortLabel: 'YEAR',
             getRange: () => ({
                 start: new Date(now.getFullYear(), 0, 1),
                 end: today,
@@ -112,7 +112,7 @@ function buildPresets(): Preset[] {
         },
         {
             label: 'All time',
-            shortLabel: 'All',
+            shortLabel: 'ALL',
             getRange: () => ({ start: null, end: null }),
         },
     ];
@@ -136,7 +136,7 @@ function toInputValue(date: Date | null): string {
 
 export default function DateRangeFilter({ onChange, className = '' }: DateRangeFilterProps) {
     const [range, setRange] = useState<DateRange>({ start: null, end: null });
-    const [activePreset, setActivePreset] = useState<string>('All');
+    const [activePreset, setActivePreset] = useState<string>('ALL');
     const presets = buildPresets();
 
     const update = useCallback(
@@ -166,16 +166,23 @@ export default function DateRangeFilter({ onChange, className = '' }: DateRangeF
         update(next);
     };
 
+    const handlePresetChange = (keys: Set<string | number>) => {
+        const key = [...keys][0] as string | undefined;
+        if (!key) return;
+        const preset = presets.find((p) => p.shortLabel === key);
+        if (preset) update(preset.getRange(), preset.shortLabel);
+    };
+
     return (
-        <div className={`flex flex-col gap-2 ${className}`}>
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className={`flex flex-col sm:flex-row sm:items-center gap-2 ${className}`}>
+            <div className="flex items-center gap-2">
                 <Calendar size={14} className="text-muted shrink-0" />
                 <input
                     type="date"
                     aria-label="Start date"
                     value={toInputValue(range.start)}
                     onChange={handleStartChange}
-                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs font-black text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="flex-1 sm:flex-none px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs font-black text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                 />
                 <span className="text-[10px] font-black text-muted">&mdash;</span>
                 <input
@@ -183,21 +190,29 @@ export default function DateRangeFilter({ onChange, className = '' }: DateRangeF
                     aria-label="End date"
                     value={toInputValue(range.end)}
                     onChange={handleEndChange}
-                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs font-black text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="flex-1 sm:flex-none px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs font-black text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                 />
-                <div className="flex items-center gap-1 ml-1">
-                    {presets.map((p) => (
-                        <Button
+            </div>
+            <div className="overflow-x-auto">
+                <ToggleButtonGroup
+                    selectionMode="single"
+                    disallowEmptySelection
+                    selectedKeys={new Set([activePreset])}
+                    onSelectionChange={handlePresetChange as (keys: Set<string | number>) => void}
+                    size="sm"
+                >
+                    {presets.map((p, i) => (
+                        <ToggleButton
                             key={p.shortLabel}
-                            size="sm"
-                            variant={activePreset === p.shortLabel ? 'secondary' : 'ghost'}
-                            onPress={() => update(p.getRange(), p.shortLabel)}
+                            id={p.shortLabel}
+                            aria-label={p.label}
                             className="text-[10px] font-black tracking-wide px-2 min-w-0"
                         >
-                            {p.shortLabel.toUpperCase()}
-                        </Button>
+                            {i > 0 && <ToggleButtonGroup.Separator />}
+                            {p.shortLabel}
+                        </ToggleButton>
                     ))}
-                </div>
+                </ToggleButtonGroup>
             </div>
         </div>
     );

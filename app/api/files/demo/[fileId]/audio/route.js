@@ -1,27 +1,16 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
-import { stat } from "fs/promises";
 import { extname } from "path";
 import prisma from "@/lib/prisma";
 import { createFileWebStream } from "@/lib/file-stream-response";
-import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
+import { resolveDemoFileForRead } from "@/lib/demo-file-storage";
 
 const MIME_BY_EXT = {
     ".mp3": "audio/mpeg",
     ".wav": "audio/wav",
     ".m4a": "audio/mp4",
     ".ogg": "audio/ogg",
-};
-
-const getCandidatePaths = (filepath) => {
-    if (!filepath) return [];
-    const normalized = filepath.replace(/^\/+/, "");
-
-    if (normalized.includes("..")) return [];
-    if (!normalized.startsWith("private/uploads/demos/")) return [];
-
-    return resolvePrivateStorageCandidates(normalized, ["private/uploads/demos/"]);
 };
 
 export async function GET(req, { params }) {
@@ -53,20 +42,13 @@ export async function GET(req, { params }) {
             return new Response("Audio file not found", { status: 404 });
         }
 
-        const candidates = getCandidatePaths(demoFile.filepath);
-        let filePath = null;
-        let info = null;
-        for (const candidate of candidates) {
-            try {
-                const s = await stat(candidate);
-                filePath = candidate;
-                info = s;
-                break;
-            } catch {
-                // Try next candidate.
-            }
+        const resolvedFile = await resolveDemoFileForRead(demoFile.filepath);
+        if (!resolvedFile) {
+            return new Response("File not found", { status: 404 });
         }
-        if (!filePath || !info) return new Response("File not found", { status: 404 });
+
+        const filePath = resolvedFile.path;
+        const info = resolvedFile.info;
 
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_BY_EXT[ext] || "application/octet-stream";

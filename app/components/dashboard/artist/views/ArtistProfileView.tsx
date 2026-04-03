@@ -4,6 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Lock, Shield } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  Button,
+  Card,
+  Input,
+  Label,
+  Switch,
+  TextArea,
+  TextField,
+} from "@heroui/react";
 
 import {
   dashboardRequestJson,
@@ -11,11 +20,6 @@ import {
 } from "@/app/components/dashboard/lib/dashboard-request";
 import DashboardLoader from "@/app/components/dashboard/DashboardLoader";
 import DiscordAccountPanel from "@/app/components/dashboard/discord/DiscordAccountPanel";
-import {
-  DASHBOARD_THEME,
-  btnStyle,
-  inputStyle,
-} from "@/app/components/dashboard/artist/lib/shared";
 
 type ArtistProfileViewProps = {
   onSessionRefresh: () => Promise<void>;
@@ -80,7 +84,6 @@ export default function ArtistProfileView({
 
   const oauthStatus = useMemo(() => {
     if (!linkStatusCode) return null;
-
     const statusMap: Record<string, { type: string; text: string }> = {
       linked: { type: "success", text: "Discord account linked successfully." },
       "already-linked": { type: "warning", text: "This Discord account is already linked to another user." },
@@ -96,13 +99,7 @@ export default function ArtistProfileView({
       "identify-empty": { type: "error", text: "Discord identity payload is empty." },
       "link-failed": { type: "error", text: "Failed to link the Discord account." },
     };
-
-    return (
-      statusMap[linkStatusCode] || {
-        type: "warning",
-        text: `Discord status: ${linkStatusCode}`,
-      }
-    );
+    return statusMap[linkStatusCode] || { type: "warning", text: `Discord status: ${linkStatusCode}` };
   }, [linkStatusCode]);
 
   const email = draft.email ?? profile?.email ?? "";
@@ -116,8 +113,7 @@ export default function ArtistProfileView({
   const notifyEarnings = draft.notifyEarnings ?? (profile?.notifyEarnings !== false);
   const notifySupport = draft.notifySupport ?? (profile?.notifySupport !== false);
   const notifyContracts = draft.notifyContracts ?? (profile?.notifyContracts !== false);
-  const discordNotifyEnabled =
-    draft.discordNotifyEnabled ?? (profile?.discordNotifyEnabled !== false);
+  const discordNotifyEnabled = draft.discordNotifyEnabled ?? (profile?.discordNotifyEnabled !== false);
 
   const profileMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -147,16 +143,7 @@ export default function ArtistProfileView({
 
   const handleSave = async () => {
     try {
-      await profileMutation.mutateAsync({
-        fullName,
-        legalName,
-        phoneNumber,
-        address,
-        notifyDemos,
-        notifyEarnings,
-        notifySupport,
-        notifyContracts,
-      });
+      await profileMutation.mutateAsync({ fullName, legalName, phoneNumber, address, notifyDemos, notifyEarnings, notifySupport, notifyContracts });
       showToast("Profile updated successfully.", "success");
     } catch (error) {
       showToast(getDashboardErrorMessage(error, "Failed to save the profile."), "error");
@@ -168,12 +155,10 @@ export default function ArtistProfileView({
       showToast("Link Discord to enable notifications.", "warning");
       return;
     }
-
     const nextValue = !discordNotifyEnabled;
-
     try {
       await profileMutation.mutateAsync({ discordNotifyEnabled: nextValue });
-      setDraft((current) => ({ ...current, discordNotifyEnabled: nextValue }));
+      setDraft((c) => ({ ...c, discordNotifyEnabled: nextValue }));
       showToast(`Discord notifications ${nextValue ? "enabled" : "disabled"}.`, "success");
     } catch (error) {
       showToast(getDashboardErrorMessage(error, "Failed to update Discord notifications."), "error");
@@ -181,25 +166,13 @@ export default function ArtistProfileView({
   };
 
   const handlePasswordChange = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast("Please fill in all password fields.", "warning");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showToast("New passwords do not match.", "warning");
-      return;
-    }
-    if (newPassword.length < 8) {
-      showToast("New password must be at least 8 characters long.", "warning");
-      return;
-    }
-
+    if (!currentPassword || !newPassword || !confirmPassword) { showToast("Please fill in all password fields.", "warning"); return; }
+    if (newPassword !== confirmPassword) { showToast("New passwords do not match.", "warning"); return; }
+    if (newPassword.length < 8) { showToast("New password must be at least 8 characters long.", "warning"); return; }
     try {
       const data = await passwordMutation.mutateAsync();
       showToast((data as { message?: string })?.message || "Password updated successfully.", "success");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } catch (error) {
       showToast(getDashboardErrorMessage(error, "Failed to update the password."), "error");
     }
@@ -207,23 +180,9 @@ export default function ArtistProfileView({
 
   const handleStartDiscordLink = async () => {
     try {
-      const data = await dashboardRequestJson<{ linked?: boolean; authorizeUrl?: string }>("/api/profile/discord-link", {
-        method: "POST",
-        context: "start discord link",
-        retry: false,
-      });
-
-      if (data?.linked) {
-        showToast("Discord account is already linked.", "info");
-        await onDiscordLinkChange();
-        return;
-      }
-
-      if (!data?.authorizeUrl) {
-        showToast("Missing Discord authorize URL.", "error");
-        return;
-      }
-
+      const data = await dashboardRequestJson<{ linked?: boolean; authorizeUrl?: string }>("/api/profile/discord-link", { method: "POST", context: "start discord link", retry: false });
+      if (data?.linked) { showToast("Discord account is already linked.", "info"); await onDiscordLinkChange(); return; }
+      if (!data?.authorizeUrl) { showToast("Missing Discord authorize URL.", "error"); return; }
       window.location.href = data.authorizeUrl;
     } catch (error) {
       showToast(getDashboardErrorMessage(error, "Failed to start the Discord link flow."), "error");
@@ -233,14 +192,10 @@ export default function ArtistProfileView({
   const handleDiscordUnlink = () => {
     showConfirm(
       "Disconnect Discord?",
-      "This removes your Discord account from LOST and disables bot-linked actions until you connect again.",
+      `This removes your Discord account from ${process.env.NEXT_PUBLIC_SITE_NAME || "LOST"} and disables bot-linked actions until you connect again.`,
       async () => {
         try {
-          await dashboardRequestJson("/api/profile/discord-link", {
-            method: "DELETE",
-            context: "unlink discord",
-            retry: false,
-          });
+          await dashboardRequestJson("/api/profile/discord-link", { method: "DELETE", context: "unlink discord", retry: false });
           showToast("Discord account disconnected.", "success");
           await onDiscordLinkChange();
         } catch (error) {
@@ -254,164 +209,178 @@ export default function ArtistProfileView({
     return <DashboardLoader label="LOADING PROFILE" subLabel="Preparing artist account settings..." />;
   }
 
-  const labelStyle = {
-    display: "block",
-    fontSize: "12px",
-    letterSpacing: "0.8px",
-    color: DASHBOARD_THEME.muted,
-    marginBottom: "8px",
-    fontWeight: 800,
-  };
+  const notificationItems = [
+    { label: "Demo Updates", key: "notifyDemos" as const, value: notifyDemos },
+    { label: "New Contracts", key: "notifyContracts" as const, value: notifyContracts },
+    { label: "Earnings Reports", key: "notifyEarnings" as const, value: notifyEarnings },
+    { label: "Support Tickets", key: "notifySupport" as const, value: notifySupport },
+  ];
 
   return (
-    <div style={{ maxWidth: "1000px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "30px" }}>
-        <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: "12px", padding: "40px", height: "fit-content" }}>
-          <h3 style={{ fontSize: "12px", letterSpacing: "3px", fontWeight: 900, color: "#fff", marginBottom: "25px", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "15px" }}>
-            Profile Details
-          </h3>
+    <div className="max-w-5xl">
+      <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
 
-          {[
-            {
-              label: "Email Address",
-              value: email,
-              readOnly: true,
-              type: "email",
-              help: "Email changes are handled separately during verification or through support.",
-            },
-            { label: "Full Name (Legal)", value: fullName, key: "fullName" },
-            { label: "Legal Name (Contract)", value: legalName, key: "legalName" },
-            { label: "Phone Number", value: phoneNumber, key: "phoneNumber" },
-          ].map((field) => (
-            <div key={field.label} style={{ marginBottom: "25px" }}>
-              <label style={labelStyle}>{field.label}</label>
-              <input
-                type={field.type || "text"}
-                value={field.value}
-                onChange={(event) => {
-                  if (!field.key) return;
-                  setDraft((current) => ({ ...current, [field.key]: event.target.value }));
-                }}
-                readOnly={field.readOnly}
-                style={{ ...inputStyle, color: field.readOnly ? "#888" : "#fff", cursor: field.readOnly ? "not-allowed" : "text" }}
-              />
-              {field.help ? (
-                <div style={{ fontSize: "10px", color: "#666", marginTop: "8px", lineHeight: "1.5" }}>
-                  {field.help}
-                </div>
-              ) : null}
-            </div>
-          ))}
+        {/* ── Left: Profile Details ────────────────────── */}
+        <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.2 }}>
+          <Card variant="default" className="ds-glass border-0">
+            <Card.Header>
+              <Card.Title className="text-[11px] font-black uppercase tracking-[0.2em] ds-text">
+                Profile Details
+              </Card.Title>
+            </Card.Header>
+            <Card.Content className="flex flex-col gap-5">
+              {/* Email – read-only */}
+              <TextField fullWidth name="email" isReadOnly value={email}>
+                <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Email Address</Label>
+                <Input className="cursor-not-allowed opacity-60" />
+                <p className="mt-1 text-[10px] leading-relaxed ds-text-muted">
+                  Email changes are handled via support.
+                </p>
+              </TextField>
 
-          <div style={{ marginBottom: "25px" }}>
-            <label style={labelStyle}>Address</label>
-            <textarea
-              value={address}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, address: event.target.value }))
-              }
-              style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
-            />
-          </div>
+              <TextField fullWidth name="fullName" value={fullName} onChange={(val) => setDraft((d) => ({ ...d, fullName: val }))}>
+                <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Full Name (Legal)</Label>
+                <Input />
+              </TextField>
 
-          {[
-            { label: "Stage Name", value: stageName, help: "Contact support to change your artist name." },
-            { label: "Spotify Link", value: spotifyUrl, help: "Contact support to update your Spotify link." },
-          ].map((field) => (
-            <div key={field.label} style={{ marginBottom: "30px", opacity: 0.7 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>{field.label}</label>
-                <Lock size={10} color="var(--accent)" />
-              </div>
-              <input value={field.value} readOnly style={{ ...inputStyle, cursor: "not-allowed", borderColor: "rgba(255,255,255,0.05)" }} />
-              <p style={{ fontSize: "12px", color: DASHBOARD_THEME.muted, marginTop: "6px", fontStyle: "italic" }}>
-                {field.help}
-              </p>
-            </div>
-          ))}
+              <TextField fullWidth name="legalName" value={legalName} onChange={(val) => setDraft((d) => ({ ...d, legalName: val }))}>
+                <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Legal Name (Contract)</Label>
+                <Input />
+              </TextField>
 
-          <button
-            onClick={handleSave}
-            disabled={profileMutation.isPending}
-            style={{ ...btnStyle, background: DASHBOARD_THEME.accent, color: "#071311", border: "none", width: "100%", padding: "15px", opacity: profileMutation.isPending ? 0.6 : 1 }}
-          >
-            {profileMutation.isPending ? "Saving..." : "Save Changes"}
-          </button>
-        </motion.div>
+              <TextField fullWidth name="phoneNumber" value={phoneNumber} onChange={(val) => setDraft((d) => ({ ...d, phoneNumber: val }))}>
+                <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Phone Number</Label>
+                <Input />
+              </TextField>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
-          <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: "12px", padding: "30px" }}>
-            <DiscordAccountPanel
-              discordLink={discordLink}
-              oauthStatus={oauthStatus}
-              linking={false}
-              unlinking={false}
-              discordNotifyEnabled={discordNotifyEnabled}
-              onStartLink={handleStartDiscordLink}
-              onUnlink={handleDiscordUnlink}
-              onToggleNotifications={handleDiscordNotifyToggle}
-              theme={DASHBOARD_THEME}
-              buttonStyle={btnStyle}
-            />
-          </motion.div>
+              <TextField fullWidth name="address" value={address} onChange={(val) => setDraft((d) => ({ ...d, address: val }))}>
+                <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Address</Label>
+                <TextArea className="min-h-20 resize-y" />
+              </TextField>
 
-          <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: "12px", padding: "30px" }}>
-            <h3 style={{ fontSize: "12px", letterSpacing: "3px", fontWeight: 900, color: "#fff", marginBottom: "25px", display: "flex", alignItems: "center", gap: "10px" }}>
-              <Shield size={14} color="var(--accent)" /> Security
-            </h3>
-
-            {[
-              { label: "Current Password", value: currentPassword, setValue: setCurrentPassword },
-              { label: "New Password", value: newPassword, setValue: setNewPassword },
-              { label: "Confirm Password", value: confirmPassword, setValue: setConfirmPassword },
-            ].map((field) => (
-              <div key={field.label} style={{ marginBottom: "20px" }}>
-                <label style={labelStyle}>{field.label}</label>
-                <input type="password" value={field.value} onChange={(event) => field.setValue(event.target.value)} style={inputStyle} placeholder="••••••••" />
-              </div>
-            ))}
-
-            <button
-              onClick={handlePasswordChange}
-              disabled={passwordMutation.isPending}
-              style={{ width: "100%", padding: "12px", background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, color: "#fff", fontSize: "12px", fontWeight: 900, letterSpacing: "0.8px", cursor: passwordMutation.isPending ? "wait" : "pointer", opacity: passwordMutation.isPending ? 0.5 : 1 }}
-            >
-              {passwordMutation.isPending ? "Updating..." : "Update Password"}
-            </button>
-          </motion.div>
-
-          <motion.div whileHover={{ y: -2 }} style={{ background: DASHBOARD_THEME.surfaceElevated, border: `1px solid ${DASHBOARD_THEME.border}`, borderRadius: "12px", padding: "30px" }}>
-            <h3 style={{ fontSize: "12px", letterSpacing: "3px", fontWeight: 900, color: "#fff", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
-              <Bell size={14} color="#fff" /> Notifications
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* Locked fields */}
               {[
-                { label: "Demo Updates", state: notifyDemos, key: "notifyDemos" },
-                { label: "New Contracts", state: notifyContracts, key: "notifyContracts" },
-                { label: "Earnings Reports", state: notifyEarnings, key: "notifyEarnings" },
-                { label: "Support Tickets", state: notifySupport, key: "notifySupport" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  onClick={() =>
-                    setDraft((current) => ({ ...current, [item.key]: !item.state }))
-                  }
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: "6px", background: DASHBOARD_THEME.surfaceSoft, border: `1px solid ${DASHBOARD_THEME.border}`, cursor: "pointer" }}
-                >
-                  <span style={{ fontSize: "12px", fontWeight: 800, color: DASHBOARD_THEME.muted }}>{item.label}</span>
-                  <div style={{ width: "32px", height: "18px", borderRadius: "10px", background: item.state ? "var(--status-success)" : "rgba(255,255,255,0.1)", position: "relative" }}>
-                    <div style={{ position: "absolute", top: "2px", left: item.state ? "16px" : "2px", width: "14px", height: "14px", borderRadius: "50%", background: "#fff" }} />
+                { label: "Stage Name", value: stageName, help: "Contact support to change your artist name." },
+                { label: "Spotify Link", value: spotifyUrl, help: "Contact support to update your Spotify link." },
+              ].map((field) => (
+                <div key={field.label} className="opacity-60">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-widest ds-text-label">{field.label}</span>
+                    <Lock size={10} className="text-[#e44ccf]" />
                   </div>
+                  <input
+                    value={field.value}
+                    readOnly
+                    className="w-full cursor-not-allowed rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 py-2.5 text-[13px] ds-text-muted outline-none"
+                  />
+                  <p className="mt-1 text-[10px] italic ds-text-muted">{field.help}</p>
                 </div>
               ))}
-            </div>
+            </Card.Content>
+            <Card.Footer>
+              <Button
+                variant="primary"
+                className="w-full"
+                onPress={handleSave}
+                isDisabled={profileMutation.isPending}
+              >
+                {profileMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </Card.Footer>
+          </Card>
+        </motion.div>
+
+        {/* ── Right column ─────────────────────────────── */}
+        <div className="flex flex-col gap-5">
+          {/* Discord */}
+          <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.2 }}>
+            <Card variant="default" className="ds-glass border-0">
+              <Card.Content className="p-5">
+                <DiscordAccountPanel
+                  discordLink={discordLink}
+                  oauthStatus={oauthStatus}
+                  linking={false}
+                  unlinking={false}
+                  discordNotifyEnabled={discordNotifyEnabled}
+                  onStartLink={handleStartDiscordLink}
+                  onUnlink={handleDiscordUnlink}
+                  onToggleNotifications={handleDiscordNotifyToggle}
+                />
+              </Card.Content>
+            </Card>
+          </motion.div>
+
+          {/* Security */}
+          <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.2 }}>
+            <Card variant="default" className="ds-glass border-0">
+              <Card.Header>
+                <Card.Title className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] ds-text">
+                  <Shield size={13} className="text-[#e44ccf]" /> Security
+                </Card.Title>
+              </Card.Header>
+              <Card.Content className="flex flex-col gap-4">
+                <TextField fullWidth name="currentPassword" type="password" value={currentPassword} onChange={setCurrentPassword}>
+                  <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Current Password</Label>
+                  <Input placeholder="••••••••" />
+                </TextField>
+                <TextField fullWidth name="newPassword" type="password" value={newPassword} onChange={setNewPassword}>
+                  <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">New Password</Label>
+                  <Input placeholder="••••••••" />
+                </TextField>
+                <TextField fullWidth name="confirmPassword" type="password" value={confirmPassword} onChange={setConfirmPassword}>
+                  <Label className="text-[11px] font-black uppercase tracking-widest ds-text-label">Confirm Password</Label>
+                  <Input placeholder="••••••••" />
+                </TextField>
+              </Card.Content>
+              <Card.Footer>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onPress={handlePasswordChange}
+                  isDisabled={passwordMutation.isPending}
+                >
+                  {passwordMutation.isPending ? "Updating..." : "Update Password"}
+                </Button>
+              </Card.Footer>
+            </Card>
+          </motion.div>
+
+          {/* Notifications */}
+          <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.2 }}>
+            <Card variant="default" className="ds-glass border-0">
+              <Card.Header>
+                <Card.Title className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] ds-text">
+                  <Bell size={13} className="ds-text-muted" /> Notifications
+                </Card.Title>
+              </Card.Header>
+              <Card.Content className="flex flex-col gap-3">
+                {notificationItems.map((item) => (
+                  <div
+                    key={item.key}
+                    className="ds-item flex items-center justify-between rounded-2xl px-4 py-3"
+                  >
+                    <span className="text-[12px] font-bold ds-text-sub">{item.label}</span>
+                    <Switch
+                      isSelected={item.value}
+                      onChange={(val) => setDraft((d) => ({ ...d, [item.key]: val }))}
+                    >
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
+                    </Switch>
+                  </div>
+                ))}
+              </Card.Content>
+            </Card>
           </motion.div>
         </div>
       </div>
 
-      <p style={{ marginTop: "30px", fontSize: "12px", color: DASHBOARD_THEME.muted, textAlign: "center", letterSpacing: "0.6px" }}>
-        Member since: {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "Unknown"}
-      </p>
+      {profile?.createdAt && (
+        <p className="mt-6 text-center text-[11px] ds-text-faint">
+          Member since: {new Date(profile.createdAt).toLocaleDateString()}
+        </p>
+      )}
     </div>
   );
 }

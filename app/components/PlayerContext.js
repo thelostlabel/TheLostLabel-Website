@@ -51,8 +51,9 @@ export function PlayerProvider({ children }) {
     }, [volume]);
 
     const playTrack = (track) => {
-        if (!track?.previewUrl) {
-            console.warn("No preview URL for track:", track);
+        // Allow tracks with spotifyUrl even if no previewUrl
+        if (!track?.previewUrl && !track?.spotifyUrl) {
+            console.warn("No previewUrl or spotifyUrl for track:", track);
             return;
         }
 
@@ -65,7 +66,7 @@ export function PlayerProvider({ children }) {
         setIsPlaying(true);
         setIsExpanded(true); // Auto-expand when starting new track
 
-        if (audioRef.current) {
+        if (track.previewUrl && audioRef.current) {
             audioRef.current.src = track.previewUrl;
             audioRef.current.load();
             const playPromise = audioRef.current.play();
@@ -76,6 +77,9 @@ export function PlayerProvider({ children }) {
                     setIsPlaying(false);
                 });
             }
+        } else if (!track.previewUrl) {
+            // Spotify-only track — just show the player bar, no audio element
+            setIsPlaying(false);
         }
     };
 

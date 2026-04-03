@@ -1,516 +1,74 @@
-.shell {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.05), transparent 32%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.03), transparent 28%),
-    var(--shell-background);
-  color: var(--shell-color);
-}
-
-.shell,
-.shell :global(button),
-.shell :global(input),
-.shell :global(select),
-.shell :global(textarea),
-.shell :global(th),
-.shell :global(td),
-.shell :global(a) {
-  font-family: "Space Grotesk", "Sora", system-ui, -apple-system, sans-serif;
-}
-
-.shell :global(h1),
-.shell :global(h2),
-.shell :global(h3),
-.shell :global(h4) {
-  font-family: "Sora", "Space Grotesk", system-ui, -apple-system, sans-serif;
-  letter-spacing: 0.02em;
-}
+/* Layout-only CSS: positions, transitions, responsive breakpoints. No colors. */
 
 .ambient {
   position: fixed;
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 15% 18%, rgba(255, 255, 255, 0.04), transparent 30%),
-    radial-gradient(circle at 85% 8%, rgba(255, 255, 255, 0.03), transparent 25%);
-}
-
-.mobileRailToggle {
-  display: none;
-  position: fixed;
-  left: 14px;
-  top: 14px;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  border: 1px solid var(--shell-border);
-  background: rgba(12, 12, 16, 0.86);
-  color: #fff;
-  z-index: 140;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+    radial-gradient(circle at 15% 18%, var(--ambient-1), transparent 30%),
+    radial-gradient(circle at 85% 8%, var(--ambient-2), transparent 25%);
+  z-index: 0;
 }
 
 .rail {
   position: fixed;
-  left: 16px;
-  top: 16px;
-  bottom: 16px;
-  z-index: 1100;
+  left: 12px;
+  top: 12px;
+  bottom: 12px;
+  z-index: 110;
   display: flex;
   flex-direction: column;
-  background: rgba(14, 14, 18, 0.82);
-  border: 1px solid var(--shell-border);
-  border-radius: 24px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(40px) saturate(140%);
   overflow: hidden;
-  transition: width 0.24s ease, transform 0.24s ease;
+  transition: width 0.22s ease, transform 0.22s ease;
+  background: var(--rail-bg);
 }
 
-.railTop {
-  padding: 18px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.015);
-}
-
-.railUserHead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.railUserAvatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(145deg, rgba(26, 26, 26, 0.95), rgba(12, 12, 12, 1));
-  display: grid;
-  place-items: center;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--shell-color);
-  flex-shrink: 0;
-}
-
-.railUserAvatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.railUserMeta {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.railUserName {
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-}
-
-.railUserRole {
-  color: var(--shell-muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.railModeSwitch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.railModeButton {
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+.mobileToggle {
+  display: none;
+  position: fixed;
+  left: 14px;
+  top: 14px;
+  z-index: 140;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.railModeButton:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.railModeButtonActive {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-.railNav {
-  flex: 1;
-  padding: 10px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.railSection {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.railSectionLabel {
-  margin: 8px 12px 4px;
-  color: rgba(255, 255, 255, 0.28);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.railItem {
-  width: 100%;
-  min-height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  text-decoration: none;
-  color: rgba(255, 255, 255, 0.52);
-  background: transparent;
-  transition: all 0.18s ease;
-  position: relative;
-}
-
-.railItem:hover {
-  background: rgba(255, 255, 255, 0.045);
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.railItemActive {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
-}
-
-.railItemActive::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  border-radius: 0 4px 4px 0;
-  background: #fff;
-}
-
-.railItemIcon {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.railItemLabel {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.railFooter {
-  padding: 10px 8px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(0, 0, 0, 0.16);
-}
-
-.railFooterButton {
-  width: 100%;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 0 12px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.railFooterButton:hover {
-  background: rgba(255, 255, 255, 0.045);
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 6, 11, 0.58);
-  z-index: 98;
-  backdrop-filter: blur(4px);
 }
 
 .main {
   min-height: 100vh;
-  padding: 14px 14px 14px 20px;
-  transition: margin-left 0.24s ease;
+  padding: 12px;
   position: relative;
   z-index: 2;
+  transition: margin-left 0.22s ease;
 }
 
-.window {
-  min-height: calc(100vh - 32px);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(12, 12, 16, 0.78);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
-  backdrop-filter: blur(34px) saturate(135%);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.toolbar {
-  min-height: 64px;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #fff;
-}
-
-.logoText {
-  text-transform: uppercase;
-  letter-spacing: 0.26em;
-  font-weight: 900;
-  font-size: 14px;
-  font-family: "Montserrat", system-ui, sans-serif;
-}
-
-.toolbarRight {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  flex: 1;
-}
-
-.searchContainer {
-  position: relative;
-  width: min(320px, 100%);
-}
-
-.searchIcon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--shell-muted);
-}
-
-.searchInput {
-  width: 100%;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 0 14px 0 36px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  outline: none;
-}
-
-.searchInput:focus {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.searchResults {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(9, 14, 26, 0.94);
-  padding: 6px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 40;
-}
-
-.searchResultItem {
-  width: 100%;
-  min-height: 38px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  text-align: left;
-}
-
-.searchResultItem:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.searchResultActive {
-  background: rgba(209, 213, 219, 0.12);
-  color: #d1d5db;
-  border-color: rgba(209, 213, 219, 0.24);
-}
-
-.searchEmpty {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  color: var(--shell-muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.searchResultIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-}
-
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(145deg, rgba(26, 26, 26, 0.95), rgba(12, 12, 12, 1));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #fff;
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.mobileBottomBar {
+  display: none;
 }
 
 .content {
   flex: 1;
-  padding: 14px 16px 18px;
+  padding: 16px 18px 20px;
   overflow-y: auto;
+  isolation: isolate;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: opacity, transform;
 }
 
-.content :global(.dashboard-view) {
-  width: 100%;
-  max-width: 100%;
-}
-
-.content :global(.artist-dashboard-view) {
-  padding: 0;
-}
-
-.content :global(.dashboard-view button:not(.glow-button)) {
-  border-radius: 12px;
-}
-
-.content :global(.dashboard-view input),
-.content :global(.dashboard-view select),
-.content :global(.dashboard-view textarea) {
-  border-radius: 12px;
-}
-
-.content :global(.dashboard-view table) {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-}
-
-.content :global(.dashboard-view th) {
-  color: #9ca3af;
-}
-
-.content :global(.dashboard-view td) {
-  color: #d1d5db;
-}
-
-.content :global(.admin-responsive-table) {
-  width: 100%;
-}
-
-@media (max-width: 1080px) {
-  .searchContainer {
-    width: 240px;
-  }
+.searchBox {
+  position: relative;
+  width: min(300px, 100%);
 }
 
 @media (max-width: 880px) {
-  .mobileRailToggle {
-    display: inline-flex;
+  .mobileToggle {
+    display: none;
   }
 
   .rail {
-    left: 12px;
-    top: 12px;
-    bottom: 12px;
     width: min(260px, calc(100vw - 24px)) !important;
     transform: translateX(-118%);
     z-index: 130;
@@ -523,51 +81,38 @@
   .main {
     margin-left: 0 !important;
     padding: 12px;
-    padding-top: 58px;
+    padding-bottom: 92px;
   }
 
-  .window {
-    min-height: calc(100vh - 70px);
-  }
-
-  .toolbar {
-    padding: 0 12px 0 14px;
-  }
-
-  .content {
-    padding: 12px;
+  .mobileBottomBar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 140;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    border-radius: 24px;
+    border: 1px solid var(--mobile-bar-border);
+    background: var(--mobile-bar-bg);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
   }
 }
 
 @media (max-width: 680px) {
-  .searchContainer {
+  .searchBox {
     display: none;
   }
 
-  .logoText {
-    font-size: 12px;
-    letter-spacing: 0.18em;
-  }
-}
-
-@media (max-width: 540px) {
-  .toolbar {
-    min-height: 56px;
-    padding: 10px 12px;
-  }
-
-  .logoText {
-    font-size: 11px;
-    letter-spacing: 0.14em;
-  }
-
-  .content {
-    padding: 10px;
-  }
-}
-
-@media (max-width: 440px) {
-  .logoText {
-    display: none;
+  .mobileBottomBar {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    gap: 4px;
+    padding: 7px;
+    border-radius: 22px;
   }
 }

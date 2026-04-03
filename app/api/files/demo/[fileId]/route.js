@@ -2,11 +2,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { canViewAllDemos, hasPortalPermission } from "@/lib/permissions";
 import prisma from "@/lib/prisma";
-import { stat } from "fs/promises";
-import { extname, join } from "path";
-import { spawn } from "child_process";
+import { extname } from "path";
 import { createFileWebStream } from "@/lib/file-stream-response";
-import { resolvePrivateStorageCandidates } from "@/lib/private-storage-paths";
+import { resolveDemoFileForRead } from "@/lib/demo-file-storage";
 
 const MIME_BY_EXT = {
   ".wav": "audio/wav",
@@ -21,43 +19,6 @@ const ALLOWED_PREFIXES = [
   "private/uploads/demos/",
   "uploads/demos/",
 ];
-
-const getCandidatePaths = (filepath) => {
-  if (!filepath) return [];
-  const normalized = filepath.replace(/^\/+/, "");
-
-  // Security: never allow path traversal
-  if (normalized.includes("..")) return [];
-
-  // Accept known safe prefixes
-  const isAllowed = ALLOWED_PREFIXES.some(p => normalized.startsWith(p));
-  if (!isAllowed) {
-    console.warn(`[demo-file] Rejected path (no allowed prefix): ${normalized}`);
-    return [];
-  }
-
-  const candidates = resolvePrivateStorageCandidates(normalized, ALLOWED_PREFIXES);
-
-  console.info(`[demo-file] Trying paths for "${normalized}":`, candidates);
-  return candidates;
-};
-
-const getRemoteCandidatePaths = (filepath, remoteRoot) => {
-  if (!filepath || !remoteRoot) return [];
-
-  const normalized = filepath.replace(/^\/+/, "");
-  if (normalized.includes("..")) return [];
-
-  const relativeToApp = normalized;
-  const relativeToPrivate = normalized.startsWith("private/")
-    ? normalized.replace(/^private\/+/, "")
-    : normalized;
-
-  return Array.from(new Set([
-    join(remoteRoot, relativeToApp),
-    join(remoteRoot, relativeToPrivate),
-  ]));
-};
 
 export async function GET(req, { params }) {
   const session = await getServerSession(authOptions);
@@ -83,126 +44,13 @@ export async function GET(req, { params }) {
   }
 
   try {
-    const candidates = getCandidatePaths(demoFile.filepath);
-    let filePath = null;
-    let fileStat = null;
-
-    for (const candidate of candidates) {
-      try {
-        const s = await stat(candidate);
-        filePath = candidate;
-        fileStat = s;
-        break;
-      } catch {
-        // Try next candidate path.
-      }
-    }
-
-    if (!filePath || !fileStat) {
-      // Local fallback for development: if file not found locally, stream via SSH if configured
-      const remotePath = process.env.REMOTE_STORAGE_PATH;
-      if (remotePath && process.env.NODE_ENV === "development") {
-        const remoteCandidates = getRemoteCandidatePaths(demoFile.filepath, remotePath);
-        const fullRemotePath = remoteCandidates[0];
-
-        console.info(`[demo-file] Local file not found, trying SSH paths for "${demoFile.filepath}":`, remoteCandidates);
-
-        const ext = extname(demoFile.filepath).toLowerCase();
-        const contentType = MIME_BY_EXT[ext] || "audio/mpeg";
-
-        const { execFile } = await import("child_process");
-        const execFileAsync = (...args) =>
-          new Promise((resolve, reject) => {
-            execFile(...args, (error, stdout, stderr) => {
-              if (error) {
-                reject(Object.assign(error, { stdout, stderr }));
-                return;
-              }
-              resolve({ stdout, stderr });
-            });
-          });
-
-        let fileSize = null;
-        let resolvedRemotePath = null;
-
-        for (const candidate of remoteCandidates) {
-          try {
-            const { stdout } = await execFileAsync("ssh", [
-              "-o", "StrictHostKeyChecking=no",
-              "-o", "BatchMode=yes",
-              "-o", "ConnectTimeout=5",
-              "root@152.53.142.222",
-              "stat",
-              "-c%s",
-              candidate,
-            ]);
-            resolvedRemotePath = candidate;
-            fileSize = parseInt(String(stdout).trim(), 10);
-            break;
-          } catch (err) {
-            console.warn(`[demo-file] Remote candidate missing or inaccessible: ${candidate}`);
-          }
-        }
-
-        if (!resolvedRemotePath) {
-          console.warn(`[demo-file] No SSH candidate resolved for "${demoFile.filepath}" from root "${remotePath}"`);
-          return new Response("Not found", { status: 404 });
-        }
-
-        console.info(`[demo-file] Streaming via SSH from: ${resolvedRemotePath}`);
-
-        const rangeHeader = req.headers.get("range");
-        let sshCommand = `cat "${resolvedRemotePath}"`;
-        let status = 200;
-        const responseHeaders = {
-          "Content-Type": contentType,
-          "Accept-Ranges": "bytes",
-          "Content-Disposition": `inline; filename="${demoFile.filename}"`,
-        };
-
-        if (rangeHeader && fileSize) {
-          const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
-          if (match) {
-            const start = parseInt(match[1], 10);
-            const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
-            const chunkSize = end - start + 1;
-            
-            // Use tail and head for byte-range seeking over SSH
-            sshCommand = `tail -c +${start + 1} "${resolvedRemotePath}" | head -c ${chunkSize}`;
-            status = 206;
-            responseHeaders["Content-Range"] = `bytes ${start}-${end}/${fileSize}`;
-            responseHeaders["Content-Length"] = chunkSize.toString();
-          }
-        } else if (fileSize) {
-          responseHeaders["Content-Length"] = fileSize.toString();
-        }
-        
-        const sshProcess = spawn("ssh", [
-          "-o", "StrictHostKeyChecking=no",
-          "-o", "BatchMode=yes",
-          "-o", "ConnectTimeout=5",
-          "root@152.53.142.222", 
-          sshCommand
-        ]);
-
-        let stderr = "";
-        sshProcess.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
-
-        sshProcess.on('close', (code) => {
-          if (code !== 0 && code !== null) {
-            console.error(`[demo-file] SSH failed with code ${code}. Stderr: ${stderr}`);
-          }
-        });
-
-        return new Response(sshProcess.stdout, { 
-          status,
-          headers: responseHeaders 
-        });
-      }
+    const resolvedFile = await resolveDemoFileForRead(demoFile.filepath, ALLOWED_PREFIXES);
+    if (!resolvedFile) {
       return new Response("Not found", { status: 404 });
     }
+
+    const filePath = resolvedFile.path;
+    const fileStat = resolvedFile.info;
 
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME_BY_EXT[ext] || "application/octet-stream";

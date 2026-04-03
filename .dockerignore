@@ -4,10 +4,9 @@ node_modules
 .env
 .env.local
 .DS_Store
-npm-debug.log
-npm-debug.log.gz
-yarn-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .vercel
 .gemini
 Dockerfile
@@ -18,13 +17,15 @@ coverage
 .jest
 .idea
 .vscode
-.swp
-.swo
+*.swp
+*.swo
 Thumbs.db
 docker-compose.yml
 .docker
-README.md
+*.md
 test
 __tests__
 private
-
+# Unrelated sub-projects (have their own build context)
+Discord Bot
+control-panel

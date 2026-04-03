@@ -11,7 +11,7 @@ module.exports = {
             colors: {
                 background: '#050505',
                 foreground: '#ffffff',
-                accent: '#00ff88', // Maintaining the green accent
+                accent: 'var(--accent)',
             },
             fontFamily: {
                 sans: ['var(--font-inter)'],

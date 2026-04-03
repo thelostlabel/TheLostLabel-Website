@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
+import { BRANDING } from '@/lib/branding';
 
 /**
  * Unified page loader used across all public pages (Home, Artists, Releases, etc.)
@@ -24,7 +25,7 @@ export default function PageLoader() {
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                 className="page-loader-logo"
             >
-                LOST<span className="page-loader-dot">.</span>
+                {BRANDING.shortName}<span className="page-loader-dot">.</span>
             </motion.div>
 
             {/* Progress bar */}

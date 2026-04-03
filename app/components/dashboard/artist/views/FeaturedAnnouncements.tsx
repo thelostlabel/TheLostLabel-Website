@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, ChevronRight, X, Star, Zap, Info, PartyPopper, ExternalLink, AlertTriangle } from 'lucide-react';
-import { DASHBOARD_THEME } from '@/app/components/dashboard/artist/lib/shared';
+import { X, Zap, Info, PartyPopper, ExternalLink, AlertTriangle } from 'lucide-react';
 import { DashboardAnnouncement } from '../../types';
 
 export default function FeaturedAnnouncements() {
@@ -66,6 +65,7 @@ export default function FeaturedAnnouncements() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
+                className="featured-announcement"
                 style={{
                     marginBottom: '24px',
                     background: 'rgba(255, 255, 255, 0.95)', // Light background like in the image
@@ -81,7 +81,7 @@ export default function FeaturedAnnouncements() {
                     color: '#1a1a1a' // Dark text for readability
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
+                <div className="featured-announcement-main" style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
                     <div style={{ 
                         width: '48px', height: '48px', borderRadius: '14px', 
                         background: `${styles.color}15`, 
@@ -92,8 +92,8 @@ export default function FeaturedAnnouncements() {
                         {styles.icon}
                     </div>
                     
-                    <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="featured-announcement-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                             <span style={{ 
                                 fontSize: '10px', fontWeight: 800, color: styles.color, 
                                 letterSpacing: '0.5px', background: `${styles.color}10`, 
@@ -101,15 +101,15 @@ export default function FeaturedAnnouncements() {
                             }}>
                                 {styles.label}
                             </span>
-                            <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0 }}>{current.title}</h4>
+                            <h4 className="featured-announcement-title" style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0 }}>{current.title}</h4>
                         </div>
-                        <p style={{ fontSize: '13px', color: '#4b5563', margin: 0, lineHeight: 1.5 }}>
+                        <p className="featured-announcement-copy" style={{ fontSize: '13px', color: '#4b5563', margin: 0, lineHeight: 1.5 }}>
                             {current.content}
                         </p>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="featured-announcement-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {current.linkUrl && (
                         <a 
                             href={current.linkUrl}
@@ -164,6 +164,38 @@ export default function FeaturedAnnouncements() {
                         <X size={18} />
                     </button>
                 </div>
+
+                <style jsx>{`
+                    @media (max-width: 640px) {
+                        .featured-announcement {
+                            padding: 14px 16px !important;
+                            gap: 14px !important;
+                            align-items: flex-start !important;
+                            flex-direction: column !important;
+                            border-radius: 16px !important;
+                        }
+                        .featured-announcement-main {
+                            width: 100%;
+                            gap: 12px !important;
+                            align-items: flex-start !important;
+                        }
+                        .featured-announcement-title-row {
+                            flex-wrap: wrap;
+                        }
+                        .featured-announcement-title {
+                            font-size: 13px !important;
+                            line-height: 1.35 !important;
+                        }
+                        .featured-announcement-copy {
+                            font-size: 12px !important;
+                        }
+                        .featured-announcement-actions {
+                            width: 100%;
+                            gap: 8px !important;
+                            flex-wrap: wrap;
+                        }
+                    }
+                `}</style>
             </motion.div>
         </AnimatePresence>
     );

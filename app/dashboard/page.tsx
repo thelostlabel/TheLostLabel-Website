@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import DashboardLoader from "@/app/components/dashboard/DashboardLoader";
+import ArtistView from "@/app/components/dashboard/ArtistView";
+import AdminView from "@/app/components/dashboard/AdminView";
 import { useDashboardAuth } from "@/app/components/dashboard/context/DashboardAuthProvider";
 import { useDashboardRoute } from "@/app/components/dashboard/hooks/useDashboardRoute";
 import { getAdminViewPermission } from "@/lib/dashboard-view-registry";
@@ -13,30 +14,10 @@ import {
   isAdminUser,
 } from "@/lib/permissions";
 
-const ArtistView = dynamic(() => import("@/app/components/dashboard/ArtistView"), {
-  loading: () => (
-    <DashboardLoader
-      fullScreen
-      label="LOADING ARTIST WORKSPACE"
-      subLabel="Preparing artist view..."
-    />
-  ),
-});
-
-const AdminView = dynamic(() => import("@/app/components/dashboard/AdminView"), {
-  loading: () => (
-    <DashboardLoader
-      fullScreen
-      label="LOADING ADMIN WORKSPACE"
-      subLabel="Preparing admin view..."
-    />
-  ),
-});
-
-function DashboardContent() {
+function DashboardContent({ view: propView }: { view?: string }) {
   const { currentUser, canAccessManagement, isPending, isRejected } = useDashboardAuth();
   const { rawView } = useDashboardRoute<string>();
-  const view = rawView || "overview";
+  const view = propView ?? rawView ?? "overview";
 
   if (!currentUser) {
     return (
@@ -68,7 +49,7 @@ function DashboardContent() {
             ACCOUNT REVIEW IN PROGRESS
           </h2>
           <p style={{ margin: "16px 0 0", fontSize: "14px", lineHeight: 1.7, color: "rgba(255,255,255,0.74)" }}>
-            Your application has been received. Access will unlock once the LOST team finishes reviewing your account.
+            Your application has been received. Access will unlock once the {process.env.NEXT_PUBLIC_SITE_NAME || 'LOST'} team finishes reviewing your account.
           </p>
           <Link
             href="/"
@@ -130,17 +111,17 @@ function DashboardContent() {
 
   if (canAccessManagement) {
     if (!isArtistView && view === "overview" && !canOpenRequestedManagementView) {
-      return <ArtistView />;
+      return <ArtistView view={view} />;
     }
 
-    if (isArtistView) return <ArtistView />;
-    return <AdminView />;
+    if (isArtistView) return <ArtistView view={view} />;
+    return <AdminView view={view} />;
   }
 
-  return <ArtistView />;
+  return <ArtistView view={view} />;
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ view }: { view?: string }) {
   return (
     <Suspense
       fallback={
@@ -151,7 +132,7 @@ export default function DashboardPage() {
         />
       }
     >
-      <DashboardContent />
+      <DashboardContent view={view} />
     </Suspense>
   );
 }

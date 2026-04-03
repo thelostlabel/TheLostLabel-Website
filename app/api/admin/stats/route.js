@@ -13,6 +13,7 @@ export async function GET(req) {
 
     try {
         const payload = await getCachedAdminStats(async () => {
+            // Batch 1: simple counts
             const [
                 totalUsers,
                 totalArtists,
@@ -20,19 +21,10 @@ export async function GET(req) {
                 pendingDemos,
                 totalDemos,
                 pendingRequests,
+                pendingContracts,
                 uniqueAlbumsRows,
                 totalSongs,
-                recentDemos,
-                recentRequests,
-                earningAgg,
-                paymentAgg,
-                trendRows,
-                platformRows,
-                topArtists,
-                listenerTotals,
-                payoutTrendRows,
-                listenerTrendRows,
-                topReleases
+                listenerTotals
             ] = await Promise.all([
                 prisma.user.count(),
                 prisma.artist.count(),
@@ -40,6 +32,7 @@ export async function GET(req) {
                 prisma.demo.count({ where: { status: 'pending' } }),
                 prisma.demo.count(),
                 prisma.changeRequest.count({ where: { status: 'pending' } }),
+                prisma.contract.count({ where: { signedAt: null } }),
                 prisma.$queryRaw`
                     SELECT COUNT(DISTINCT COALESCE("baseTitle", "name")) AS "count"
                     FROM "Release"
@@ -47,6 +40,24 @@ export async function GET(req) {
                 prisma.release.aggregate({
                     _sum: { totalTracks: true }
                 }),
+                prisma.artist.aggregate({
+                    _sum: { monthlyListeners: true }
+                })
+            ]);
+
+            // Batch 2: aggregates, recent items, and heavier queries
+            const [
+                recentDemos,
+                recentRequests,
+                earningAgg,
+                paymentAgg,
+                trendRows,
+                platformRows,
+                topArtists,
+                payoutTrendRows,
+                listenerTrendRows,
+                topReleases
+            ] = await Promise.all([
                 prisma.demo.findMany({
                     take: 5,
                     orderBy: { createdAt: 'desc' },
@@ -81,9 +92,6 @@ export async function GET(req) {
                     take: 5,
                     orderBy: { monthlyListeners: 'desc' },
                     select: { name: true, monthlyListeners: true, id: true, image: true }
-                }),
-                prisma.artist.aggregate({
-                    _sum: { monthlyListeners: true }
                 }),
                 prisma.$queryRaw`
                     SELECT TO_CHAR("createdAt", 'YYYY-MM') as label,
@@ -145,6 +153,7 @@ export async function GET(req) {
                     pendingDemos,
                     totalDemos,
                     pendingRequests,
+                    pendingContracts,
                     albums: albumCount,
                     releases: totalReleases,
                     songs: totalSongs._sum.totalTracks || 0,

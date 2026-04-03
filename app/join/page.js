@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getPublicSettings } from '@/lib/public-settings';
 import { getSiteContentByKey } from '@/lib/site-content';
 import { parseJoinCommissionRows, parseJoinGenres } from '@/lib/site-content-data';
+import { BRANDING } from '@/lib/branding';
 
 export default async function JoinUsPage() {
     const [publicSettings, genresContent, commissionsContent] = await Promise.all([
@@ -22,10 +23,10 @@ export default async function JoinUsPage() {
         <div style={{ padding: '120px 20px 100px', maxWidth: '1080px', margin: '0 auto', minHeight: '100vh', background: 'transparent', color: '#fff' }}>
             <header style={{ textAlign: 'center', marginBottom: '70px' }}>
                 <h1 style={{ fontSize: 'clamp(32px, 7vw, 54px)', fontWeight: '900', letterSpacing: '6px', marginBottom: '18px', lineHeight: 1.1 }}>
-                    {hero.title.split('LOST.').map((part, index, list) => (
+                    {hero.title.split(BRANDING.dotName).map((part, index, list) => (
                         <span key={`${part}-${index}`}>
                             {part}
-                            {index < list.length - 1 && <span style={{ color: 'rgba(229,231,235,0.95)' }}>LOST.</span>}
+                            {index < list.length - 1 && <span style={{ color: 'rgba(229,231,235,0.95)' }}>{BRANDING.dotName}</span>}
                         </span>
                     ))}
                 </h1>
@@ -64,7 +65,7 @@ export default async function JoinUsPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead>
                                 <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                                    <th style={thStyle}>LOST. HISTORY</th>
+                                    <th style={thStyle}>{BRANDING.dotName} HISTORY</th>
                                     <th style={thStyle}>SPOTIFY MONTHLY LISTENERS</th>
                                     <th style={thStyle}>COMMISSION RATE</th>
                                 </tr>

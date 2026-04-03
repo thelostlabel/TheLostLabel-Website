@@ -894,16 +894,16 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
             </Modal>
 
             <div className="flex flex-col gap-2">
-                <div className="flex justify-between gap-3">
+                <div className="flex flex-col sm:flex-row justify-between gap-3">
                     <Input
                         aria-label="Search artists"
                         placeholder="Search artists..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full max-w-xs"
+                        className="w-full sm:max-w-xs"
                     />
                     {canManage && (
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-2 sm:gap-3 shrink-0">
                             <Button
                                 variant="secondary"
                                 isDisabled={isSyncingAll}

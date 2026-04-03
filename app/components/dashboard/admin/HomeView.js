@@ -1,30 +1,20 @@
+'use client';
+
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-    DollarSign, Briefcase, CreditCard, Users, Mic2, Disc, Music,
-    FileAudio, BarChart3, AlertCircle, ChevronRight, TrendingUp, Music2, RefreshCw
+    RefreshCw, FileAudio, GitPullRequest, FileText,
+    Music2, Users, TrendingUp, BarChart3,
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
-    Tooltip, Area, ComposedChart, Line
+    Tooltip, Area, ComposedChart, Line,
 } from 'recharts';
 import NextImage from 'next/image';
+import { Card, Skeleton } from '@heroui/react';
+import { useTheme } from '@/app/components/ThemeProvider';
 
-const T = {
-    bg: 'transparent',
-    surface: 'rgba(255,255,255,0.03)',
-    surfaceAlt: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
-    border: 'rgba(255,255,255,0.08)',
-    borderHover: 'rgba(255,255,255,0.14)',
-    text: '#FFFFFF',
-    muted: '#666666',
-    sub: '#888888',
-    accent: '#D1D5DB',
-    success: '#22C55E',
-    warning: '#F59E0B',
-    error: '#EF4444'
-};
-
+/* ── Formatters ── */
 const compactNumber = (val) => {
     const num = Number(val) || 0;
     if (num >= 1000000) return `${(num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1)}M`;
@@ -33,18 +23,16 @@ const compactNumber = (val) => {
 };
 
 const FALLBACK_IMAGE = '/default-album.jpg';
-
 const normalizeImageSrc = (src) => {
     if (typeof src !== 'string') return FALLBACK_IMAGE;
-    const trimmed = src.trim();
-    if (!trimmed) return FALLBACK_IMAGE;
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    if (trimmed.startsWith('/')) return trimmed;
+    const t = src.trim();
+    if (!t) return FALLBACK_IMAGE;
+    if (/^https?:\/\//i.test(t)) return t;
+    if (t.startsWith('/')) return t;
     return FALLBACK_IMAGE;
 };
-
-const handleImageError = (event) => {
-    const img = event.currentTarget;
+const handleImageError = (e) => {
+    const img = e.currentTarget;
     if (img.dataset.fallbackApplied === '1') return;
     img.dataset.fallbackApplied = '1';
     img.src = FALLBACK_IMAGE;
@@ -85,7 +73,6 @@ const aggregateListenerSeries = (data, granularity) => {
     if (granularity === 'daily') {
         return normalized.slice(-30).map((item) => ({ label: item._date.toISOString().slice(0, 10), value: Number(item.value || 0) }));
     }
-
     if (granularity === 'weekly') {
         const bucket = new Map();
         normalized.forEach((item) => {
@@ -97,14 +84,11 @@ const aggregateListenerSeries = (data, granularity) => {
             .map(([label, v]) => ({ label, value: Math.round(v.sum / Math.max(v.count, 1)) }))
             .slice(-12);
     }
-
     const monthly = new Map();
     normalized.forEach((item) => {
         const key = `${item._date.getFullYear()}-${String(item._date.getMonth() + 1).padStart(2, '0')}`;
         const prev = monthly.get(key);
-        if (!prev || prev._date < item._date) {
-            monthly.set(key, { _date: item._date, value: Number(item.value || 0) });
-        }
+        if (!prev || prev._date < item._date) monthly.set(key, { _date: item._date, value: Number(item.value || 0) });
     });
     return Array.from(monthly.entries())
         .map(([key, v]) => ({ label: `${key}-01`, value: v.value }))
@@ -115,41 +99,77 @@ const aggregateRevenueSeries = (data, granularity) => {
     const monthly = (data || []).slice(-12).map((item) => ({
         label: item.label,
         revenue: Number(item.revenue || 0),
-        artistShare: Number(item.artistShare || 0)
+        artistShare: Number(item.artistShare || 0),
     }));
-
     if (granularity === 'monthly') return monthly;
-
     const quarterly = new Map();
     monthly.forEach((item) => {
         const [year, monthStr] = String(item.label).split('-');
-        const month = Number(monthStr || 1);
-        const quarter = Math.floor((month - 1) / 3) + 1;
+        const quarter = Math.floor((Number(monthStr || 1) - 1) / 3) + 1;
         const key = `${year}-Q${quarter}`;
         const prev = quarterly.get(key) || { revenue: 0, artistShare: 0 };
-        quarterly.set(key, {
-            revenue: prev.revenue + item.revenue,
-            artistShare: prev.artistShare + item.artistShare
-        });
+        quarterly.set(key, { revenue: prev.revenue + item.revenue, artistShare: prev.artistShare + item.artistShare });
     });
     return Array.from(quarterly.entries()).map(([label, v]) => ({ label, ...v }));
 };
 
-/* ── Responsive chart wrapper with ResizeObserver ── */
-const ChartContainer = ({ children, height = 220 }) => {
+/* ── Theme-aware chart color palettes ── */
+const CHART_COLORS = {
+    dark: {
+        stroke:       'rgba(255,255,255,0.75)',
+        strokeSoft:   'rgba(255,255,255,0.28)',
+        strokeFaint:  'rgba(255,255,255,0.12)',
+        fillStop1:    'rgba(255,255,255,0.13)',
+        fillStop2:    'rgba(255,255,255,0)',
+        fillSoftStop1:'rgba(255,255,255,0.06)',
+        grid:         'rgba(255,255,255,0.035)',
+        tick:         '#555',
+        tickRight:    '#2a2a2a',
+        cursor:       'rgba(255,255,255,0.06)',
+        dotStroke:    '#0a0a0a',
+        legendMain:   'rgba(255,255,255,0.7)',
+        legendSoft:   'rgba(255,255,255,0.28)',
+        legendFaint:  'rgba(255,255,255,0.16)',
+        tooltipBg:    'rgba(10,10,12,0.97)',
+        tooltipBorder:'rgba(255,255,255,0.09)',
+        tooltipLabel: '#666',
+        tooltipValue: '#fff',
+        tooltipSub:   '#555',
+    },
+    light: {
+        stroke:       'rgba(0,0,0,0.65)',
+        strokeSoft:   'rgba(0,0,0,0.25)',
+        strokeFaint:  'rgba(0,0,0,0.1)',
+        fillStop1:    'rgba(0,0,0,0.08)',
+        fillStop2:    'rgba(0,0,0,0)',
+        fillSoftStop1:'rgba(0,0,0,0.04)',
+        grid:         'rgba(0,0,0,0.05)',
+        tick:         '#999',
+        tickRight:    '#bbb',
+        cursor:       'rgba(0,0,0,0.06)',
+        dotStroke:    '#f2f2f4',
+        legendMain:   'rgba(0,0,0,0.65)',
+        legendSoft:   'rgba(0,0,0,0.3)',
+        legendFaint:  'rgba(0,0,0,0.15)',
+        tooltipBg:    'rgba(255,255,255,0.97)',
+        tooltipBorder:'rgba(0,0,0,0.1)',
+        tooltipLabel: '#999',
+        tooltipValue: '#0a0a0a',
+        tooltipSub:   '#aaa',
+    },
+};
+
+/* ── Responsive chart wrapper ── */
+const ChartContainer = ({ children, height = 200 }) => {
     const ref = useRef(null);
     const [dims, setDims] = useState({ w: 0, h: 0 });
-
     useEffect(() => {
         const node = ref.current;
         if (!node) return;
         const measure = () => {
             const rect = node.getBoundingClientRect();
-            if (rect.width > 10 && rect.height > 10) {
-                setDims({ w: Math.floor(rect.width), h: Math.floor(rect.height) });
-            }
+            if (rect.width > 10 && rect.height > 10) setDims({ w: Math.floor(rect.width), h: Math.floor(rect.height) });
         };
-        // Delay initial measure to ensure parent is laid out
         const timer = setTimeout(measure, 50);
         if (typeof ResizeObserver !== 'undefined') {
             const observer = new ResizeObserver(measure);
@@ -158,7 +178,6 @@ const ChartContainer = ({ children, height = 220 }) => {
         }
         return () => clearTimeout(timer);
     }, []);
-
     return (
         <div ref={ref} style={{ width: '100%', height, minWidth: 100, minHeight: height }}>
             {dims.w > 10 && dims.h > 10 && (
@@ -170,209 +189,86 @@ const ChartContainer = ({ children, height = 220 }) => {
     );
 };
 
-/* ── Custom Tooltip ── */
-const ChartTooltip = ({ active, payload, label, formatLabel, formatValue }) => {
+const ChartTooltip = ({ active, payload, label, formatLabel, formatValue, c }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{
-            background: 'rgba(10,10,10,0.95)',
-            border: `1px solid rgba(255,255,255,0.1)`,
-            borderRadius: 12,
-            padding: '10px 14px',
-            backdropFilter: 'blur(12px)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
-        }}>
-            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: '#888', letterSpacing: '0.5px', marginBottom: 6 }}>
+        <div style={{ background: c.tooltipBg, border: `1px solid ${c.tooltipBorder}`, borderRadius: 10, padding: '10px 14px', backdropFilter: 'blur(16px)', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: c.tooltipLabel, letterSpacing: '0.5px', marginBottom: 6 }}>
                 {formatLabel ? formatLabel(label) : label}
             </p>
             {payload.map((entry, i) => (
-                <p key={i} style={{ margin: '3px 0', fontSize: 12, fontWeight: 800, color: entry.color || '#fff' }}>
+                <p key={i} style={{ margin: '3px 0', fontSize: 12, fontWeight: 800, color: c.tooltipValue }}>
                     {formatValue ? formatValue(entry.value, entry.name) : entry.value}
-                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: '#666' }}>{entry.name}</span>
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: c.tooltipSub }}>{entry.name}</span>
                 </p>
             ))}
         </div>
     );
 };
 
-/* ── Listener Scale Chart ── */
-const ListenerScaleChart = ({ data, height = 220, granularity = 'daily' }) => {
+/* ── Charts ── */
+const ListenerScaleChart = ({ data, height = 180, granularity = 'daily', c }) => {
     const tickCount = granularity === 'daily' ? 6 : granularity === 'weekly' ? 6 : undefined;
     return (
         <ChartContainer height={height}>
-            <ComposedChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+            <ComposedChart data={data} margin={{ top: 4, right: 8, left: 4, bottom: 4 }}>
                 <defs>
-                    <linearGradient id="listenerFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#E5E7EB" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#E5E7EB" stopOpacity={0} />
+                    <linearGradient id="listenerFillMono" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={c.fillStop1} stopOpacity={1} />
+                        <stop offset="100%" stopColor={c.fillStop2} stopOpacity={1} />
                     </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 6" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                <XAxis
-                    dataKey="label"
-                    tickFormatter={(v) => formatAxisDate(v, granularity)}
-                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                    tickCount={tickCount}
-                />
-                <YAxis
-                    yAxisId="listeners"
-                    tickFormatter={compactNumber}
-                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                />
-                <YAxis
-                    yAxisId="counts"
-                    orientation="right"
-                    allowDecimals={false}
-                    tick={{ fill: '#444', fontSize: 10, fontWeight: 600 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={30}
-                />
-                <Tooltip
-                    content={<ChartTooltip
-                        formatLabel={(v) => formatAxisDate(v, granularity)}
-                        formatValue={(v, name) => {
-                            const num = Number(v || 0).toLocaleString();
-                            return num;
-                        }}
-                    />}
-                    cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1 }}
-                />
-                <Area
-                    yAxisId="listeners"
-                    type="monotone"
-                    dataKey="value"
-                    name="Monthly Listeners"
-                    stroke="#E5E7EB"
-                    strokeWidth={2}
-                    fill="url(#listenerFill)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#E5E7EB', stroke: '#0a0a0a', strokeWidth: 2 }}
-                />
-                <Line
-                    yAxisId="listeners"
-                    type="monotone"
-                    dataKey="avgPerArtist"
-                    name="Per Artist"
-                    stroke="#9CA3AF"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 4"
-                    dot={false}
-                />
-                <Line
-                    yAxisId="counts"
-                    type="monotone"
-                    dataKey="artistCount"
-                    name="Artists"
-                    stroke="#6B7280"
-                    strokeWidth={1.5}
-                    dot={false}
-                />
-                <Line
-                    yAxisId="counts"
-                    type="monotone"
-                    dataKey="releaseCount"
-                    name="Releases"
-                    stroke="#4B5563"
-                    strokeWidth={1.5}
-                    dot={false}
-                />
+                <CartesianGrid strokeDasharray="3 6" stroke={c.grid} vertical={false} />
+                <XAxis dataKey="label" tickFormatter={(v) => formatAxisDate(v, granularity)} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} interval="preserveStartEnd" tickCount={tickCount} />
+                <YAxis yAxisId="listeners" tickFormatter={compactNumber} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={40} />
+                <YAxis yAxisId="counts" orientation="right" allowDecimals={false} tick={{ fill: c.tickRight, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={30} />
+                <Tooltip content={<ChartTooltip formatLabel={(v) => formatAxisDate(v, granularity)} formatValue={(v) => Number(v || 0).toLocaleString()} c={c} />} cursor={{ stroke: c.cursor, strokeWidth: 1 }} />
+                <Area yAxisId="listeners" type="monotone" dataKey="value" name="Monthly Listeners" stroke={c.stroke} strokeWidth={1.5} fill="url(#listenerFillMono)" dot={false} activeDot={{ r: 4, fill: c.stroke, stroke: c.dotStroke, strokeWidth: 2 }} />
+                <Line yAxisId="listeners" type="monotone" dataKey="avgPerArtist" name="Per Artist" stroke={c.strokeSoft} strokeWidth={1} strokeDasharray="4 4" dot={false} />
+                <Line yAxisId="counts" type="monotone" dataKey="artistCount" name="Artists" stroke={c.strokeFaint} strokeWidth={1} dot={false} />
+                <Line yAxisId="counts" type="monotone" dataKey="releaseCount" name="Releases" stroke={c.strokeFaint} strokeWidth={1} dot={false} />
             </ComposedChart>
         </ChartContainer>
     );
 };
 
-/* ── Revenue Flow Chart ── */
-const RevenueFlowChart = ({ data, height = 220, granularity = 'monthly' }) => {
-    const chartData = (data || []).slice(-8);
-    return (
-        <ChartContainer height={height}>
-            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
-                <defs>
-                    <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#E5E7EB" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#E5E7EB" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="artFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#9CA3AF" stopOpacity={0.15} />
-                        <stop offset="100%" stopColor="#9CA3AF" stopOpacity={0} />
-                    </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 6" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                <XAxis
-                    dataKey="label"
-                    tickFormatter={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))}
-                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={0}
-                />
-                <YAxis
-                    tickFormatter={compactNumber}
-                    tick={{ fill: '#555', fontSize: 10, fontWeight: 600 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                />
-                <Tooltip
-                    content={<ChartTooltip
-                        formatLabel={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))}
-                        formatValue={(v, name) => `$${Number(v || 0).toLocaleString()}`}
-                    />}
-                    cursor={{ stroke: 'rgba(255,255,255,0.08)', strokeWidth: 1 }}
-                />
-                <Area
-                    type="monotone"
-                    dataKey="artistShare"
-                    name="Artist Share"
-                    stroke="#9CA3AF"
-                    strokeWidth={1.5}
-                    fill="url(#artFill)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#9CA3AF', stroke: '#0a0a0a', strokeWidth: 2 }}
-                />
-                <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    name="Label Revenue"
-                    stroke="#E5E7EB"
-                    strokeWidth={2}
-                    fill="url(#revFill)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#E5E7EB', stroke: '#0a0a0a', strokeWidth: 2 }}
-                />
-            </AreaChart>
-        </ChartContainer>
-    );
-};
+const RevenueFlowChart = ({ data, height = 180, granularity = 'monthly', c }) => (
+    <ChartContainer height={height}>
+        <AreaChart data={(data || []).slice(-8)} margin={{ top: 4, right: 8, left: 4, bottom: 4 }}>
+            <defs>
+                <linearGradient id="revFillMono" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c.fillStop1} stopOpacity={1} />
+                    <stop offset="100%" stopColor={c.fillStop2} stopOpacity={1} />
+                </linearGradient>
+                <linearGradient id="artFillMono" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c.fillSoftStop1} stopOpacity={1} />
+                    <stop offset="100%" stopColor={c.fillStop2} stopOpacity={1} />
+                </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 6" stroke={c.grid} vertical={false} />
+            <XAxis dataKey="label" tickFormatter={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} interval={0} />
+            <YAxis tickFormatter={compactNumber} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={40} />
+            <Tooltip content={<ChartTooltip formatLabel={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))} formatValue={(v) => `$${Number(v || 0).toLocaleString()}`} c={c} />} cursor={{ stroke: c.cursor, strokeWidth: 1 }} />
+            <Area type="monotone" dataKey="artistShare" name="Artist Share" stroke={c.strokeSoft} strokeWidth={1} fill="url(#artFillMono)" dot={false} activeDot={{ r: 4, fill: c.strokeSoft, stroke: c.dotStroke, strokeWidth: 2 }} />
+            <Area type="monotone" dataKey="revenue" name="Label Revenue" stroke={c.stroke} strokeWidth={1.5} fill="url(#revFillMono)" dot={false} activeDot={{ r: 4, fill: c.stroke, stroke: c.dotStroke, strokeWidth: 2 }} />
+        </AreaChart>
+    </ChartContainer>
+);
 
-/* ── Pill Toggle ── */
-const PillToggle = ({ options, value, onChange, className }) => (
-    <div className={className} style={{ display: 'inline-flex', gap: 2, padding: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: `1px solid ${T.border}` }}>
+/* ── PillToggle ── */
+const PillToggle = ({ options, value, onChange }) => (
+    <div className="inline-flex gap-0.5 rounded-lg border border-default/15 bg-default/5 p-0.5">
         {options.map((opt) => {
             const active = value === opt.key;
             return (
                 <button
                     key={opt.key}
+                    type="button"
                     onClick={() => onChange(opt.key)}
-                    style={{
-                        border: 'none',
-                        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        color: active ? '#fff' : '#666',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        letterSpacing: '0.3px',
-                        borderRadius: 8,
-                        padding: '5px 10px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}
+                    className={[
+                        'border-0 rounded-md px-2.5 py-1 text-[10px] font-bold cursor-pointer transition-colors',
+                        active ? 'bg-default/15 text-foreground' : 'bg-transparent text-muted hover:text-foreground',
+                    ].join(' ')}
                 >
                     {opt.label}
                 </button>
@@ -381,36 +277,87 @@ const PillToggle = ({ options, value, onChange, className }) => (
     </div>
 );
 
-/* ── Chart Legend ── */
+/* ── Chart legend ── */
 const Legend = ({ items }) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginTop: 12 }}>
+    <div className="flex flex-wrap gap-3 items-center mt-2.5">
         {items.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {item.dashed ? (
-                    <span style={{ width: 14, height: 0, borderTop: `2px dashed ${item.color}` }} />
-                ) : item.line ? (
-                    <span style={{ width: 14, height: 2, borderRadius: 1, background: item.color }} />
-                ) : (
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
-                )}
-                <span style={{ fontSize: 10, fontWeight: 700, color: item.color }}>{item.label}</span>
+            <div key={i} className="flex items-center gap-1.5">
+                {item.dashed
+                    ? <span style={{ width: 12, height: 0, borderTop: `1.5px dashed ${item.color}` }} />
+                    : item.line
+                    ? <span style={{ width: 12, height: 1.5, borderRadius: 1, background: item.color }} />
+                    : <span style={{ width: 7, height: 7, borderRadius: '50%', background: item.color }} />}
+                <span style={{ fontSize: 10, fontWeight: 600, color: item.color }}>{item.label}</span>
             </div>
         ))}
     </div>
 );
 
-/* ── Card wrapper ── */
-const Card = ({ children, style, ...props }) => (
-    <div style={{
-        background: T.surface,
-        border: `1px solid ${T.border}`,
-        borderRadius: 14,
-        padding: '18px',
-        position: 'relative',
-        overflow: 'hidden',
-        ...style
-    }} {...props}>
-        {children}
+/* ── KPI Card ── */
+const KpiCard = ({ label, value, sub, icon, badge }) => (
+    <Card className="p-0">
+        <Card.Content className="p-4 gap-0">
+            <div className="flex items-center justify-between mb-3">
+                <p className="m-0 text-[9px] font-extrabold tracking-[0.18em] uppercase text-muted">{label}</p>
+                <div className="text-muted/50">{icon}</div>
+            </div>
+            <p className="m-0 text-[28px] font-black text-foreground leading-none tracking-tight">{compactNumber(value)}</p>
+            <div className="mt-2.5 flex items-center justify-between gap-2">
+                <p className="m-0 text-[11px] text-muted font-semibold">{sub}</p>
+                {badge && (
+                    <span className="text-[9px] font-extrabold tracking-wide uppercase text-muted bg-default/8 px-1.5 py-0.5 rounded-md">
+                        {badge}
+                    </span>
+                )}
+            </div>
+        </Card.Content>
+    </Card>
+);
+
+/* ── Action Queue item ── */
+const QueueItem = ({ label, count, icon, onClick }) => {
+    const hasItems = count > 0;
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="w-full flex items-center gap-2.5 bg-transparent border-0 border-b border-default/8 py-2.5 cursor-pointer text-left hover:opacity-75 transition-opacity"
+        >
+            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${hasItems ? 'bg-danger' : 'bg-success'}`} />
+            <div className="text-muted/50 shrink-0">{icon}</div>
+            <p className={`m-0 flex-1 text-[12px] font-bold ${hasItems ? 'text-foreground' : 'text-muted'}`}>{label}</p>
+            <span className={`text-[13px] font-black shrink-0 ${hasItems ? 'text-foreground' : 'text-muted/40'}`}>{count}</span>
+        </button>
+    );
+};
+
+/* ── Recent activity row ── */
+const RecentItem = ({ name, sub, onClick }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className="w-full flex items-center gap-2.5 bg-transparent border-0 border-b border-default/6 py-1.5 cursor-pointer text-left hover:opacity-70 transition-opacity"
+    >
+        <div className="flex-1 overflow-hidden">
+            <p className="m-0 text-[12px] font-bold text-foreground/70 truncate">{name}</p>
+            {sub && <p className="m-0 mt-px text-[10px] text-muted font-semibold">{sub}</p>}
+        </div>
+    </button>
+);
+
+/* ── Rank color ── */
+const rankClass = (i) => i === 0 ? 'text-foreground' : i === 1 ? 'text-foreground/60' : i === 2 ? 'text-foreground/40' : 'text-muted/40';
+
+/* ── Section label ── */
+const SectionLabel = ({ children }) => (
+    <p className="m-0 mb-2.5 text-[9px] font-extrabold tracking-[0.2em] uppercase text-muted/60">{children}</p>
+);
+
+/* ── Stat mini-box ── */
+const StatBox = ({ label, value }) => (
+    <div className="rounded-lg border border-default/10 bg-default/5 p-2">
+        <p className="m-0 text-[8px] font-extrabold tracking-[0.1em] uppercase text-muted">{label}</p>
+        <p className="m-0 mt-0.5 text-[13px] font-black text-foreground">{value}</p>
     </div>
 );
 
@@ -420,29 +367,27 @@ export default function HomeView({ onNavigate }) {
     const [loading, setLoading] = useState(true);
     const [listenerGranularity, setListenerGranularity] = useState('daily');
     const [revenueGranularity, setRevenueGranularity] = useState('monthly');
+    const { theme } = useTheme();
+    const c = CHART_COLORS[theme] || CHART_COLORS.dark;
 
-    useEffect(() => {
-        fetchStats();
-    }, []);
+    useEffect(() => { fetchStats(); }, []);
 
     const fetchStats = async () => {
+        setLoading(true);
         try {
             const res = await fetch('/api/admin/stats');
-            if (res.ok) {
-                const data = await res.json();
-                setStats(data);
-            }
+            if (res.ok) setStats(await res.json());
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
 
     const listenerSeriesData = useMemo(
         () => aggregateListenerSeries(stats?.listenerTrends || [], listenerGranularity),
-        [stats?.listenerTrends, listenerGranularity]
+        [stats?.listenerTrends, listenerGranularity],
     );
     const revenueSeriesData = useMemo(
         () => aggregateRevenueSeries(stats?.trends || [], revenueGranularity),
-        [stats?.trends, revenueGranularity]
+        [stats?.trends, revenueGranularity],
     );
 
     const latestListeners = listenerSeriesData.at(-1)?.value || 0;
@@ -452,638 +397,328 @@ export default function HomeView({ onNavigate }) {
         ...point,
         artistCount: Number(stats?.counts?.artists || 0),
         releaseCount: Number(stats?.counts?.releases || 0),
-        avgPerArtist: Number(stats?.counts?.artists || 0) > 0 ? Math.round((Number(point.value || 0) / Number(stats?.counts?.artists || 0))) : 0
+        avgPerArtist: Number(stats?.counts?.artists || 0) > 0 ? Math.round(Number(point.value || 0) / Number(stats?.counts?.artists || 0)) : 0,
     }));
 
-    const kpiCards = [
-        {
-            label: 'Monthly Listeners',
-            value: stats?.counts?.listenersTotal || 0,
-            sub: 'All artists combined',
-            icon: <BarChart3 size={16} />,
-            wide: true
-        },
-        {
-            label: 'Total Releases',
-            value: Number(stats?.counts?.releases || 0),
-            sub: 'Catalog count',
-            icon: <Disc size={14} />
-        },
-        {
-            label: 'Total Tracks',
-            value: Number(stats?.counts?.songs || 0),
-            sub: 'Across all releases',
-            icon: <Music2 size={14} />
-        },
-        {
-            label: 'Total Artists',
-            value: Number(stats?.counts?.artists || 0),
-            sub: 'Signed profiles',
-            icon: <Users size={14} />
-        }
-    ];
-
-    if (loading) {
-        return (
-            <div style={{ padding: '0 0 40px 0', fontFamily: 'Space Grotesk, sans-serif' }}>
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.35 }}
-                    style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 22, marginBottom: 12 }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                        <div>
-                            <p style={{ margin: 0, fontSize: 11, letterSpacing: '2px', fontWeight: 800, color: T.muted }}>ADMIN DASHBOARD</p>
-                            <p style={{ margin: '8px 0 0', fontSize: 16, fontWeight: 900, color: '#fff' }}>Loading analytics...</p>
-                        </div>
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                            style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${T.border}`, borderTopColor: T.accent }}
-                        />
-                    </div>
-                </motion.div>
-                <div className="admin-home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
-                    {[1, 2, 3, 4].map((item) => (
-                        <motion.div
-                            key={item}
-                            initial={{ opacity: 0.3 }}
-                            animate={{ opacity: [0.3, 0.6, 0.3] }}
-                            transition={{ repeat: Infinity, duration: 1.2, delay: item * 0.08 }}
-                            style={{ height: 92, borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
-                        />
-                    ))}
-                </div>
-                <div className="admin-home-chart-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    {[1, 2].map((item) => (
-                        <motion.div
-                            key={item}
-                            initial={{ opacity: 0.3 }}
-                            animate={{ opacity: [0.3, 0.6, 0.3] }}
-                            transition={{ repeat: Infinity, duration: 1.4, delay: item * 0.1 }}
-                            style={{ height: 340, borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.border}` }}
-                        />
-                    ))}
+    /* ── Loading skeleton ── */
+    if (loading) return (
+        <div style={{ padding: '0 0 40px 0' }}>
+            <div className="flex items-center justify-between mb-5">
+                <div>
+                    <div className="w-20 h-2 bg-default/10 rounded mb-2" />
+                    <div className="w-40 h-4 bg-default/6 rounded" />
                 </div>
             </div>
-        );
-    }
+            <div className="home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+                {[1, 2, 3, 4].map((i) => (
+                    <motion.div key={i} initial={{ opacity: 0.3 }} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.08 }}>
+                        <Skeleton className="h-24 rounded-[14px]" animationType="shimmer" />
+                    </motion.div>
+                ))}
+            </div>
+            <div className="home-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 10, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gap: 10 }}>
+                    <Skeleton className="h-64 rounded-[14px]" animationType="shimmer" />
+                    <Skeleton className="h-64 rounded-[14px]" animationType="shimmer" />
+                </div>
+                <Skeleton className="h-96 rounded-[14px]" animationType="shimmer" />
+            </div>
+        </div>
+    );
 
     if (!stats) return null;
 
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const pendingDemos = Number(stats.counts?.pendingDemos || 0);
+    const pendingRequests = Number(stats.counts?.pendingRequests || 0);
+    const pendingContracts = Number(stats.counts?.pendingContracts || 0);
+    const totalPending = pendingDemos + pendingRequests + pendingContracts;
+
     return (
-        <div style={{ padding: '0 0 40px 0', fontFamily: 'Space Grotesk, sans-serif' }}>
+        <div style={{ padding: '0 0 48px 0' }}>
+
+            {/* ── Compact Header ── */}
+            <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center justify-between mb-5"
+            >
+                <div>
+                    <p className="m-0 text-[9px] font-extrabold tracking-[0.22em] uppercase text-muted/60">Admin Overview</p>
+                    <p className="m-0 mt-1 text-[14px] font-bold text-foreground/50 tracking-tight">{today}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {totalPending > 0 && (
+                        <div className="flex items-center gap-1.5 bg-danger/8 border border-danger/20 rounded-lg px-2.5 py-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-danger" />
+                            <span className="text-[11px] font-bold text-danger">{totalPending} pending</span>
+                        </div>
+                    )}
+                    <button
+                        type="button"
+                        onClick={fetchStats}
+                        className="flex items-center gap-1.5 bg-default/5 border border-default/10 rounded-lg px-3 py-1.5 cursor-pointer text-muted text-[11px] font-bold hover:bg-default/10 hover:text-foreground transition-colors"
+                    >
+                        <RefreshCw size={12} />
+                        Refresh
+                    </button>
+                </div>
+            </motion.div>
 
             {/* ── KPI Row ── */}
-            <div className="admin-home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
-                {kpiCards.map((card, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.45, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        <Card className="admin-home-card admin-home-kpi-card" style={{ height: '100%' }}>
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)` }} />
-                            <div className="admin-home-kpi-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                <p className="admin-home-kpi-label" style={{ margin: 0, fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: '1.2px', textTransform: 'uppercase' }}>{card.label}</p>
-                                <span className="admin-home-kpi-icon" style={{
-                                    width: 28, height: 28, borderRadius: 10,
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${T.border}`,
-                                    display: 'grid', placeItems: 'center',
-                                    color: T.sub
-                                }}>
-                                    {card.icon}
-                                </span>
-                            </div>
-                            <p className="admin-home-kpi-value" style={{ margin: 0, fontSize: card.wide ? 26 : 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>
-                                {compactNumber(card.value)}
-                            </p>
-                            <p className="admin-home-kpi-sub" style={{ margin: '8px 0 0', fontSize: 10, fontWeight: 600, color: T.muted }}>{card.sub}</p>
-                        </Card>
+            <div className="home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+                {[
+                    { label: 'Monthly Listeners', value: stats.counts?.listenersTotal || 0, sub: 'All artists combined', icon: <BarChart3 size={14} />, badge: `${Number(stats.counts?.artists || 0)} artists` },
+                    { label: 'Gross Revenue', value: stats.counts?.gross || 0, sub: `$${compactNumber(stats.counts?.revenue || 0)} label · $${compactNumber(stats.counts?.payouts || 0)} payouts`, icon: <TrendingUp size={14} /> },
+                    { label: 'Total Artists', value: Number(stats.counts?.artists || 0), sub: 'Signed profiles', icon: <Users size={14} />, badge: `${Number(stats.counts?.releases || 0)} releases` },
+                    { label: 'Catalog', value: Number(stats.counts?.songs || 0), sub: `${Number(stats.counts?.releases || 0)} releases · ${Number(stats.counts?.albums || 0)} albums`, icon: <Music2 size={14} /> },
+                ].map((card, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}>
+                        <KpiCard {...card} />
                     </motion.div>
                 ))}
             </div>
 
-            {/* ── Charts Row ── */}
-            <div className="admin-home-chart-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            {/* ── Main Grid: Charts + Action Queue ── */}
+            <div className="home-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 10, alignItems: 'start' }}>
 
-                {/* Revenue Flow */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                >
-                    <Card className="admin-home-card admin-home-chart-card" style={{ padding: 20 }}>
-                        <div className="admin-home-panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                            <div className="admin-home-panel-copy">
-                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>REVENUE FLOW</p>
-                                <h2 className="admin-home-panel-value" style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 900, color: '#fff' }}>
-                                    ${(stats.counts.gross || 0).toLocaleString()}
-                                </h2>
-                                <p className="admin-home-panel-sub" style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>Gross earnings</p>
-                            </div>
-                            <div className="admin-home-panel-tools" style={{ textAlign: 'right' }}>
-                                <div className="admin-home-inline-metrics" style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+                {/* Left: charts + leaderboards */}
+                <div style={{ display: 'grid', gap: 10 }}>
+
+                    {/* Revenue Flow */}
+                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
+                        <Card className="p-0">
+                            <Card.Content className="p-[18px] pb-3.5 gap-0">
+                                <div className="flex items-start justify-between gap-3 mb-3.5">
                                     <div>
-                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700, letterSpacing: '1px' }}>PAYOUTS</p>
-                                        <p style={{ margin: '2px 0 0', fontSize: 15, color: '#fff', fontWeight: 800 }}>${(stats.counts.payouts || 0).toLocaleString()}</p>
+                                        <SectionLabel>Revenue Flow</SectionLabel>
+                                        <p className="m-0 text-[26px] font-black text-foreground leading-none tracking-tight">
+                                            ${compactNumber(stats.counts?.gross || 0)}
+                                        </p>
+                                        <p className="m-0 mt-1 text-[11px] text-muted font-semibold">Gross earnings</p>
                                     </div>
-                                    <div>
-                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700, letterSpacing: '1px' }}>LABEL</p>
-                                        <p style={{ margin: '2px 0 0', fontSize: 15, color: T.accent, fontWeight: 800 }}>${(stats.counts.revenue || 0).toLocaleString()}</p>
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                        <div className="flex gap-2">
+                                            <StatBox label="Payouts" value={`$${compactNumber(stats.counts?.payouts || 0)}`} />
+                                            <StatBox label="Label" value={`$${compactNumber(stats.counts?.revenue || 0)}`} />
+                                        </div>
+                                        <PillToggle
+                                            options={[{ key: 'monthly', label: 'Monthly' }, { key: 'quarterly', label: 'Quarterly' }]}
+                                            value={revenueGranularity}
+                                            onChange={setRevenueGranularity}
+                                        />
                                     </div>
                                 </div>
-                                <PillToggle
-                                    className="admin-home-pill-toggle"
-                                    options={[{ key: 'monthly', label: 'Monthly' }, { key: 'quarterly', label: 'Quarterly' }]}
-                                    value={revenueGranularity}
-                                    onChange={setRevenueGranularity}
-                                />
-                            </div>
-                        </div>
+                                <RevenueFlowChart data={revenueSeriesData} height={160} granularity={revenueGranularity} c={c} />
+                                <Legend items={[
+                                    { color: c.legendMain, label: 'Label Revenue' },
+                                    { color: c.legendSoft, label: 'Artist Share', dashed: true },
+                                ]} />
+                            </Card.Content>
+                        </Card>
+                    </motion.div>
 
-                        <RevenueFlowChart data={revenueSeriesData} height={220} granularity={revenueGranularity} />
-
-                        <Legend items={[
-                            { color: '#E5E7EB', label: 'Label Revenue' },
-                            { color: '#9CA3AF', label: 'Artist Share' }
-                        ]} />
-                    </Card>
-                </motion.div>
-
-                {/* Listener Scale */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                >
-                    <Card className="admin-home-card admin-home-chart-card" style={{ padding: 20 }}>
-                        <div className="admin-home-panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                            <div className="admin-home-panel-copy">
-                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>LISTENER SCALE</p>
-                                <h2 className="admin-home-panel-value" style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 900, color: '#fff' }}>
-                                    {latestListeners.toLocaleString()}
-                                </h2>
-                                <p className="admin-home-panel-sub" style={{
-                                    margin: '4px 0 0', fontSize: 11, fontWeight: 700,
-                                    color: listenerDeltaPct >= 0 ? T.accent : T.sub
-                                }}>
-                                    {listenerDeltaPct >= 0 ? '+' : ''}{listenerDeltaPct.toFixed(1)}% vs previous
-                                </p>
-                            </div>
-                            <div className="admin-home-panel-tools" style={{ textAlign: 'right' }}>
-                                <div className="admin-home-inline-metrics" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
-                                    <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
-                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Artists</p>
-                                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>{Number(stats.counts.artists || 0).toLocaleString()}</p>
-                                    </div>
-                                    <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
-                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Releases</p>
-                                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>{Number(stats.counts.releases || 0).toLocaleString()}</p>
-                                    </div>
-                                    <div style={{ padding: '6px 8px', border: `1px solid ${T.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
-                                        <p style={{ margin: 0, fontSize: 9, color: T.muted, fontWeight: 700 }}>Per Artist</p>
-                                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 800, color: '#fff' }}>
-                                            {(Number(stats.counts.artists || 0) ? Math.round(latestListeners / Number(stats.counts.artists || 0)) : 0).toLocaleString()}
+                    {/* Listener Scale */}
+                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.24 }}>
+                        <Card className="p-0">
+                            <Card.Content className="p-[18px] pb-3.5 gap-0">
+                                <div className="flex items-start justify-between gap-3 mb-3.5">
+                                    <div>
+                                        <SectionLabel>Listener Scale</SectionLabel>
+                                        <p className="m-0 text-[26px] font-black text-foreground leading-none tracking-tight">{latestListeners.toLocaleString()}</p>
+                                        <p className={`m-0 mt-1 text-[11px] font-bold ${listenerDeltaPct >= 0 ? 'text-success' : 'text-danger'}`}>
+                                            {listenerDeltaPct >= 0 ? '+' : ''}{listenerDeltaPct.toFixed(1)}% vs previous
                                         </p>
                                     </div>
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {[
+                                                { label: 'Artists', value: Number(stats.counts?.artists || 0).toLocaleString() },
+                                                { label: 'Releases', value: Number(stats.counts?.releases || 0).toLocaleString() },
+                                                { label: 'Per Artist', value: (Number(stats.counts?.artists || 0) ? Math.round(latestListeners / Number(stats.counts?.artists || 0)) : 0).toLocaleString() },
+                                            ].map((s) => (
+                                                <StatBox key={s.label} label={s.label} value={s.value} />
+                                            ))}
+                                        </div>
+                                        <PillToggle
+                                            options={[{ key: 'daily', label: 'Daily' }, { key: 'weekly', label: 'Weekly' }, { key: 'monthly', label: 'Monthly' }]}
+                                            value={listenerGranularity}
+                                            onChange={setListenerGranularity}
+                                        />
+                                    </div>
                                 </div>
-                                <PillToggle
-                                    className="admin-home-pill-toggle"
-                                    options={[
-                                        { key: 'daily', label: 'Daily' },
-                                        { key: 'weekly', label: 'Weekly' },
-                                        { key: 'monthly', label: 'Monthly' }
-                                    ]}
-                                    value={listenerGranularity}
-                                    onChange={setListenerGranularity}
-                                />
-                            </div>
-                        </div>
-
-                        <ListenerScaleChart data={compareSeriesData} height={220} granularity={listenerGranularity} />
-
-                        <Legend items={[
-                            { color: '#E5E7EB', label: 'Monthly Listeners' },
-                            { color: '#9CA3AF', label: 'Per Artist', dashed: true },
-                            { color: '#6B7280', label: 'Artist Count', line: true },
-                            { color: '#4B5563', label: 'Release Count', line: true }
-                        ]} />
-                    </Card>
-                </motion.div>
-            </div>
-
-            {/* ── Bottom Row: Sidebar Stats + Top Artists + Top Releases + Actions ── */}
-            <div className="admin-home-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1.5fr', gap: 14 }}>
-
-                {/* Left: Stats Cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <motion.div
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.45, delay: 0.3 }}
-                    >
-                        <Card className="admin-home-card admin-home-side-card">
-                            <p className="admin-home-side-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP PLATFORM</p>
-                            <p className="admin-home-side-value" style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 900, color: '#fff' }}>
-                                {(stats.platforms?.[0]?.label || 'N/A')}
-                            </p>
-                            <p className="admin-home-side-sub" style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
-                                ${Number(stats.platforms?.[0]?.value || 0).toLocaleString()} label revenue
-                            </p>
+                                <ListenerScaleChart data={compareSeriesData} height={160} granularity={listenerGranularity} c={c} />
+                                <Legend items={[
+                                    { color: c.legendMain, label: 'Monthly Listeners' },
+                                    { color: c.legendSoft, label: 'Per Artist', dashed: true },
+                                    { color: c.legendFaint, label: 'Artist Count', line: true },
+                                ]} />
+                            </Card.Content>
                         </Card>
                     </motion.div>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.45, delay: 0.35 }}
-                    >
-                        <Card className="admin-home-card admin-home-side-card">
-                            <p className="admin-home-side-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>AVG PER ARTIST</p>
-                            <p className="admin-home-side-value" style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 900, color: '#fff' }}>
-                                {stats.counts.artists ? Math.round((stats.counts.listenersTotal || 0) / stats.counts.artists).toLocaleString() : '0'}
-                            </p>
-                            <p className="admin-home-side-sub" style={{ margin: '6px 0 0', fontSize: 11, color: T.accent, fontWeight: 700 }}>
-                                monthly listeners
-                            </p>
-                        </Card>
-                    </motion.div>
+                    {/* Leaderboard Row */}
+                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
+                        <div className="home-leaderboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 
-                    {/* Action Cards */}
-                    {[
-                        { title: 'Create Release', desc: 'Add to catalog', icon: <RefreshCw size={18} />, target: 'submissions' },
-                        { title: 'Invite Team', desc: 'Add new users', icon: <Users size={18} />, target: 'users' },
-                    ].map((a, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.45, delay: 0.4 + i * 0.05 }}
-                        >
-                            <Card
-                                className="admin-home-card admin-home-action-card"
-                                onClick={() => onNavigate(a.target)}
-                                style={{ cursor: 'pointer', transition: 'border-color 0.2s ease' }}
-                                onMouseEnter={(e) => e.currentTarget.style.borderColor = T.borderHover}
-                                onMouseLeave={(e) => e.currentTarget.style.borderColor = T.border}
-                            >
-                                <div className="admin-home-action-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                    <div className="admin-home-action-icon" style={{
-                                        width: 34, height: 34, borderRadius: 9,
-                                        background: 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${T.border}`,
-                                        display: 'grid', placeItems: 'center',
-                                        color: T.sub
-                                    }}>
-                                        {a.icon}
+                            {/* Top Artists */}
+                            <Card className="p-0">
+                                <Card.Content className="p-[18px] gap-0">
+                                    <div className="flex items-center justify-between mb-3.5">
+                                        <SectionLabel>Top Artists</SectionLabel>
+                                        <button
+                                            type="button"
+                                            onClick={() => onNavigate('artists')}
+                                            className="text-[10px] font-bold text-muted bg-transparent border-0 cursor-pointer tracking-wide hover:text-foreground transition-colors"
+                                        >
+                                            VIEW ALL →
+                                        </button>
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <h4 className="admin-home-action-title" style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0 }}>{a.title}</h4>
-                                        <p className="admin-home-action-sub" style={{ fontSize: 11, color: T.muted, margin: '2px 0 0' }}>{a.desc}</p>
+                                    <div className="grid gap-1.5">
+                                        {(stats.topArtists || []).slice(0, 5).map((a, i) => (
+                                            <button
+                                                key={a.id || i}
+                                                type="button"
+                                                onClick={() => onNavigate('artists')}
+                                                className="w-full bg-default/4 border border-default/8 rounded-[10px] px-2.5 py-2 flex items-center gap-2.5 cursor-pointer text-left hover:bg-default/8 transition-colors"
+                                            >
+                                                <div className="w-[30px] h-[30px] rounded-lg overflow-hidden shrink-0 bg-default/10 border border-default/10">
+                                                    <NextImage src={normalizeImageSrc(a.image)} alt={a.name || 'Artist'} width={30} height={30} unoptimized onError={handleImageError} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
+                                                <div className="flex-1 overflow-hidden">
+                                                    <p className="m-0 text-[12px] font-extrabold text-foreground truncate">{a.name}</p>
+                                                    <p className="m-0 mt-px text-[10px] text-muted font-semibold">{(a.monthlyListeners || 0).toLocaleString()}</p>
+                                                </div>
+                                                <span className={`text-[9px] font-black shrink-0 ${rankClass(i)}`}>#{i + 1}</span>
+                                            </button>
+                                        ))}
+                                        {(!stats.topArtists || stats.topArtists.length === 0) && (
+                                            <p className="m-0 text-[11px] text-muted/50">No data.</p>
+                                        )}
                                     </div>
-                                    <ChevronRight className="admin-home-action-chevron" size={16} color={T.sub} />
-                                </div>
+                                </Card.Content>
                             </Card>
-                        </motion.div>
-                    ))}
+
+                            {/* Top Releases */}
+                            <Card className="p-0">
+                                <Card.Content className="p-[18px] gap-0">
+                                    <div className="flex items-center justify-between mb-3.5">
+                                        <SectionLabel>Top Releases</SectionLabel>
+                                        <button
+                                            type="button"
+                                            onClick={() => onNavigate('releases')}
+                                            className="text-[10px] font-bold text-muted bg-transparent border-0 cursor-pointer tracking-wide hover:text-foreground transition-colors"
+                                        >
+                                            VIEW ALL →
+                                        </button>
+                                    </div>
+                                    <div className="grid gap-1.5">
+                                        {(stats.topReleases || []).slice(0, 5).map((r, i) => (
+                                            <button
+                                                key={r.id || i}
+                                                type="button"
+                                                onClick={() => onNavigate('releases')}
+                                                className="w-full bg-default/4 border border-default/8 rounded-[10px] px-2.5 py-2 flex items-center gap-2.5 cursor-pointer text-left hover:bg-default/8 transition-colors"
+                                            >
+                                                <div className="w-[30px] h-[30px] rounded-lg overflow-hidden shrink-0 bg-default/10 border border-default/10">
+                                                    <NextImage src={normalizeImageSrc(r.image)} alt={r.name || 'Release'} width={30} height={30} unoptimized onError={handleImageError} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
+                                                <div className="flex-1 overflow-hidden">
+                                                    <p className="m-0 text-[12px] font-extrabold text-foreground truncate">{r.name}</p>
+                                                    <p className="m-0 mt-px text-[10px] text-muted font-semibold">
+                                                        {r.popularity ? `${r.popularity} popularity` : 'No stream data'}
+                                                    </p>
+                                                </div>
+                                                <span className={`text-[9px] font-black shrink-0 ${rankClass(i)}`}>#{i + 1}</span>
+                                            </button>
+                                        ))}
+                                        {(!stats.topReleases || stats.topReleases.length === 0) && (
+                                            <p className="m-0 text-[11px] text-muted/50">No data.</p>
+                                        )}
+                                    </div>
+                                </Card.Content>
+                            </Card>
+                        </div>
+                    </motion.div>
                 </div>
 
-                {/* Middle: Top Artists */}
+                {/* Right: Action Queue */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.35 }}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.2 }}
+                    style={{ position: 'sticky', top: 16 }}
                 >
-                    <Card className="admin-home-card admin-home-list-card" style={{ padding: 20, height: '100%' }}>
-                        <div className="admin-home-list-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <div>
-                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP ARTISTS</p>
-                                <p className="admin-home-panel-sub" style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By monthly listeners</p>
-                            </div>
-                            <button
-                                className="admin-home-list-button"
-                                onClick={() => onNavigate('artists')}
-                                style={{
-                                    background: 'rgba(255,255,255,0.04)',
-                                    border: `1px solid ${T.border}`,
-                                    color: '#fff',
-                                    fontSize: 10,
-                                    padding: '6px 14px',
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    letterSpacing: '0.5px'
-                                }}
-                            >
-                                VIEW ALL
-                            </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
-                            {(stats.topArtists || []).slice(0, 5).map((a, i) => (
-                                <motion.div
-                                    key={a.id || i}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ duration: 0.35, delay: 0.4 + i * 0.06 }}
-                                    className="admin-home-list-item"
-                                    style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-                                    onClick={() => onNavigate('artists')}
-                                >
-                                    <div className="admin-home-list-media" style={{
-                                        width: 44, height: 44, borderRadius: 8,
-                                        overflow: 'hidden', background: '#000', flexShrink: 0,
-                                        border: `1px solid ${T.border}`
-                                    }}>
-                                        <NextImage
-                                            src={normalizeImageSrc(a.image)}
-                                            alt={a.name || 'Artist'}
-                                            width={100}
-                                            height={100}
-                                            unoptimized
-                                            onError={handleImageError}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        />
-                                    </div>
-                                    <div className="admin-home-list-copy" style={{ flex: 1, overflow: 'hidden' }}>
-                                        <p className="admin-home-list-title" style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</p>
-                                        <p className="admin-home-list-sub" style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>{(a.monthlyListeners || 0).toLocaleString()} listeners</p>
-                                    </div>
-                                    <div className="admin-home-list-rank" style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
-                                        #{i + 1}
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {(!stats.topArtists || stats.topArtists.length === 0) && (
-                                <p style={{ fontSize: 11, color: T.muted, margin: 0 }}>No artist data available yet.</p>
-                            )}
-                        </div>
-                    </Card>
-                </motion.div>
+                    <Card className="p-0">
+                        <Card.Content className="p-[18px] gap-0">
 
-                {/* Right: Top Releases */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.4 }}
-                >
-                    <Card className="admin-home-card admin-home-list-card" style={{ padding: 20, height: '100%' }}>
-                        <div className="admin-home-list-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <div>
-                                <p className="admin-home-panel-label" style={{ margin: 0, fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: '1.5px' }}>TOP RELEASES</p>
-                                <p className="admin-home-panel-sub" style={{ margin: '4px 0 0', fontSize: 11, color: T.sub, fontWeight: 600 }}>By stream count / popularity</p>
+                            {/* Needs Attention */}
+                            <SectionLabel>Needs Attention</SectionLabel>
+                            <div className="mb-5">
+                                <QueueItem label="Demo Submissions" count={pendingDemos} icon={<FileAudio size={13} />} onClick={() => onNavigate('submissions')} />
+                                <QueueItem label="Change Requests" count={pendingRequests} icon={<GitPullRequest size={13} />} onClick={() => onNavigate('requests')} />
+                                <QueueItem label="Unsigned Contracts" count={pendingContracts} icon={<FileText size={13} />} onClick={() => onNavigate('contracts')} />
                             </div>
-                            <button
-                                className="admin-home-list-button"
-                                onClick={() => onNavigate('releases')}
-                                style={{
-                                    background: 'rgba(255,255,255,0.04)',
-                                    border: `1px solid ${T.border}`,
-                                    color: '#fff',
-                                    fontSize: 10,
-                                    padding: '6px 14px',
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    letterSpacing: '0.5px'
-                                }}
-                            >
-                                VIEW ALL
-                            </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
-                            {(stats.topReleases || []).slice(0, 5).map((r, i) => (
-                                <motion.div
-                                    key={r.id || i}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ duration: 0.35, delay: 0.45 + i * 0.06 }}
-                                    className="admin-home-list-item"
-                                    style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-                                    onClick={() => onNavigate('releases')}
-                                >
-                                    <div className="admin-home-list-media" style={{
-                                        width: 44, height: 44, borderRadius: 8,
-                                        overflow: 'hidden', background: '#000', flexShrink: 0,
-                                        border: `1px solid ${T.border}`
-                                    }}>
-                                        <NextImage
-                                            src={normalizeImageSrc(r.image)}
-                                            alt={r.name || 'Release'}
-                                            width={100}
-                                            height={100}
-                                            unoptimized
-                                            onError={handleImageError}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        />
+
+                            {/* Recent Demos */}
+                            {(stats.recent?.demos || []).length > 0 && (
+                                <>
+                                    <SectionLabel>Recent Demos</SectionLabel>
+                                    <div className="mb-5">
+                                        {(stats.recent.demos || []).slice(0, 4).map((d, i) => (
+                                            <RecentItem
+                                                key={d.id || i}
+                                                name={d.title || 'Untitled'}
+                                                sub={d.artist?.stageName || d.artist?.email || ''}
+                                                onClick={() => onNavigate('submissions')}
+                                            />
+                                        ))}
                                     </div>
-                                    <div className="admin-home-list-copy" style={{ flex: 1, overflow: 'hidden' }}>
-                                        <p className="admin-home-list-title" style={{ fontSize: 13, fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
-                                        <p className="admin-home-list-sub" style={{ fontSize: 11, color: T.muted, margin: '2px 0 0', fontWeight: 600 }}>
-                                            {r.popularity ? `${r.popularity} Popularity` : 'No data'}
-                                        </p>
-                                    </div>
-                                    <div className="admin-home-list-rank" style={{ color: T.muted, fontSize: 12, fontWeight: 800 }}>
-                                        #{i + 1}
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {(!stats.topReleases || stats.topReleases.length === 0) && (
-                                <p style={{ fontSize: 11, color: T.muted, margin: 0 }}>No release data available yet.</p>
+                                </>
                             )}
-                        </div>
+
+                            {/* Recent Requests */}
+                            {(stats.recent?.requests || []).length > 0 && (
+                                <>
+                                    <SectionLabel>Recent Requests</SectionLabel>
+                                    <div>
+                                        {(stats.recent.requests || []).slice(0, 4).map((r, i) => (
+                                            <RecentItem
+                                                key={r.id || i}
+                                                name={r.type ? String(r.type).replace(/_/g, ' ') : 'Request'}
+                                                sub={r.user?.stageName || r.user?.email || ''}
+                                                onClick={() => onNavigate('requests')}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Platform summary */}
+                            {(stats.platforms || []).length > 0 && (
+                                <div className="border-t border-default/8 mt-4 pt-4">
+                                    <SectionLabel>Top Platform</SectionLabel>
+                                    <p className="m-0 text-[15px] font-black text-foreground">{stats.platforms[0]?.label || 'N/A'}</p>
+                                    <p className="m-0 mt-1 text-[11px] text-muted font-semibold">${Number(stats.platforms[0]?.value || 0).toLocaleString()} label revenue</p>
+                                </div>
+                            )}
+                        </Card.Content>
                     </Card>
                 </motion.div>
             </div>
 
             <style jsx>{`
                 @media (max-width: 1180px) {
-                    .admin-home-chart-grid,
-                    .admin-home-bottom-grid {
-                        grid-template-columns: 1fr !important;
-                    }
-
-                    .admin-home-panel-head {
-                        flex-direction: column;
-                        align-items: flex-start !important;
-                        gap: 12px;
-                    }
-
-                    .admin-home-panel-tools {
-                        width: 100%;
-                        text-align: left !important;
-                    }
+                    .home-main-grid { grid-template-columns: 1fr !important; }
+                    .home-leaderboard-grid { grid-template-columns: 1fr 1fr !important; }
                 }
-
                 @media (max-width: 820px) {
-                    .admin-home-kpi-grid {
-                        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                    }
-
-                    .admin-home-inline-metrics {
-                        display: grid !important;
-                        grid-template-columns: 1fr !important;
-                    }
-
-                    .admin-home-panel-value {
-                        font-size: 21px !important;
-                    }
-
-                    .admin-home-list-head {
-                        align-items: flex-start !important;
-                        gap: 12px;
-                        flex-direction: column;
-                    }
+                    .home-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+                    .home-leaderboard-grid { grid-template-columns: 1fr !important; }
                 }
-
                 @media (max-width: 540px) {
-                    .admin-home-kpi-grid {
-                        grid-template-columns: 1fr !important;
-                    }
-
-                    .admin-home-card {
-                        padding: 16px !important;
-                        border-radius: 14px !important;
-                    }
-
-                    .admin-home-kpi-head {
-                        margin-bottom: 10px !important;
-                    }
-
-                    .admin-home-kpi-label,
-                    .admin-home-side-label,
-                    .admin-home-panel-label {
-                        font-size: 9px !important;
-                        letter-spacing: 1.1px !important;
-                    }
-
-                    .admin-home-kpi-value {
-                        font-size: 22px !important;
-                    }
-
-                    .admin-home-kpi-sub,
-                    .admin-home-side-sub,
-                    .admin-home-panel-sub {
-                        font-size: 10px !important;
-                    }
-
-                    .admin-home-panel-value,
-                    .admin-home-side-value {
-                        font-size: 20px !important;
-                    }
-
-                    .admin-home-inline-metrics {
-                        gap: 8px !important;
-                        margin-bottom: 10px !important;
-                    }
-
-                    .admin-home-pill-toggle {
-                        width: 100%;
-                        display: grid !important;
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
-                    }
-
-                    .admin-home-pill-toggle :global(button) {
-                        width: 100%;
-                        padding: 7px 8px !important;
-                    }
-
-                    .admin-home-list-item {
-                        display: grid !important;
-                        grid-template-columns: 40px minmax(0, 1fr) auto;
-                        gap: 10px !important;
-                        align-items: center !important;
-                    }
-
-                    .admin-home-list-media {
-                        width: 40px !important;
-                        height: 40px !important;
-                    }
-
-                    .admin-home-list-title {
-                        white-space: normal !important;
-                        overflow: visible !important;
-                        text-overflow: initial !important;
-                        font-size: 12px !important;
-                        line-height: 1.25 !important;
-                    }
-
-                    .admin-home-list-sub {
-                        font-size: 10px !important;
-                    }
-
-                    .admin-home-list-rank {
-                        font-size: 11px !important;
-                    }
-
-                    .admin-home-action-row {
-                        gap: 10px !important;
-                    }
-
-                    .admin-home-action-icon {
-                        width: 34px !important;
-                        height: 34px !important;
-                    }
-
-                    .admin-home-action-title {
-                        font-size: 12px !important;
-                    }
-
-                    .admin-home-action-sub {
-                        font-size: 10px !important;
-                    }
-                }
-
-                @media (max-width: 420px) {
-                    .admin-home-card {
-                        padding: 14px !important;
-                    }
-
-                    .admin-home-panel-head {
-                        gap: 10px !important;
-                        margin-bottom: 14px !important;
-                    }
-
-                    .admin-home-panel-value,
-                    .admin-home-side-value,
-                    .admin-home-kpi-value {
-                        font-size: 18px !important;
-                    }
-
-                    .admin-home-kpi-icon {
-                        width: 24px !important;
-                        height: 24px !important;
-                        border-radius: 8px !important;
-                    }
-
-                    .admin-home-inline-metrics {
-                        gap: 6px !important;
-                    }
-
-                    .admin-home-list-button {
-                        width: 100%;
-                        text-align: center;
-                    }
-
-                    .admin-home-pill-toggle {
-                        grid-template-columns: 1fr !important;
-                    }
-
-                    .admin-home-list-item {
-                        grid-template-columns: 36px minmax(0, 1fr) auto;
-                    }
-
-                    .admin-home-list-media {
-                        width: 36px !important;
-                        height: 36px !important;
-                    }
-
-                    .admin-home-action-chevron {
-                        display: none;
-                    }
+                    .home-kpi-grid { grid-template-columns: 1fr !important; }
                 }
             `}</style>
         </div>

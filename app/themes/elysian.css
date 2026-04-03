@@ -1,0 +1,24 @@
+/**
+ * Elysian Theme — Gold/Warm accent
+ * Accent: Gold (#d4a853)
+ */
+
+[data-tenant="elysian"] {
+  --accent: #d4a853;
+  --accent-foreground: #0a0a0a;
+  --accent-hover: #e4bc6a;
+  --accent-glow: rgba(212, 168, 83, 0.22);
+  --accent-muted: rgba(212, 168, 83, 0.15);
+  --accent-text: #d4a853;
+  --brand-glow: rgba(212, 168, 83, 0.08);
+}
+
+[data-tenant="elysian"][data-theme="light"] {
+  --accent: #a07a2e;
+  --accent-foreground: #0a0a0a;
+  --accent-hover: #8b6a28;
+  --accent-glow: rgba(160, 122, 46, 0.18);
+  --accent-muted: rgba(160, 122, 46, 0.12);
+  --accent-text: #7a5c20;
+  --brand-glow: rgba(160, 122, 46, 0.06);
+}

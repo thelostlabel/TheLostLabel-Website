@@ -25,7 +25,7 @@ export async function sendMail({ to, subject, html }: SendMailInput) {
 
   try {
     const info = await transporter.sendMail({
-      from: `"The Lost Label" <${process.env.SMTP_USER}>`,
+      from: `"${process.env.NEXT_PUBLIC_SITE_FULL_NAME || 'The Lost Label'}" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,

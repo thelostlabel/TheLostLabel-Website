@@ -9,3 +9,5 @@ export { default as DashboardErrorBoundary } from "./DashboardErrorBoundary";
 export { default as DashboardModal } from "./DashboardModal";
 export { default as DashboardSectionHeader } from "./DashboardSectionHeader";
 export { default as DashboardEmptyState } from "./DashboardEmptyState";
+export { default as Breadcrumb } from "./Breadcrumb";
+export { default as AdvancedFilter } from "./AdvancedFilter";

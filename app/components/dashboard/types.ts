@@ -125,9 +125,12 @@ export type DashboardRequest = {
   details?: string | null;
   createdAt?: string | Date | null;
   updatedAt?: string | Date | null;
+  user?: DashboardUser | null;
   release?: {
     id?: string;
     name?: string | null;
+    image?: string | null;
+    spotifyUrl?: string | null;
     [key: string]: unknown;
   } | null;
   comments?: DashboardRequestComment[];

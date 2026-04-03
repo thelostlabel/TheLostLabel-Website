@@ -86,7 +86,7 @@ const DATASET_KEYS: ArtistDatasetKey[] = [
   "requests",
 ];
 
-const getViewDatasets = (view: string): ArtistDatasetKey[] => {
+export const getArtistViewDatasets = (view: string): ArtistDatasetKey[] => {
   switch (view) {
     case "overview":
       return ["overview", "demos"];
@@ -141,7 +141,7 @@ const fetchArtistDataset = async <TKey extends ArtistDatasetKey>(
 export function useArtistDashboardData(view: string) {
   const queryClient = useQueryClient();
   const [earningsPage, setEarningsPage] = useState(1);
-  const viewDatasets = getViewDatasets(view);
+  const viewDatasets = getArtistViewDatasets(view);
 
   const activeQueries = useQueries({
     queries: viewDatasets.map((dataset) => ({
@@ -218,7 +218,7 @@ export function useArtistDashboardData(view: string) {
 
   const loadView = useCallback(
     async (targetView: string, page = 1) => {
-      const datasets = getViewDatasets(targetView);
+      const datasets = getArtistViewDatasets(targetView);
       if (!datasets.length) return;
 
       if (datasets.includes("earnings")) {
@@ -245,7 +245,7 @@ export function useArtistDashboardData(view: string) {
           return [entry as ArtistDatasetKey];
         }
 
-        return getViewDatasets(entry);
+        return getArtistViewDatasets(entry);
       });
 
       if (datasets.includes("earnings")) {
@@ -266,7 +266,7 @@ export function useArtistDashboardData(view: string) {
 
   const isViewLoading = useCallback(
     (targetView: string) => {
-      const datasets = getViewDatasets(targetView);
+      const datasets = getArtistViewDatasets(targetView);
       return datasets.some(
         (dataset) => queryStateByKey[dataset]?.isPending || queryStateByKey[dataset]?.isFetching,
       );
@@ -276,7 +276,7 @@ export function useArtistDashboardData(view: string) {
 
   const viewError = useCallback(
     (targetView: string) => {
-      const datasets = getViewDatasets(targetView);
+      const datasets = getArtistViewDatasets(targetView);
       return (
         datasets
           .map((dataset) =>

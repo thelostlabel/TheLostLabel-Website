@@ -12,6 +12,12 @@ services:
     volumes:
       - lost_site_uploads:/app/private
       - playwright_data:/ms-playwright
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) process.exit(1)})"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
 
   lost-bot:
     build:
@@ -20,7 +26,8 @@ services:
     container_name: lost-bot
     restart: unless-stopped
     depends_on:
-      - lost-website
+      lost-website:
+        condition: service_healthy
     env_file:
       - .env
       - ./Discord Bot/.env

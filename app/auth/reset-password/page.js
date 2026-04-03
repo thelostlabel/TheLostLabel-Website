@@ -1,10 +1,9 @@
-
 "use client";
 import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import BackgroundEffects from '../../components/BackgroundEffects';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { cinematicAuthStyles } from '../cinematic-auth-styles';
 
 function ResetPasswordContent() {
     const searchParams = useSearchParams();
@@ -19,167 +18,106 @@ function ResetPasswordContent() {
 
     if (!token) {
         return (
-            <div style={{ textAlign: 'center' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#ff4444' }}>INVALID LINK</h2>
-                <p style={{ color: '#888', marginTop: '10px' }}>The password reset link is missing its token.</p>
-                <Link href="/auth/forgot-password" style={{ display: 'inline-block', marginTop: '20px', color: 'var(--accent)', textDecoration: 'none', fontWeight: '800', fontSize: '11px' }}>REQUEST NEW LINK</Link>
+            <div className="ca-center" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: 36, opacity: 0.4, marginBottom: 16 }}>⚠</div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'rgba(255,120,120,0.8)', letterSpacing: 3, marginBottom: 10 }}>INVALID LINK</h2>
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginBottom: 24, lineHeight: 1.6 }}>
+                    The password reset link is missing its token.
+                </p>
+                <Link href="/auth/forgot-password" className="ca-success-btn">
+                    Request New Link
+                </Link>
             </div>
         );
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (password !== confirmPassword) {
-            setError("Passwords do not match");
-            return;
-        }
-        if (password.length < 8) {
-            setError("Password must be at least 8 characters");
-            return;
-        }
-
+        if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+        if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
         setLoading(true);
         setError(null);
-
         try {
             const res = await fetch('/api/auth/reset-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, password })
+                body: JSON.stringify({ token, password }),
             });
-
             const data = await res.json();
-
             if (res.ok) {
                 setSuccess(true);
-                setTimeout(() => {
-                    router.push('/auth/login');
-                }, 3000);
+                setTimeout(() => router.push('/auth/login'), 3000);
             } else {
                 setError(data.error);
             }
-        } catch (err) {
-            setError("Something went wrong. Please try again.");
+        } catch {
+            setError('Something went wrong. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const labelStyle = {
-        display: 'block',
-        marginBottom: '8px',
-        fontSize: '10px',
-        fontWeight: '900',
-        color: 'var(--accent)',
-        letterSpacing: '2px',
-        textTransform: 'uppercase'
-    };
-
-    const inputStyle = {
-        width: '100%',
-        padding: '16px',
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '12px',
-        color: 'white',
-        fontFamily: 'inherit',
-        fontSize: '14px',
-        outline: 'none',
-        transition: 'all 0.3s ease'
-    };
-
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-        >
-            <div style={{ marginBottom: '60px' }}>
-                <h2 style={{ fontSize: '32px', marginBottom: '10px', letterSpacing: '-0.02em', fontWeight: '900' }}>SET NEW<br />PASSWORD</h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: '600', letterSpacing: '1px' }}>
-                    SECURE YOUR ACCOUNT
-                </p>
-            </div>
+        <div className="ca-center">
+            <Link href="/auth/login" className="ca-back">&larr; BACK TO SIGN IN</Link>
 
             {!success ? (
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                    {error && (
-                        <div style={{ padding: '15px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '12px', color: '#ff4444', fontSize: '11px', fontWeight: '800' }}>
-                            {error.toUpperCase()}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                >
+                    <div className="ca-header">
+                        <h2>Set New Password</h2>
+                        <p>Choose a strong password for your account.</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="ca-form">
+                        {error && (
+                            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="ca-error">
+                                {error}
+                            </motion.div>
+                        )}
+
+                        <div className="ca-field">
+                            <label>NEW PASSWORD</label>
+                            <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
                         </div>
-                    )}
 
-                    <div>
-                        <label style={labelStyle}>NEW PASSWORD</label>
-                        <input
-                            type="password"
-                            placeholder="••••••••"
-                            style={inputStyle}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="input-focus-glow"
-                        />
-                    </div>
+                        <div className="ca-field">
+                            <label>CONFIRM PASSWORD</label>
+                            <input type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                        </div>
 
-                    <div>
-                        <label style={labelStyle}>CONFIRM PASSWORD</label>
-                        <input
-                            type="password"
-                            placeholder="••••••••"
-                            style={inputStyle}
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            className="input-focus-glow"
-                        />
-                    </div>
-
-                    <button type="submit" disabled={loading} className="glow-button" style={{ marginTop: '20px', padding: '20px', width: '100%', borderRadius: '16px', fontSize: '13px', letterSpacing: '1px' }}>
-                        {loading ? 'UPDATING...' : 'UPDATE PASSWORD'}
-                    </button>
-                </form>
+                        <button type="submit" disabled={loading} className="ca-submit">
+                            {loading ? <span className="ca-spinner" /> : 'UPDATE PASSWORD →'}
+                        </button>
+                    </form>
+                </motion.div>
             ) : (
-                <div style={{ padding: '30px', background: 'rgba(0,255,100,0.05)', border: '1px solid rgba(0,255,100,0.2)', borderRadius: '20px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '40px', marginBottom: '20px' }}>✅</div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '10px', color: '#00ff66' }}>SUCCESS!</h3>
-                    <p style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.6' }}>Your password has been updated. Redirecting to login...</p>
-                </div>
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.45 }}
+                    className="ca-success"
+                >
+                    <div className="ca-success-icon">✓</div>
+                    <h3>PASSWORD UPDATED</h3>
+                    <p>Your password has been updated successfully. Redirecting to login...</p>
+                </motion.div>
             )}
-        </motion.div>
+        </div>
     );
 }
 
 export default function ResetPassword() {
     return (
-        <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', display: 'flex' }}>
-            <BackgroundEffects />
-
-            <div style={{
-                width: '100%',
-                maxWidth: '600px',
-                margin: '0 auto',
-                background: 'rgba(5, 6, 7, 0.8)',
-                backdropFilter: 'blur(20px)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                padding: '40px 8vw',
-                position: 'relative',
-                zIndex: 10
-            }}>
-                <Suspense fallback={<div style={{ color: '#666', fontSize: '10px', fontWeight: '900', letterSpacing: '4px', textAlign: 'center' }}>LOADING_SECURE_AUTH...</div>}>
-                    <ResetPasswordContent />
-                </Suspense>
-            </div>
-
-            <style jsx>{`
-                .input-focus-glow:focus {
-                    background: rgba(255,255,255,0.05) !important;
-                    border-color: var(--accent) !important;
-                    box-shadow: 0 0 15px rgba(158, 240, 26, 0.1);
-                }
-            `}</style>
+        <div className="ca-root ca-centered">
+            <div className="ca-grid" />
+            <style jsx global>{cinematicAuthStyles}</style>
+            <Suspense fallback={<div style={{ color: 'rgba(255,255,255,0.15)', fontSize: 9, fontWeight: 700, letterSpacing: 4 }}>LOADING...</div>}>
+                <ResetPasswordContent />
+            </Suspense>
         </div>
     );
 }

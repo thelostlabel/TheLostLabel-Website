@@ -6,7 +6,9 @@ import { generateSupportStatusEmail } from "@/lib/mail-templates";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import { settleSideEffects } from "@/lib/async-effects";
+import { createNotification } from "@/lib/notification-service";
 import { buildDiscordWebhookPayload, sendDiscordWebhook } from "@/lib/discord-webhooks";
+import { logAuditEvent, getClientIp } from "@/lib/audit-log";
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -21,7 +23,17 @@ export async function GET(req) {
             prisma.changeRequest.findMany({
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    user: { select: { email: true, stageName: true } },
+                    user: {
+                        select: {
+                            email: true,
+                            stageName: true,
+                            artist: {
+                                select: {
+                                    image: true
+                                }
+                            }
+                        }
+                    },
                     release: {
                         select: {
                             id: true,
@@ -68,6 +80,21 @@ export async function PATCH(req) {
                 release: true,
                 assignedTo: { select: { stageName: true, email: true } }
             }
+        });
+
+        // --- AUDIT LOG ---
+        logAuditEvent({
+            userId: session.user.id,
+            action: status === 'approved' || status === 'completed' ? 'approve' : status === 'rejected' ? 'reject' : 'update',
+            entity: 'request',
+            entityId: id,
+            details: JSON.stringify({
+                status,
+                type: updated.type,
+                releaseName: updated.release?.name || null,
+                adminNote: adminNote || null,
+            }),
+            ipAddress: getClientIp(req),
         });
 
         // --- DISCORD WEBHOOK ---
@@ -130,6 +157,18 @@ export async function PATCH(req) {
         const requestType = updated.type.toUpperCase().replace("_", " ");
 
         await settleSideEffects([
+            {
+                label: "in-app-notification",
+                run: () => createNotification({
+                    userId: updated.userId,
+                    type: "request_updated",
+                    title: `Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+                    message: `Your ${requestType} request${releaseName !== "General" ? ` for ${releaseName}` : ""} has been updated to ${status.toUpperCase()}.`,
+                    link: `?view=my-requests`,
+                }).catch((notifError) => {
+                    console.error("In-app notification error:", notifError);
+                })
+            },
             {
                 label: "support-status-email",
                 run: () => sendMail({

@@ -588,7 +588,7 @@ export default function ContractsView({
   return (
     <div className="space-y-6">
       {/* Header + Action Bar */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-[16px] font-black tracking-[0.18em] uppercase text-foreground">
               Contracts
@@ -597,7 +597,7 @@ export default function ContractsView({
               {contracts.length} contract{contracts.length !== 1 ? 's' : ''} total. Manage artist agreements and royalty splits.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <input
               type="file"
               multiple
@@ -608,17 +608,18 @@ export default function ContractsView({
             />
             <Button
               variant="tertiary"
-              size="md"
+              size="sm"
               onPress={() => document.getElementById('batch-upload-pdf')?.click()}
               isDisabled={batchProcessing}
             >
-              <Upload size={18} className="mr-2" />
-              {batchProcessing ? 'Processing' : 'Batch Upload'}
+              <Upload size={14} />
+              <span className="hidden sm:inline">{batchProcessing ? 'Processing' : 'Batch Upload'}</span>
+              <span className="sm:hidden">{batchProcessing ? '...' : 'Upload'}</span>
             </Button>
 
             <Button
               variant="secondary"
-              size="md"
+              size="sm"
               onPress={() => {
                 setForm(createDefaultContractForm());
                 setEditingContract(null);
@@ -626,7 +627,9 @@ export default function ContractsView({
                 setShowAdd(true);
               }}
             >
-              <Plus size={18} className="mr-2" /> New Contract
+              <Plus size={14} />
+              <span className="hidden sm:inline">New Contract</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </div>
       </div>

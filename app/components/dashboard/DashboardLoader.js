@@ -1,10 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import Portal from '@/app/components/Portal';
 import { BRANDING } from '@/lib/branding';
-
-
 
 const shimmer = {
     initial: { x: '-100%' },
@@ -18,8 +15,8 @@ const SkeletonCard = ({ delay = 0, wide = false }) => (
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 + delay * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         style={{
-            background: 'rgba(255,255,255,0.025)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--loader-skeleton-bg)',
+            border: '1px solid var(--loader-skeleton-border)',
             borderRadius: '16px',
             padding: '24px',
             position: 'relative',
@@ -38,45 +35,18 @@ const SkeletonCard = ({ delay = 0, wide = false }) => (
             style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.03) 50%, transparent 100%)',
+                background: `linear-gradient(90deg, transparent 0%, var(--loader-shimmer) 50%, transparent 100%)`,
                 zIndex: 2,
             }}
         />
-
-        {/* Label skeleton */}
-        <div style={{
-            width: '80px',
-            height: '8px',
-            background: 'rgba(255,255,255,0.06)',
-            borderRadius: '4px',
-            marginBottom: '16px',
-        }} />
-
-        {/* Value skeleton */}
-        <div style={{
-            width: wide ? '160px' : '100px',
-            height: '24px',
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: '6px',
-            marginBottom: '12px',
-        }} />
-
-        {/* Subtitle skeleton */}
-        <div style={{
-            width: '60px',
-            height: '6px',
-            background: 'rgba(255,255,255,0.03)',
-            borderRadius: '3px',
-        }} />
-
-        {/* Glow accent */}
+        <div style={{ width: '80px', height: '8px', background: 'var(--loader-skeleton-bar1)', borderRadius: '4px', marginBottom: '16px' }} />
+        <div style={{ width: wide ? '160px' : '100px', height: '24px', background: 'var(--loader-skeleton-bar2)', borderRadius: '6px', marginBottom: '12px' }} />
+        <div style={{ width: '60px', height: '6px', background: 'var(--loader-skeleton-bar3)', borderRadius: '3px' }} />
         <div style={{
             position: 'absolute',
-            top: '-40px',
-            right: '-40px',
-            width: '120px',
-            height: '120px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)',
+            top: '-40px', right: '-40px',
+            width: '120px', height: '120px',
+            background: 'radial-gradient(circle, var(--loader-glow) 0%, transparent 70%)',
             pointerEvents: 'none',
         }} />
     </motion.div>
@@ -92,7 +62,7 @@ const SkeletonRow = ({ delay = 0 }) => (
             gridTemplateColumns: '1fr 1fr 80px 60px',
             gap: '16px',
             padding: '16px',
-            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            borderBottom: '1px solid var(--loader-skeleton-bar3)',
             position: 'relative',
             overflow: 'hidden',
         }}
@@ -104,13 +74,13 @@ const SkeletonRow = ({ delay = 0 }) => (
             style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.015) 50%, transparent 100%)',
+                background: `linear-gradient(90deg, transparent 0%, var(--loader-shimmer) 50%, transparent 100%)`,
             }}
         />
-        <div style={{ width: '70%', height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }} />
-        <div style={{ width: '50%', height: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px' }} />
-        <div style={{ width: '60%', height: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
-        <div style={{ width: '40%', height: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }} />
+        <div style={{ width: '70%', height: '10px', background: 'var(--loader-skeleton-bar2)', borderRadius: '4px' }} />
+        <div style={{ width: '50%', height: '10px', background: 'var(--loader-skeleton-bar2)', borderRadius: '4px' }} />
+        <div style={{ width: '60%', height: '10px', background: 'var(--loader-skeleton-bar3)', borderRadius: '4px' }} />
+        <div style={{ width: '40%', height: '10px', background: 'var(--loader-skeleton-bar3)', borderRadius: '4px' }} />
     </motion.div>
 );
 
@@ -122,9 +92,7 @@ export default function DashboardLoader({
 }) {
     if (fullScreen) {
         return (
-            <Portal>
-                <motion.div
-
+            <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -132,7 +100,7 @@ export default function DashboardLoader({
                     style={{
                         position: 'fixed',
                         inset: 0,
-                        background: '#050505',
+                        background: 'var(--background)',
                         zIndex: 9999,
                         display: 'flex',
                         flexDirection: 'column',
@@ -145,10 +113,9 @@ export default function DashboardLoader({
                     {/* Background glow */}
                     <div style={{
                         position: 'absolute',
-                        width: '500px',
-                        height: '500px',
+                        width: '500px', height: '500px',
                         borderRadius: '50%',
-                        background: 'radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%)',
+                        background: 'radial-gradient(circle, var(--loader-glow) 0%, transparent 70%)',
                         pointerEvents: 'none',
                     }} />
 
@@ -161,16 +128,15 @@ export default function DashboardLoader({
                             fontSize: '42px',
                             fontWeight: 900,
                             letterSpacing: '-2px',
-                            color: '#fff',
+                            color: 'var(--foreground)',
                             position: 'relative',
                             zIndex: 2,
                             fontFamily: "'Sora', system-ui, sans-serif",
                             marginBottom: '8px',
                         }}
                     >
-                        {BRANDING.shortName}<span style={{ color: 'rgba(255,255,255,0.2)' }}>.</span>
+                        {BRANDING.shortName}<span style={{ color: 'var(--loader-dot-color)' }}>.</span>
                     </motion.div>
-
 
                     {/* Label */}
                     <motion.div
@@ -181,7 +147,7 @@ export default function DashboardLoader({
                             fontSize: '9px',
                             fontWeight: 700,
                             letterSpacing: '5px',
-                            color: 'rgba(255,255,255,0.2)',
+                            color: 'var(--loader-label)',
                             position: 'relative',
                             zIndex: 2,
                             fontFamily: "'Space Grotesk', system-ui, sans-serif",
@@ -192,55 +158,42 @@ export default function DashboardLoader({
                         {label}
                     </motion.div>
 
-                    {/* Skeleton preview - glass cards */}
+                    {/* Skeleton preview */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                        style={{
-                            width: '100%',
-                            maxWidth: '700px',
-                            position: 'relative',
-                            zIndex: 2,
-                        }}
+                        style={{ width: '100%', maxWidth: '700px', position: 'relative', zIndex: 2 }}
                     >
-                        {/* Stat cards skeleton */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 1fr)',
-                            gap: '12px',
-                            marginBottom: '16px',
-                        }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
                             <SkeletonCard delay={0} />
                             <SkeletonCard delay={1} />
                             <SkeletonCard delay={2} />
                         </div>
 
-                        {/* Table skeleton */}
                         <motion.div
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.6, duration: 0.5 }}
                             style={{
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                background: 'var(--loader-skeleton-bg)',
+                                border: '1px solid var(--loader-skeleton-border)',
                                 borderRadius: '16px',
                                 overflow: 'hidden',
                                 backdropFilter: 'blur(20px)',
                                 WebkitBackdropFilter: 'blur(20px)',
                             }}
                         >
-                            {/* Table header skeleton */}
                             <div style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1fr 1fr 80px 60px',
                                 gap: '16px',
                                 padding: '14px 16px',
-                                background: 'rgba(255,255,255,0.02)',
-                                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                background: 'var(--loader-skeleton-bg)',
+                                borderBottom: '1px solid var(--loader-skeleton-bar3)',
                             }}>
                                 {[70, 50, 40, 30].map((w, i) => (
-                                    <div key={i} style={{ width: `${w}%`, height: '7px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px' }} />
+                                    <div key={i} style={{ width: `${w}%`, height: '7px', background: 'var(--loader-skeleton-bar1)', borderRadius: '3px' }} />
                                 ))}
                             </div>
                             <SkeletonRow delay={0} />
@@ -258,7 +211,7 @@ export default function DashboardLoader({
                         style={{
                             fontSize: '11px',
                             fontWeight: 500,
-                            color: 'rgba(255,255,255,0.12)',
+                            color: 'var(--loader-sublabel)',
                             marginTop: '24px',
                             letterSpacing: '0.5px',
                             position: 'relative',
@@ -276,18 +229,15 @@ export default function DashboardLoader({
                         transition={{ duration: 2.5, ease: 'easeOut', repeat: Infinity, repeatDelay: 0.5 }}
                         style={{
                             position: 'absolute',
-                            width: '120px',
-                            height: '120px',
+                            width: '120px', height: '120px',
                             borderRadius: '50%',
-                            border: '1px solid rgba(255,255,255,0.04)',
+                            border: '1px solid var(--loader-ring)',
                             pointerEvents: 'none',
                         }}
                     />
                 </motion.div>
-            </Portal>
         );
     }
-
 
     // Inline / overlay loader
     const wrapperStyle = overlay
@@ -299,11 +249,10 @@ export default function DashboardLoader({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: overlay ? 'unset' : '50vh',
-            background: 'rgba(5,5,5,0.7)',
+            background: 'var(--loader-overlay)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            borderRadius: 'inherit'
+            borderRadius: 'inherit',
         }
         : {
             position: 'relative',
@@ -311,10 +260,9 @@ export default function DashboardLoader({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '200px',
+            minHeight: 'calc(100vh - 120px)',
             background: 'transparent',
         };
-
 
     return (
         <div style={wrapperStyle}>
@@ -326,12 +274,12 @@ export default function DashboardLoader({
             >
                 <p style={{
                     margin: 0,
-                    color: 'rgba(255,255,255,0.25)',
+                    color: 'var(--loader-label)',
                     fontSize: '9px',
                     letterSpacing: '4px',
                     fontWeight: '700',
                     fontFamily: "'Space Grotesk', system-ui, sans-serif",
-                    marginBottom: '16px'
+                    marginBottom: '16px',
                 }}>
                     {label}
                 </p>
@@ -339,10 +287,10 @@ export default function DashboardLoader({
                 <div style={{
                     width: '80px',
                     height: '1.5px',
-                    background: 'rgba(255,255,255,0.06)',
+                    background: 'var(--loader-bar-track)',
                     borderRadius: '2px',
                     overflow: 'hidden',
-                    margin: '0 auto'
+                    margin: '0 auto',
                 }}>
                     <motion.div
                         initial={{ x: '-100%' }}
@@ -351,8 +299,8 @@ export default function DashboardLoader({
                         style={{
                             width: '40%',
                             height: '100%',
-                            background: 'rgba(255,255,255,0.35)',
-                            borderRadius: '2px'
+                            background: 'var(--loader-bar-fill)',
+                            borderRadius: '2px',
                         }}
                     />
                 </div>
@@ -361,11 +309,11 @@ export default function DashboardLoader({
                     <p style={{
                         margin: 0,
                         marginTop: '14px',
-                        color: 'rgba(255,255,255,0.1)',
+                        color: 'var(--loader-sublabel)',
                         fontSize: '11px',
                         fontWeight: '500',
                         letterSpacing: '0.5px',
-                        fontFamily: "'Space Grotesk', system-ui, sans-serif"
+                        fontFamily: "'Space Grotesk', system-ui, sans-serif",
                     }}>
                         {subLabel}
                     </p>

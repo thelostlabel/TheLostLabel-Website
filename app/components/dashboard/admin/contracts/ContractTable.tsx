@@ -1,12 +1,48 @@
 "use client";
 
-import { motion } from "framer-motion";
+import React from "react";
+import {
+  Table,
+  Button,
+  Chip,
+  Tooltip,
+  cn,
+} from "@heroui/react";
+import { 
+  Edit, 
+  Trash2, 
+  FileText, 
+  ChevronUp
+} from "lucide-react";
 
-type ContractTableProps = {
+interface ContractTableProps {
   contracts: any[];
   onEdit: (contract: any) => void;
   onDelete: (id: string) => void;
-};
+}
+
+function SortableColumnHeader({
+  children,
+  sortDirection,
+}: {
+  children: React.ReactNode;
+  sortDirection?: "ascending" | "descending";
+}) {
+  return (
+    <span className="flex items-center justify-between w-full">
+      {children}
+      {!!sortDirection && (
+        <ChevronUp
+          size={12}
+          className={cn(
+            "transform transition-transform duration-100 ease-out",
+            sortDirection === "descending" ? "rotate-180" : "",
+          )}
+        />
+      )}
+    </span>
+  );
+}
 
 export default function ContractTable({
   contracts,
@@ -14,342 +50,104 @@ export default function ContractTable({
   onDelete,
 }: ContractTableProps) {
   return (
-    <>
-      <style jsx>{`
-        .table-row-hover:hover {
-          background-color: rgba(255, 255, 255, 0.02) !important;
-        }
-
-        @media (max-width: 768px) {
-          .contracts-table-head {
-            display: none !important;
-          }
-          .contracts-table-row {
-            grid-template-columns: 1fr !important;
-          }
-          .contracts-row-actions {
-            justify-content: flex-start !important;
-          }
-        }
-      `}</style>
-
-      <div
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "12px",
-          overflow: "hidden",
-        }}
-      >
-        {/* Header */}
-        <div
-          className="contracts-table-head"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr",
-            padding: "16px 24px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            fontSize: "10px",
-            fontWeight: "900",
-            color: "#666",
-            letterSpacing: "1.5px",
-            background: "rgba(255,255,255,0.01)",
-          }}
-        >
-          <div>RELEASE</div>
-          <div>ARTIST</div>
-          <div>SPLIT</div>
-          <div>EARNINGS</div>
-          <div>STATUS</div>
-          <div>PDF</div>
-          <div style={{ textAlign: "right" }}>ACTIONS</div>
-        </div>
-
-        {/* Rows */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {contracts.map((c, idx) => (
-            <motion.div
-              key={c.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: idx * 0.05 }}
-              className="table-row-hover contracts-table-row"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "2fr 2fr 1.5fr 1fr 1fr 1fr 1.5fr",
-                padding: "20px 24px",
-                borderBottom:
-                  idx === contracts.length - 1
-                    ? "none"
-                    : "1px solid rgba(255,255,255,0.03)",
-                alignItems: "center",
-                transition: "background-color 0.15s ease",
-                gap: "15px",
-              }}
-            >
-              {/* Release */}
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "950",
-                    color: "#fff",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  {c.release?.name || c.title || "Untitled Contract"}
-                </div>
-                <div
-                  style={{
-                    fontSize: "9px",
-                    color: "#666",
-                    fontWeight: "800",
-                    letterSpacing: "1px",
-                    marginTop: "4px",
-                  }}
-                >
-                  {c.releaseId ? "SPOTIFY_RELEASE" : "MANUAL / DEMO"}
-                </div>
+    <Table aria-label="Contracts Table">
+      <Table.ScrollContainer>
+        <Table.Content className="min-w-250">
+          <Table.Header>
+            <Table.Column allowsSorting isRowHeader id="release">
+              {({sortDirection}) => (
+                <SortableColumnHeader sortDirection={sortDirection}>RELEASE</SortableColumnHeader>
+              )}
+            </Table.Column>
+            <Table.Column allowsSorting id="artist">
+              {({sortDirection}) => (
+                <SortableColumnHeader sortDirection={sortDirection}>ARTIST</SortableColumnHeader>
+              )}
+            </Table.Column>
+            <Table.Column allowsSorting id="split">
+              {({sortDirection}) => (
+                <SortableColumnHeader sortDirection={sortDirection}>SPLIT</SortableColumnHeader>
+              )}
+            </Table.Column>
+            <Table.Column allowsSorting id="earnings">
+              {({sortDirection}) => (
+                <SortableColumnHeader sortDirection={sortDirection}>EARNINGS</SortableColumnHeader>
+              )}
+            </Table.Column>
+            <Table.Column allowsSorting id="status">
+              {({sortDirection}) => (
+                <SortableColumnHeader sortDirection={sortDirection}>STATUS</SortableColumnHeader>
+              )}
+            </Table.Column>
+            <Table.Column id="pdf">PDF</Table.Column>
+            <Table.Column className="text-end" id="actions">ACTIONS</Table.Column>
+          </Table.Header>
+          <Table.Body 
+            items={contracts}
+            renderEmptyState={() => (
+              <div className="py-24 text-default-400 font-medium text-center w-full">
+                No contracts defined
               </div>
-
-              {/* Artist */}
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "900",
-                    color: "#eaeaea",
-                  }}
-                >
-                  {c.artist?.name ||
-                    c.primaryArtistName ||
-                    c.user?.stageName ||
-                    "Unknown Artist"}
-                </div>
-                {c.splits.length > 1 && (
-                  <div
-                    style={{
-                      fontSize: "9px",
-                      color: "#888",
-                      fontWeight: "800",
-                      marginTop: "4px",
-                    }}
+            )}
+          >
+            {(item: any) => (
+              <Table.Row key={item.id} id={item.id}>
+                <Table.Cell>
+                  {item.release?.name || item.title || "Untitled"}
+                </Table.Cell>
+                <Table.Cell>
+                  {item.artist?.name || item.primaryArtistName || "Unknown"}
+                </Table.Cell>
+                <Table.Cell>
+                  Artist: {Math.round(item.artistShare * 100)}% / Label: {Math.round(item.labelShare * 100)}%
+                </Table.Cell>
+                <Table.Cell>
+                  {item._count?.earnings || 0} records
+                </Table.Cell>
+                <Table.Cell>
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    color={item.status === "active" ? "success" : "default"}
                   >
-                    + {c.splits.length - 1} OTHERS:{" "}
-                    {c.splits
-                      .filter(
-                        (s: any) =>
-                          s.name !==
-                          (c.primaryArtistName || c.user?.stageName)
-                      )
-                      .map((s: any) => s.name)
-                      .join(", ")}
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: "800",
-                    marginTop: "6px",
-                  }}
-                >
-                  {c.user ? (
-                    <span
-                      style={{
-                        color: "var(--accent)",
-                        background: "var(--accent-10)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
+                    {item.status}
+                  </Chip>
+                </Table.Cell>
+                <Table.Cell>
+                  <Button
+                    size="sm"
+                    variant="tertiary"
+                    onPress={() => window.open(`/api/files/contract/${item.id}`, '_blank')}
+                  >
+                    <FileText size={16} className="mr-2" />
+                    View PDF
+                  </Button>
+                </Table.Cell>
+                <Table.Cell>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="tertiary"
+                      onPress={() => onEdit(item)}
                     >
-                      LINKED: {c.user.email}
-                    </span>
-                  ) : (
-                    <span style={{ color: "#666" }}>NO ACCOUNT LINKED</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Split */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: "900",
-                    color: "#fff",
-                  }}
-                >
-                  ARTIST:{" "}
-                  <span style={{ color: "var(--accent)" }}>
-                    {Math.round(c.artistShare * 100)}%
-                  </span>{" "}
-                  / LABEL:{" "}
-                  <span style={{ color: "var(--accent)" }}>
-                    {Math.round(c.labelShare * 100)}%
-                  </span>
-                </div>
-                {c.splits?.length > 0 && (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "6px",
-                    }}
-                  >
-                    {c.splits.map((s: any, i: number) => (
-                      <span
-                        key={i}
-                        style={{
-                          fontSize: "9px",
-                          fontWeight: "800",
-                          padding: "4px 8px",
-                          background: "rgba(255,255,255,0.05)",
-                          borderRadius: "4px",
-                          border: "1px solid var(--border)",
-                          color: "#aaa",
-                        }}
-                      >
-                        {s.name}:{" "}
-                        <span style={{ color: "#fff" }}>{s.percentage}%</span>
-                      </span>
-                    ))}
+                      <Edit size={18} />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="ghost" className="text-danger hover:bg-danger/10"
+                      onPress={() => onDelete(item.id)}
+                    >
+                      <Trash2 size={18} />
+                    </Button>
                   </div>
-                )}
-              </div>
-
-              {/* Earnings */}
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: "800",
-                  color: "#aaa",
-                }}
-              >
-                {c._count?.earnings || 0} Records
-              </div>
-
-              {/* Status */}
-              <div>
-                <span
-                  style={{
-                    fontSize: "9px",
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    background:
-                      c.status === "active"
-                        ? "rgba(57, 255, 20, 0.1)"
-                        : "rgba(255,255,255,0.05)",
-                    color:
-                      c.status === "active" ? "var(--accent)" : "#888",
-                    border: `1px solid ${
-                      c.status === "active"
-                        ? "rgba(57, 255, 20, 0.2)"
-                        : "rgba(255,255,255,0.1)"
-                    }`,
-                    fontWeight: "950",
-                    letterSpacing: "1px",
-                    display: "inline-block",
-                  }}
-                >
-                  {c.status.toUpperCase()}
-                </span>
-              </div>
-
-              {/* PDF */}
-              <div>
-                <a
-                  href={`/api/files/contract/${c.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    padding: "8px 16px",
-                    fontSize: "9px",
-                    background: "var(--accent)",
-                    color: "#000",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontWeight: "950",
-                    letterSpacing: "1px",
-                    display: "inline-block",
-                    textDecoration: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  VIEW PDF
-                </a>
-              </div>
-
-              {/* Actions */}
-              <div
-                className="contracts-row-actions"
-                style={{
-                  display: "flex",
-                  gap: "8px",
-                  justifyContent: "flex-end",
-                  alignItems: "center",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => onEdit(c)}
-                  style={{
-                    fontSize: "9px",
-                    padding: "8px 16px",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid var(--border)",
-                    color: "#fff",
-                    borderRadius: "6px",
-                    fontWeight: "950",
-                    letterSpacing: "1px",
-                    cursor: "pointer",
-                  }}
-                >
-                  EDIT
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(c.id)}
-                  style={{
-                    fontSize: "9px",
-                    padding: "8px 16px",
-                    color: "#ff4444",
-                    background: "rgba(255,0,0,0.05)",
-                    border: "1px solid rgba(255,0,0,0.15)",
-                    borderRadius: "6px",
-                    fontWeight: "950",
-                    letterSpacing: "1px",
-                    cursor: "pointer",
-                  }}
-                >
-                  DEL
-                </button>
-              </div>
-            </motion.div>
-          ))}
-
-          {/* Empty State */}
-          {contracts.length === 0 && (
-            <div
-              style={{
-                padding: "60px 20px",
-                textAlign: "center",
-                color: "#555",
-                fontSize: "11px",
-                fontWeight: "900",
-                letterSpacing: "2px",
-              }}
-            >
-              NO CONTRACTS DEFINED
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+                </Table.Cell>
+              </Table.Row>
+            )}
+          </Table.Body>
+        </Table.Content>
+      </Table.ScrollContainer>
+    </Table>
   );
 }

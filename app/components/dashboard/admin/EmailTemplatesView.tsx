@@ -267,7 +267,7 @@ export default function EmailTemplatesView() {
     return (
         <div className="flex flex-col gap-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h2 className="text-[16px] font-black tracking-[0.18em] uppercase text-foreground">
                         Email Templates
@@ -277,12 +277,12 @@ export default function EmailTemplatesView() {
                     </p>
                 </div>
                 {!editing && (
-                    <div className="flex gap-2">
-                        <Button variant="secondary" onPress={handleSeedDefaults} isDisabled={seeding}>
+                    <div className="flex gap-2 shrink-0">
+                        <Button variant="secondary" size="sm" onPress={handleSeedDefaults} isDisabled={seeding}>
                             <Database size={14} />
                             {seeding ? "SEEDING..." : "SEED DEFAULTS"}
                         </Button>
-                        <Button variant="primary" onPress={() => handleEdit()}>
+                        <Button variant="primary" size="sm" onPress={() => handleEdit()}>
                             <Plus size={14} />
                             NEW TEMPLATE
                         </Button>
@@ -482,7 +482,7 @@ export default function EmailTemplatesView() {
                                 <Table.ScrollContainer>
                                     <Table.Content className="min-w-[700px]">
                                         <Table.Header>
-                                            <Table.Column className="w-[200px]">TEMPLATE</Table.Column>
+                                            <Table.Column isRowHeader className="w-[200px]">TEMPLATE</Table.Column>
                                             <Table.Column className="w-[220px]">SUBJECT</Table.Column>
                                             <Table.Column>VARIABLES</Table.Column>
                                             <Table.Column className="w-[90px]">STATUS</Table.Column>

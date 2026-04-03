@@ -67,9 +67,7 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
 
     fetch(waveformUrl, { signal: controller.signal })
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data: WaveformResponse) => {
@@ -77,7 +75,6 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
         if (!Array.isArray(data?.peaks) || typeof data?.duration !== "number") {
           throw new Error("Invalid waveform payload");
         }
-
         setWaveformData(data);
       })
       .catch((fetchError) => {
@@ -108,11 +105,17 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
     if (!containerRef.current) return;
     if (!waveformData && waveformUrl && !waveformFetchFailed) return;
 
+    // Read theme CSS vars for WaveSurfer (can't accept CSS vars natively)
+    const style = getComputedStyle(document.documentElement);
+    const waveColor = style.getPropertyValue("--ds-text-faint").trim() || "rgba(255,255,255,0.28)";
+    const progressColor = style.getPropertyValue("--ds-text-sub").trim() || "rgba(255,255,255,0.70)";
+    const cursorColor = style.getPropertyValue("--ds-text").trim() || "#ffffff";
+
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: "rgba(255,255,255,0.12)",
-      progressColor: "rgba(255,255,255,0.72)",
-      cursorColor: "#ffffff",
+      waveColor,
+      progressColor,
+      cursorColor,
       cursorWidth: 2,
       barWidth: 2,
       barGap: 1.5,
@@ -125,9 +128,7 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
 
     wsRef.current = ws;
 
-    ws.on("loading", () => {
-      setIsLoading(true);
-    });
+    ws.on("loading", () => setIsLoading(true));
     ws.on("ready", (nextDuration) => {
       setDuration(nextDuration);
       setCurrentTime(0);
@@ -182,7 +183,6 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
   const togglePlay = useCallback(async () => {
     const ws = wsRef.current;
     if (!ws || !isReady) return;
-
     try {
       await ws.playPause();
     } catch {
@@ -193,7 +193,6 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
   const skip = useCallback((delta: number) => {
     const ws = wsRef.current;
     if (!ws) return;
-
     const nextTime = Math.max(0, Math.min(ws.getCurrentTime() + delta, duration));
     ws.setTime(nextTime);
     setCurrentTime(nextTime);
@@ -209,98 +208,61 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
   const displayVol = isMuted ? 0 : Math.round(volume * 100);
 
   return (
-    <div style={{
-      background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
-      border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: "16px",
-      padding: "20px 22px",
-      position: "relative",
-      overflow: "hidden",
-    }}>
-      {/* Ambient glow */}
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 80% 0%, rgba(99,102,241,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
-
+    <div className="wfp-root">
       {/* Track name row */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-        <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "14px", flexShrink: 0 }}>
+      <div className="wfp-header">
+        <div className="wfp-bars" aria-hidden>
           {[0, 0.15, 0.05, 0.2, 0.1].map((delay, i) => (
             <div
               key={i}
-              style={{
-                width: "3px",
-                borderRadius: "1px",
-                background: isPlaying ? "#d1d5db" : "#333",
-                height: isPlaying ? undefined : "4px",
-                animation: isPlaying ? `wsbar 0.8s ${delay}s ease-in-out infinite alternate` : "none",
-              }}
+              className={`wfp-bar${isPlaying ? " wfp-bar--playing" : ""}`}
+              style={{ animationDelay: `${delay}s` }}
             />
           ))}
         </div>
-        <span style={{
-          fontSize: "11px", fontWeight: 800, letterSpacing: "1.5px",
-          color: "#fff", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+        <span className="wfp-filename ds-text">
           {filename?.toUpperCase() ?? "UNKNOWN TRACK"}
         </span>
         {isLoading && (
-          <span style={{ fontSize: "9px", fontWeight: 700, color: "#f59e0b", letterSpacing: "1px", animation: "wspulse 1s ease infinite" }}>
-            LOADING…
-          </span>
+          <span className="wfp-loading-label">LOADING…</span>
         )}
       </div>
 
       {/* Waveform */}
       <div
         ref={containerRef}
-        style={{
-          marginBottom: "10px",
-          cursor: isReady ? "pointer" : "default",
-          opacity: isLoading ? 0.4 : 1,
-          transition: "opacity 0.3s",
-          minHeight: "68px",
-          padding: "2px 0",
-        }}
+        className="wfp-waveform"
+        style={{ cursor: isReady ? "pointer" : "default", opacity: isLoading ? 0.4 : 1 }}
       />
 
       {/* Time row */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "14px" }}>
-        <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-          {formatTime(currentTime)}
-        </span>
-        <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-          {formatTime(duration)}
-        </span>
+      <div className="wfp-time-row">
+        <span className="wfp-time ds-text-muted">{formatTime(currentTime)}</span>
+        <span className="wfp-time ds-text-faint">{formatTime(duration)}</span>
       </div>
 
       {error && (
-        <p style={{ fontSize: "11px", color: "#ef4444", textAlign: "center", marginBottom: "12px" }}>{error}</p>
+        <p className="wfp-error">{error}</p>
       )}
 
       {/* Controls */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-        {/* Left: Loop */}
-        <div style={{ flex: 1, display: "flex" }}>
+      <div className="wfp-controls">
+        {/* Loop */}
+        <div className="wfp-controls-side">
           <button
             onClick={() => setIsLoop(p => !p)}
             title="Loop"
-            style={{
-              width: "34px", height: "34px", borderRadius: "50%", border: "none",
-              background: isLoop ? "rgba(255,255,255,0.1)" : "transparent",
-              color: isLoop ? "#d1d5db" : "#555",
-              display: "grid", placeItems: "center", cursor: "pointer", transition: "all 0.18s",
-            }}
+            className={`wfp-icon-btn${isLoop ? " wfp-icon-btn--active" : ""}`}
           >
             <Repeat size={14} />
           </button>
         </div>
 
-        {/* Center: Skip back / Play / Skip forward */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {/* Skip / Play */}
+        <div className="wfp-playrow">
           <button
             onClick={() => skip(-10)}
-            style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", background: "transparent", color: "#555", display: "grid", placeItems: "center", cursor: "pointer", transition: "color 0.18s" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#bbb")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#555")}
+            className="wfp-icon-btn"
           >
             <SkipBack size={16} />
           </button>
@@ -308,62 +270,292 @@ function WaveformPlayerInner({ src, waveformUrl, filename }: WaveformPlayerProps
           <button
             onClick={togglePlay}
             disabled={!isReady}
-            style={{
-              width: "52px", height: "52px", borderRadius: "50%", border: "none",
-              background: "linear-gradient(180deg, #fff 0%, #e5e7eb 100%)",
-              color: "#0b1020", display: "grid", placeItems: "center", cursor: isReady ? "pointer" : "default",
-              opacity: isReady ? 1 : 0.45,
-              boxShadow: isPlaying ? "0 0 24px rgba(99,102,241,0.35), 0 6px 20px rgba(0,0,0,0.3)" : "0 6px 20px rgba(0,0,0,0.3)",
-              transition: "all 0.2s",
-            }}
+            className={`wfp-play-btn${isPlaying ? " wfp-play-btn--playing" : ""}`}
+            style={{ opacity: isReady ? 1 : 0.45 }}
           >
-            {isPlaying ? <Pause size={22} /> : <Play size={22} style={{ marginLeft: "2px" }} />}
+            {isPlaying ? <Pause size={22} /> : <Play size={22} className="wfp-play-icon" />}
           </button>
 
           <button
             onClick={() => skip(10)}
-            style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", background: "transparent", color: "#555", display: "grid", placeItems: "center", cursor: "pointer", transition: "color 0.18s" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#bbb")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#555")}
+            className="wfp-icon-btn"
           >
             <SkipForward size={16} />
           </button>
         </div>
 
-        {/* Right: Volume */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" }}>
+        {/* Volume */}
+        <div className="wfp-volume">
           <button
             onClick={() => setIsMuted(p => !p)}
-            style={{ width: "28px", height: "28px", background: "transparent", border: "none", color: "#555", display: "grid", placeItems: "center", cursor: "pointer", transition: "color 0.18s" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#bbb")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#555")}
+            className="wfp-icon-btn wfp-vol-btn"
           >
             {isMuted || volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
-          <span style={{ fontSize: "9px", fontWeight: 600, color: "rgba(255,255,255,0.3)", minWidth: "28px", textAlign: "center" }}>
-            {displayVol}%
-          </span>
+          <span className="wfp-vol-pct ds-text-faint">{displayVol}%</span>
           <input
             ref={volumeSliderRef}
             type="range" min={0} max={1} step={0.01}
             value={isMuted ? 0 : volume}
             onChange={handleVolumeChange}
-            style={{
-              width: "72px", height: "5px", appearance: "none", borderRadius: "999px", outline: "none", cursor: "pointer",
-              background: `linear-gradient(90deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.55) var(--vol,0%), rgba(255,255,255,0.1) var(--vol,0%), rgba(255,255,255,0.1) 100%)`,
-            } as React.CSSProperties}
+            className="wfp-vol-slider"
           />
         </div>
       </div>
 
       <style>{`
+        .wfp-root {
+          background: linear-gradient(180deg, var(--ds-glass-bg) 0%, var(--ds-item-bg) 100%);
+          border: 1px solid var(--ds-glass-border);
+          border-radius: 16px;
+          padding: 20px 22px;
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 4px 24px var(--ds-glass-shadow), inset 0 1px 0 var(--ds-glass-inset);
+        }
+
+        .wfp-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+
+        .wfp-bars {
+          display: flex;
+          gap: 2px;
+          align-items: flex-end;
+          height: 14px;
+          flex-shrink: 0;
+        }
+
+        .wfp-bar {
+          width: 3px;
+          height: 4px;
+          border-radius: 1px;
+          background: var(--ds-item-border-hover);
+          animation: none;
+        }
+
+        .wfp-bar--playing {
+          background: var(--ds-text-muted);
+          animation: wsbar 0.8s ease-in-out infinite alternate;
+        }
+
+        .wfp-filename {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 1.5px;
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .wfp-loading-label {
+          font-size: 9px;
+          font-weight: 700;
+          color: var(--color-warning, #f59e0b);
+          letter-spacing: 1px;
+          animation: wspulse 1s ease infinite;
+          flex-shrink: 0;
+        }
+
+        .wfp-waveform {
+          margin-bottom: 10px;
+          transition: opacity 0.3s;
+          min-height: 68px;
+          padding: 2px 0;
+        }
+
+        .wfp-time-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+
+        .wfp-time {
+          font-size: 11px;
+          font-variant-numeric: tabular-nums;
+          font-weight: 600;
+        }
+
+        .wfp-error {
+          font-size: 11px;
+          color: var(--color-danger, #ef4444);
+          text-align: center;
+          margin-bottom: 12px;
+        }
+
+        .wfp-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .wfp-controls-side {
+          flex: 1;
+          display: flex;
+        }
+
+        .wfp-playrow {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+
+        .wfp-volume {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          justify-content: flex-end;
+          min-width: 0;
+        }
+
+        .wfp-icon-btn {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          border: none;
+          background: transparent;
+          color: var(--ds-text-faint);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          transition: color 0.18s, background 0.18s;
+        }
+
+        .wfp-icon-btn:hover {
+          color: var(--ds-text-sub);
+        }
+
+        .wfp-icon-btn--active {
+          background: var(--ds-item-bg-hover);
+          color: var(--ds-text-sub);
+        }
+
+        .wfp-vol-btn {
+          width: 28px;
+          height: 28px;
+        }
+
+        .wfp-play-btn {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          border: 1px solid var(--ds-glass-border);
+          background: var(--ds-text);
+          color: var(--background);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          box-shadow: 0 6px 20px var(--ds-glass-shadow);
+          transition: box-shadow 0.2s, opacity 0.2s;
+        }
+
+        .wfp-play-btn--playing {
+          box-shadow: 0 0 0 3px var(--ds-item-border-hover), 0 6px 20px var(--ds-glass-shadow);
+        }
+
+        .wfp-play-btn:disabled {
+          cursor: default;
+        }
+
+        .wfp-play-icon {
+          margin-left: 2px;
+        }
+
+        .wfp-vol-pct {
+          font-size: 9px;
+          font-weight: 600;
+          min-width: 28px;
+          text-align: center;
+        }
+
+        .wfp-vol-slider {
+          width: 72px;
+          height: 5px;
+          appearance: none;
+          border-radius: 999px;
+          outline: none;
+          cursor: pointer;
+          background: linear-gradient(
+            90deg,
+            var(--ds-text-sub) 0%,
+            var(--ds-text-sub) var(--vol, 0%),
+            var(--ds-item-border-hover) var(--vol, 0%),
+            var(--ds-item-border-hover) 100%
+          );
+        }
+
+        .wfp-vol-slider::-webkit-slider-thumb {
+          appearance: none;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: var(--ds-text);
+          cursor: pointer;
+        }
+
         @keyframes wsbar {
           0%   { height: 4px; }
           100% { height: 14px; }
         }
         @keyframes wspulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.35; }
+          50%       { opacity: 0.35; }
+        }
+
+        @media (max-width: 720px) {
+          .wfp-root {
+            padding: 16px;
+          }
+
+          .wfp-header {
+            align-items: flex-start;
+            flex-wrap: wrap;
+          }
+
+          .wfp-filename {
+            width: 100%;
+            white-space: normal;
+            line-height: 1.4;
+          }
+
+          .wfp-controls {
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .wfp-controls-side,
+          .wfp-volume {
+            flex: 1 1 100%;
+            justify-content: center;
+          }
+
+          .wfp-playrow {
+            order: -1;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .wfp-play-btn {
+            width: 48px;
+            height: 48px;
+          }
+
+          .wfp-icon-btn {
+            width: 32px;
+            height: 32px;
+          }
+
+          .wfp-vol-slider {
+            width: 88px;
+          }
         }
       `}</style>
     </div>
