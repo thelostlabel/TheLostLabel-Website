@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { TENANT } from "@/lib/tenant";
