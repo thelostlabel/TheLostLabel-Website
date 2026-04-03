@@ -17,10 +17,20 @@ export function PageReveal() {
     if (hasPlayed.current) return;
     hasPlayed.current = true;
 
+    const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.documentElement.style.overflow = "hidden";
 
     return () => {
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -30,7 +40,12 @@ export function PageReveal() {
 
     const tl = gsap.timeline({
       onComplete: () => {
+        document.documentElement.style.overflow = "";
         document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        window.scrollTo(0, 0);
         setVisible(false);
       },
     });
@@ -67,7 +82,7 @@ export function PageReveal() {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[9999] pointer-events-auto"
+      className="fixed inset-0 z-[9999] pointer-events-auto touch-none overscroll-none"
       aria-hidden="true"
     >
       {/* Top half */}

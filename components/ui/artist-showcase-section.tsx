@@ -5,6 +5,8 @@ import Image from "next/image";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import { IS_MOBILE } from "@/lib/is-mobile";
+
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
@@ -75,13 +77,15 @@ function ArtistCard({ artist }: { artist: ArtistItem }) {
           }}
         />
 
-        {/* Film grain on card */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay"
-          style={{
-            backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>')`,
-          }}
-        />
+        {/* Film grain on card — skip on mobile */}
+        {!IS_MOBILE && (
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay"
+            style={{
+              backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>')`,
+            }}
+          />
+        )}
 
         {/* Hover light sweep */}
         <div
@@ -128,8 +132,9 @@ export function ArtistShowcaseSection({ artists }: Props) {
   const row1 = artists.slice(0, Math.ceil(artists.length / 2));
   const row2 = artists.slice(Math.ceil(artists.length / 2));
 
-  const row1Items = [...row1, ...row1, ...row1];
-  const row2Items = [...row2, ...row2, ...row2];
+  // On mobile: 2 copies instead of 3 to reduce DOM nodes & images
+  const row1Items = IS_MOBILE ? [...row1, ...row1] : [...row1, ...row1, ...row1];
+  const row2Items = IS_MOBILE ? [...row2, ...row2] : [...row2, ...row2, ...row2];
 
   useEffect(() => {
     if (artists.length === 0) return;
@@ -145,7 +150,7 @@ export function ArtistShowcaseSection({ artists }: Props) {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=2800",
+          end: IS_MOBILE ? "+=1600" : "+=2800",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -227,13 +232,15 @@ export function ArtistShowcaseSection({ artists }: Props) {
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black to-transparent" />
       </div>
 
-      {/* Film grain */}
-      <div
-        className="absolute inset-0 pointer-events-none z-[1] opacity-[0.03] mix-blend-overlay"
-        style={{
-          backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>')`,
-        }}
-      />
+      {/* Film grain — skip on mobile */}
+      {!IS_MOBILE && (
+        <div
+          className="absolute inset-0 pointer-events-none z-[1] opacity-[0.03] mix-blend-overlay"
+          style={{
+            backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>')`,
+          }}
+        />
+      )}
 
       {/* Edge fades */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-32 z-20"

@@ -8,6 +8,8 @@ import { UserPlus, LogIn } from "lucide-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import { IS_MOBILE } from "@/lib/is-mobile";
+
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
@@ -38,8 +40,12 @@ const STYLES = `
     color: #FFFFFF;
     border: 1px solid rgba(255,255,255,0.15);
     transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  }
+  @media (min-width: 768px) {
+    .lc-btn-secondary {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
   }
   .lc-btn-secondary:hover {
     background: rgba(255,255,255,0.10);
@@ -81,50 +87,50 @@ export function CTASection({
   useEffect(() => {
     const ctx = gsap.context(() => {
 
-      // Initial states
-      gsap.set(".lc-bg-image",   { scale: 1.12, filter: "blur(20px)" });
-      gsap.set(".lc-bg-overlay", { opacity: 0.1 });
-      gsap.set(".lc-heading",    { autoAlpha: 0, y: 70, filter: "blur(20px)", scale: 0.92 });
-      gsap.set(".lc-description",{ autoAlpha: 0, y: 40, filter: "blur(10px)" });
-      gsap.set(".lc-btn",        { autoAlpha: 0, y: 30, scale: 0.9, filter: "blur(8px)" });
+      // Initial states — skip blur on mobile
+      if (IS_MOBILE) {
+        gsap.set(".lc-bg-image",   { scale: 1.05 });
+        gsap.set(".lc-bg-overlay", { opacity: 0.1 });
+        gsap.set(".lc-heading",    { autoAlpha: 0, y: 40, scale: 0.95 });
+        gsap.set(".lc-description",{ autoAlpha: 0, y: 30 });
+        gsap.set(".lc-btn",        { autoAlpha: 0, y: 20, scale: 0.95 });
+      } else {
+        gsap.set(".lc-bg-image",   { scale: 1.12, filter: "blur(20px)" });
+        gsap.set(".lc-bg-overlay", { opacity: 0.1 });
+        gsap.set(".lc-heading",    { autoAlpha: 0, y: 70, filter: "blur(20px)", scale: 0.92 });
+        gsap.set(".lc-description",{ autoAlpha: 0, y: 40, filter: "blur(10px)" });
+        gsap.set(".lc-btn",        { autoAlpha: 0, y: 30, scale: 0.9, filter: "blur(8px)" });
+      }
 
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=3000",
+          end: IS_MOBILE ? "+=1600" : "+=3000",
           pin: true,
-          scrub: 1,
+          scrub: IS_MOBILE ? 0.3 : 1,
           anticipatePin: 1,
         },
       });
 
-      scrollTl
-        // Background image sharpens and settles — start earlier and slower
-        .to(".lc-bg-image",   { scale: 1, filter: "blur(4px)", ease: "power2.out", duration: 1.5 }, 0)
-        .to(".lc-bg-image",   { filter: "blur(0px)", ease: "none", duration: 1.5 }, 1.5)
-        .to(".lc-bg-overlay", { opacity: 1, ease: "power2.inOut", duration: 2.5 }, 0)
-
-        // Heading dramatic reveal
-        .to(".lc-heading", {
-          autoAlpha: 1, y: 0, filter: "blur(0px)", scale: 1,
-          ease: "expo.out", duration: 2,
-        }, 0.8)
-
-        // Description
-        .to(".lc-description", {
-          autoAlpha: 1, y: 0, filter: "blur(0px)",
-          ease: "expo.out", duration: 1.6,
-        }, 1.4)
-
-        // Buttons stagger
-        .to(".lc-btn", {
-          autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)",
-          ease: "back.out(1.3)", duration: 1.4, stagger: 0.25,
-        }, 1.8)
-
-        // Hold
-        .to({}, { duration: 2 });
+      if (IS_MOBILE) {
+        scrollTl
+          .to(".lc-bg-image",   { scale: 1, ease: "power2.out", duration: 1.5 }, 0)
+          .to(".lc-bg-overlay", { opacity: 1, ease: "power2.inOut", duration: 2 }, 0)
+          .to(".lc-heading",    { autoAlpha: 1, y: 0, scale: 1, ease: "expo.out", duration: 1.5 }, 0.5)
+          .to(".lc-description",{ autoAlpha: 1, y: 0, ease: "expo.out", duration: 1.2 }, 1)
+          .to(".lc-btn",        { autoAlpha: 1, y: 0, scale: 1, ease: "back.out(1.3)", duration: 1, stagger: 0.2 }, 1.3)
+          .to({}, { duration: 1 });
+      } else {
+        scrollTl
+          .to(".lc-bg-image",   { scale: 1, filter: "blur(4px)", ease: "power2.out", duration: 1.5 }, 0)
+          .to(".lc-bg-image",   { filter: "blur(0px)", ease: "none", duration: 1.5 }, 1.5)
+          .to(".lc-bg-overlay", { opacity: 1, ease: "power2.inOut", duration: 2.5 }, 0)
+          .to(".lc-heading",    { autoAlpha: 1, y: 0, filter: "blur(0px)", scale: 1, ease: "expo.out", duration: 2 }, 0.8)
+          .to(".lc-description",{ autoAlpha: 1, y: 0, filter: "blur(0px)", ease: "expo.out", duration: 1.6 }, 1.4)
+          .to(".lc-btn",        { autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)", ease: "back.out(1.3)", duration: 1.4, stagger: 0.25 }, 1.8)
+          .to({}, { duration: 2 });
+      }
 
     }, sectionRef);
 

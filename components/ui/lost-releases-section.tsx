@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Play, Pause } from "lucide-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { usePlayer } from "@/app/components/PlayerContext";
+import { IS_MOBILE } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -79,6 +80,7 @@ function ReleaseSlide({
   return (
     <div
       className={`lr-slide lr-slide-${index} absolute inset-0 flex items-center justify-center`}
+      style={{ willChange: "opacity", transform: "translateZ(0)" }}
     >
       {/* BG — blurred album art */}
       <div className="absolute inset-0 z-0">
@@ -90,7 +92,7 @@ function ReleaseSlide({
           unoptimized
           priority={index === 0}
         />
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl" />
+        <div className={`absolute inset-0 bg-black/75${IS_MOBILE ? "" : " backdrop-blur-xl"}`} />
         {/* Vignette */}
         <div
           className="absolute inset-0"
@@ -104,13 +106,15 @@ function ReleaseSlide({
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
       </div>
 
-      {/* Film grain */}
-      <div
-        className="absolute inset-0 pointer-events-none z-[1] opacity-[0.035] mix-blend-overlay"
-        style={{
-          backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>')`,
-        }}
-      />
+      {/* Film grain — skip on mobile */}
+      {!IS_MOBILE && (
+        <div
+          className="absolute inset-0 pointer-events-none z-[1] opacity-[0.035] mix-blend-overlay"
+          style={{
+            backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>')`,
+          }}
+        />
+      )}
 
       {/* Content */}
       <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 md:gap-14 px-6 max-w-5xl w-full">
@@ -141,7 +145,7 @@ function ReleaseSlide({
                 className="opacity-0 group-hover:opacity-100 transition-all duration-300 scale-90 group-hover:scale-100 w-16 h-16 rounded-full flex items-center justify-center"
                 style={{
                   background: "rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(20px)",
+                  ...(IS_MOBILE ? {} : { backdropFilter: "blur(20px)" }),
                   border: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
@@ -195,7 +199,7 @@ function ReleaseSlide({
             style={{
               background: "rgba(255,255,255,0.08)",
               border: "1px solid rgba(255,255,255,0.12)",
-              backdropFilter: "blur(12px)",
+              ...(IS_MOBILE ? {} : { backdropFilter: "blur(12px)" }),
             }}
           >
             <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
@@ -226,49 +230,9 @@ function ReleaseSlide({
   );
 }
 
-/* ── Mobile static card ── */
-function MobileReleaseCard({ item }: { item: { id: string; artist: string; music: string; albumArt: string; previewUrl: string | null; spotifyUrl: string | null } }) {
-  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
-  const isThis = currentTrack?.id === item.id;
-  const isThisPlaying = isThis && isPlaying;
-
-  const handlePlay = () => {
-    if (isThis) { togglePlay(); return; }
-    playTrack({ id: item.id, name: item.music, artist: item.artist, image: item.albumArt, previewUrl: item.previewUrl, spotifyUrl: item.spotifyUrl });
-  };
-
-  return (
-    <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)' }}>
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '1', background: '#111' }}>
-        <Image src={item.albumArt} alt={item.music} fill style={{ objectFit: 'cover' }} sizes="100vw" unoptimized />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%)' }} />
-        <button onClick={handlePlay} style={{ position: 'absolute', bottom: 12, right: 12, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-          {isThisPlaying ? <Pause size={14} fill="#000" color="#000" /> : <Play size={14} fill="#000" color="#000" style={{ marginLeft: 2 }} />}
-        </button>
-      </div>
-      <div style={{ padding: '12px 14px 14px' }}>
-        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4 }}>{item.artist}</p>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{item.music}</p>
-        {item.spotifyUrl && (
-          <a href={item.spotifyUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 10, color: 'rgba(255,255,255,0.25)', textDecoration: 'none', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Open in Spotify</a>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── Main section ── */
 export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   const items = releases
     .map((release) => {
@@ -295,17 +259,10 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
   const count = items.length;
 
   useEffect(() => {
-    if (count === 0 || isMobile) return;
+    if (count === 0) return;
 
     const ctx = gsap.context(() => {
-      /*
-       * Total scroll distance:
-       *   - intro header reveal
-       *   - for each slide: fade in + hold + fade out
-       *   - final fade out
-       */
-      const perSlide = 1.5;  // timeline units per slide
-      const totalDur = 1 + count * perSlide + 0.5;
+      const perSlide = 1.5;
 
       // Header
       gsap.set(".lr-rule", { scaleX: 0, transformOrigin: "left center" });
@@ -323,7 +280,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: `+=${count * 1800 + 1200}`,
+          end: `+=${IS_MOBILE ? count * 800 + 400 : count * 1400 + 900}`,
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -344,7 +301,6 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
       items.forEach((_, i) => {
         const slideStart = 1 + i * perSlide;
 
-        // Fade in slide
         tl.to(`.lr-slide-${i}`, { autoAlpha: 1, ease: "none", duration: 0.3 }, slideStart);
         tl.to(`.lr-art-${i}`, {
           scale: 1, y: 0, ease: "none", duration: 0.35,
@@ -353,10 +309,6 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
           autoAlpha: 1, y: 0, ease: "none", duration: 0.3,
         }, slideStart + 0.15);
 
-        // Hold
-        // (implicit from gap to next fade)
-
-        // Fade out slide (except last — that fades in the section fade-out)
         if (i < count - 1) {
           const fadeOut = slideStart + perSlide - 0.35;
           tl.to(`.lr-slide-${i}`, { autoAlpha: 0, ease: "none", duration: 0.3 }, fadeOut);
@@ -372,26 +324,9 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [count, isMobile]);
+  }, [count]);
 
   if (items.length === 0) return null;
-
-  // Mobile: simple static card list, no pin/scrub
-  if (isMobile) {
-    return (
-      <div style={{ background: '#050505', padding: '60px 20px' }}>
-        <div style={{ marginBottom: 32, textAlign: 'center' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.4em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 8 }}>Catalog</p>
-          <h2 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.04em', color: '#fff', margin: 0 }}>Most played from the catalog.</h2>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {items.map((item) => (
-            <MobileReleaseCard key={item.id} item={item} />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div

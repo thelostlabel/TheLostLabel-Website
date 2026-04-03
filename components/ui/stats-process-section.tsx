@@ -4,6 +4,8 @@ import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import { IS_MOBILE } from "@/lib/is-mobile";
+
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
@@ -45,12 +47,15 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
         gsap.set(`.xp-num-${i}`, { autoAlpha: 0, y: 80, scale: 0.7 });
         gsap.set(`.xp-label-${i}`, { autoAlpha: 0 });
       });
-      gsap.set(".xp-stat-glow", { autoAlpha: 0, scale: 0.5 });
+      if (!IS_MOBILE) gsap.set(".xp-stat-glow", { autoAlpha: 0, scale: 0.5 });
 
       // ── Phase 2 (process) initial ──
       gsap.set(".xp-proc-heading", { autoAlpha: 0, y: 40 });
       STEPS.forEach((_, i) => {
-        gsap.set(`.xp-card-${i}`, { autoAlpha: 0, y: 60, rotateX: -15, scale: 0.9 });
+        gsap.set(`.xp-card-${i}`, {
+          autoAlpha: 0, y: 60, scale: 0.9,
+          ...(IS_MOBILE ? {} : { rotateX: -15 }),
+        });
       });
       gsap.set(".xp-proc-line", { scaleX: 0, transformOrigin: "left" });
 
@@ -59,7 +64,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=5000",
+          end: IS_MOBILE ? "+=2800" : "+=5000",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -67,8 +72,10 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
       });
 
       // ═══ PHASE 1: Big numbers slam in ═══
-      // Center glow pulses in
-      tl.to(".xp-stat-glow", { autoAlpha: 1, scale: 1, ease: "none", duration: 0.3 }, 0);
+      // Center glow pulses in (skip on mobile — blur(40px) is expensive)
+      if (!IS_MOBILE) {
+        tl.to(".xp-stat-glow", { autoAlpha: 1, scale: 1, ease: "none", duration: 0.3 }, 0);
+      }
 
       // Numbers come in with impact — fast, staggered
       STATS.forEach((stat, i) => {
@@ -104,7 +111,9 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
         tl.to(`.xp-num-${i}`, { autoAlpha: 0, y: -30, ease: "none", duration: 0.2 }, fadeAt + i * 0.04);
         tl.to(`.xp-label-${i}`, { autoAlpha: 0, ease: "none", duration: 0.15 }, fadeAt + i * 0.04);
       });
-      tl.to(".xp-stat-glow", { autoAlpha: 0, ease: "none", duration: 0.2 }, fadeAt);
+      if (!IS_MOBILE) {
+        tl.to(".xp-stat-glow", { autoAlpha: 0, ease: "none", duration: 0.2 }, fadeAt);
+      }
 
       // ═══ PHASE 2: Process cards ═══
       const procAt = 2.4;
@@ -114,7 +123,8 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
 
       STEPS.forEach((_, i) => {
         tl.to(`.xp-card-${i}`, {
-          autoAlpha: 1, y: 0, rotateX: 0, scale: 1,
+          autoAlpha: 1, y: 0, scale: 1,
+          ...(IS_MOBILE ? {} : { rotateX: 0 }),
           ease: "none", duration: 0.28,
         }, procAt + 0.25 + i * 0.22);
       });
@@ -156,15 +166,17 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
 
       {/* ══ PHASE 1: Stats (absolutely positioned, fades out) ══ */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-        {/* Center glow */}
-        <div
-          className="xp-stat-glow absolute pointer-events-none"
-          style={{
-            width: "600px", height: "400px",
-            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 65%)",
-            filter: "blur(40px)",
-          }}
-        />
+        {/* Center glow — hidden on mobile (blur(40px) is expensive) */}
+        {!IS_MOBILE && (
+          <div
+            className="xp-stat-glow absolute pointer-events-none"
+            style={{
+              width: "600px", height: "400px",
+              background: "radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 65%)",
+              filter: "blur(40px)",
+            }}
+          />
+        )}
 
         <div className="relative grid grid-cols-2 md:grid-cols-4 gap-x-12 md:gap-x-20 gap-y-12">
           {STATS.map((stat, i) => (
@@ -191,7 +203,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
       </div>
 
       {/* ══ PHASE 2: Process (absolutely positioned, fades in) ══ */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6" style={{ perspective: "1000px" }}>
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6" style={IS_MOBILE ? undefined : { perspective: "1000px" }}>
         <div className="w-full max-w-4xl flex flex-col items-center gap-10">
           {/* Heading */}
           <div className="xp-proc-heading flex flex-col items-center gap-3 text-center">

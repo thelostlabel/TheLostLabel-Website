@@ -7,6 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { cn } from "@/lib/utils";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { HandwrittenLogo } from "@/components/ui/handwritten-logo";
+import { IS_MOBILE } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -19,9 +20,6 @@ const INJECTED_STYLES = `
     position: absolute; inset: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: 50; opacity: 0.05; mix-blend-mode: overlay;
     background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
-  }
-  @media (max-width: 768px) {
-    .film-grain { display: none; }
   }
 
   .bg-grid-theme {
@@ -75,22 +73,20 @@ export function CinematicHero({
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
     const ctx = gsap.context(() => {
       gsap.set(".text-track", {
         autoAlpha: 0,
-        y: isMobile ? 30 : 60,
-        scale: isMobile ? 0.95 : 0.85,
-        filter: isMobile ? "none" : "blur(20px)",
-        rotationX: isMobile ? 0 : -20,
+        y: 60,
+        scale: 0.85,
+        filter: "blur(20px)",
+        rotationX: -20,
       });
       gsap.set(".text-days", { autoAlpha: 1, clipPath: "inset(0 100% 0 0)" });
 
       const introTl = gsap.timeline({ delay: 0.3 });
       introTl
         .to(".text-track", {
-          duration: isMobile ? 0.8 : 1.8,
+          duration: 1.8,
           autoAlpha: 1,
           y: 0,
           scale: 1,
@@ -99,40 +95,47 @@ export function CinematicHero({
           ease: "expo.out",
         })
         .to(".text-days", {
-          duration: isMobile ? 0.7 : 1.4,
+          duration: 1.4,
           clipPath: "inset(0 0% 0 0)",
           ease: "power4.inOut",
         }, "-=1.0");
-
-      // On mobile: skip the heavy pin/scrub scroll effect entirely
-      if (isMobile) return;
 
       const scrollTl = gsap.timeline({
         scrollTrigger: {
           trigger: containerRef.current,
           start: "top top",
-          end: prefersReducedMotion ? "+=1000" : "+=1400",
+          end: IS_MOBILE ? "+=800" : (prefersReducedMotion ? "+=1000" : "+=1400"),
           pin: true,
-          scrub: prefersReducedMotion ? 0.25 : 0.6,
+          scrub: IS_MOBILE ? 0.2 : (prefersReducedMotion ? 0.25 : 0.6),
           anticipatePin: 1,
         },
       });
 
-      scrollTl
-        .to([".hero-text-wrapper", ".bg-grid-theme"], {
-          scale: 1.05,
-          filter: "blur(10px)",
-          opacity: 0.3,
-          ease: "power2.inOut",
-          duration: prefersReducedMotion ? 0.8 : 1.2,
-        }, 0)
-        .to([".hero-text-wrapper", ".bg-grid-theme"], {
-          scale: 1.1,
-          filter: "blur(24px)",
-          opacity: 0,
-          ease: "power2.in",
-          duration: prefersReducedMotion ? 0.6 : 0.8,
-        });
+      if (IS_MOBILE) {
+        // Mobile: simple opacity fade, no blur/scale (avoids recomposite)
+        scrollTl
+          .to([".hero-text-wrapper", ".bg-grid-theme"], {
+            opacity: 0,
+            ease: "power2.in",
+            duration: 1,
+          }, 0);
+      } else {
+        scrollTl
+          .to([".hero-text-wrapper", ".bg-grid-theme"], {
+            scale: 1.05,
+            filter: "blur(10px)",
+            opacity: 0.3,
+            ease: "power2.inOut",
+            duration: prefersReducedMotion ? 0.8 : 1.2,
+          }, 0)
+          .to([".hero-text-wrapper", ".bg-grid-theme"], {
+            scale: 1.1,
+            filter: "blur(24px)",
+            opacity: 0,
+            ease: "power2.in",
+            duration: prefersReducedMotion ? 0.6 : 0.8,
+          });
+      }
     }, containerRef);
 
     return () => ctx.revert();
@@ -142,15 +145,15 @@ export function CinematicHero({
     <div
       ref={containerRef}
       className={cn("relative w-screen h-screen overflow-hidden flex items-center justify-center bg-background text-foreground font-sans antialiased", className)}
-      style={{ perspective: "1500px" }}
+      style={IS_MOBILE ? undefined : { perspective: "1500px" }}
       {...props}
     >
       <style dangerouslySetInnerHTML={{ __html: INJECTED_STYLES }} />
-      <div className="film-grain" aria-hidden="true" />
+      {!IS_MOBILE && <div className="film-grain" aria-hidden="true" />}
       <FloatingParticles className="absolute inset-0 z-[5]" />
-      <div className="bg-grid-theme absolute inset-0 z-0 pointer-events-none opacity-50" aria-hidden="true" />
+      {!IS_MOBILE && <div className="bg-grid-theme absolute inset-0 z-0 pointer-events-none opacity-50" aria-hidden="true" />}
 
-      <div className="hero-text-wrapper absolute inset-0 z-10 flex isolate items-center justify-center text-center px-4 will-change-transform">
+      <div className="hero-text-wrapper absolute inset-0 z-10 flex isolate items-center justify-center text-center px-4" style={IS_MOBILE ? undefined : { willChange: "transform, filter, opacity" }}>
         <div className="relative z-20 flex flex-col items-center gap-3 md:gap-4">
           <div className="w-[80vw] max-w-[700px]">
             <HandwrittenLogo

@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { IS_MOBILE } from "@/lib/is-mobile";
 
 interface Particle {
   x: number;
@@ -27,6 +28,8 @@ export function FloatingParticles({
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
+    if (IS_MOBILE) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -113,18 +116,13 @@ export function FloatingParticles({
         const drawY = p.y + offsetY;
         const radius = p.size * 0.5;
 
+        // Simplified glow — slightly larger + brighter circle instead of
+        // per-particle radial-gradient which is expensive at 50 particles/frame
         if (p.glow) {
-          // Glow effect via radial gradient
-          const grad = ctx!.createRadialGradient(
-            drawX, drawY, 0,
-            drawX, drawY, radius * 4
-          );
-          grad.addColorStop(0, `rgba(255, 255, 255, ${p.opacity * 0.6})`);
-          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
-          ctx!.globalAlpha = 1;
-          ctx!.fillStyle = grad;
+          ctx!.globalAlpha = p.opacity * 0.35;
+          ctx!.fillStyle = "#ffffff";
           ctx!.beginPath();
-          ctx!.arc(drawX, drawY, radius * 4, 0, Math.PI * 2);
+          ctx!.arc(drawX, drawY, radius * 2.5, 0, Math.PI * 2);
           ctx!.fill();
         }
 
@@ -146,6 +144,8 @@ export function FloatingParticles({
       window.removeEventListener("mousemove", onMouseMove);
     };
   }, [count]);
+
+  if (IS_MOBILE) return null;
 
   return (
     <canvas
