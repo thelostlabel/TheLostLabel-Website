@@ -6,6 +6,7 @@ import rateLimit from "@/lib/rate-limit";
 import { authenticateDiscordInternalRequest, discordInternalJson } from "@/lib/discord-bridge-auth";
 import { resolveLinkedSiteUser } from "@/lib/discord-bridge-internal";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
+import { demoMutationResultSelect } from "@/lib/demo-queries";
 
 const limiter = rateLimit({
     interval: 60 * 60 * 1000,
@@ -163,9 +164,7 @@ export async function POST(req) {
                     }
                     : undefined
             },
-            include: {
-                files: true
-            }
+            select: demoMutationResultSelect
         });
 
         await insertDiscordOutboxEvent(

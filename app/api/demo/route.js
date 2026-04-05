@@ -11,6 +11,7 @@ import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import { settleSideEffects } from "@/lib/async-effects";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
+import { demoListSelect, demoMutationResultSelect } from "@/lib/demo-queries";
 
 // Rate limiter: 10 demos per hour per user
 const limiter = rateLimit({
@@ -103,9 +104,7 @@ export async function POST(req) {
                     }))
                 } : undefined
             },
-            include: {
-                files: true
-            }
+            select: demoMutationResultSelect
         });
 
         // Internal Discord bridge outbox (bot-driven delivery)
@@ -215,12 +214,7 @@ export async function GET(req) {
         if (canViewAll && !filterMine) {
             const [demos, total] = await Promise.all([
                 prisma.demo.findMany({
-                    include: {
-                        artist: {
-                            select: { stageName: true, email: true }
-                        },
-                        files: true
-                    },
+                    select: demoListSelect,
                     orderBy: { createdAt: 'desc' },
                     skip,
                     take: limit
@@ -246,7 +240,7 @@ export async function GET(req) {
             const [demos, total] = await Promise.all([
                 prisma.demo.findMany({
                     where,
-                    include: { files: true },
+                    select: demoListSelect,
                     orderBy: { createdAt: 'desc' },
                     skip,
                     take: limit

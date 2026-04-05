@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
 import { getReleaseArtistWhereById } from '@/lib/release-artists';
+import { demoListSelect } from '@/lib/demo-queries';
 
 function extractSpotifyArtistId(url) {
     if (!url || typeof url !== 'string') return null;
@@ -147,7 +148,7 @@ export async function GET(request) {
                 isStaff ? {} : { artistId: userId }
             ]
         },
-        include: { artist: true },
+        select: demoListSelect,
         take: 5
     });
     demos.forEach(d => results.push({

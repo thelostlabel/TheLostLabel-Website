@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
+import { demoOwnerSelect, hasDemoInternalNotesColumn } from "@/lib/demo-queries";
 import prisma from "@/lib/prisma";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,16 +18,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const demo = await prisma.demo.findUnique({
-    where: { id },
-    select: { internalNotes: true, rejectionReason: true },
-  });
+  const hasInternalNotes = await hasDemoInternalNotesColumn();
+  const demo = hasInternalNotes
+    ? await prisma.demo.findUnique({
+        where: { id },
+        select: { internalNotes: true, rejectionReason: true },
+      })
+    : await prisma.demo.findUnique({
+        where: { id },
+        select: { rejectionReason: true },
+      });
 
   if (!demo) {
     return NextResponse.json({ error: "Demo not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ notes: demo.internalNotes || "", rejectionReason: demo.rejectionReason || "" });
+  return NextResponse.json({
+    notes: hasInternalNotes && "internalNotes" in demo ? demo.internalNotes || "" : "",
+    rejectionReason: demo.rejectionReason || "",
+  });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -45,20 +55,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const notes = typeof body.notes === "string" ? body.notes : "";
   const rejectionReason = typeof body.rejectionReason === "string" ? body.rejectionReason : undefined;
 
-  const demo = await prisma.demo.findUnique({ where: { id } });
+  const demo = await prisma.demo.findUnique({ where: { id }, select: demoOwnerSelect });
   if (!demo) {
     return NextResponse.json({ error: "Demo not found" }, { status: 404 });
   }
 
-  const data: Record<string, string> = { internalNotes: notes };
+  const hasInternalNotes = await hasDemoInternalNotesColumn();
+  const data: Record<string, string> = {};
+  if (hasInternalNotes) {
+    data.internalNotes = notes;
+  }
   if (rejectionReason !== undefined) {
     data.rejectionReason = rejectionReason;
   }
 
-  await prisma.demo.update({
-    where: { id },
-    data,
-  });
+  if (Object.keys(data).length > 0) {
+    await prisma.demo.update({
+      where: { id },
+      data,
+    });
+  }
 
   return NextResponse.json({ success: true });
 }

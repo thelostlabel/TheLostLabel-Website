@@ -19,6 +19,7 @@ import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
 import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
+import { demoDetailSelect, demoMutationResultSelect, demoOwnerSelect } from "@/lib/demo-queries";
 
 const REVIEWABLE_STATUSES = new Set(["pending", "reviewing"]);
 
@@ -45,24 +46,7 @@ export async function GET(req, { params }) {
         const artistContext = await resolveArtistContextForUser(session.user.id);
         const demo = await prisma.demo.findUnique({
             where: { id },
-            include: {
-                artist: {
-                    select: {
-                        id: true,
-                        email: true,
-                        stageName: true,
-                        fullName: true,
-                        role: true
-                    }
-                },
-                files: true,
-                contract: {
-                    include: {
-                        release: true,
-                        splits: true
-                    }
-                }
-            }
+            select: demoDetailSelect
         });
 
         if (!demo) {
@@ -106,16 +90,7 @@ export async function PATCH(req, { params }) {
     // Fetch existing demo to check ownership
     const existingDemo = await prisma.demo.findUnique({
         where: { id },
-        include: {
-            artist: {
-                select: {
-                    id: true,
-                    email: true,
-                    stageName: true,
-                    fullName: true
-                }
-            }
-        }
+        select: demoMutationResultSelect
     });
 
     if (!existingDemo) {
@@ -218,7 +193,7 @@ export async function PATCH(req, { params }) {
             const d = await tx.demo.update({
                 where: { id },
                 data: updateData,
-                include: { artist: true, contract: true }
+                select: demoMutationResultSelect
             });
 
             // 2. RELEASE CREATION LOGIC
@@ -392,7 +367,7 @@ export async function DELETE(req, { params }) {
     const { id } = await params;
 
     try {
-        const demo = await prisma.demo.findUnique({ where: { id } });
+        const demo = await prisma.demo.findUnique({ where: { id }, select: demoOwnerSelect });
         if (!demo) {
             return new Response(JSON.stringify({ error: "Demo not found" }), { status: 404 });
         }

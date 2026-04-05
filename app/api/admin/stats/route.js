@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getCachedAdminStats } from "@/lib/admin-stats-cache";
+import { demoListSelect } from "@/lib/demo-queries";
 
 const asNumber = (value) => Number(value || 0);
 
@@ -61,7 +62,7 @@ export async function GET(req) {
                 prisma.demo.findMany({
                     take: 5,
                     orderBy: { createdAt: 'desc' },
-                    include: { artist: { select: { stageName: true, email: true } } }
+                    select: demoListSelect
                 }),
                 prisma.changeRequest.findMany({
                     take: 5,
