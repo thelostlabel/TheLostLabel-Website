@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useRef, useCallback, FormEvent } from 'react';
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/app/components/ToastContext';
 import { Avatar, Button, Dropdown, Input, Label, Table, Chip, TextArea, TextField } from '@heroui/react';
@@ -326,14 +327,8 @@ export default function RequestsView({ requests, onUpdateStatus }: RequestsViewP
     const [processing, setProcessing] = useState<string | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
     const [adminNote, setAdminNote] = useState<string>('');
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+    const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
     const [advancedFilters, setAdvancedFilters] = useState<Record<string, any>>(DEFAULT_REQUEST_FILTERS);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     const activeFilterCount = useMemo(() => countActiveFilters(advancedFilters), [advancedFilters]);
 

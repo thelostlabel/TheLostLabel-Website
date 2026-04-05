@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import { Search, Plus, Edit, Trash2, Check, X, CheckCircle, XCircle, Download } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
-import { Button, Card, Input, Table, Chip, Modal, TextArea, TextField, Label, Select, ListBox, Tooltip, Checkbox } from '@heroui/react';
+import { Button, Card, Input, Table, Chip, Modal, TextArea, TextField, Label, Select, ListBox, Tooltip, Checkbox, SearchField } from '@heroui/react';
 import BulkActionsBar from '@/app/components/dashboard/primitives/BulkActionsBar';
 import type { BulkAction } from '@/app/components/dashboard/primitives/BulkActionsBar';
 import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
@@ -121,8 +122,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
     const [showAdd, setShowAdd] = useState<boolean>(false);
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const [saving, setSaving] = useState<boolean>(false);
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+    const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
     const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
     const [form, setForm] = useState<PaymentForm>({
         artistId: '', userId: '', amount: '', method: 'bank_transfer',
@@ -135,11 +135,6 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
     const [selectionMode, setSelectionMode] = useState<boolean>(false);
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<Set<string>>(() => new Set());
     const [bulkProcessing, setBulkProcessing] = useState<boolean>(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     const getPaymentRecipientLabel = (payment: Payment): string => {
         if (payment.artist?.name) return payment.artist.name;
@@ -469,17 +464,18 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
             {/* Toolbar */}
             <div className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    <div className="relative flex-1 sm:max-w-xs">
-                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-                        <Input
-                            aria-label="Search payments"
-                            placeholder="Search by artist or reference..."
-                            value={searchTerm}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                            className="pl-9"
-                            fullWidth
-                        />
-                    </div>
+                    <SearchField
+                        aria-label="Search payments"
+                        value={searchTerm}
+                        onChange={setSearchTerm}
+                        className="flex-1 sm:max-w-xs"
+                    >
+                        <SearchField.Group>
+                            <SearchField.SearchIcon />
+                            <SearchField.Input placeholder="Search by artist or reference..." />
+                            <SearchField.ClearButton />
+                        </SearchField.Group>
+                    </SearchField>
                     <div className="flex items-center gap-2 shrink-0">
                         <Button
                             variant="primary"

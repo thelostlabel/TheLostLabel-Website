@@ -50,6 +50,7 @@ const DiscordBridgeView = lazyView(() => import("./admin/DiscordBridgeView"));
 const AnnouncementsView = lazyView(() => import("./admin/AnnouncementsView"));
 const AuditLogsView = lazyView(() => import("./admin/AuditLogsView"));
 const WisePayoutsView = lazyView(() => import("./admin/WisePayoutsView"));
+const InvoicesView = lazyView(() => import("./admin/InvoicesView"));
 
 export default function AdminView({ view: propView }: { view?: string }) {
   const { currentUser } = useDashboardAuth();
@@ -300,6 +301,7 @@ export default function AdminView({ view: propView }: { view?: string }) {
       {view === "announcements" && features.announcements && (
         <AnnouncementsView announcements={announcements} onRefresh={refreshers.announcements} />
       )}
+      {view === "invoices" && features.invoices && <InvoicesView />}
       {view === "wise-payouts" && features.wisePayouts && (
         <WisePayoutsView payments={payments} onRefresh={refreshers.payments} />
       )}

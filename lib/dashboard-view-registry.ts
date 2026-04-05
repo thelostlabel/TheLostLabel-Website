@@ -19,6 +19,7 @@ export type AdminViewKey =
   | "discord-bridge"
   | "wise-payouts"
   | "announcements"
+  | "invoices"
   | "audit-logs";
 
 export type PortalViewKey =
@@ -28,6 +29,7 @@ export type PortalViewKey =
   | "submit"
   | "earnings"
   | "contracts"
+  | "invoices"
   | "support"
   | "profile"
   | "project";
@@ -64,6 +66,7 @@ export const ADMIN_VIEW_DEFINITIONS: Array<{
   { view: "webhooks", navLabel: "WEBHOOKS", displayName: "Webhooks", iconKey: "bell", perm: "admin_view_webhooks", access: "admin", loaders: ["webhooks"], dataKey: "webhooks" },
   { view: "discord-bridge", navLabel: "DISCORD BRIDGE", displayName: "Discord Bridge", iconKey: "bot", perm: "admin_view_discord_bridge", featureKey: "discordBridge", access: "admin", loaders: ["discordBridge"], dataKey: "discordBridge" },
   { view: "wise-payouts", navLabel: "WISE PAYOUTS", displayName: "Wise Payouts", iconKey: "credit-card", perm: "admin_view_wise_payouts", featureKey: "wisePayouts", access: "admin", loaders: ["payments", "users"], dataKey: "payments", alwaysHasData: true },
+  { view: "invoices", navLabel: "INVOICES", displayName: "Invoices", iconKey: "file-text", perm: "admin_view_invoices", featureKey: "invoices", access: "admin", loaders: [], alwaysHasData: true },
   { view: "audit-logs", navLabel: "AUDIT LOGS", displayName: "Audit Logs", iconKey: "file-text", perm: "admin_view_settings", access: "admin", loaders: [], alwaysHasData: true },
   { view: "settings", navLabel: "SETTINGS", displayName: "Settings", iconKey: "settings", perm: "admin_view_settings", access: "admin", loaders: [], alwaysHasData: true },
   { view: "announcements", navLabel: "ANNOUNCEMENTS", displayName: "Announcements", iconKey: "bell", perm: "admin_view_announcements", featureKey: "announcements", access: "admin", loaders: ["announcements"], dataKey: "announcements" },
@@ -84,6 +87,7 @@ export const PORTAL_VIEW_DEFINITIONS: Array<{
   { view: "submit", routeView: "my-submit", navLabel: "NEW SUBMISSION", title: "NEW SUBMISSION", iconKey: "upload", perm: "submit_demos" },
   { view: "earnings", routeView: "my-earnings", navLabel: "EARNINGS", title: "MY EARNINGS", iconKey: "dollar-sign", perm: "view_earnings" },
   { view: "contracts", routeView: "my-contracts", navLabel: "CONTRACTS", title: "MY CONTRACTS", iconKey: "briefcase", perm: "view_contracts" },
+  { view: "invoices", routeView: "my-invoices", navLabel: "INVOICES", title: "MY INVOICES", iconKey: "file-text", perm: "view_invoices" },
   { view: "support", routeView: "my-support", navLabel: "SUPPORT", title: "SUPPORT", iconKey: "inbox", perm: "view_support" },
   { view: "profile", routeView: "my-profile", navLabel: "MY PROFILE", title: "MY PROFILE", iconKey: "user", perm: "view_profile" },
   { view: "project", routeView: "my-project", navLabel: "PROJECT", title: "PROJECT", iconKey: "file-text", perm: "view_demos", hidden: true },

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { IS_MOBILE } from "@/lib/is-mobile";
+import { IS_MOBILE, useIsMobile } from "@/lib/is-mobile";
 
 interface Particle {
   x: number;
@@ -22,6 +22,7 @@ export function FloatingParticles({
   className = "",
   count = 50,
 }: FloatingParticlesProps) {
+  const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
@@ -145,7 +146,7 @@ export function FloatingParticles({
     };
   }, [count]);
 
-  if (IS_MOBILE) return null;
+  if (isMobile) return null;
 
   return (
     <canvas

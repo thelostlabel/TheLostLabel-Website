@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import NextImage from 'next/image';
 import { RefreshCw, Plus, AlertCircle, Edit2, Settings2, CheckCircle, Mail } from 'lucide-react';
 import BulkActionsBar from '@/app/components/dashboard/primitives/BulkActionsBar';
@@ -233,8 +234,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
     const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
     const canManage = currentUser?.role === 'admin' || currentUser?.permissions?.canManageArtists;
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
     const [currentPage, setCurrentPage] = useState(1);
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedArtistIds, setSelectedArtistIds] = useState<Set<string>>(() => new Set());
@@ -255,11 +255,6 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
     const [editSaving, setEditSaving] = useState(false);
     const [bulkProcessing, setBulkProcessing] = useState(false);
     const touchSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     useEffect(() => {
         if (!recordId) { setSelectedArtist(null); return; }

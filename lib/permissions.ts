@@ -19,6 +19,7 @@ export const PORTAL_PERMISSION_OPTIONS = [
   { key: "view_demos", label: "DEMOS" },
   { key: "view_earnings", label: "EARNINGS" },
   { key: "view_contracts", label: "CONTRACTS" },
+  { key: "view_invoices", label: "INVOICES" },
   { key: "view_profile", label: "PROFILE" },
   { key: "submit_demos", label: "SUBMIT_DEMO" },
   { key: "request_changes", label: "REQUEST_CHANGE" },
@@ -39,6 +40,7 @@ export const MANAGEMENT_VIEW_PERMISSION_OPTIONS = [
   { key: "admin_view_webhooks", label: "WEBHOOKS" },
   { key: "admin_view_discord_bridge", label: "DISCORD BRIDGE" },
   { key: "admin_view_wise_payouts", label: "WISE PAYOUTS" },
+  { key: "admin_view_invoices", label: "INVOICES" },
   { key: "admin_view_settings", label: "SETTINGS" },
 ] as const satisfies readonly PermissionOption[];
 
@@ -257,6 +259,7 @@ export function canAccessAdminView(
     case "discord-bridge":
     case "settings":
     case "wise-payouts":
+    case "invoices":
       return hasAdminViewPermission(user, permission);
     default:
       return hasAdminViewPermission(user, permission);

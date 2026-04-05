@@ -5,7 +5,7 @@ import Image from "next/image";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-import { IS_MOBILE } from "@/lib/is-mobile";
+import { IS_MOBILE, useIsMobile } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -38,7 +38,7 @@ function formatListeners(n: number | null) {
   return `${n}`;
 }
 
-function ArtistCard({ artist }: { artist: ArtistItem }) {
+function ArtistCard({ artist, isMobile }: { artist: ArtistItem; isMobile: boolean }) {
   const genre = getGenre(artist.genres);
   const listeners = formatListeners(artist.monthlyListeners);
 
@@ -78,7 +78,7 @@ function ArtistCard({ artist }: { artist: ArtistItem }) {
         />
 
         {/* Film grain on card — skip on mobile */}
-        {!IS_MOBILE && (
+        {!isMobile && (
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay"
             style={{
@@ -125,6 +125,7 @@ function ArtistCard({ artist }: { artist: ArtistItem }) {
 }
 
 export function ArtistShowcaseSection({ artists }: Props) {
+  const isMobile = useIsMobile();
   const sectionRef = useRef<HTMLDivElement>(null);
   const track1Ref = useRef<HTMLDivElement>(null);
   const track2Ref = useRef<HTMLDivElement>(null);
@@ -133,8 +134,8 @@ export function ArtistShowcaseSection({ artists }: Props) {
   const row2 = artists.slice(Math.ceil(artists.length / 2));
 
   // On mobile: 2 copies instead of 3 to reduce DOM nodes & images
-  const row1Items = IS_MOBILE ? [...row1, ...row1] : [...row1, ...row1, ...row1];
-  const row2Items = IS_MOBILE ? [...row2, ...row2] : [...row2, ...row2, ...row2];
+  const row1Items = isMobile ? [...row1, ...row1] : [...row1, ...row1, ...row1];
+  const row2Items = isMobile ? [...row2, ...row2] : [...row2, ...row2, ...row2];
 
   useEffect(() => {
     if (artists.length === 0) return;
@@ -143,14 +144,14 @@ export function ArtistShowcaseSection({ artists }: Props) {
       gsap.set(".asc-bg", { scale: 1.12, autoAlpha: 0 });
       gsap.set(".asc-rule", { scaleX: 0, transformOrigin: "left center" });
       gsap.set(".asc-label", { autoAlpha: 0, y: 20 });
-      gsap.set(".asc-heading", { autoAlpha: 0, y: 32, filter: "blur(8px)" });
+      gsap.set(".asc-heading", { autoAlpha: 0, y: 32, ...(IS_MOBILE ? {} : { filter: "blur(8px)" }) });
       gsap.set(".asc-tracks", { autoAlpha: 0, y: 24 });
 
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: IS_MOBILE ? "+=1600" : "+=2800",
+          end: IS_MOBILE ? "+=1200" : "+=1800",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -160,7 +161,7 @@ export function ArtistShowcaseSection({ artists }: Props) {
       tl.to(".asc-bg",      { scale: 1, autoAlpha: 1, ease: "none", duration: 0.4 }, 0)
         .to(".asc-rule",     { scaleX: 1, ease: "none", duration: 0.2 }, 0.15)
         .to(".asc-label",    { autoAlpha: 1, y: 0, ease: "none", duration: 0.2 }, 0.2)
-        .to(".asc-heading",  { autoAlpha: 1, y: 0, filter: "blur(0px)", ease: "none", duration: 0.3 }, 0.3)
+        .to(".asc-heading",  { autoAlpha: 1, y: 0, ...(IS_MOBILE ? {} : { filter: "blur(0px)" }), ease: "none", duration: 0.3 }, 0.3)
         .to(".asc-tracks",   { autoAlpha: 1, y: 0, ease: "none", duration: 0.35 }, 0.45)
         .to({}, { duration: 1.0 })
 
@@ -183,10 +184,11 @@ export function ArtistShowcaseSection({ artists }: Props) {
       marquee(track2Ref, -1);
     }
 
-    function marquee(ref, dir) {
+    function marquee(ref: React.RefObject<HTMLDivElement | null>, dir: 1 | -1) {
       const el = ref.current;
       if (!el) return;
-      const w = el.scrollWidth / 3;
+      const copies = IS_MOBILE ? 2 : 3;
+      const w = el.scrollWidth / copies;
       gsap.set(el, { x: dir === -1 ? -w : 0 });
       gsap.to(el, {
         x: dir === 1 ? -w : 0,
@@ -233,7 +235,7 @@ export function ArtistShowcaseSection({ artists }: Props) {
       </div>
 
       {/* Film grain — skip on mobile */}
-      {!IS_MOBILE && (
+      {!isMobile && (
         <div
           className="absolute inset-0 pointer-events-none z-[1] opacity-[0.03] mix-blend-overlay"
           style={{
@@ -257,7 +259,7 @@ export function ArtistShowcaseSection({ artists }: Props) {
         <h2
           className="asc-heading text-4xl md:text-5xl lg:text-[3.5rem] font-black tracking-[-0.04em] leading-tight"
           style={{
-            background: "linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.35) 100%)",
+            backgroundImage: "linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.35) 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -273,14 +275,14 @@ export function ArtistShowcaseSection({ artists }: Props) {
       <div className="asc-tracks relative z-10 flex flex-col gap-4 w-full overflow-hidden">
         <div className="flex" style={{ width: "max-content" }} ref={track1Ref}>
           {row1Items.map((artist, i) => (
-            <ArtistCard key={`r1-${i}`} artist={artist} />
+            <ArtistCard key={`r1-${i}`} artist={artist} isMobile={isMobile} />
           ))}
         </div>
 
         {row2.length > 0 && (
           <div className="flex" style={{ width: "max-content" }} ref={track2Ref}>
             {row2Items.map((artist, i) => (
-              <ArtistCard key={`r2-${i}`} artist={artist} />
+              <ArtistCard key={`r2-${i}`} artist={artist} isMobile={isMobile} />
             ))}
           </div>
         )}

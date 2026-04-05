@@ -1,10 +1,10 @@
 // components/ui/scroll-atmosphere.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { IS_MOBILE } from "@/lib/is-mobile";
+import { useIsMobile } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -19,8 +19,9 @@ if (typeof window !== "undefined") {
  *  2. Radial-gradient vignette (spread + opacity driven by ScrollTrigger)
  */
 export function ScrollAtmosphere() {
+  const isMobile = useIsMobile();
   // Skip entirely on mobile — SVG feTurbulence + scroll-driven opacity is too heavy
-  if (IS_MOBILE) return null;
+  if (isMobile) return null;
 
   return <ScrollAtmosphereInner />;
 }

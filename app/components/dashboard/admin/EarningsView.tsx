@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useMemo, FormEvent, ChangeEvent } from 'react';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { useState, useMemo, FormEvent, ChangeEvent } from 'react';
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
-import { Button, Input, Table, Chip, Card, ProgressBar, Label, Tooltip } from '@heroui/react';
+import { Button, Input, Table, Chip, Card, Meter, Label, Separator, SearchField } from '@heroui/react';
 import ExportButtons from '@/app/components/dashboard/primitives/ExportButtons';
 import type { ExportColumn } from '@/app/components/dashboard/lib/export-utils';
 import AdvancedFilter, { type FilterField } from '@/app/components/dashboard/primitives/AdvancedFilter';
@@ -14,7 +15,6 @@ import { applyFilters, countActiveFilters, type FilterFieldConfig } from '@/app/
 
 interface EarningRelease {
     name?: string;
-    /** fallback title sometimes present on the contract itself */
     title?: string;
 }
 
@@ -25,7 +25,6 @@ interface EarningUser {
 
 interface EarningContract {
     release?: EarningRelease;
-    /** title may be present directly on the contract */
     title?: string;
     user?: EarningUser;
     primaryArtistName?: string;
@@ -50,9 +49,7 @@ interface ContractArtist {
 
 export interface Contract {
     id: string;
-    /** release object if joined */
     release?: { name?: string };
-    /** flat title fallback */
     title?: string;
     artist?: ContractArtist;
     user?: EarningUser;
@@ -88,26 +85,6 @@ const defaultForm = (): EarningForm => ({
 });
 
 // ---------------------------------------------------------------------------
-// Aggregation types
-// ---------------------------------------------------------------------------
-
-interface SpendByRelease {
-    name: string;
-    spend: number;
-    revenue: number;
-}
-
-interface SpendBySource {
-    source: string;
-    spend: number;
-    streams: number;
-}
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Advanced filter configuration
 // ---------------------------------------------------------------------------
 
@@ -120,43 +97,14 @@ const EARNINGS_SOURCE_OPTIONS: { id: string; label: string }[] = [
 ];
 
 const EARNINGS_FILTER_FIELDS: FilterField[] = [
-    {
-        key: 'search',
-        label: 'SEARCH',
-        type: 'text',
-        placeholder: 'Search by artist, release or period...',
-    },
-    {
-        key: 'period',
-        label: 'PERIOD',
-        type: 'daterange',
-    },
-    {
-        key: 'source',
-        label: 'SOURCE',
-        type: 'select',
-        options: EARNINGS_SOURCE_OPTIONS,
-    },
-    {
-        key: 'grossAmount',
-        label: 'GROSS AMOUNT ($)',
-        type: 'number-range',
-    },
+    { key: 'search', label: 'SEARCH', type: 'text', placeholder: 'Search by artist, release or period...' },
+    { key: 'period', label: 'PERIOD', type: 'daterange' },
+    { key: 'source', label: 'SOURCE', type: 'select', options: EARNINGS_SOURCE_OPTIONS },
+    { key: 'grossAmount', label: 'GROSS AMOUNT ($)', type: 'number-range' },
 ];
 
 const EARNINGS_FILTER_CONFIGS: FilterFieldConfig[] = [
-    {
-        key: 'search',
-        type: 'text',
-        searchFields: [
-            'contract.release.name',
-            'contract.title',
-            'contract.user.stageName',
-            'contract.user.fullName',
-            'contract.primaryArtistName',
-            'period',
-        ],
-    },
+    { key: 'search', type: 'text', searchFields: ['contract.release.name', 'contract.title', 'contract.user.stageName', 'contract.user.fullName', 'contract.primaryArtistName', 'period'] },
     { key: 'period', type: 'daterange' },
     { key: 'source', type: 'select' },
     { key: 'grossAmount', type: 'number-range' },
@@ -169,26 +117,22 @@ const DEFAULT_EARNINGS_FILTERS: Record<string, any> = {
     grossAmount: { min: '', max: '' },
 };
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function EarningsView({ earnings, contracts, onRefresh }: EarningsViewProps) {
     const { showToast, showConfirm } = useToast();
-    const [showAdd, setShowAdd] = useState<boolean>(false);
-    const [saving, setSaving] = useState<boolean>(false);
+    const [showAdd, setShowAdd] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+    const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
     const [advancedFilters, setAdvancedFilters] = useState<Record<string, any>>(DEFAULT_EARNINGS_FILTERS);
-
     const [form, setForm] = useState<EarningForm>(defaultForm());
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     const activeFilterCount = useMemo(() => countActiveFilters(advancedFilters), [advancedFilters]);
 
     const filteredEarnings = useMemo<Earning[]>(() => {
-        // First apply quick search bar
         let result = earnings;
         if (debouncedSearch) {
             const needle = debouncedSearch.toLowerCase();
@@ -200,21 +144,18 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
                 e.source?.toLowerCase().includes(needle)
             );
         }
-        // Then apply advanced filters
         return applyFilters(result, advancedFilters, EARNINGS_FILTER_CONFIGS);
     }, [earnings, debouncedSearch, advancedFilters]);
 
-    const handleAdd = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    // --- Handlers ---
+
+    const handleAdd = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setSaving(true);
         try {
             const url = editingId ? `/api/earnings/${editingId}` : '/api/earnings';
             const method = editingId ? 'PATCH' : 'POST';
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
-            });
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
             if (res.ok) {
                 setShowAdd(false);
                 setEditingId(null);
@@ -225,13 +166,12 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
                 const data: { error?: string } = await res.json();
                 showToast(data.error || "Failed to save earning", "error");
             }
-        } catch (e) {
-            console.error(e);
+        } catch {
             showToast("Error saving earning", "error");
         } finally { setSaving(false); }
     };
 
-    const handleEdit = (earning: Earning): void => {
+    const handleEdit = (earning: Earning) => {
         setEditingId(earning.id);
         setForm({
             contractId: earning.contractId,
@@ -244,105 +184,57 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
         setShowAdd(true);
     };
 
-    const handleDelete = (id: string): void => {
+    const handleDelete = (id: string) => {
         showConfirm(
             "DELETE RECORD?",
             "Are you sure you want to delete this earning record? This cannot be undone.",
             async () => {
                 try {
                     const res = await fetch(`/api/earnings/${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        showToast("Record deleted", "success");
-                        onRefresh();
-                    } else {
-                        showToast("Failed to delete", "error");
-                    }
-                } catch (e) { showToast("Error deleting", "error"); }
+                    if (res.ok) { showToast("Record deleted", "success"); onRefresh(); }
+                    else { showToast("Failed to delete", "error"); }
+                } catch { showToast("Error deleting", "error"); }
             }
         );
     };
 
-    const totalGross = earnings.reduce((sum, e) => sum + (e.grossAmount || 0), 0);
-    const totalArtist = earnings.reduce((sum, e) => sum + (e.artistAmount || 0), 0);
-    const totalLabel = earnings.reduce((sum, e) => sum + (e.labelAmount || 0), 0);
-    const totalExpense = earnings.reduce((sum, e) => sum + (e.expenseAmount || 0), 0);
-    const spendRatio = totalGross ? Math.round((totalExpense / totalGross) * 100) : 0;
-    const artistRatio = totalGross ? Math.round((totalArtist / totalGross) * 100) : 0;
-    const labelRatio = totalGross ? Math.round((totalLabel / totalGross) * 100) : 0;
-    const trackedSources = new Set(earnings.map((e) => String(e.source || 'spotify').toUpperCase())).size;
+    // --- Aggregations ---
 
-    const formatCurrency = (value: number | string | undefined): string =>
-        new Intl.NumberFormat(undefined, {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0,
-        }).format(Number(value || 0));
+    const totalGross = earnings.reduce((s, e) => s + (e.grossAmount || 0), 0);
+    const totalArtist = earnings.reduce((s, e) => s + (e.artistAmount || 0), 0);
+    const totalLabel = earnings.reduce((s, e) => s + (e.labelAmount || 0), 0);
+    const totalExpense = earnings.reduce((s, e) => s + (e.expenseAmount || 0), 0);
+    const artistPct = totalGross ? Math.round((totalArtist / totalGross) * 100) : 0;
+    const labelPct = totalGross ? Math.round((totalLabel / totalGross) * 100) : 0;
+    const expensePct = totalGross ? Math.round((totalExpense / totalGross) * 100) : 0;
 
-    const spendByRelease: SpendByRelease[] = Object.values(
-        earnings.reduce<Record<string, SpendByRelease>>((acc, e) => {
-            const key = e.contract?.release?.name || 'Unknown';
-            acc[key] = acc[key] || { name: key, spend: 0, revenue: 0 };
-            acc[key].spend += e.expenseAmount || 0;
-            acc[key].revenue += e.labelAmount || 0;
-            return acc;
-        }, {})
-    ).sort((a, b) => b.spend - a.spend).slice(0, 5);
+    const fmt = (v: number) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
-    const spendBySource: SpendBySource[] = Object.values(
-        earnings.reduce<Record<string, SpendBySource>>((acc, e) => {
-            const key = (e.source || 'OTHER').toUpperCase();
-            acc[key] = acc[key] || { source: key, spend: 0, streams: 0 };
-            acc[key].spend += e.expenseAmount || 0;
-            acc[key].streams += e.streams || 0;
-            return acc;
-        }, {})
-    ).sort((a, b) => b.spend - a.spend).slice(0, 6);
+    const spendByRelease = useMemo(() =>
+        Object.values(
+            earnings.reduce<Record<string, { name: string; spend: number; revenue: number }>>((acc, e) => {
+                const key = e.contract?.release?.name || 'Unknown';
+                acc[key] = acc[key] || { name: key, spend: 0, revenue: 0 };
+                acc[key].spend += e.expenseAmount || 0;
+                acc[key].revenue += e.labelAmount || 0;
+                return acc;
+            }, {})
+        ).sort((a, b) => b.spend - a.spend).slice(0, 5),
+    [earnings]);
 
-    interface StatCard {
-        key: string;
-        eyebrow: string;
-        title: string;
-        description: string;
-        value: string;
-        footnote: string;
-        accent?: boolean;
-    }
+    const spendBySource = useMemo(() =>
+        Object.values(
+            earnings.reduce<Record<string, { source: string; spend: number; streams: number }>>((acc, e) => {
+                const key = (e.source || 'OTHER').toUpperCase();
+                acc[key] = acc[key] || { source: key, spend: 0, streams: 0 };
+                acc[key].spend += e.expenseAmount || 0;
+                acc[key].streams += e.streams || 0;
+                return acc;
+            }, {})
+        ).sort((a, b) => b.spend - a.spend).slice(0, 6),
+    [earnings]);
 
-    const statCards: StatCard[] = [
-        {
-            key: 'gross',
-            eyebrow: 'TOPLINE',
-            title: 'Gross Revenue',
-            description: `${earnings.length} earning records across ${contracts.length} contracts`,
-            value: formatCurrency(totalGross),
-            footnote: 'All reported royalty income before deductions',
-        },
-        {
-            key: 'spend',
-            eyebrow: 'COST',
-            title: 'Ad Spend / Expenses',
-            description: `${spendRatio}% of gross allocated to acquisition or costs`,
-            value: formatCurrency(totalExpense),
-            footnote: `${trackedSources} tracked source${trackedSources === 1 ? '' : 's'}`,
-        },
-        {
-            key: 'artist',
-            eyebrow: 'DISTRIBUTION',
-            title: 'Artist Payouts',
-            description: `${artistRatio}% of gross distributed to artists`,
-            value: formatCurrency(totalArtist),
-            footnote: 'Calculated from contract artist shares',
-        },
-        {
-            key: 'label',
-            eyebrow: 'NET',
-            title: 'Label Net Earnings',
-            description: `${labelRatio}% of gross retained after spend`,
-            value: formatCurrency(totalLabel),
-            footnote: 'Label share net of recorded expenses',
-            accent: true,
-        },
-    ];
+    // --- Export ---
 
     const earningsExportColumns: ExportColumn[] = [
         { key: 'period', label: 'Period' },
@@ -356,228 +248,249 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
         { key: 'source', label: 'Source', format: (v) => (v || 'spotify').toUpperCase() },
     ];
 
+    const STAT_ICON_CLASS = "size-4 text-muted";
+
     return (
-        <div className="flex flex-col gap-8">
-            {/* Stat Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {statCards.map((stat) => (
-                    <Card key={stat.key} variant={stat.accent ? 'secondary' : 'default'}>
-                        <Card.Header className="gap-1 p-4 pb-2">
-                            <Card.Description className="text-[9px] font-black tracking-[0.18em] uppercase text-muted">
-                                {stat.eyebrow}
-                            </Card.Description>
-                            <Card.Title className="text-sm font-black tracking-wide">
-                                {stat.title}
-                            </Card.Title>
-                            <Card.Description className="text-[11px] leading-5 text-muted">
-                                {stat.description}
-                            </Card.Description>
-                        </Card.Header>
-                        <Card.Content className="px-4 pb-3">
-                            <div className={`text-2xl font-black tracking-tight ${stat.accent ? 'text-accent' : 'text-foreground'}`}>
-                                {stat.value}
-                            </div>
-                        </Card.Content>
-                        <Card.Footer className="px-4 pt-0 pb-4">
-                            <span className="text-[10px] font-semibold text-muted">
-                                {stat.footnote}
-                            </span>
-                        </Card.Footer>
-                    </Card>
-                ))}
+        <div className="flex flex-col gap-6">
+
+            {/* ── KPI Stats ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <Card>
+                    <Card.Content className="p-4 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black tracking-[0.16em] text-muted uppercase">Gross Revenue</span>
+                            <DollarSign className={STAT_ICON_CLASS} />
+                        </div>
+                        <span className="text-2xl font-black tracking-tight">{fmt(totalGross)}</span>
+                        <span className="text-[10px] text-muted">{earnings.length} records · {contracts.length} contracts</span>
+                    </Card.Content>
+                </Card>
+
+                <Card>
+                    <Card.Content className="p-4 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black tracking-[0.16em] text-muted uppercase">Expenses</span>
+                            <TrendingUp className={STAT_ICON_CLASS} />
+                        </div>
+                        <span className="text-2xl font-black tracking-tight text-danger">{fmt(totalExpense)}</span>
+                        <Meter aria-label="Expense ratio" value={expensePct} color="danger" size="sm">
+                            <Meter.Track className="h-1">
+                                <Meter.Fill />
+                            </Meter.Track>
+                        </Meter>
+                        <span className="text-[10px] text-muted">{expensePct}% of gross</span>
+                    </Card.Content>
+                </Card>
+
+                <Card>
+                    <Card.Content className="p-4 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black tracking-[0.16em] text-muted uppercase">Artist Payouts</span>
+                            <Users className={STAT_ICON_CLASS} />
+                        </div>
+                        <span className="text-2xl font-black tracking-tight text-success">{fmt(totalArtist)}</span>
+                        <Meter aria-label="Artist ratio" value={artistPct} color="success" size="sm">
+                            <Meter.Track className="h-1">
+                                <Meter.Fill />
+                            </Meter.Track>
+                        </Meter>
+                        <span className="text-[10px] text-muted">{artistPct}% of gross</span>
+                    </Card.Content>
+                </Card>
+
+                <Card variant="secondary">
+                    <Card.Content className="p-4 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black tracking-[0.16em] text-muted uppercase">Label Net</span>
+                            <BarChart3 className={STAT_ICON_CLASS} />
+                        </div>
+                        <span className="text-2xl font-black tracking-tight text-accent">{fmt(totalLabel)}</span>
+                        <Meter aria-label="Label ratio" value={labelPct} color="accent" size="sm">
+                            <Meter.Track className="h-1">
+                                <Meter.Fill />
+                            </Meter.Track>
+                        </Meter>
+                        <span className="text-[10px] text-muted">{labelPct}% of gross</span>
+                    </Card.Content>
+                </Card>
             </div>
 
-            {/* Analytics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* ── Analytics ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Spend by Release */}
                 <Card>
-                    <Card.Header>
-                        <Card.Title>TOP RELEASES BY AD SPEND</Card.Title>
-                        <span className="text-[9px] text-muted font-black ml-auto">TOP 5</span>
+                    <Card.Header className="flex-row items-center justify-between">
+                        <Card.Title className="text-xs font-black tracking-widest uppercase">Top Releases by Ad Spend</Card.Title>
+                        <Chip size="sm" variant="soft"><Chip.Label>TOP 5</Chip.Label></Chip>
                     </Card.Header>
-                    <Card.Content className="flex flex-col gap-3">
-                        {spendByRelease.map((r, i) => {
+                    <Separator />
+                    <Card.Content className="flex flex-col gap-2.5 p-4">
+                        {spendByRelease.length === 0 ? (
+                            <div className="py-10 text-center text-muted text-[10px] font-black tracking-widest">NO SPEND DATA</div>
+                        ) : spendByRelease.map((r, i) => {
                             const pct = totalExpense ? Math.round((r.spend / totalExpense) * 100) : 0;
                             return (
-                                <Card key={i} variant="secondary">
-                                    <Card.Content className="gap-3 p-4">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <Card.Title className="text-xs font-black tracking-wide">
-                                                {r.name.toUpperCase()}
-                                            </Card.Title>
-                                            <span className="text-sm font-black text-accent">
-                                                ${r.spend.toLocaleString()}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex items-center justify-between gap-3 text-[9px] font-black text-muted">
-                                            <span>REV: ${r.revenue.toLocaleString()}</span>
-                                            <span>{pct}% OF SPEND</span>
-                                        </div>
-
-                                        <ProgressBar
-                                            aria-label={`${r.name} ad spend share`}
-                                            color="accent"
-                                            size="sm"
-                                            value={pct}
-                                        >
-                                            <Label className="sr-only">{r.name}</Label>
-                                            <ProgressBar.Track className="h-1.5">
-                                                <ProgressBar.Fill />
-                                            </ProgressBar.Track>
-                                        </ProgressBar>
-                                    </Card.Content>
-                                </Card>
+                                <div key={i} className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-bold truncate">{r.name}</span>
+                                        <span className="text-xs font-black text-accent shrink-0">${r.spend.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[9px] text-muted font-semibold">
+                                        <span>REV: ${r.revenue.toLocaleString()}</span>
+                                        <span>{pct}%</span>
+                                    </div>
+                                    <Meter aria-label={`${r.name} share`} value={pct} color="accent" size="sm">
+                                        <Meter.Track className="h-1">
+                                            <Meter.Fill />
+                                        </Meter.Track>
+                                    </Meter>
+                                </div>
                             );
                         })}
-                        {spendByRelease.length === 0 && (
-                            <div className="py-8 text-center text-muted text-xs font-black tracking-widest">NO SPEND DATA</div>
-                        )}
                     </Card.Content>
                 </Card>
 
+                {/* Spend by Source */}
                 <Card>
-                    <Card.Header>
-                        <Card.Title>SPEND BY SOURCE</Card.Title>
-                        <span className="text-[9px] text-muted font-black ml-auto">TOP 6</span>
+                    <Card.Header className="flex-row items-center justify-between">
+                        <Card.Title className="text-xs font-black tracking-widest uppercase">Spend by Source</Card.Title>
+                        <Chip size="sm" variant="soft"><Chip.Label>TOP 6</Chip.Label></Chip>
                     </Card.Header>
-                    <Card.Content className="flex flex-col gap-2">
-                        {spendBySource.map((s, i) => {
+                    <Separator />
+                    <Card.Content className="flex flex-col gap-2.5 p-4">
+                        {spendBySource.length === 0 ? (
+                            <div className="py-10 text-center text-muted text-[10px] font-black tracking-widest">NO SPEND DATA</div>
+                        ) : spendBySource.map((s, i) => {
                             const pct = totalExpense ? Math.round((s.spend / totalExpense) * 100) : 0;
                             return (
-                                <Card key={i} variant="secondary">
-                                    <Card.Content className="gap-3 p-3">
-                                        <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_88px_48px]">
-                                            <div className="font-black text-xs">{s.source}</div>
-                                            <div className="text-accent font-black text-xs sm:text-right">
-                                                ${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                            </div>
-                                            <div className="text-[10px] font-black text-muted sm:text-right">{pct}%</div>
+                                <div key={i} className="flex flex-col gap-1.5">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-bold">{s.source}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-black text-accent">${s.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                            <span className="text-[10px] font-semibold text-muted w-8 text-right">{pct}%</span>
                                         </div>
-
-                                        <ProgressBar
-                                            aria-label={`${s.source} spend share`}
-                                            color="accent"
-                                            size="sm"
-                                            value={pct}
-                                        >
-                                            <Label className="sr-only">{s.source}</Label>
-                                            <ProgressBar.Track className="h-1">
-                                                <ProgressBar.Fill />
-                                            </ProgressBar.Track>
-                                        </ProgressBar>
-                                    </Card.Content>
-                                </Card>
+                                    </div>
+                                    <Meter aria-label={`${s.source} share`} value={pct} color="accent" size="sm">
+                                        <Meter.Track className="h-1">
+                                            <Meter.Fill />
+                                        </Meter.Track>
+                                    </Meter>
+                                </div>
                             );
                         })}
-                        {spendBySource.length === 0 && (
-                            <div className="py-8 text-center text-muted text-xs font-black tracking-widest">NO SPEND DATA</div>
-                        )}
                     </Card.Content>
                 </Card>
             </div>
 
-            {/* Toolbar */}
-            <div className="flex justify-between items-center flex-wrap gap-5">
-                <div className="relative flex-1 max-w-sm">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-                    <Input
-                        aria-label="Search earnings"
-                        placeholder="SEARCH EARNINGS..."
-                        value={searchTerm}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                        className="pl-9"
-                        fullWidth
-                    />
-                </div>
-                <ExportButtons
-                    data={filteredEarnings}
-                    columns={earningsExportColumns}
-                    filename="earnings-export"
-                    title="Earnings Report"
-                />
-                <Button
-                    variant={showAdd && !editingId ? 'secondary' : 'primary'}
-                    onPress={() => {
-                        setEditingId(null);
-                        setForm(defaultForm());
-                        setShowAdd(!showAdd);
-                    }}
-                >
-                    {showAdd && !editingId ? 'CANCEL ENTRY' : <><Plus size={14} /> ADD MANUAL EARNING</>}
-                </Button>
-            </div>
-            <AdvancedFilter
-                fields={EARNINGS_FILTER_FIELDS}
-                values={advancedFilters}
-                onChange={setAdvancedFilters}
-                onReset={() => setAdvancedFilters(DEFAULT_EARNINGS_FILTERS)}
-                activeFilterCount={activeFilterCount}
-            />
+            <Separator />
 
-            {/* Add/Edit Form */}
-            {showAdd && (
-                <div className="border border-border rounded-xl p-6">
-                    <div className="text-xs font-black tracking-widest mb-4" style={{ color: editingId ? 'var(--accent)' : undefined }}>
-                        {editingId ? 'EDITING EARNING RECORD' : 'NEW EARNING RECORD'}
-                    </div>
-                    <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="md:col-span-2">
-                            <label className="text-[10px] text-muted font-black tracking-widest block mb-2">CONTRACT (RELEASE + ARTIST)</label>
-                            <select
-                                value={form.contractId}
-                                onChange={(e: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, contractId: e.target.value })}
-                                required
-                                className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-sm text-foreground"
-                            >
-                                <option value="">Select Contract...</option>
-                                {contracts.map((c) => {
-                                    const releaseName = c.release?.name || c.title || 'Untitled Release';
-                                    const artistName = c.artist?.name || c.user?.stageName || c.user?.fullName || c.primaryArtistName || 'Unknown Artist';
-                                    return <option key={c.id} value={c.id}>{releaseName} - {artistName}</option>;
-                                })}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-muted font-black tracking-widest block mb-2">PERIOD (YYYY-MM)</label>
-                            <Input aria-label="Period" type="month" value={form.period} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, period: e.target.value })} required fullWidth />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-muted font-black tracking-widest block mb-2">GROSS AMOUNT ($)</label>
-                            <Input aria-label="Gross amount" type="number" step="0.01" required value={form.grossAmount} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, grossAmount: e.target.value })} fullWidth />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-muted font-black tracking-widest block mb-2">AD SPEND / EXPENSES ($)</label>
-                            <Input aria-label="Expense amount" type="number" step="0.01" value={form.expenseAmount} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, expenseAmount: e.target.value })} fullWidth />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-muted font-black tracking-widest block mb-2">STREAMS (OPTIONAL)</label>
-                            <Input aria-label="Streams" type="number" value={form.streams} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, streams: e.target.value })} fullWidth />
-                        </div>
-                        <div>
-                            <label className="text-[10px] text-muted font-black tracking-widest block mb-2">SOURCE</label>
-                            <select
-                                value={form.source}
-                                onChange={(e: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, source: e.target.value })}
-                                className="w-full px-4 py-3 bg-surface border border-border rounded-lg text-sm text-foreground"
-                            >
-                                <option value="spotify">Spotify</option>
-                                <option value="apple">Apple Music</option>
-                                <option value="youtube">YouTube</option>
-                                <option value="ad_revenue">Ad Revenue (Meta/TikTok/etc)</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div className="md:col-span-3 flex gap-2.5 justify-end">
-                            <Button type="button" variant="secondary" onPress={() => setShowAdd(false)}>CANCEL</Button>
-                            <Button type="submit" variant="primary" isDisabled={saving}>
-                                {saving ? 'SAVING...' : (editingId ? 'UPDATE RECORD' : 'ADD RECORD')}
-                            </Button>
-                        </div>
-                    </form>
+            {/* ── Toolbar ── */}
+            <div className="flex items-center flex-wrap gap-3">
+                <SearchField
+                    aria-label="Search earnings"
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    className="flex-1 min-w-[180px] max-w-xs"
+                >
+                    <SearchField.Group>
+                        <SearchField.SearchIcon />
+                        <SearchField.Input placeholder="Search earnings..." />
+                        <SearchField.ClearButton />
+                    </SearchField.Group>
+                </SearchField>
+                <AdvancedFilter
+                    fields={EARNINGS_FILTER_FIELDS}
+                    values={advancedFilters}
+                    onChange={setAdvancedFilters}
+                    onReset={() => setAdvancedFilters(DEFAULT_EARNINGS_FILTERS)}
+                    activeFilterCount={activeFilterCount}
+                />
+                <div className="flex items-center gap-2 ml-auto">
+                    <ExportButtons
+                        data={filteredEarnings}
+                        columns={earningsExportColumns}
+                        filename="earnings-export"
+                        title="Earnings Report"
+                    />
+                    <Button
+                        variant={showAdd && !editingId ? 'secondary' : 'primary'}
+                        onPress={() => { setEditingId(null); setForm(defaultForm()); setShowAdd(!showAdd); }}
+                    >
+                        {showAdd && !editingId ? 'CANCEL' : <><Plus size={14} /> ADD EARNING</>}
+                    </Button>
                 </div>
+            </div>
+
+            {/* ── Add/Edit Form ── */}
+            {showAdd && (
+                <Card>
+                    <Card.Header>
+                        <Card.Title className="text-xs font-black tracking-widest" style={{ color: editingId ? 'var(--accent)' : undefined }}>
+                            {editingId ? 'EDITING EARNING RECORD' : 'NEW EARNING RECORD'}
+                        </Card.Title>
+                    </Card.Header>
+                    <Separator />
+                    <Card.Content className="p-4">
+                        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] text-muted font-black tracking-widest block mb-2">CONTRACT (RELEASE + ARTIST)</label>
+                                <select
+                                    value={form.contractId}
+                                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, contractId: e.target.value })}
+                                    required
+                                    className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-foreground"
+                                >
+                                    <option value="">Select Contract...</option>
+                                    {contracts.map((c) => {
+                                        const releaseName = c.release?.name || c.title || 'Untitled Release';
+                                        const artistName = c.artist?.name || c.user?.stageName || c.user?.fullName || c.primaryArtistName || 'Unknown Artist';
+                                        return <option key={c.id} value={c.id}>{releaseName} - {artistName}</option>;
+                                    })}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-muted font-black tracking-widest block mb-2">PERIOD (YYYY-MM)</label>
+                                <Input aria-label="Period" type="month" value={form.period} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, period: e.target.value })} required fullWidth />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-muted font-black tracking-widest block mb-2">GROSS AMOUNT ($)</label>
+                                <Input aria-label="Gross amount" type="number" step="0.01" required value={form.grossAmount} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, grossAmount: e.target.value })} fullWidth />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-muted font-black tracking-widest block mb-2">AD SPEND / EXPENSES ($)</label>
+                                <Input aria-label="Expense amount" type="number" step="0.01" value={form.expenseAmount} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, expenseAmount: e.target.value })} fullWidth />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-muted font-black tracking-widest block mb-2">STREAMS (OPTIONAL)</label>
+                                <Input aria-label="Streams" type="number" value={form.streams} onChange={(e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, streams: e.target.value })} fullWidth />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-muted font-black tracking-widest block mb-2">SOURCE</label>
+                                <select
+                                    value={form.source}
+                                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, source: e.target.value })}
+                                    className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm text-foreground"
+                                >
+                                    <option value="spotify">Spotify</option>
+                                    <option value="apple">Apple Music</option>
+                                    <option value="youtube">YouTube</option>
+                                    <option value="ad_revenue">Ad Revenue (Meta/TikTok/etc)</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-3 flex gap-2 justify-end pt-2">
+                                <Button type="button" variant="secondary" onPress={() => setShowAdd(false)}>CANCEL</Button>
+                                <Button type="submit" variant="primary" isDisabled={saving}>
+                                    {saving ? 'SAVING...' : (editingId ? 'UPDATE' : 'ADD RECORD')}
+                                </Button>
+                            </div>
+                        </form>
+                    </Card.Content>
+                </Card>
             )}
 
-            {/* Earnings Table */}
+            {/* ���─ Earnings Table ── */}
             <Table aria-label="Earnings Table">
                 <Table.ScrollContainer>
                     <Table.Content className="min-w-[900px]" selectionMode="none">
@@ -607,7 +520,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
                                     <Table.Cell>
                                         <div className="flex flex-col gap-0.5">
                                             <span className="text-sm font-black">{e.contract?.release?.name || e.contract?.title || 'Untitled'}</span>
-                                            <span className="text-[10px] text-muted font-black">{e.contract?.user?.stageName || e.contract?.primaryArtistName}</span>
+                                            <span className="text-[10px] text-muted font-semibold">{e.contract?.user?.stageName || e.contract?.primaryArtistName}</span>
                                         </div>
                                     </Table.Cell>
                                     <Table.Cell>
@@ -622,7 +535,7 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
                                         </Chip>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span className="text-xs text-muted font-black">{e.streams ? e.streams.toLocaleString() : '--'}</span>
+                                        <span className="text-xs text-muted font-semibold">{e.streams ? e.streams.toLocaleString() : '--'}</span>
                                     </Table.Cell>
                                     <Table.Cell>
                                         <Chip size="sm" variant="soft">
@@ -631,12 +544,8 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div className="flex items-center justify-end gap-1">
-                                            <Tooltip content="Edit">
-                                                <Button size="sm" variant="ghost" isIconOnly onPress={() => handleEdit(e)}><Edit size={14} /></Button>
-                                            </Tooltip>
-                                            <Tooltip content="Delete">
-                                                <Button size="sm" variant="ghost" isIconOnly className="text-danger hover:bg-danger/10" onPress={() => handleDelete(e.id)}><Trash2 size={14} /></Button>
-                                            </Tooltip>
+                                            <Button size="sm" variant="ghost" isIconOnly aria-label="Edit" onPress={() => handleEdit(e)}><Edit size={14} /></Button>
+                                            <Button size="sm" variant="ghost" isIconOnly aria-label="Delete" className="text-danger hover:bg-danger/10" onPress={() => handleDelete(e.id)}><Trash2 size={14} /></Button>
                                         </div>
                                     </Table.Cell>
                                 </Table.Row>

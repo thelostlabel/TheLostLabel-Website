@@ -106,7 +106,7 @@ export function CTASection({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: IS_MOBILE ? "+=1600" : "+=3000",
+          end: IS_MOBILE ? "+=1200" : "+=1800",
           pin: true,
           scrub: IS_MOBILE ? 0.3 : 1,
           anticipatePin: 1,

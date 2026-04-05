@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Check, Loader2, Send, Users, Mail, Eye } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
-import { Button, Card, Chip, Input, TextArea, TextField } from '@heroui/react';
+import { Button, Card, Chip, Input, SearchField, TextArea, TextField } from '@heroui/react';
 
 const FIELD_CLASS = 'dash-input';
 
@@ -381,17 +381,17 @@ export default function CommunicationsView({ artists: initialArtists }: Communic
                             </div>
                         ) : (
                             <>
-                                <div className="relative">
-                                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                                    <Input
-                                        aria-label="Search artists"
-                                        placeholder="Search artists by name or email..."
-                                        value={searchTerm}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                                        className={`${FIELD_CLASS} pl-9`}
-                                        variant="secondary"
-                                    />
-                                </div>
+                                <SearchField
+                                    aria-label="Search artists"
+                                    value={searchTerm}
+                                    onChange={setSearchTerm}
+                                >
+                                    <SearchField.Group>
+                                        <SearchField.SearchIcon />
+                                        <SearchField.Input placeholder="Search artists by name or email..." />
+                                        <SearchField.ClearButton />
+                                    </SearchField.Group>
+                                </SearchField>
 
                                 <div className="flex gap-2">
                                     <Button

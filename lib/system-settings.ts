@@ -20,6 +20,25 @@ export type PublicSettings = {
   maintenanceMode: boolean;
   joinHeroTitle: string;
   joinHeroSub: string;
+  // Branding (DB-backed)
+  brandingShortName: string;
+  brandingFullName: string;
+  brandingDotName: string;
+  brandingPrimaryColor: string;
+  brandingLogoUrl: string;
+  brandingSupportEmail: string;
+  // Feature flags (DB-backed)
+  featureSubmissions: boolean;
+  featureContracts: boolean;
+  featureEarnings: boolean;
+  featurePayments: boolean;
+  featureReleases: boolean;
+  featureCommunications: boolean;
+  featureDiscordBridge: boolean;
+  featureWisePayouts: boolean;
+  featureSpotifySync: boolean;
+  featureInvoices: boolean;
+  featureAnnouncements: boolean;
 };
 
 export type SystemSettingsConfig = PublicSettings & {
@@ -29,8 +48,29 @@ export type SystemSettingsConfig = PublicSettings & {
   allowOther: boolean;
   adminEmail: string;
   defaultPlaylistId: string;
+  // Feature flags — managed from admin settings, no redeploy needed
+  featureSubmissions: boolean;
+  featureContracts: boolean;
+  featureEarnings: boolean;
+  featurePayments: boolean;
+  featureReleases: boolean;
+  featureCommunications: boolean;
+  featureDiscordBridge: boolean;
+  featureWisePayouts: boolean;
+  featureSpotifySync: boolean;
+  featureInvoices: boolean;
+  featureAnnouncements: boolean;
+  // Branding — managed from admin settings, no redeploy needed
+  brandingShortName: string;
+  brandingFullName: string;
+  brandingDotName: string;
+  brandingPrimaryColor: string;
+  brandingLogoUrl: string;
+  brandingSupportEmail: string;
   [key: string]: unknown;
 };
+
+const envShortName = process.env.NEXT_PUBLIC_SITE_NAME || "LOST";
 
 export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   genres: ["Hip-Hop", "R&B", "Pop", "Electronic", "Phonk", "Brazilian Funk", "Other"],
@@ -50,18 +90,35 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   showStats: true,
   registrationsOpen: true,
   maintenanceMode: false,
-  joinHeroTitle: `WORK WITH THE ${process.env.NEXT_PUBLIC_SITE_NAME || "LOST"}. COMPANY`,
+  joinHeroTitle: `WORK WITH THE ${envShortName}. COMPANY`,
   joinHeroSub: "A&R UNIT // UNRELEASED DEMOS & RELEASED TRACKS",
+  brandingShortName: envShortName,
+  brandingFullName: process.env.NEXT_PUBLIC_SITE_FULL_NAME || "THE LOST LABEL",
+  brandingDotName: `${envShortName}.`,
+  brandingPrimaryColor: "#ffffff",
+  brandingLogoUrl: "",
+  brandingSupportEmail: process.env.SUPPORT_EMAIL || "",
+  featureSubmissions: true,
+  featureContracts: true,
+  featureEarnings: true,
+  featurePayments: true,
+  featureReleases: true,
+  featureCommunications: true,
+  featureDiscordBridge: process.env.NEXT_PUBLIC_FEATURE_DISCORD !== "false",
+  featureWisePayouts: process.env.NEXT_PUBLIC_FEATURE_WISE === "true",
+  featureSpotifySync: true,
+  featureInvoices: true,
+  featureAnnouncements: true,
 };
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettingsConfig = {
+  ...DEFAULT_PUBLIC_SETTINGS,
   allowCoverArt: true,
   allowAudio: true,
   allowDelete: true,
   allowOther: true,
   adminEmail: "",
   defaultPlaylistId: DEFAULT_PLAYLIST_ID,
-  ...DEFAULT_PUBLIC_SETTINGS,
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -189,6 +246,36 @@ export function normalizeSystemSettingsConfig(input: unknown): SystemSettingsCon
         : DEFAULT_SYSTEM_SETTINGS.maintenanceMode,
     joinHeroTitle: readString(parsed.joinHeroTitle, DEFAULT_SYSTEM_SETTINGS.joinHeroTitle, false),
     joinHeroSub: readString(parsed.joinHeroSub, DEFAULT_SYSTEM_SETTINGS.joinHeroSub, false),
+    // Feature flags
+    featureSubmissions:
+      typeof parsed.featureSubmissions === "boolean" ? parsed.featureSubmissions : DEFAULT_SYSTEM_SETTINGS.featureSubmissions,
+    featureContracts:
+      typeof parsed.featureContracts === "boolean" ? parsed.featureContracts : DEFAULT_SYSTEM_SETTINGS.featureContracts,
+    featureEarnings:
+      typeof parsed.featureEarnings === "boolean" ? parsed.featureEarnings : DEFAULT_SYSTEM_SETTINGS.featureEarnings,
+    featurePayments:
+      typeof parsed.featurePayments === "boolean" ? parsed.featurePayments : DEFAULT_SYSTEM_SETTINGS.featurePayments,
+    featureReleases:
+      typeof parsed.featureReleases === "boolean" ? parsed.featureReleases : DEFAULT_SYSTEM_SETTINGS.featureReleases,
+    featureCommunications:
+      typeof parsed.featureCommunications === "boolean" ? parsed.featureCommunications : DEFAULT_SYSTEM_SETTINGS.featureCommunications,
+    featureDiscordBridge:
+      typeof parsed.featureDiscordBridge === "boolean" ? parsed.featureDiscordBridge : DEFAULT_SYSTEM_SETTINGS.featureDiscordBridge,
+    featureWisePayouts:
+      typeof parsed.featureWisePayouts === "boolean" ? parsed.featureWisePayouts : DEFAULT_SYSTEM_SETTINGS.featureWisePayouts,
+    featureSpotifySync:
+      typeof parsed.featureSpotifySync === "boolean" ? parsed.featureSpotifySync : DEFAULT_SYSTEM_SETTINGS.featureSpotifySync,
+    featureInvoices:
+      typeof parsed.featureInvoices === "boolean" ? parsed.featureInvoices : DEFAULT_SYSTEM_SETTINGS.featureInvoices,
+    featureAnnouncements:
+      typeof parsed.featureAnnouncements === "boolean" ? parsed.featureAnnouncements : DEFAULT_SYSTEM_SETTINGS.featureAnnouncements,
+    // Branding
+    brandingShortName: readString(parsed.brandingShortName, DEFAULT_SYSTEM_SETTINGS.brandingShortName, false),
+    brandingFullName: readString(parsed.brandingFullName, DEFAULT_SYSTEM_SETTINGS.brandingFullName, false),
+    brandingDotName: readString(parsed.brandingDotName, DEFAULT_SYSTEM_SETTINGS.brandingDotName, false),
+    brandingPrimaryColor: readString(parsed.brandingPrimaryColor, DEFAULT_SYSTEM_SETTINGS.brandingPrimaryColor),
+    brandingLogoUrl: readString(parsed.brandingLogoUrl, DEFAULT_SYSTEM_SETTINGS.brandingLogoUrl),
+    brandingSupportEmail: readString(parsed.brandingSupportEmail, DEFAULT_SYSTEM_SETTINGS.brandingSupportEmail),
   };
 }
 
@@ -215,6 +302,23 @@ export function pickPublicSettings(input: unknown): PublicSettings {
     maintenanceMode: normalized.maintenanceMode,
     joinHeroTitle: normalized.joinHeroTitle,
     joinHeroSub: normalized.joinHeroSub,
+    brandingShortName: normalized.brandingShortName,
+    brandingFullName: normalized.brandingFullName,
+    brandingDotName: normalized.brandingDotName,
+    brandingPrimaryColor: normalized.brandingPrimaryColor,
+    brandingLogoUrl: normalized.brandingLogoUrl,
+    brandingSupportEmail: normalized.brandingSupportEmail,
+    featureSubmissions: normalized.featureSubmissions,
+    featureContracts: normalized.featureContracts,
+    featureEarnings: normalized.featureEarnings,
+    featurePayments: normalized.featurePayments,
+    featureReleases: normalized.featureReleases,
+    featureCommunications: normalized.featureCommunications,
+    featureDiscordBridge: normalized.featureDiscordBridge,
+    featureWisePayouts: normalized.featureWisePayouts,
+    featureSpotifySync: normalized.featureSpotifySync,
+    featureInvoices: normalized.featureInvoices,
+    featureAnnouncements: normalized.featureAnnouncements,
   };
 }
 

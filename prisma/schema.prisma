@@ -45,6 +45,8 @@ model User {
   royaltySplits           RoyaltySplit[]
   balanceAdjustments      BalanceAdjustment[]    @relation("BalanceAdjustmentUser")
   createdBalanceAdjustments BalanceAdjustment[]  @relation("BalanceAdjustmentAdmin")
+  invoices                Invoice[]              @relation("InvoiceRecipient")
+  createdInvoices         Invoice[]              @relation("InvoiceCreator")
 }
 
 model Demo {
@@ -470,6 +472,7 @@ model EmailTemplate {
   name      String
   subject   String
   body      String
+  blocks    String?  // JSON array of email builder blocks
   variables String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -498,4 +501,39 @@ model DemoVersionFile {
   filesize      Int
   createdAt     DateTime @default(now())
   demoVersion   DemoVersion @relation(fields: [demoVersionId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id              String    @id @default(uuid())
+  invoiceNumber   String?   @unique
+  recipientEmail  String
+  recipientName   String?
+  amount          Float
+  currency        String    @default("USD")
+  description     String?
+  formFields      String    // JSON array of field definitions
+  formData        String?   // JSON of submitted data
+  status          String    @default("pending") // draft, pending, viewed, completed, paid, overdue, cancelled
+  token           String?
+  tokenExpiry     DateTime?
+  pdfUrl          String?
+  dueDate         DateTime?
+  paymentDate     DateTime?
+  paymentMethod   String?
+  paymentRef      String?
+  resendCount     Int       @default(0)
+  lastResendAt    DateTime?
+  viewedAt        DateTime?
+  notes           String?
+  createdBy       String
+  userId          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  submittedAt     DateTime?
+  creator         User      @relation("InvoiceCreator", fields: [createdBy], references: [id])
+  user            User?     @relation("InvoiceRecipient", fields: [userId], references: [id])
+
+  @@index([status, createdAt(sort: Desc)], map: "idx_invoice_status_created_at")
+  @@index([recipientEmail, createdAt(sort: Desc)], map: "idx_invoice_email_created_at")
+  @@index([createdBy, createdAt(sort: Desc)], map: "idx_invoice_creator_created_at")
 }

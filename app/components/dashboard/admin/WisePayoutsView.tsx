@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import {
   Button,
   Card,
   Chip,
   Input,
   Modal,
+  SearchField,
   Table,
   TextField,
   Label,
 } from "@heroui/react";
-import { Search, Zap, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
+import { Zap, ExternalLink, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/app/components/ToastContext";
 import { ACTION_BUTTON } from "@/app/components/dashboard/lib/action-styles";
 
@@ -91,8 +93,7 @@ const formatAmount = (amount: number | string) =>
 
 export default function WisePayoutsView({ payments, onRefresh }: WisePayoutsViewProps) {
   const { showToast } = useToast() as { showToast: (msg: string, type: string) => void };
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch, debouncedSearch] = useDebouncedSearch();
   const [configured, setConfigured] = useState<null | boolean>(null);
   const [configNote, setConfigNote] = useState("");
   const [executeState, setExecuteState] = useState<ExecuteState>({
@@ -104,12 +105,6 @@ export default function WisePayoutsView({ payments, onRefresh }: WisePayoutsView
     loading: false,
     result: null,
   });
-
-  // Debounce search
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
 
   // Check Wise configuration on mount
   useEffect(() => {
@@ -269,17 +264,18 @@ export default function WisePayoutsView({ payments, onRefresh }: WisePayoutsView
 
       {/* ── Toolbar ──────────────────────────────────── */}
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 pointer-events-none" />
-          <Input
-            aria-label="Search Wise payments"
-            placeholder="Search by artist or reference..."
-            value={search}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-            className="pl-9"
-            fullWidth
-          />
-        </div>
+        <SearchField
+          aria-label="Search Wise payments"
+          value={search}
+          onChange={setSearch}
+          className="flex-1 max-w-sm"
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search by artist or reference..." />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
       </div>
 
       {/* ── Execute Modal ─────────────────────────────── */}

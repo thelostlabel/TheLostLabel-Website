@@ -7,7 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { cn } from "@/lib/utils";
 import { FloatingParticles } from "@/components/ui/floating-particles";
 import { HandwrittenLogo } from "@/components/ui/handwritten-logo";
-import { IS_MOBILE } from "@/lib/is-mobile";
+import { IS_MOBILE, useIsMobile } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -59,6 +59,7 @@ export function CinematicHero({
   className,
   ...props
 }: CinematicHeroProps) {
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,20 +79,18 @@ export function CinematicHero({
         autoAlpha: 0,
         y: 60,
         scale: 0.85,
-        filter: "blur(20px)",
-        rotationX: -20,
+        ...(IS_MOBILE ? {} : { filter: "blur(20px)", rotationX: -20 }),
       });
       gsap.set(".text-days", { autoAlpha: 1, clipPath: "inset(0 100% 0 0)" });
 
       const introTl = gsap.timeline({ delay: 0.3 });
       introTl
         .to(".text-track", {
-          duration: 1.8,
+          duration: IS_MOBILE ? 1.2 : 1.8,
           autoAlpha: 1,
           y: 0,
           scale: 1,
-          filter: "blur(0px)",
-          rotationX: 0,
+          ...(IS_MOBILE ? {} : { filter: "blur(0px)", rotationX: 0 }),
           ease: "expo.out",
         })
         .to(".text-days", {
@@ -104,7 +103,7 @@ export function CinematicHero({
         scrollTrigger: {
           trigger: containerRef.current,
           start: "top top",
-          end: IS_MOBILE ? "+=800" : (prefersReducedMotion ? "+=1000" : "+=1400"),
+          end: IS_MOBILE ? "+=600" : (prefersReducedMotion ? "+=700" : "+=900"),
           pin: true,
           scrub: IS_MOBILE ? 0.2 : (prefersReducedMotion ? 0.25 : 0.6),
           anticipatePin: 1,
@@ -145,15 +144,15 @@ export function CinematicHero({
     <div
       ref={containerRef}
       className={cn("relative w-screen h-screen overflow-hidden flex items-center justify-center bg-background text-foreground font-sans antialiased", className)}
-      style={IS_MOBILE ? undefined : { perspective: "1500px" }}
+      style={isMobile ? undefined : { perspective: "1500px" }}
       {...props}
     >
       <style dangerouslySetInnerHTML={{ __html: INJECTED_STYLES }} />
-      {!IS_MOBILE && <div className="film-grain" aria-hidden="true" />}
+      {!isMobile && <div className="film-grain" aria-hidden="true" />}
       <FloatingParticles className="absolute inset-0 z-[5]" />
-      {!IS_MOBILE && <div className="bg-grid-theme absolute inset-0 z-0 pointer-events-none opacity-50" aria-hidden="true" />}
+      {!isMobile && <div className="bg-grid-theme absolute inset-0 z-0 pointer-events-none opacity-50" aria-hidden="true" />}
 
-      <div className="hero-text-wrapper absolute inset-0 z-10 flex isolate items-center justify-center text-center px-4" style={IS_MOBILE ? undefined : { willChange: "transform, filter, opacity" }}>
+      <div className="hero-text-wrapper absolute inset-0 z-10 flex isolate items-center justify-center text-center px-4" style={isMobile ? undefined : { willChange: "transform, filter, opacity" }}>
         <div className="relative z-20 flex flex-col items-center gap-3 md:gap-4">
           <div className="w-[80vw] max-w-[700px]">
             <HandwrittenLogo

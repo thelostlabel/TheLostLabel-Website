@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Plus, Edit2, Trash2, Eye, RefreshCw, Power, Database } from "lucide-react";
+import { Mail, Plus, Edit2, Trash2, Eye, RefreshCw, Power, Database, Layers, Code } from "lucide-react";
+import { EmailBuilder, blocksToHtml, type EmailBlock, BLOCK_DEFAULTS } from "./email-builder";
 import {
     Button,
     Card,
@@ -85,6 +86,8 @@ export default function EmailTemplatesView() {
     const [previewing, setPreviewing] = useState(false);
     const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
+    const [editorMode, setEditorMode] = useState<"html" | "builder">("builder");
+    const [builderBlocks, setBuilderBlocks] = useState<EmailBlock[]>([]);
     const [form, setForm] = useState({
         name: "",
         slug: "",
@@ -123,10 +126,31 @@ export default function EmailTemplatesView() {
                 variables: template.variables || "[]",
                 active: template.active,
             });
+            // Load blocks if available
+            const tpl = template as EmailTemplate & { blocks?: string };
+            if (tpl.blocks) {
+                try {
+                    const parsed = JSON.parse(tpl.blocks);
+                    setBuilderBlocks(Array.isArray(parsed) ? parsed : []);
+                    setEditorMode("builder");
+                } catch {
+                    setBuilderBlocks([]);
+                    setEditorMode("html");
+                }
+            } else {
+                setBuilderBlocks([]);
+                setEditorMode(template.body.includes("<!DOCTYPE") ? "html" : "builder");
+            }
             setSlugManuallyEdited(true);
         } else {
             setEditing("new");
             setForm({ name: "", slug: "", subject: "", body: "", variables: "[]", active: true });
+            setBuilderBlocks([
+                { id: "h1", type: "header", data: { ...BLOCK_DEFAULTS.header } },
+                { id: "t1", type: "text", data: { ...BLOCK_DEFAULTS.text } },
+                { id: "b1", type: "button", data: { ...BLOCK_DEFAULTS.button } },
+            ]);
+            setEditorMode("builder");
             setSlugManuallyEdited(false);
         }
         setPreviewHtml(null);
@@ -134,13 +158,21 @@ export default function EmailTemplatesView() {
     };
 
     const handleSave = async () => {
-        if (!form.name.trim() || !form.slug.trim() || !form.subject.trim() || !form.body.trim()) {
+        // If using builder, generate HTML from blocks
+        let bodyToSave = form.body;
+        let blocksJson: string | null = null;
+        if (editorMode === "builder") {
+            bodyToSave = blocksToHtml(builderBlocks);
+            blocksJson = JSON.stringify(builderBlocks);
+        }
+
+        if (!form.name.trim() || !form.slug.trim() || !form.subject.trim() || !bodyToSave.trim()) {
             showToast("Name, slug, subject, and body are required", "warning");
             return;
         }
 
         // Auto-detect variables from body
-        const detectedVars = extractVariablesFromBody(form.body + " " + form.subject);
+        const detectedVars = extractVariablesFromBody(bodyToSave + " " + form.subject);
         const variablesJson = JSON.stringify(detectedVars);
 
         setSaving(true);
@@ -153,7 +185,8 @@ export default function EmailTemplatesView() {
                         slug: form.slug,
                         name: form.name,
                         subject: form.subject,
-                        body: form.body,
+                        body: bodyToSave,
+                        blocks: blocksJson,
                         variables: variablesJson,
                         active: form.active,
                     }),
@@ -172,7 +205,8 @@ export default function EmailTemplatesView() {
                         slug: form.slug,
                         name: form.name,
                         subject: form.subject,
-                        body: form.body,
+                        body: bodyToSave,
+                        blocks: blocksJson,
                         variables: variablesJson,
                         active: form.active,
                     }),
@@ -377,64 +411,120 @@ export default function EmailTemplatesView() {
                                     </div>
                                 </div>
 
-                                {/* Body */}
-                                <TextField
-                                    fullWidth
-                                    value={form.body}
-                                    onChange={(val) => setForm((f) => ({ ...f, body: val }))}
-                                >
-                                    <Label className="dash-label">HTML Body</Label>
-                                    <TextArea
-                                        className={`${FIELD_CLASS} min-h-64 resize-y font-mono text-[12px]`}
-                                        placeholder="Paste your HTML email template here..."
-                                        variant="secondary"
+                                {/* Editor Mode Toggle */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-muted">
+                                        Editor
+                                    </span>
+                                    <div className="flex rounded-lg border border-default/10 overflow-hidden">
+                                        <button
+                                            onClick={() => setEditorMode("builder")}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                                                editorMode === "builder"
+                                                    ? "bg-foreground text-background"
+                                                    : "text-muted hover:text-foreground"
+                                            }`}
+                                        >
+                                            <Layers size={12} />
+                                            Visual Builder
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                // When switching to HTML, generate from blocks
+                                                if (editorMode === "builder" && builderBlocks.length > 0) {
+                                                    setForm((f) => ({ ...f, body: blocksToHtml(builderBlocks) }));
+                                                }
+                                                setEditorMode("html");
+                                            }}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                                                editorMode === "html"
+                                                    ? "bg-foreground text-background"
+                                                    : "text-muted hover:text-foreground"
+                                            }`}
+                                        >
+                                            <Code size={12} />
+                                            HTML
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Body — Builder or HTML */}
+                                {editorMode === "builder" ? (
+                                    <EmailBuilder
+                                        initialBlocks={builderBlocks}
+                                        initialSubject={form.subject}
+                                        onChange={(blocks, subject) => {
+                                            setBuilderBlocks(blocks);
+                                            setForm((f) => ({ ...f, subject }));
+                                        }}
+                                        onSave={(blocks, subject, html) => {
+                                            setBuilderBlocks(blocks);
+                                            setForm((f) => ({ ...f, subject, body: html }));
+                                            handleSave();
+                                        }}
+                                        saving={saving}
                                     />
-                                </TextField>
-
-                                {/* Detected variables */}
-                                {detectedVars.length > 0 && (
-                                    <Card variant="secondary" className="border-default/8">
-                                        <Card.Content className="flex flex-wrap items-center gap-2 p-4">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-muted mr-2">
-                                                Detected Variables
-                                            </span>
-                                            {detectedVars.map((v) => (
-                                                <Chip key={v} variant="secondary" size="sm">
-                                                    {`{{${v}}}`}
-                                                </Chip>
-                                            ))}
-                                        </Card.Content>
-                                    </Card>
-                                )}
-
-                                {/* Preview */}
-                                {previewing && previewHtml && (
-                                    <Card variant="secondary" className="border-default/8 overflow-hidden">
-                                        <Card.Content className="p-0">
-                                            <div className="flex items-center justify-between border-b border-default/10 px-4 py-2">
-                                                <span className="text-[10px] font-black uppercase tracking-[0.12em] text-muted">
-                                                    Preview (with sample data)
-                                                </span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onPress={() => {
-                                                        setPreviewing(false);
-                                                        setPreviewHtml(null);
-                                                    }}
-                                                >
-                                                    Close
-                                                </Button>
-                                            </div>
-                                            <iframe
-                                                srcDoc={previewHtml}
-                                                className="w-full border-0"
-                                                style={{ height: "500px", background: "#fff" }}
-                                                title="Email Preview"
-                                                sandbox="allow-same-origin"
+                                ) : (
+                                    <>
+                                        <TextField
+                                            fullWidth
+                                            value={form.body}
+                                            onChange={(val) => setForm((f) => ({ ...f, body: val }))}
+                                        >
+                                            <Label className="dash-label">HTML Body</Label>
+                                            <TextArea
+                                                className={`${FIELD_CLASS} min-h-64 resize-y font-mono text-[12px]`}
+                                                placeholder="Paste your HTML email template here..."
+                                                variant="secondary"
                                             />
-                                        </Card.Content>
-                                    </Card>
+                                        </TextField>
+
+                                        {/* Detected variables */}
+                                        {detectedVars.length > 0 && (
+                                            <Card variant="secondary" className="border-default/8">
+                                                <Card.Content className="flex flex-wrap items-center gap-2 p-4">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-muted mr-2">
+                                                        Detected Variables
+                                                    </span>
+                                                    {detectedVars.map((v) => (
+                                                        <Chip key={v} variant="secondary" size="sm">
+                                                            {`{{${v}}}`}
+                                                        </Chip>
+                                                    ))}
+                                                </Card.Content>
+                                            </Card>
+                                        )}
+
+                                        {/* Preview */}
+                                        {previewing && previewHtml && (
+                                            <Card variant="secondary" className="border-default/8 overflow-hidden">
+                                                <Card.Content className="p-0">
+                                                    <div className="flex items-center justify-between border-b border-default/10 px-4 py-2">
+                                                        <span className="text-[10px] font-black uppercase tracking-[0.12em] text-muted">
+                                                            Preview (with sample data)
+                                                        </span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onPress={() => {
+                                                                setPreviewing(false);
+                                                                setPreviewHtml(null);
+                                                            }}
+                                                        >
+                                                            Close
+                                                        </Button>
+                                                    </div>
+                                                    <iframe
+                                                        srcDoc={previewHtml}
+                                                        className="w-full border-0"
+                                                        style={{ height: "500px", background: "#fff" }}
+                                                        title="Email Preview"
+                                                        sandbox="allow-same-origin"
+                                                    />
+                                                </Card.Content>
+                                            </Card>
+                                        )}
+                                    </>
                                 )}
 
                                 {/* Actions */}
@@ -442,10 +532,12 @@ export default function EmailTemplatesView() {
                                     <Button variant="primary" onPress={handleSave} isDisabled={saving}>
                                         {editing === "new" ? "Create Template" : "Save Changes"}
                                     </Button>
-                                    <Button variant="secondary" onPress={handlePreview}>
-                                        <Eye size={14} />
-                                        Preview
-                                    </Button>
+                                    {editorMode === "html" && (
+                                        <Button variant="secondary" onPress={handlePreview}>
+                                            <Eye size={14} />
+                                            Preview
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="secondary"
                                         onPress={() => {

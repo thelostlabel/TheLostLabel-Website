@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, useTransition } from 'react';
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import { CheckCircle, AlertCircle, Edit, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
 import { useDashboardAuth } from '@/app/components/dashboard/context/DashboardAuthProvider';
@@ -177,8 +178,7 @@ export default function UsersView({ users, onRefresh }: UsersViewProps) {
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [editForm, setEditForm] = useState<Partial<EditForm>>({});
     const [saving, setSaving] = useState<boolean>(false);
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+    const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
     const [page, setPage] = useState<number>(1);
     const [registrationFilter, setRegistrationFilter] = useState<string>('all');
     const [isPending, startTransition] = useTransition();
@@ -232,11 +232,6 @@ export default function UsersView({ users, onRefresh }: UsersViewProps) {
             permissions: perms
         });
     }, [setRecordId]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     const registeredUsersCount = useMemo(
         () => users.filter((user) => Boolean(user.emailVerified)).length,

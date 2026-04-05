@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Clock, ChevronDown, ChevronUp, RefreshCw, Shield } from "lucide-react";
-import { Button, Chip, Table } from "@heroui/react";
+import { Button, Chip, SearchField, Table } from "@heroui/react";
 import { useToast } from "@/app/components/ToastContext";
 import {
   dashboardRequestJson,
@@ -167,7 +167,7 @@ export default function AuditLogsView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-[16px] font-black tracking-[0.18em] uppercase text-foreground">
+          <h2 className="text-sm font-black tracking-widest uppercase text-foreground">
             Audit Logs
           </h2>
           <p className="mt-1 text-[11px] text-muted">
@@ -183,21 +183,23 @@ export default function AuditLogsView() {
 
       {/* Compact inline filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleFilterApply(); }}
-            placeholder="Search..."
-            className="w-full rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 py-2 pl-8 text-[11px] font-semibold text-foreground outline-none placeholder:text-[var(--ds-text-faint)] focus:border-[var(--ds-item-border-hover)]"
-          />
-        </div>
+        <SearchField
+          aria-label="Search audit logs"
+          value={searchText}
+          onChange={setSearchText}
+          onSubmit={handleFilterApply}
+          className="flex-1 min-w-[180px] max-w-xs"
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search..." />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
         <select
           value={actionFilter}
           onChange={(e) => { setActionFilter(e.target.value); }}
-          className="rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 py-2 text-[11px] font-semibold text-foreground outline-none"
+          className="h-9 rounded-xl border border-border bg-surface px-3 text-[11px] font-semibold text-foreground outline-none"
         >
           {ACTION_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -206,7 +208,7 @@ export default function AuditLogsView() {
         <select
           value={entityFilter}
           onChange={(e) => { setEntityFilter(e.target.value); }}
-          className="rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 py-2 text-[11px] font-semibold text-foreground outline-none"
+          className="h-9 rounded-xl border border-border bg-surface px-3 text-[11px] font-semibold text-foreground outline-none"
         >
           {ENTITY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -216,14 +218,14 @@ export default function AuditLogsView() {
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 py-2 text-[11px] font-semibold text-foreground outline-none"
+          className="h-9 rounded-xl border border-border bg-surface px-3 text-[11px] font-semibold text-foreground outline-none"
         />
         <span className="text-[10px] text-muted font-bold">—</span>
         <input
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          className="rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 py-2 text-[11px] font-semibold text-foreground outline-none"
+          className="h-9 rounded-xl border border-border bg-surface px-3 text-[11px] font-semibold text-foreground outline-none"
         />
         <Button variant="primary" size="sm" onPress={handleFilterApply}>
           <Search size={12} /> FILTER
@@ -243,14 +245,14 @@ export default function AuditLogsView() {
       {loading && logs.length === 0 ? (
         <DashboardLoader label="AUDIT LOGS" subLabel="Loading audit trail..." />
       ) : logs.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <div className="w-12 h-12 rounded-full border border-dashed border-[var(--ds-item-border)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="w-12 h-12 rounded-full border border-dashed border-border bg-surface flex items-center justify-center">
             <Shield size={20} className="text-muted" />
           </div>
-          <p className="text-[11px] font-bold text-muted tracking-wider uppercase">
+          <p className="text-xs font-bold text-muted tracking-widest uppercase">
             No audit log entries found
           </p>
-          <p className="text-[10px] text-[var(--ds-text-faint)]">
+          <p className="text-[10px] text-muted">
             Actions will appear here as admins interact with the platform.
           </p>
         </div>

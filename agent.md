@@ -429,7 +429,43 @@ Bir degisiklik yapmadan once kendine su sorulari sor:
 - `prisma/schema.prisma`: gercek veri modeli
 - `package.json`: aktif script ve toolchain
 
-## 17. Son Not
+## 17. Yapilan Optimizasyon ve Temizlik Calismalari (Nisan 2026)
+
+### Anasayfa Mobil Performans Optimizasyonu
+
+Anasayfadaki agir gorsel efektler mobilde ciddi performans sorunu yaratiyordu. Tum homepage componentleri analiz edildi ve mobilde gereksiz GPU yukunu kaldiran kosullu optimizasyonlar eklendi:
+
+- **SVG feTurbulence filtreleri** mobilde tamamen devre disi (scroll-atmosphere)
+- **Canvas particle rAF** mobilde durduruldu (floating-particles)
+- **backdrop-blur, filter: blur() animasyonlari** mobilde kaldirildi veya basitlestirildi
+- **Film grain katmanlari** mobilde gizlendi (cinematic-hero, lost-releases, artist-showcase)
+- **3D perspective/rotateX** transformlari mobilde duz animasyonlara cevirildi
+- **Artist card DOM sayisi** mobilde azaltildi (90 → 60)
+- Ortak `lib/is-mobile.ts` modulu olusturuldu (SSR-safe)
+
+### Desktop Scroll Mesafesi Azaltma
+
+Tum ScrollTrigger pin sureleri ~%40 kisaltildi. Her section icin desktop ve mobil ayri pin degerleri tanimlandi.
+
+### Yuklenme Ekrani Scroll Kilidi
+
+`page-reveal.tsx`'de mobilde scroll kacagi vardi. `position: fixed` + `touch-action: none` teknigi ile animasyon sirasinda scroll engellendi.
+
+### Dashboard Admin Kod Temizligi
+
+- **useDebouncedSearch hook'u** olusturuldu, 9 admin view'da tekrar eden debounce pattern'i tek hook'a tasindi
+- **SearchField v3 standardizasyonu**: 6 admin view'da manuel arama input'lari HeroUI v3 `SearchField` compound component'ine donusturuldu
+- **AnalyticsView**: 6 inline grid style → Tailwind class'lari
+- **AuditLogsView**: CSS variable'lar → Tailwind, tasarim tutarliligi duzeltmeleri
+- **4 olu dosya silindi**: `ArtistsView.js`, `HomeView.js`, `codex-test.txt`, `styles.ts`
+
+### Kod Butunlugu Duzeltmeleri
+
+- React hooks kurali ihlalleri duzeltildi (FloatingParticles, ScrollAtmosphere)
+- ScrollAtmosphere icin wrapper/inner component pattern'i uygulandi
+- Kullanilmayan import'lar temizlendi
+
+## 18. Son Not
 
 Bu repoda en buyuk risk, sistemi "tipik bir Next.js CRUD uygulamasi" gibi gormektir. Aslinda burada:
 

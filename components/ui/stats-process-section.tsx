@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-import { IS_MOBILE } from "@/lib/is-mobile";
+import { IS_MOBILE, useIsMobile } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -31,6 +31,7 @@ const STEPS = [
 ];
 
 export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Props) {
+  const isMobile = useIsMobile();
   const sectionRef = useRef<HTMLDivElement>(null);
 
   const STATS = [
@@ -64,7 +65,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: IS_MOBILE ? "+=2800" : "+=5000",
+          end: IS_MOBILE ? "+=1800" : "+=3000",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -149,7 +150,8 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
   return (
     <div
       ref={sectionRef}
-      className="relative w-screen h-screen overflow-hidden bg-black text-white"
+      className="relative w-screen h-screen overflow-hidden text-white"
+      style={{ background: "#060606" }}
     >
       {/* Subtle grid */}
       <div
@@ -167,7 +169,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
       {/* ══ PHASE 1: Stats (absolutely positioned, fades out) ══ */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
         {/* Center glow — hidden on mobile (blur(40px) is expensive) */}
-        {!IS_MOBILE && (
+        {!isMobile && (
           <div
             className="xp-stat-glow absolute pointer-events-none"
             style={{
@@ -185,11 +187,11 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
                 className={`xp-num-${i} font-black leading-[0.85] tracking-[-0.04em]`}
                 style={{
                   fontSize: "clamp(4rem, 8vw, 7rem)",
-                  background: "linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.3) 100%)",
+                  backgroundImage: "linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.3) 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
-                  filter: "drop-shadow(0 0 60px rgba(255,255,255,0.08))",
+                  ...(isMobile ? {} : { filter: "drop-shadow(0 0 60px rgba(255,255,255,0.08))" }),
                 }}
               >
                 {stat.prefix}<span className={`xp-val-${i}`}>0</span>{stat.suffix}
@@ -203,7 +205,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
       </div>
 
       {/* ══ PHASE 2: Process (absolutely positioned, fades in) ══ */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6" style={IS_MOBILE ? undefined : { perspective: "1000px" }}>
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 px-6" style={isMobile ? undefined : { perspective: "1000px" }}>
         <div className="w-full max-w-4xl flex flex-col items-center gap-10">
           {/* Heading */}
           <div className="xp-proc-heading flex flex-col items-center gap-3 text-center">
@@ -213,7 +215,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
             <h2 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black tracking-[-0.04em] leading-tight">
               From demo to{" "}
               <span style={{
-                background: "linear-gradient(180deg,#fff 0%,rgba(255,255,255,0.4) 100%)",
+                backgroundImage: "linear-gradient(180deg,#fff 0%,rgba(255,255,255,0.4) 100%)",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
               }}>
                 everywhere.
@@ -243,7 +245,7 @@ export function StatsProcessSection({ artistCount = 50, releaseCount = 80 }: Pro
                   className="absolute -top-2 -right-1 font-black select-none pointer-events-none leading-none"
                   style={{
                     fontSize: "clamp(5rem, 8vw, 8rem)",
-                    background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 80%)",
+                    backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 80%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",

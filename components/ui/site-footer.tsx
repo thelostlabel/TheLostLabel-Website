@@ -67,7 +67,7 @@ export function SiteFooter() {
   const socials = useMemo(() => buildSocials(publicSettings), [publicSettings]);
 
   return (
-    <footer className="relative w-full bg-black text-white border-t border-white/[0.06]">
+    <footer className="relative w-full text-white border-t border-white/[0.12]" style={{ background: "#0c0c0c" }}>
       <div className="w-full max-w-6xl mx-auto px-6 md:px-10 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6 items-start">
 
@@ -77,7 +77,7 @@ export function SiteFooter() {
               href="/"
               className="font-black text-2xl tracking-[-0.06em] leading-none w-fit"
               style={{
-                background: "linear-gradient(180deg,#fff 0%,rgba(255,255,255,0.45) 100%)",
+                backgroundImage: "linear-gradient(180deg,#fff 0%,rgba(255,255,255,0.55) 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -85,7 +85,7 @@ export function SiteFooter() {
             >
               LOST.
             </Link>
-            <p className="text-white/25 text-sm leading-relaxed max-w-[220px]">
+            <p className="text-white/50 text-sm leading-relaxed max-w-[220px]">
               Independent music label. Artist-first, always.
             </p>
 
@@ -98,8 +98,8 @@ export function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/30 hover:text-white/80 transition-colors duration-200"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/45 hover:text-white/90 transition-colors duration-200"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}
                 >
                   {s.icon}
                 </a>
@@ -109,12 +109,12 @@ export function SiteFooter() {
 
           {/* Links */}
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25 mb-1">Navigation</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 mb-1">Navigation</span>
             {LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-white/40 hover:text-white/80 text-sm transition-colors duration-200 w-fit"
+                className="text-white/55 hover:text-white/90 text-sm transition-colors duration-200 w-fit"
               >
                 {l.label}
               </Link>
@@ -123,8 +123,8 @@ export function SiteFooter() {
 
           {/* CTA */}
           <div className="flex flex-col gap-4">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25">Ready to join?</span>
-            <p className="text-white/35 text-sm leading-relaxed">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">Ready to join?</span>
+            <p className="text-white/50 text-sm leading-relaxed">
               Submit your demo today. We review every track and respond within 30 days.
             </p>
             <Link
@@ -133,7 +133,7 @@ export function SiteFooter() {
               style={{
                 background: "#fff",
                 color: "#0a0a0a",
-                boxShadow: "0 4px 20px rgba(255,255,255,0.12)",
+                boxShadow: "0 4px 20px rgba(255,255,255,0.15)",
               }}
             >
               Submit Demo
@@ -146,9 +146,9 @@ export function SiteFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span className="text-white/15 text-xs">© {year} LOST. All rights reserved.</span>
-          <span className="text-white/10 text-xs">Independent Music Label</span>
+        <div className="mt-12 pt-8 border-t border-white/[0.10] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <span className="text-white/40 text-xs">© {year} LOST. All rights reserved.</span>
+          <span className="text-white/30 text-xs">Independent Music Label</span>
         </div>
       </div>
     </footer>

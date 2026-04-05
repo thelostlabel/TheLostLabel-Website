@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import { createPortal } from 'react-dom';
 import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,8 +37,7 @@ interface ReleasesViewProps {
 
 export default function ReleasesView({ releases, onRefresh }: ReleasesViewProps) {
     const [activeTab, setActiveTab] = useState<string>('all');
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+    const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
     const [page, setPage] = useState(1);
     const [editingRelease, setEditingRelease] = useState<Release | null>(null);
     const [saving, setSaving] = useState<boolean>(false);
@@ -50,11 +50,6 @@ export default function ReleasesView({ releases, onRefresh }: ReleasesViewProps)
     }, [editingRelease?.id, recordId, releases]);
 
     const { showToast, showConfirm } = useToast();
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     // Reset to page 1 when filter or search changes
     useEffect(() => { setPage(1); }, [activeTab, debouncedSearch]);

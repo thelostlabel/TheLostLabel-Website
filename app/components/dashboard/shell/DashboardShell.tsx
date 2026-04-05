@@ -44,11 +44,12 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/app/components/ThemeProvider";
 
 import type { AppSessionUser } from "@/lib/auth-types";
-import { ADMIN_DASHBOARD_FEATURES } from "@/lib/dashboard-features";
+import { ADMIN_DASHBOARD_FEATURES, getAdminFeaturesFromSettings } from "@/lib/dashboard-features";
 import {
   getEnabledAdminViews,
   PORTAL_VIEW_DEFINITIONS,
 } from "@/lib/dashboard-view-registry";
+import { usePublicSettings } from "@/app/components/PublicSettingsContext";
 import {
   canAccessAdminView,
   hasPortalPermission,
@@ -144,7 +145,13 @@ function DashboardShellContent({ children }: PropsWithChildren) {
   const canAccessManagementView = (view: string, permission: string) =>
     canAccessAdminView(currentUser, view, permission);
 
-  const mgmtItems = getEnabledAdminViews(ADMIN_DASHBOARD_FEATURES)
+  const publicSettings = usePublicSettings();
+  const activeFeatures = useMemo(
+    () => getAdminFeaturesFromSettings(publicSettings as any),
+    [publicSettings],
+  );
+
+  const mgmtItems = getEnabledAdminViews(activeFeatures)
     .filter((item) => canAccessManagementView(item.view, item.perm))
     .map((item) => ({ name: item.navLabel, view: item.view, icon: getNavIcon(item.iconKey) }));
 

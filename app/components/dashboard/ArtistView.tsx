@@ -22,6 +22,7 @@ import {
 } from "@/app/components/dashboard/artist/views/ArtistOverviewView";
 import ArtistEarningsView from "@/app/components/dashboard/artist/views/ArtistEarningsView";
 import ArtistContractsView from "@/app/components/dashboard/artist/views/ArtistContractsView";
+import ArtistInvoicesView from "@/app/components/dashboard/artist/views/ArtistInvoicesView";
 import ArtistProfileView from "@/app/components/dashboard/artist/views/ArtistProfileView";
 import { useArtistSubmission } from "@/app/components/dashboard/artist/hooks/useArtistSubmission";
 import { useArtistWithdrawal } from "@/app/components/dashboard/artist/hooks/useArtistWithdrawal";
@@ -299,6 +300,10 @@ export default function ArtistView({ view: propView }: { view?: string }) {
           ) : null}
           <ArtistContractsView contracts={contracts} sessionUser={currentUser} />
         </>
+      ) : null}
+
+      {view === "invoices" ? (
+        <ArtistInvoicesView />
       ) : null}
 
       {view === "support" ? (

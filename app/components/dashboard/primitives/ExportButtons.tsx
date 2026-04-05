@@ -32,18 +32,18 @@ export default function ExportButtons({ data, columns, filename, title }: Export
 
     return (
         <Dropdown>
-            <Button variant="ghost" size="sm" isDisabled={disabled}>
-                <Download size={14} />
+            <Button variant="secondary" size="sm" isDisabled={disabled}>
+                <Download size={13} />
                 EXPORT
             </Button>
             <Dropdown.Popover>
                 <Dropdown.Menu onAction={handleAction}>
                     <Dropdown.Item id="csv" textValue="Export as CSV">
-                        <FileSpreadsheet size={14} className="text-emerald-400" />
+                        <FileSpreadsheet size={14} className="text-success" />
                         <Label>Export as CSV</Label>
                     </Dropdown.Item>
                     <Dropdown.Item id="pdf" textValue="Export as PDF">
-                        <FileText size={14} className="text-red-400" />
+                        <FileText size={14} className="text-danger" />
                         <Label>Export as PDF</Label>
                     </Dropdown.Item>
                 </Dropdown.Menu>

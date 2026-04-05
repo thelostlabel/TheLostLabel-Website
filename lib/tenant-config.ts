@@ -27,6 +27,7 @@ export type TenantFeatures = {
   payments: boolean;
   releases: boolean;
   communications: boolean;
+  invoices: boolean;
   announcements: boolean;
 };
 
@@ -70,6 +71,7 @@ function getEnvFallback(slug: string): TenantConfig {
       payments: process.env.NEXT_PUBLIC_FEATURE_PAYMENTS !== "false",
       releases: process.env.NEXT_PUBLIC_FEATURE_RELEASES !== "false",
       communications: process.env.NEXT_PUBLIC_FEATURE_COMMS !== "false",
+      invoices: true,
       announcements: true,
     },
   };
@@ -109,6 +111,7 @@ function parseFeatures(raw: unknown): TenantFeatures {
     payments: bool("payments", true),
     releases: bool("releases", true),
     communications: bool("communications", true),
+    invoices: bool("invoices", true),
     announcements: bool("announcements", true),
   };
 }

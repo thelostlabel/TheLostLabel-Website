@@ -6,7 +6,7 @@ import { Play, Pause } from "lucide-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { usePlayer } from "@/app/components/PlayerContext";
-import { IS_MOBILE } from "@/lib/is-mobile";
+import { IS_MOBILE, useIsMobile } from "@/lib/is-mobile";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -56,6 +56,7 @@ function ReleaseSlide({
   };
   index: number;
 }) {
+  const isMobile = useIsMobile();
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const isThis = currentTrack?.id === item.id;
   const isThisPlaying = isThis && isPlaying;
@@ -92,7 +93,7 @@ function ReleaseSlide({
           unoptimized
           priority={index === 0}
         />
-        <div className={`absolute inset-0 bg-black/75${IS_MOBILE ? "" : " backdrop-blur-xl"}`} />
+        <div className={`absolute inset-0 bg-black/75${isMobile ? "" : " backdrop-blur-xl"}`} />
         {/* Vignette */}
         <div
           className="absolute inset-0"
@@ -107,7 +108,7 @@ function ReleaseSlide({
       </div>
 
       {/* Film grain — skip on mobile */}
-      {!IS_MOBILE && (
+      {!isMobile && (
         <div
           className="absolute inset-0 pointer-events-none z-[1] opacity-[0.035] mix-blend-overlay"
           style={{
@@ -145,7 +146,7 @@ function ReleaseSlide({
                 className="opacity-0 group-hover:opacity-100 transition-all duration-300 scale-90 group-hover:scale-100 w-16 h-16 rounded-full flex items-center justify-center"
                 style={{
                   background: "rgba(255,255,255,0.15)",
-                  ...(IS_MOBILE ? {} : { backdropFilter: "blur(20px)" }),
+                  ...(isMobile ? {} : { backdropFilter: "blur(20px)" }),
                   border: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
@@ -182,7 +183,7 @@ function ReleaseSlide({
           <h3
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-[-0.04em] leading-[1.05] mb-6"
             style={{
-              background:
+              backgroundImage:
                 "linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.4) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -199,7 +200,7 @@ function ReleaseSlide({
             style={{
               background: "rgba(255,255,255,0.08)",
               border: "1px solid rgba(255,255,255,0.12)",
-              ...(IS_MOBILE ? {} : { backdropFilter: "blur(12px)" }),
+              ...(isMobile ? {} : { backdropFilter: "blur(12px)" }),
             }}
           >
             <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
@@ -267,7 +268,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
       // Header
       gsap.set(".lr-rule", { scaleX: 0, transformOrigin: "left center" });
       gsap.set(".lr-tag", { autoAlpha: 0, y: 20 });
-      gsap.set(".lr-heading", { autoAlpha: 0, y: 30, filter: "blur(8px)" });
+      gsap.set(".lr-heading", { autoAlpha: 0, y: 30, ...(IS_MOBILE ? {} : { filter: "blur(8px)" }) });
 
       // All slides hidden
       items.forEach((_, i) => {
@@ -280,7 +281,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: "top top",
-          end: `+=${IS_MOBILE ? count * 800 + 400 : count * 1400 + 900}`,
+          end: `+=${IS_MOBILE ? count * 600 + 300 : count * 900 + 500}`,
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -290,7 +291,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
       // ── Intro header ──
       tl.to(".lr-rule", { scaleX: 1, ease: "none", duration: 0.15 }, 0)
         .to(".lr-tag", { autoAlpha: 1, y: 0, ease: "none", duration: 0.2 }, 0.05)
-        .to(".lr-heading", { autoAlpha: 1, y: 0, filter: "blur(0px)", ease: "none", duration: 0.3 }, 0.1);
+        .to(".lr-heading", { autoAlpha: 1, y: 0, ...(IS_MOBILE ? {} : { filter: "blur(0px)" }), ease: "none", duration: 0.3 }, 0.1);
 
       // Fade header out
       tl.to([".lr-rule", ".lr-tag", ".lr-heading"], {
@@ -343,7 +344,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
           <h2
             className="lr-heading text-balance text-4xl font-black tracking-[-0.05em] md:text-6xl leading-[1.05]"
             style={{
-              background:
+              backgroundImage:
                 "linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.35) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",

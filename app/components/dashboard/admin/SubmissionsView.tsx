@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import Link from "next/link";
-import { Table, Chip, Button, Input, Tabs, Pagination, Tooltip, Modal } from "@heroui/react";
+import { Table, Chip, Button, SearchField, Tabs, Pagination, Tooltip, Modal } from "@heroui/react";
 import { PlayCircle, Clock, CheckCircle, XCircle, Search, Trash2, Eye, History } from "lucide-react";
 import DemoVersionHistory from "@/app/components/dashboard/primitives/DemoVersionHistory";
 
@@ -63,15 +64,9 @@ const PREFERRED_ORDER: string[] = ["all", "pending", "reviewing", "approved", "r
 
 export default function SubmissionsView({ demos, onDelete, canDelete = false }: SubmissionsViewProps) {
   const [activeTab, setActiveTab] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
   const [page, setPage] = useState<number>(1);
   const [versionHistoryDemoId, setVersionHistoryDemoId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
 
   const availableTabs = useMemo<string[]>(() => {
     const demoStatuses = Array.from(
@@ -149,16 +144,18 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }: 
           </Tabs>
         </div>
 
-        <div className="submissions-search relative w-full lg:w-72">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-          <Input
-            aria-label="Search submissions"
-            placeholder="Search submissions..."
-            value={searchTerm}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-            className="w-full pl-9"
-          />
-        </div>
+        <SearchField
+          aria-label="Search submissions"
+          value={searchTerm}
+          onChange={setSearchTerm}
+          className="w-full lg:w-72"
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search submissions..." />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
       </div>
 
       {/* Table */}

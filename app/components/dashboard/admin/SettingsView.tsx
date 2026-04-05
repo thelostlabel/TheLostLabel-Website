@@ -155,7 +155,7 @@ export default function SettingsView({ users = [], artists = [] }: SettingsViewP
             <Tabs defaultSelectedKey="general" className="w-full">
                 <Tabs.ListContainer>
                     <Tabs.List aria-label="Settings sections" className="mb-5 w-full overflow-x-auto">
-                        {['general', 'system', 'genres', 'requests', 'home', 'join', 'socials'].map((id) => (
+                        {['general', 'features', 'branding', 'system', 'genres', 'requests', 'home', 'join', 'socials'].map((id) => (
                             <Tabs.Tab key={id} id={id}>
                                 {id.toUpperCase().replace('-', ' ')}
                                 <Tabs.Indicator />
@@ -179,6 +179,53 @@ export default function SettingsView({ users = [], artists = [] }: SettingsViewP
                             <ToggleRow label="Maintenance Mode" isSelected={config.maintenanceMode} onChange={(v) => handleChange('maintenanceMode', v)} danger />
                         </Card.Content>
                     </Card>
+                </Tabs.Panel>
+
+                {/* ── Features ────────────────────────────── */}
+                <Tabs.Panel id="features">
+                    <Card>
+                        <Card.Content className="flex flex-col gap-3 p-5">
+                            {([
+                                { k: 'featureSubmissions' as const, l: 'Submissions / Demos' },
+                                { k: 'featureContracts' as const, l: 'Contracts' },
+                                { k: 'featureEarnings' as const, l: 'Earnings' },
+                                { k: 'featurePayments' as const, l: 'Payments' },
+                                { k: 'featureReleases' as const, l: 'Releases' },
+                                { k: 'featureCommunications' as const, l: 'Communications' },
+                                { k: 'featureDiscordBridge' as const, l: 'Discord Bridge' },
+                                { k: 'featureWisePayouts' as const, l: 'Wise Payouts' },
+                                { k: 'featureSpotifySync' as const, l: 'Spotify Sync' },
+                                { k: 'featureInvoices' as const, l: 'Invoices' },
+                                { k: 'featureAnnouncements' as const, l: 'Announcements' },
+                            ]).map((item) => (
+                                <ToggleRow key={item.k} label={item.l} isSelected={config[item.k] as boolean} onChange={(v) => handleChange(item.k, v)} />
+                            ))}
+                        </Card.Content>
+                    </Card>
+                    <div className="mt-4 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-4 py-3.5">
+                        <p className="text-[11px] font-semibold leading-relaxed text-amber-400/80">
+                            Feature toggle&apos;ları kaydettikten sonra dashboard sidebar otomatik güncellenir. Redeploy gerekmez.
+                        </p>
+                    </div>
+                </Tabs.Panel>
+
+                {/* ── Branding ───────────────────────────────── */}
+                <Tabs.Panel id="branding">
+                    <Card>
+                        <Card.Content className="grid gap-5 p-6 sm:grid-cols-2">
+                            <Field label="Short Name (e.g. LOST)" value={config.brandingShortName || ''} onChange={(v) => handleChange('brandingShortName', v)} placeholder="LOST" />
+                            <Field label="Full Name (e.g. THE LOST LABEL)" value={config.brandingFullName || ''} onChange={(v) => handleChange('brandingFullName', v)} placeholder="THE LOST LABEL" />
+                            <Field label="Dot Name (e.g. LOST.)" value={config.brandingDotName || ''} onChange={(v) => handleChange('brandingDotName', v)} placeholder="LOST." />
+                            <Field label="Primary Color" value={config.brandingPrimaryColor || '#ffffff'} onChange={(v) => handleChange('brandingPrimaryColor', v)} placeholder="#ffffff" />
+                            <Field label="Logo URL" value={config.brandingLogoUrl || ''} onChange={(v) => handleChange('brandingLogoUrl', v)} placeholder="/logo.png" />
+                            <Field label="Support Email" value={config.brandingSupportEmail || ''} onChange={(v) => handleChange('brandingSupportEmail', v)} type="email" placeholder="info@example.com" />
+                        </Card.Content>
+                    </Card>
+                    <div className="mt-4 rounded-2xl border border-amber-500/15 bg-amber-500/5 px-4 py-3.5">
+                        <p className="text-[11px] font-semibold leading-relaxed text-amber-400/80">
+                            Branding ayarları kaydettikten sonra site genelinde yansır. Env değişkenleri hâlâ fallback olarak kullanılır.
+                        </p>
+                    </div>
                 </Tabs.Panel>
 
                 {/* ── System ───────────────────────────────── */}

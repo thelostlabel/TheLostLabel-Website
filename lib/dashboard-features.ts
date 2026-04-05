@@ -1,8 +1,9 @@
+import type { SystemSettingsConfig } from "./system-settings";
 import type { TenantFeatures } from "./tenant-config";
 
 /**
  * Env-based feature flags (sync, used as fallback and for client-side).
- * For server-side use getActiveTenantConfig() from lib/tenant.js instead.
+ * Prefer getAdminFeaturesFromSettings() in server-side code.
  */
 export const ADMIN_DASHBOARD_FEATURES = {
   discordBridge: process.env.NEXT_PUBLIC_FEATURE_DISCORD !== "false",
@@ -14,11 +15,35 @@ export const ADMIN_DASHBOARD_FEATURES = {
   releases: process.env.NEXT_PUBLIC_FEATURE_RELEASES !== "false",
   communications: process.env.NEXT_PUBLIC_FEATURE_COMMS !== "false",
   spotifySync: process.env.NEXT_PUBLIC_FEATURE_SPOTIFY_SYNC !== "false",
+  invoices: true,
   announcements: true,
   auditLogs: true,
 } as const;
 
 export type AdminDashboardFeatureKey = keyof typeof ADMIN_DASHBOARD_FEATURES;
+
+/**
+ * Reads feature flags from SystemSettings (DB-backed, no redeploy needed).
+ * Use in server components and API routes.
+ */
+export function getAdminFeaturesFromSettings(
+  config: SystemSettingsConfig,
+): Record<AdminDashboardFeatureKey, boolean> {
+  return {
+    submissions: config.featureSubmissions ?? true,
+    contracts: config.featureContracts ?? true,
+    earnings: config.featureEarnings ?? true,
+    payments: config.featurePayments ?? true,
+    releases: config.featureReleases ?? true,
+    communications: config.featureCommunications ?? true,
+    discordBridge: config.featureDiscordBridge ?? false,
+    wisePayouts: config.featureWisePayouts ?? false,
+    spotifySync: config.featureSpotifySync ?? true,
+    invoices: config.featureInvoices ?? true,
+    announcements: config.featureAnnouncements ?? true,
+    auditLogs: true,
+  };
+}
 
 /**
  * Converts TenantFeatures (from control DB) to AdminDashboardFeatures shape.
@@ -37,6 +62,7 @@ export function tenantFeaturesToDashboardFeatures(
     releases: features.releases,
     communications: features.communications,
     spotifySync: features.spotifySync,
+    invoices: true,
     announcements: features.announcements,
     auditLogs: true,
   };
