@@ -9,13 +9,14 @@ import SmoothScroll from "./components/SmoothScroll";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { getPublicSettings } from "@/lib/public-settings";
 import { BRANDING } from "@/lib/branding";
+import { getBaseUrl } from "@/lib/site-url";
 import { TENANT } from "@/lib/tenant";
 
 export async function generateMetadata() {
   const publicSettings = await getPublicSettings();
   const siteName = publicSettings.siteName || BRANDING.fullName;
   const description = publicSettings.heroSubText || `Welcome to ${siteName}. Submit your demos, distribute your music, and grow your career with us.`;
-  const metadataBase = new URL(process.env.NEXTAUTH_URL || 'https://thelostlabel.com');
+  const metadataBase = new URL(getBaseUrl());
 
   return {
     metadataBase,

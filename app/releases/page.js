@@ -4,12 +4,13 @@ import { BRANDING } from "@/lib/branding";
 import { getPublicSettings } from "@/lib/public-settings";
 import { getPublicReleaseCatalog } from "@/lib/release-catalog";
 import { toReleaseSlug } from "@/lib/release-slug";
+import { getBaseUrl } from "@/lib/site-url";
 
 import ReleasesClient from "./ReleasesClient";
 
 export const revalidate = 300;
 
-const BASE_URL = (process.env.NEXTAUTH_URL || "https://thelostlabel.com").replace(/\/+$/, "");
+const BASE_URL = getBaseUrl();
 const PAGE_LIMIT = 24;
 
 function normalizePageParam(value) {

@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { fromReleaseSlug, toReleaseSlug } from "@/lib/release-slug";
 import { BRANDING } from "@/lib/branding";
+import { getBaseUrl } from "@/lib/site-url";
 import ReleaseDetailClient from "./ReleaseDetailClient";
 
 export const revalidate = 3600;
 
-const BASE_URL = (process.env.NEXTAUTH_URL || "https://thelostlabel.com").replace(/\/+$/, "");
+const BASE_URL = getBaseUrl();
 const LABEL_NAME = process.env.NEXT_PUBLIC_SITE_FULL_NAME || BRANDING.fullName;
 
 async function getRelease(rawSlug) {

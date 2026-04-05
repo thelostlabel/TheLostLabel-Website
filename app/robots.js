@@ -1,5 +1,7 @@
+import { getBaseUrl } from "@/lib/site-url";
+
 export default function robots() {
-    const baseUrl = (process.env.NEXTAUTH_URL || 'https://thelostlabel.com').replace(/\/+$/, '');
+    const baseUrl = getBaseUrl();
 
     return {
         rules: [

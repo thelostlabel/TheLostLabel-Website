@@ -5,10 +5,11 @@ import prisma from "@/lib/prisma";
 import { getReleaseArtistWhereById, mapReleaseArtistsToSummary } from "@/lib/release-artists";
 import { BRANDING } from "@/lib/branding";
 import { toReleaseSlug } from "@/lib/release-slug";
+import { getBaseUrl } from "@/lib/site-url";
 
 export const revalidate = 3600;
 
-const BASE_URL = (process.env.NEXTAUTH_URL || "https://thelostlabel.com").replace(/\/+$/, "");
+const BASE_URL = getBaseUrl();
 const LABEL_NAME = process.env.NEXT_PUBLIC_SITE_FULL_NAME || BRANDING.fullName;
 
 export async function generateMetadata({ params }) {
