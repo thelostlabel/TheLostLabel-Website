@@ -215,7 +215,6 @@ export default async function ReleaseDetailPage({ params }) {
 
             {/* SSR content for search engines — hidden visually, visible to crawlers */}
             <article
-                aria-hidden="true"
                 style={{
                     position: "absolute",
                     width: 1,

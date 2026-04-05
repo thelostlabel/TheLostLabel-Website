@@ -180,7 +180,6 @@ export default async function ArtistDetailPage({ params }) {
 
             {/* SSR content for search engines */}
             <article
-                aria-hidden="true"
                 style={{
                     position: "absolute",
                     width: 1,

@@ -4,7 +4,7 @@ import { getPublicReleaseCatalog } from "@/lib/release-catalog";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const { page, limit, skip } = parseOffsetPagination(searchParams, { defaultLimit: 24, maxLimit: 60 });
+    const { page, limit } = parseOffsetPagination(searchParams, { defaultLimit: 24, maxLimit: 60 });
     const artistId = searchParams.get("artist");
     const { releases, pagination } = await getPublicReleaseCatalog({
       artistId,

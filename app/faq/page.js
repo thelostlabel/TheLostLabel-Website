@@ -3,15 +3,33 @@ import { getPublicSettings } from "@/lib/public-settings";
 import { getSiteContentByKey } from "@/lib/site-content";
 import { parseFaqItems } from "@/lib/site-content-data";
 
+export const revalidate = 300;
+
 export default async function FAQPage() {
     const [publicSettings, faqContent] = await Promise.all([
         getPublicSettings(),
         getSiteContentByKey('faq')
     ]);
     const faqs = parseFaqItems(faqContent.content);
+    const faqJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.q,
+            acceptedAnswer: {
+                "@type": "Answer",
+                text: faq.a,
+            },
+        })),
+    };
 
     return (
         <div style={{ background: '#050607', color: '#fff', minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+            />
             <BackgroundEffects />
 
             <div style={{ padding: '160px 20px 120px', position: 'relative', zIndex: 2, maxWidth: '900px', margin: '0 auto' }}>
