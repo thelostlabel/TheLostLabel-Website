@@ -27,9 +27,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    const languageSuffix = invoice.documentLanguage === "tr" ? "-tr" : "-en";
     const filename = invoice.invoiceNumber
-      ? `${invoice.invoiceNumber}.pdf`
-      : `invoice-${invoice.id.slice(0, 8)}.pdf`;
+      ? `${invoice.invoiceNumber}${languageSuffix}.pdf`
+      : `invoice-${invoice.id.slice(0, 8)}${languageSuffix}.pdf`;
 
     // If we already have a stored PDF, serve it
     if (invoice.pdfUrl) {
@@ -46,7 +47,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    if (invoice.status !== "completed" || !invoice.formData) {
+    if ((invoice.status !== "completed" && invoice.status !== "paid") || !invoice.formData) {
       return NextResponse.json({ error: "Invoice not yet submitted" }, { status: 400 });
     }
 
@@ -70,6 +71,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       formData,
       createdAt: invoice.createdAt,
       submittedAt: invoice.submittedAt,
+      dueDate: invoice.dueDate,
+      documentLanguage: invoice.documentLanguage as "tr" | "en" | null | undefined,
     });
 
     return new Response(new Uint8Array(pdfBuf), {

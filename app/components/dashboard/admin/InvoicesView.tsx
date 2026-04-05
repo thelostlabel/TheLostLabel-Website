@@ -27,6 +27,7 @@ interface Invoice {
   invoiceNumber: string | null;
   recipientEmail: string;
   recipientName: string | null;
+  documentLanguage: "tr" | "en";
   amount: number;
   currency: string;
   description: string | null;
@@ -74,10 +75,10 @@ interface FormFieldDef {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<InvoiceStatus, { color: "default" | "warning" | "success" | "danger" | "primary" | "secondary"; label: string }> = {
+const STATUS_CONFIG: Record<InvoiceStatus, { color: "default" | "warning" | "success" | "danger" | "accent"; label: string }> = {
   draft: { color: "default", label: "DRAFT" },
   pending: { color: "warning", label: "PENDING" },
-  viewed: { color: "primary", label: "VIEWED" },
+  viewed: { color: "accent", label: "VIEWED" },
   completed: { color: "success", label: "SUBMITTED" },
   paid: { color: "success", label: "PAID" },
   overdue: { color: "danger", label: "OVERDUE" },
@@ -105,6 +106,11 @@ const CURRENCIES = [
   { code: "JPY", symbol: "¥" },
   { code: "CHF", symbol: "CHF" },
   { code: "SEK", symbol: "kr" },
+];
+
+const DOCUMENT_LANGUAGES = [
+  { code: "en" as const, label: "English" },
+  { code: "tr" as const, label: "Turkce" },
 ];
 
 const DEFAULT_FORM_FIELDS: FormFieldDef[] = [
@@ -139,6 +145,7 @@ export default function InvoicesView() {
   // Create form state
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientName, setRecipientName] = useState("");
+  const [documentLanguage, setDocumentLanguage] = useState<"tr" | "en">("en");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [description, setDescription] = useState("");
@@ -194,6 +201,7 @@ export default function InvoicesView() {
   const resetForm = () => {
     setRecipientEmail("");
     setRecipientName("");
+    setDocumentLanguage("en");
     setAmount("");
     setCurrency("USD");
     setDescription("");
@@ -224,6 +232,7 @@ export default function InvoicesView() {
         body: JSON.stringify({
           recipientEmail,
           recipientName: recipientName || undefined,
+          documentLanguage,
           amount: parseFloat(amount),
           currency,
           description: description || undefined,
@@ -365,6 +374,7 @@ export default function InvoicesView() {
   // ========================================================================
   if (showCreate) {
     const selectedCurrency = CURRENCIES.find((c) => c.code === currency);
+    const selectedLanguage = DOCUMENT_LANGUAGES.find((item) => item.code === documentLanguage);
 
     return (
       <div className="flex flex-col gap-6">
@@ -400,6 +410,32 @@ export default function InvoicesView() {
                   <Label className={LABEL_CLS}>Recipient Name</Label>
                   <Input aria-label="Recipient name" placeholder="John Doe" className="dash-input" variant="secondary" />
                 </TextField>
+              </div>
+
+              <div>
+                <label className={LABEL_CLS}>PDF Language</label>
+                <Select
+                  aria-label="PDF language"
+                  selectedKey={documentLanguage}
+                  onSelectionChange={(key: React.Key | null) => {
+                    if (key === "tr" || key === "en") setDocumentLanguage(key);
+                  }}
+                >
+                  <Select.Trigger className="w-full">
+                    <Select.Value>{selectedLanguage?.label || documentLanguage}</Select.Value>
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox>
+                      {DOCUMENT_LANGUAGES.map((item) => (
+                        <ListBox.Item key={item.code} id={item.code} textValue={item.label}>
+                          {item.label}
+                        </ListBox.Item>
+                      ))}
+                    </ListBox>
+                  </Select.Popover>
+                </Select>
+                <p className="mt-2 text-[11px] text-muted">Generated PDF will use a single official language, not a mixed bilingual layout.</p>
               </div>
 
               {/* Amount + Currency */}
@@ -703,6 +739,7 @@ export default function InvoicesView() {
             <div className="flex flex-col gap-2.5 text-sm">
               <DetailRow label="RECIPIENT" value={detailInvoice.recipientName || detailInvoice.recipientEmail} />
               {detailInvoice.recipientName && <DetailRow label="EMAIL" value={detailInvoice.recipientEmail} muted />}
+              <DetailRow label="LANGUAGE" value={detailInvoice.documentLanguage === "tr" ? "TURKCE" : "ENGLISH"} muted />
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black tracking-wider text-muted">STATUS</span>
                 <Chip color={STATUS_CONFIG[detailInvoice.status]?.color || "default"} size="sm" variant="soft">

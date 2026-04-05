@@ -71,6 +71,8 @@ export async function POST(req: Request) {
       formData,
       createdAt: invoice.createdAt,
       submittedAt: new Date(),
+      dueDate: invoice.dueDate,
+      documentLanguage: invoice.documentLanguage as "tr" | "en" | null | undefined,
     });
 
     // Save PDF

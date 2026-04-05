@@ -509,6 +509,7 @@ model Invoice {
   invoiceNumber   String?   @unique
   recipientEmail  String
   recipientName   String?
+  documentLanguage String   @default("en")
   amount          Float
   currency        String    @default("USD")
   description     String?

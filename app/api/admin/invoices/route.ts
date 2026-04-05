@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const { recipientEmail, recipientName, amount, currency, description, formFields, userId, dueDate, notes, sendEmail } = parsed.data;
+    const { recipientEmail, recipientName, documentLanguage, amount, currency, description, formFields, userId, dueDate, notes, sendEmail } = parsed.data;
 
     const numericAmount = typeof amount === "string" ? parseFloat(amount) : amount;
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -158,6 +158,7 @@ export async function POST(req: Request) {
         invoiceNumber,
         recipientEmail,
         recipientName: recipientName || null,
+        documentLanguage,
         amount: numericAmount,
         currency,
         description: description || null,
@@ -220,6 +221,7 @@ export async function PATCH(req: Request) {
     if (existing.status === "pending" || existing.status === "draft" || existing.status === "viewed") {
       if (updates.recipientEmail !== undefined) data.recipientEmail = updates.recipientEmail;
       if (updates.recipientName !== undefined) data.recipientName = updates.recipientName;
+      if (updates.documentLanguage !== undefined) data.documentLanguage = updates.documentLanguage;
       if (updates.amount !== undefined) {
         const amt = typeof updates.amount === "string" ? parseFloat(updates.amount) : updates.amount;
         if (Number.isFinite(amt) && amt > 0) data.amount = amt;

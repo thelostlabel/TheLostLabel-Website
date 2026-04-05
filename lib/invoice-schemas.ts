@@ -22,9 +22,14 @@ export const INVOICE_STATUSES = [
 
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
+export const INVOICE_DOCUMENT_LANGUAGES = ["tr", "en"] as const;
+
+export type InvoiceDocumentLanguage = (typeof INVOICE_DOCUMENT_LANGUAGES)[number];
+
 export const createInvoiceSchema = z.object({
   recipientEmail: z.string().email().max(254),
   recipientName: z.string().max(200).optional(),
+  documentLanguage: z.enum(INVOICE_DOCUMENT_LANGUAGES).default("en"),
   amount: z.union([z.number(), z.string()]),
   currency: z.string().max(10).default("USD"),
   description: z.string().max(2000).optional(),
@@ -41,6 +46,7 @@ export const updateInvoiceSchema = z.object({
   id: z.string(),
   recipientEmail: z.string().email().max(254).optional(),
   recipientName: z.string().max(200).optional(),
+  documentLanguage: z.enum(INVOICE_DOCUMENT_LANGUAGES).optional(),
   amount: z.union([z.number(), z.string()]).optional(),
   currency: z.string().max(10).optional(),
   description: z.string().max(2000).optional(),
