@@ -133,13 +133,13 @@ function TrackRow({ track, index, active, playing, accentColor, onPlay, image })
     );
 }
 
-export default function ReleaseDetailClient() {
+export default function ReleaseDetailClient({ initialRelease = null }) {
     const params = useParams();
     const releaseId = fromSlug(params.id);
     const { playTrack, currentTrack, isPlaying } = usePlayer();
-    const [release, setRelease] = useState(null);
+    const [release, setRelease] = useState(initialRelease);
     const [moreReleases, setMoreReleases] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialRelease);
     const [error, setError] = useState(false);
     const [scrolledPastHero, setScrolledPastHero] = useState(false);
     const heroRef = useRef(null);
@@ -153,8 +153,12 @@ export default function ReleaseDetailClient() {
     useEffect(() => {
         async function load() {
             try {
-                const baseRes = await fetch(`/api/releases/${releaseId}`);
-                const base = baseRes.ok ? await baseRes.json() : null;
+                // If we have SSR data, use it as base; otherwise fetch from API
+                let base = initialRelease;
+                if (!base) {
+                    const baseRes = await fetch(`/api/releases/${releaseId}`);
+                    base = baseRes.ok ? await baseRes.json() : null;
+                }
                 let final = null;
 
                 const buildFromTrack = (t) => ({
@@ -178,7 +182,7 @@ export default function ReleaseDetailClient() {
                     }
                 }
                 if (!final && base) {
-                    final = { ...base, total_tracks: 1, tracks: [{ id: base.id, name: base.name, artists: base.artists || [], duration_ms: 0, preview_url: null }] };
+                    final = { ...base, total_tracks: base.total_tracks || 1, tracks: base.tracks || [{ id: base.id, name: base.name, artists: base.artists || [], duration_ms: 0, preview_url: null }] };
                 }
                 if (!final) throw new Error('not found');
 
@@ -209,8 +213,7 @@ export default function ReleaseDetailClient() {
             finally { setLoading(false); }
         }
         if (releaseId) load();
-        // ready state removed — PageReveal handles loader
-    }, [releaseId]);
+    }, [releaseId, initialRelease]);
 
     const img = release?.image?.startsWith('private/') ? `/api/files/release/${release.id}` : release?.image;
     const accentColor = useDominantColor(img);

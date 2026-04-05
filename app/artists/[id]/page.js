@@ -1,11 +1,15 @@
 import Link from 'next/link';
 import ArtistDetailClient from './ArtistDetailClient';
-import { getArtistsDetails } from '@/lib/spotify'; // Direct library calls for efficiency
+import { getArtistsDetails } from '@/lib/spotify';
 import prisma from "@/lib/prisma";
 import { getReleaseArtistWhereById, mapReleaseArtistsToSummary } from "@/lib/release-artists";
+import { BRANDING } from "@/lib/branding";
+import { toReleaseSlug } from "@/lib/release-slug";
 
-// Force dynamic rendering to ensure fresh data
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+const BASE_URL = (process.env.NEXTAUTH_URL || "https://thelostlabel.com").replace(/\/+$/, "");
+const LABEL_NAME = process.env.NEXT_PUBLIC_SITE_FULL_NAME || BRANDING.fullName;
 
 export async function generateMetadata({ params }) {
     const { id } = await params;
@@ -19,25 +23,28 @@ export async function generateMetadata({ params }) {
 
     const name = artist?.name || dbArtist?.name;
     const image = artist?.images?.[0]?.url || null;
-    const url = `https://thelostlabel.com/artists/${id}`;
+    const url = `${BASE_URL}/artists/${id}`;
     const description = name
-        ? `${name} is signed to The Lost Label. Stream their releases, explore their profile and discography on LOST.`
+        ? `${name} is signed to ${LABEL_NAME}. Stream their releases, explore their profile and discography.`
         : 'The requested artist could not be found.';
 
+    const title = name ? `${name} | ${LABEL_NAME}` : `Artist Not Found | ${LABEL_NAME}`;
+
     return {
-        title: name ? `${name} | LOST. Roster` : 'Artist Not Found | LOST.',
+        title,
         description,
-        keywords: name ? [name, `${name} Lost Label`, `${name} music`, 'The Lost Label', 'Lost Label', 'LOST. roster'] : [],
+        keywords: name ? [name, `${name} music`, `${name} discography`, `${name} releases`, `${name} spotify`, LABEL_NAME] : [],
         openGraph: {
-            title: name ? `${name} | LOST. Roster` : 'Artist Not Found',
+            title,
             description,
             url,
             type: 'profile',
+            siteName: LABEL_NAME,
             images: image ? [{ url: image, width: 640, height: 640, alt: name }] : [{ url: '/logo.png' }],
         },
         twitter: {
             card: 'summary_large_image',
-            title: name ? `${name} | LOST. Roster` : 'Artist Not Found',
+            title,
             description,
             images: [image || '/logo.png'],
         },
@@ -132,31 +139,101 @@ export default async function ArtistDetailPage({ params }) {
         '@type': 'MusicGroup',
         name: artist.name,
         image: artist.images?.[0]?.url || undefined,
-        url: `https://thelostlabel.com/artists/${artistId}`,
+        url: `${BASE_URL}/artists/${artistId}`,
         sameAs: [
             dbArtist?.spotifyUrl,
             dbArtist?.instagramUrl,
         ].filter(Boolean),
         memberOf: {
             '@type': 'Organization',
-            name: 'The Lost Label',
-            url: 'https://thelostlabel.com',
+            name: LABEL_NAME,
+            url: BASE_URL,
         },
         track: releases.slice(0, 10).map((r) => ({
             '@type': 'MusicRecording',
             name: r.name,
-            url: `https://thelostlabel.com/releases/${r.id}`,
+            url: `${BASE_URL}/releases/${toReleaseSlug(r.name, artist.name, r.id)}`,
             sameAs: r.spotify_url || undefined,
         })),
     };
 
-    // Pass data to Client Component for interactivity
+    const artistImage = artist.images?.[0]?.url || null;
+    const artistUrl = `${BASE_URL}/artists/${artistId}`;
+
+    // BreadcrumbList
+    const breadcrumbLd = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Artists', item: `${BASE_URL}/artists` },
+            { '@type': 'ListItem', position: 3, name: artist.name, item: artistUrl },
+        ],
+    };
+
     return (
         <>
             <script
                 type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                dangerouslySetInnerHTML={{ __html: JSON.stringify([jsonLd, breadcrumbLd]) }}
             />
+
+            {/* SSR content for search engines */}
+            <article
+                aria-hidden="true"
+                style={{
+                    position: "absolute",
+                    width: 1,
+                    height: 1,
+                    padding: 0,
+                    margin: -1,
+                    overflow: "hidden",
+                    clip: "rect(0,0,0,0)",
+                    whiteSpace: "nowrap",
+                    borderWidth: 0,
+                }}
+            >
+                <h1>{artist.name}</h1>
+                <p>
+                    {artist.name} is signed to {LABEL_NAME}.
+                    {releases.length > 0 ? ` ${releases.length} releases including ${releases.slice(0, 3).map(r => r.name).join(", ")}.` : ""}
+                    {dbArtist?.monthlyListeners ? ` ${dbArtist.monthlyListeners.toLocaleString()} monthly listeners on Spotify.` : ""}
+                    {` Stream their music on all major platforms.`}
+                </p>
+                {artistImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={artistImage} alt={artist.name} width={640} height={640} />
+                )}
+                {releases.length > 0 && (
+                    <section>
+                        <h2>Discography</h2>
+                        <ul>
+                            {releases.map((r) => (
+                                <li key={r.id}>
+                                    <a href={`${BASE_URL}/releases/${toReleaseSlug(r.name, artist.name, r.id)}`}>
+                                        {r.name}
+                                    </a>
+                                    {r.release_date ? ` (${new Date(r.release_date).getFullYear()})` : ""}
+                                    {r.type ? ` — ${r.type}` : ""}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+                {dbArtist?.spotifyUrl && (
+                    <a href={dbArtist.spotifyUrl} rel="noopener noreferrer">
+                        Listen to {artist.name} on Spotify
+                    </a>
+                )}
+                <nav aria-label="Breadcrumb">
+                    <ol>
+                        <li><a href={BASE_URL}>Home</a></li>
+                        <li><a href={`${BASE_URL}/artists`}>Artists</a></li>
+                        <li>{artist.name}</li>
+                    </ol>
+                </nav>
+            </article>
+
             <ArtistDetailClient artist={artist} releases={releases} />
         </>
     );

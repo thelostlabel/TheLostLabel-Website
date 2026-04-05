@@ -1,8 +1,13 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button, Card, Chip, Dropdown, Input, Label, Pagination, ProgressBar, Table, TextArea, TextField } from "@heroui/react";
+import {
+  ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, Area, BarChart, Bar,
+} from "recharts";
 
 import type { AppSessionUser } from "@/lib/auth-types";
 import type {
@@ -171,6 +176,60 @@ export default function ArtistEarningsView({
     },
   ];
 
+  // ── Monthly earnings trend data for chart ──
+  const monthlyTrend = useMemo(() => {
+    const monthMap = new Map<string, { month: string; earnings: number; streams: number }>();
+    for (const e of earnings) {
+      const period = e.period || "";
+      // period is typically "YYYY-MM" or similar
+      const key = period.slice(0, 7) || "Unknown";
+      const entry = monthMap.get(key) || { month: key, earnings: 0, streams: 0 };
+      entry.earnings += calculateUserShare(e);
+      entry.streams += Number(e.streams || 0);
+      monthMap.set(key, entry);
+    }
+    return Array.from(monthMap.values())
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map((item) => ({
+        ...item,
+        label: item.month.length >= 7
+          ? new Date(item.month + "-01").toLocaleDateString("en-US", { month: "short", year: "2-digit" })
+          : item.month,
+      }));
+  }, [earnings]);
+
+  // ── Revenue projection (simple linear trend) ──
+  const projectedEarnings = useMemo(() => {
+    if (monthlyTrend.length < 2) return null;
+    const recent = monthlyTrend.slice(-3);
+    const avg = recent.reduce((s, m) => s + m.earnings, 0) / recent.length;
+    const lastMonth = monthlyTrend[monthlyTrend.length - 1];
+    const lastDate = new Date(lastMonth.month + "-01");
+    const projections = [];
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(lastDate);
+      d.setMonth(d.getMonth() + i);
+      projections.push({
+        month: d.toISOString().slice(0, 7),
+        label: d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+        earnings: 0,
+        projected: Math.round(avg * 100) / 100,
+        streams: 0,
+      });
+    }
+    return projections;
+  }, [monthlyTrend]);
+
+  const chartData = useMemo(() => {
+    const actual = monthlyTrend.map((m) => ({ ...m, projected: undefined as number | undefined }));
+    if (!projectedEarnings) return actual;
+    // bridge: last actual point also gets projected value
+    if (actual.length > 0) {
+      actual[actual.length - 1].projected = actual[actual.length - 1].earnings;
+    }
+    return [...actual, ...projectedEarnings];
+  }, [monthlyTrend, projectedEarnings]);
+
   return (
     <div className="flex flex-col gap-4">
 
@@ -322,6 +381,95 @@ export default function ArtistEarningsView({
           ))}
         </div>
       </motion.div>
+
+      {/* ── Earnings Trend Chart ─────────────────────────────── */}
+      {chartData.length > 1 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Card variant="default" className="border-default/6">
+            <Card.Header className="gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <Card.Title className="text-[11px] font-black uppercase tracking-[0.18em] text-foreground/40">
+                  Earnings Trend
+                </Card.Title>
+                {projectedEarnings && (
+                  <span className="rounded border border-blue-500/20 bg-blue-500/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-blue-400">
+                    Projection included
+                  </span>
+                )}
+              </div>
+              <Card.Description className="text-[12px] leading-relaxed text-foreground/45">
+                Monthly revenue based on your share.{projectedEarnings ? " Dashed line shows projected earnings based on recent trend." : ""}
+              </Card.Description>
+            </Card.Header>
+            <Card.Content className="pb-4">
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgb(16, 185, 129)" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="rgb(16, 185, 129)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="projectedGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="rgb(59, 130, 246)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.35)" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: number) => `$${v}`}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{
+                        background: "rgba(10,10,10,0.9)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      formatter={(value: number, name: string) =>
+                        [`$${value.toFixed(2)}`, name === "projected" ? "Projected" : "Earnings"] as [string, string]
+                      }
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="earnings"
+                      stroke="rgb(16, 185, 129)"
+                      strokeWidth={2}
+                      fill="url(#earningsGrad)"
+                      dot={{ r: 3, fill: "rgb(16, 185, 129)", strokeWidth: 0 }}
+                    />
+                    {projectedEarnings && (
+                      <Area
+                        type="monotone"
+                        dataKey="projected"
+                        stroke="rgb(59, 130, 246)"
+                        strokeWidth={2}
+                        strokeDasharray="6 4"
+                        fill="url(#projectedGrad)"
+                        dot={{ r: 3, fill: "rgb(59, 130, 246)", strokeWidth: 0 }}
+                        connectNulls={false}
+                      />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card.Content>
+          </Card>
+        </motion.div>
+      )}
 
       {/* ── Middle: Charts ─────────────────────────────────── */}
       <motion.div

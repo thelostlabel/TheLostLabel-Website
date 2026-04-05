@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
+import { toReleaseSlug } from "@/lib/release-slug";
 
-const BASE_URL = "https://thelostlabel.com";
+const BASE_URL = (process.env.NEXTAUTH_URL || "https://thelostlabel.com").replace(/\/+$/, "");
 
 export default async function sitemap() {
     const now = new Date();
@@ -28,7 +29,7 @@ export default async function sitemap() {
                 take: 500
             }),
             prisma.release.findMany({
-                select: { id: true, updatedAt: true },
+                select: { id: true, name: true, artistName: true, updatedAt: true },
                 orderBy: { updatedAt: "desc" },
                 take: 1000
             })
@@ -42,7 +43,7 @@ export default async function sitemap() {
         }));
 
         const releaseRoutes = releases.map((release) => ({
-            url: `${BASE_URL}/releases/${release.id}`,
+            url: `${BASE_URL}/releases/${toReleaseSlug(release.name, release.artistName, release.id)}`,
             lastModified: release.updatedAt || now,
             changeFrequency: "weekly",
             priority: 0.75

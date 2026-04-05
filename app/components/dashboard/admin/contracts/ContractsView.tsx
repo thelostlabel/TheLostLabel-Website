@@ -23,6 +23,8 @@ import {
 import type { ContractForm as ContractFormType } from './contract-utils';
 import ContractForm from './ContractForm';
 import ContractTable from './ContractTable';
+import ContractTemplates from './ContractTemplates';
+import type { ContractTemplate } from './ContractTemplates';
 
 type ContractsViewProps = {
   contracts: any[];
@@ -645,6 +647,33 @@ export default function ContractsView({
               </Modal.Heading>
             </Modal.Header>
             <ScrollShadow hideScrollBar className="flex-1 overflow-y-auto px-6 pb-6">
+              {!editingContract && (
+                <div className="mb-6">
+                  <ContractTemplates
+                    currentForm={form}
+                    onApply={(template: ContractTemplate) => {
+                      setForm((prev: ContractFormType) => ({
+                        ...prev,
+                        artistShare: template.artistShare,
+                        labelShare: template.labelShare,
+                        notes: template.notes || prev.notes,
+                        splits: template.splitPreset.map((sp, i) => ({
+                          ...createEmptySplit(),
+                          role: sp.role,
+                          percentage: sp.percentage,
+                          ...(i === 0 && prev.splits[0] ? {
+                            name: prev.splits[0].name,
+                            userId: prev.splits[0].userId,
+                            artistId: prev.splits[0].artistId,
+                            email: prev.splits[0].email,
+                          } : {}),
+                        })),
+                      }));
+                      showToast(`Template "${template.name}" applied`, 'success');
+                    }}
+                  />
+                </div>
+              )}
               <ContractForm
                 form={form}
                 setForm={setForm}

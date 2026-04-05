@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
 import Link from "next/link";
 import { Table, Chip, Button, SearchField, Tabs, Pagination, Tooltip, Modal } from "@heroui/react";
-import { PlayCircle, Clock, CheckCircle, XCircle, Search, Trash2, Eye, History } from "lucide-react";
+import { PlayCircle, Clock, CheckCircle, XCircle, Search, Trash2, Eye, History, StickyNote } from "lucide-react";
 import DemoVersionHistory from "@/app/components/dashboard/primitives/DemoVersionHistory";
+import { dashboardRequestJson } from "@/app/components/dashboard/lib/dashboard-request";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +32,7 @@ interface Demo {
   status?: DemoStatus;
   createdAt: string | number | Date;
   reviewedBy?: string;
+  rejectionReason?: string;
   artist?: DemoArtist;
 }
 
@@ -67,6 +69,47 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }: 
   const [searchTerm, setSearchTerm, debouncedSearch] = useDebouncedSearch();
   const [page, setPage] = useState<number>(1);
   const [versionHistoryDemoId, setVersionHistoryDemoId] = useState<string | null>(null);
+  const [notesDemoId, setNotesDemoId] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState("");
+  const [rejectionText, setRejectionText] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesLoading, setNotesLoading] = useState(false);
+
+  const openNotes = useCallback(async (demoId: string) => {
+    setNotesDemoId(demoId);
+    setNotesLoading(true);
+    const demo = demos.find((d) => d.id === demoId);
+    setRejectionText(demo?.rejectionReason || "");
+    try {
+      const data = (await dashboardRequestJson(`/api/admin/demos/${demoId}/notes`, {
+        context: "load demo notes",
+      })) as { notes?: string; rejectionReason?: string };
+      setNotesText(data.notes || "");
+      if (data.rejectionReason !== undefined) setRejectionText(data.rejectionReason);
+    } catch {
+      setNotesText("");
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [demos]);
+
+  const saveNotes = useCallback(async () => {
+    if (!notesDemoId) return;
+    setNotesSaving(true);
+    try {
+      await dashboardRequestJson(`/api/admin/demos/${notesDemoId}/notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notesText, rejectionReason: rejectionText }),
+        context: "save demo notes",
+      });
+      setNotesDemoId(null);
+    } catch {
+      // silently fail
+    } finally {
+      setNotesSaving(false);
+    }
+  }, [notesDemoId, notesText, rejectionText]);
 
   const availableTabs = useMemo<string[]>(() => {
     const demoStatuses = Array.from(
@@ -253,6 +296,17 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }: 
                             size="sm"
                             isIconOnly
                             variant="ghost"
+                            onPress={() => openNotes(demo.id)}
+                          >
+                            <StickyNote size={14} />
+                          </Button>
+                          <Tooltip.Content>A&amp;R Notes</Tooltip.Content>
+                        </Tooltip>
+                        <Tooltip delay={0}>
+                          <Button
+                            size="sm"
+                            isIconOnly
+                            variant="ghost"
                             onPress={() => setVersionHistoryDemoId(demo.id)}
                           >
                             <History size={14} />
@@ -356,6 +410,70 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }: 
             <Modal.Footer>
               <Button variant="ghost" slot="close">
                 Close
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+
+      {/* A&R Notes Modal */}
+      <Modal.Backdrop isOpen={!!notesDemoId} onOpenChange={(open) => !open && setNotesDemoId(null)} variant="blur">
+        <Modal.Container>
+          <Modal.Dialog className="sm:max-w-[480px]">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Heading className="text-sm font-black tracking-[2px] text-foreground">
+                A&amp;R NOTES
+              </Modal.Heading>
+              <p className="text-[11px] text-muted mt-1">
+                Internal notes visible only to admin/A&amp;R team
+              </p>
+            </Modal.Header>
+            <Modal.Body>
+              {notesLoading ? (
+                <div className="py-8 text-center text-[11px] text-muted">Loading...</div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* Rejection Reason */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-muted">
+                      Rejection Reason
+                    </label>
+                    <textarea
+                      value={rejectionText}
+                      onChange={(e) => setRejectionText(e.target.value)}
+                      placeholder="Reason for rejection (visible to artist)..."
+                      className="w-full min-h-[80px] resize-y rounded-xl border border-red-500/10 bg-red-500/[0.02] px-4 py-3 text-[13px] text-foreground placeholder:text-white/20 outline-none focus:border-red-500/20"
+                    />
+                    <p className="text-[9px] text-muted/60">This may be shown to the artist</p>
+                  </div>
+
+                  {/* Internal Notes */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-muted">
+                      Internal Notes
+                    </label>
+                    <textarea
+                      value={notesText}
+                      onChange={(e) => setNotesText(e.target.value)}
+                      placeholder="Add internal notes, feedback, or review comments..."
+                      className="w-full min-h-[120px] resize-y rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-[13px] text-foreground placeholder:text-white/20 outline-none focus:border-white/[0.12]"
+                    />
+                    <p className="text-[9px] text-muted/60">Only visible to admin &amp; A&amp;R</p>
+                  </div>
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="ghost" slot="close">
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onPress={saveNotes}
+                isDisabled={notesSaving}
+              >
+                {notesSaving ? "Saving..." : "Save"}
               </Button>
             </Modal.Footer>
           </Modal.Dialog>

@@ -1,4 +1,6 @@
 export default function robots() {
+    const baseUrl = (process.env.NEXTAUTH_URL || 'https://thelostlabel.com').replace(/\/+$/, '');
+
     return {
         rules: [
             {
@@ -8,14 +10,10 @@ export default function robots() {
                     '/dashboard/',
                     '/auth/',
                     '/api/',
-                    '/api/admin/',
-                    '/api/auth/',
-                    '/api/cron/',
-                    '/api/webhook/'
                 ],
             },
         ],
-        host: 'https://thelostlabel.com',
-        sitemap: 'https://thelostlabel.com/sitemap.xml',
+        host: baseUrl,
+        sitemap: `${baseUrl}/sitemap.xml`,
     };
 }

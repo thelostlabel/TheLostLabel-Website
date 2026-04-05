@@ -151,7 +151,7 @@ export function SiteNavbar() {
                   </span>
                   <TextRoll
                     center
-                    className="text-[clamp(2.8rem,8vw,6rem)] font-black uppercase tracking-[-0.04em] text-white"
+                    className="whitespace-nowrap text-[clamp(2rem,11vw,4.25rem)] sm:text-[clamp(2.8rem,8vw,6rem)] font-black uppercase tracking-[-0.04em] text-white"
                   >
                     {item.label}
                   </TextRoll>

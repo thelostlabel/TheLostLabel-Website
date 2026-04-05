@@ -56,6 +56,7 @@ import {
 } from "@/lib/permissions";
 
 import Breadcrumb from "@/app/components/dashboard/primitives/Breadcrumb";
+import CommandPalette from "@/app/components/dashboard/primitives/CommandPalette";
 import NotificationBell from "@/app/components/dashboard/primitives/NotificationBell";
 import DashboardLoader from "@/app/components/dashboard/DashboardLoader";
 import { useToast } from "@/app/components/ToastContext";
@@ -129,8 +130,6 @@ function DashboardShellContent({ children }: PropsWithChildren) {
   }, [rawView, pathname, canAccessManagement]);
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setIsMobileNavOpen(false));
@@ -175,7 +174,7 @@ function DashboardShellContent({ children }: PropsWithChildren) {
         : [{ label: "ARTIST DASHBOARD", items: personalItems }]
   ), [canAccessManagement, canSwitchModes, isPersonalView, mgmtItems, personalItems]);
 
-  const searchableItems = useMemo(() => {
+  const allNavItems = useMemo(() => {
     const deduped = new Map<string, NavItem>();
     displayedSections.flatMap((s) => s.items).forEach((item) => {
       if (!deduped.has(item.view)) deduped.set(item.view, item);
@@ -183,27 +182,32 @@ function DashboardShellContent({ children }: PropsWithChildren) {
     return Array.from(deduped.values());
   }, [displayedSections]);
 
-  const mobileNavItems = useMemo(() => searchableItems.slice(0, 4), [searchableItems]);
+  const mobileNavItems = useMemo(() => allNavItems.slice(0, 4), [allNavItems]);
 
-  const normalizedSearch = searchQuery.trim().toLowerCase();
-  const searchResults = !normalizedSearch
-    ? searchableItems.slice(0, 8)
-    : searchableItems
-        .filter((item) =>
-          item.name.toLowerCase().includes(normalizedSearch) ||
-          item.view.toLowerCase().includes(normalizedSearch)
-        )
-        .slice(0, 8);
+  const commandPaletteItems = useMemo(() => {
+    const allItems = [...mgmtItems, ...personalItems];
+    const deduped = new Map<string, typeof allItems[0]>();
+    allItems.forEach((item) => { if (!deduped.has(item.view)) deduped.set(item.view, item); });
+    return Array.from(deduped.values()).map((item) => ({
+      id: item.view,
+      label: item.name,
+      description: `Go to ${item.name.toLowerCase()}`,
+      icon: item.icon,
+      action: () => {
+        setView(item.view, { preserveRecordId: false });
+        setIsMobileNavOpen(false);
+      },
+      keywords: [item.view, item.name],
+      category: "Navigation" as const,
+    }));
+  }, [mgmtItems, personalItems, setView]);
 
   const navigateToView = (view: string) => {
     if (!view || view === currentView) {
-      setIsSearchOpen(false);
       setIsMobileNavOpen(false);
       return;
     }
     setView(view, { preserveRecordId: false });
-    setSearchQuery("");
-    setIsSearchOpen(false);
     setIsMobileNavOpen(false);
   };
 
@@ -218,6 +222,10 @@ function DashboardShellContent({ children }: PropsWithChildren) {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden">
+      <CommandPalette items={commandPaletteItems} onNavigate={(view) => {
+        setView(view, { preserveRecordId: false });
+        setIsMobileNavOpen(false);
+      }} />
       <div className={styles.ambient} aria-hidden />
 
       {/* Mobile hamburger */}
@@ -378,59 +386,21 @@ function DashboardShellContent({ children }: PropsWithChildren) {
             </div>
 
             <div className="flex items-center justify-end gap-3 flex-1">
-              {/* Search */}
-              <div className={styles.searchBox}>
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ds-text-muted">
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search views..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setIsSearchOpen(true); }}
-                  onFocus={() => setIsSearchOpen(true)}
-                  onBlur={() => { window.setTimeout(() => setIsSearchOpen(false), 120); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchResults.length > 0) {
-                      e.preventDefault();
-                      navigateToView(searchResults[0].view);
-                    }
-                    if (e.key === "Escape") setIsSearchOpen(false);
-                  }}
-                  className="h-9 w-full rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] pl-9 pr-4 text-xs font-semibold ds-text placeholder:ds-text-faint outline-none transition-colors focus:border-[var(--ds-item-border-hover)] focus:bg-[var(--ds-item-bg-hover)]"
-                />
-
-                {isSearchOpen && (
-                  <div className="ds-glass absolute left-0 right-0 top-[calc(100%+8px)] z-40 flex flex-col gap-0.5 overflow-hidden rounded-2xl p-1.5">
-                    {searchResults.length === 0 ? (
-                      <div className="px-3 py-2 text-[11px] font-semibold ds-text-muted">
-                        No matching views
-                      </div>
-                    ) : (
-                      searchResults.map((item) => (
-                        <button
-                          key={item.view}
-                          type="button"
-                          onClick={() => navigateToView(item.view)}
-                          className={cn(
-                            "flex items-center gap-2 w-full min-h-9 px-3 rounded-xl text-left",
-                            "text-[11px] font-extrabold tracking-wider uppercase border-0 cursor-pointer",
-                            "transition-colors",
-                            currentView === item.view
-                              ? "bg-[var(--ds-item-bg-hover)] text-foreground"
-                              : "bg-transparent text-foreground hover:bg-[var(--ds-item-bg)]",
-                          )}
-                        >
-                          <span className="flex h-4 w-4 shrink-0 items-center ds-text-muted">
-                            {item.icon}
-                          </span>
-                          <span>{item.name}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Search trigger — opens Cmd+K palette */}
+              <button
+                type="button"
+                onClick={() => {
+                  // Simulate Cmd+K to open the palette
+                  window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
+                }}
+                className="flex items-center gap-2 h-9 rounded-xl border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-3 ds-text-muted text-xs font-semibold transition-colors hover:border-[var(--ds-item-border-hover)] hover:bg-[var(--ds-item-bg-hover)] hover:text-[var(--ds-text)] cursor-pointer"
+              >
+                <Search size={14} />
+                <span className="hidden sm:inline">Search...</span>
+                <kbd className="hidden sm:flex items-center gap-0.5 rounded-md border border-[var(--ds-item-border)] bg-[var(--ds-item-bg)] px-1.5 py-0.5 text-[9px] font-bold ds-text-faint ml-2">
+                  ⌘K
+                </kbd>
+              </button>
 
               {/* Notifications */}
               <NotificationBell />

@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import NextImage from 'next/image';
 import { Card, Skeleton } from '@heroui/react';
+import ActivityFeed from '@/app/components/dashboard/primitives/ActivityFeed';
 import { useTheme } from '@/app/components/ThemeProvider';
 
 /* ── Types & Interfaces ── */
@@ -901,6 +902,14 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                                     <p className="m-0 mt-1 text-[11px] text-muted font-semibold">${Number(stats.platforms![0]?.value || 0).toLocaleString()} label revenue</p>
                                 </div>
                             )}
+
+                            {/* Activity Feed */}
+                            <div className="border-t border-default/8 mt-4 pt-4">
+                                <SectionLabel>Activity Feed</SectionLabel>
+                                <div className="-mx-4 mt-2">
+                                    <ActivityFeed limit={8} />
+                                </div>
+                            </div>
                         </Card.Content>
                     </Card>
                 </motion.div>
