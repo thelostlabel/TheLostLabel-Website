@@ -26,7 +26,7 @@ export async function generateMetadata() {
     },
     description,
     keywords: [
-      "The Lost Label", "Lost Label", "LOST.", "thelostlabel",
+      BRANDING.fullName, BRANDING.shortName, BRANDING.dotName,
       "phonk label", "phonk music", "independent music label",
       "music distribution", "artist portal", "demo submission",
       "submit demo", "sign to label", "underground music",

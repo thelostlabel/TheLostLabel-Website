@@ -263,10 +263,10 @@ export default function CommunicationsView({ artists: initialArtists }: Communic
                                 <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-4">
                                     <div>
                                         <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/35">
-                                            Lost Label Mailer
+                                            {process.env.NEXT_PUBLIC_SITE_FULL_NAME || "ELYSIAN LABEL"} Mailer
                                         </p>
                                         <p className="mt-1 text-[22px] font-black tracking-[0.16em] text-white">
-                                            LOST.
+                                            {process.env.NEXT_PUBLIC_SITE_NAME || "ELYSIAN"}.
                                         </p>
                                     </div>
                                     <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white/55">
