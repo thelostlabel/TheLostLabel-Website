@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Button,
   Toolbar,
@@ -10,6 +10,7 @@ import {
 } from '@heroui/react';
 import { Upload, Plus } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { usePublicSettings } from '@/app/components/PublicSettingsContext';
 import { useDashboardRoute } from '@/app/components/dashboard/hooks/useDashboardRoute';
 import {
   dashboardRequestJson,
@@ -61,6 +62,7 @@ export default function ContractsView({
   demos = [],
 }: ContractsViewProps) {
   const { showToast, showConfirm } = useToast() as any;
+  const publicSettings = usePublicSettings();
   const { recordId, setRecordId, clearRecordId } = useDashboardRoute();
   const [showAdd, setShowAdd] = useState(false);
   const [editingContract, setEditingContract] = useState<any>(null);
@@ -122,8 +124,9 @@ export default function ContractsView({
 
         // STEP 0: DETECT MULTI-LABEL / PARTNER LABEL
         let partnerLabel: any = null;
+        const labelName = (publicSettings.brandingFullName || 'THE LOST LABEL').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const headerMatch = pdfText.match(
-          /THE LOST LABEL\s*[Xx\u00d7]\s*(.+?)(?:\s*\n|Exclusive)/i
+          new RegExp(`${labelName}\\s*[Xx\\u00d7]\\s*(.+?)(?:\\s*\\n|Exclusive)`, 'i')
         );
         if (headerMatch) {
           const partnerName = headerMatch[1].trim();

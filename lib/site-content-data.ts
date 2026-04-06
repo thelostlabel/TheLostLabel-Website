@@ -142,20 +142,23 @@ export const DEFAULT_FOOTER_LINKS: FooterLinkGroup = {
   ],
 };
 
+const _SITE_NAME = process.env.NEXT_PUBLIC_SITE_FULL_NAME || "THE LOST LABEL";
+const _DOT_NAME = `${process.env.NEXT_PUBLIC_SITE_NAME || "LOST"}.`;
+
 export const DEFAULT_TERMS_CONTENT = `1. ARTIST ELIGIBILITY
-By registering with LOST MUSIC GROUP, you affirm that you are at least 18 years of age (or have legal guardian consent) and possess the full authority to enter into a distribution agreement for the musical works you submit.
+By registering with ${_SITE_NAME}, you affirm that you are at least 18 years of age (or have legal guardian consent) and possess the full authority to enter into a distribution agreement for the musical works you submit.
 
 2. DEMO SUBMISSIONS & CONTENT STANDARDS
 Submitting a demo does not guarantee a release. You represent that all submissions are 100% original works. Use of uncleared samples, stolen tracks, or fraudulent content will result in immediate account termination and potential legal action.
 
 3. GLOBAL DISTRIBUTION RIGHTS
-Upon formal acceptance and contract execution, you grant LOST MUSIC GROUP the exclusive, sub-licensable right to distribute, promote, and monetize your content across global Digital Service Providers, including Spotify, Apple Music, and Amazon.
+Upon formal acceptance and contract execution, you grant ${_SITE_NAME} the exclusive, sub-licensable right to distribute, promote, and monetize your content across global Digital Service Providers, including Spotify, Apple Music, and Amazon.
 
 4. ROYALTIES & PAYMENTS
 Royalties are calculated based on net revenue received from DSPs. Payouts are made according to your active payout policy and threshold.
 
 5. INTELLECTUAL PROPERTY
-The "LOST." trademark, logos, and website infrastructure remain the sole property of LOST MUSIC GROUP. Artists retain ownership of their compositions unless otherwise specified in a separate written agreement.`;
+The "${_DOT_NAME}" trademark, logos, and website infrastructure remain the sole property of ${_SITE_NAME}. Artists retain ownership of their compositions unless otherwise specified in a separate written agreement.`;
 
 export const DEFAULT_PRIVACY_CONTENT = `1. DATA COLLECTION
 We collect personal identifiers, financial information for royalty processing, and musical content submitted through the portal. We also collect technical data such as IP addresses and browser cookies to improve the user experience and platform security.

@@ -241,7 +241,7 @@ export function LostReleasesSection({ releases }: LostReleasesSectionProps) {
       if (!image) return null;
       return {
         id: release.id,
-        artist: release.artistName ?? "LOST.",
+        artist: release.artistName ?? "Unknown Artist",
         music: release.name,
         albumArt: image,
         previewUrl: resolvePreviewUrl(release),

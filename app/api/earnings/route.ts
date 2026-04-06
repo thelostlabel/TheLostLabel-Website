@@ -13,6 +13,7 @@ import { getErrorMessage, hasAdminOrArRole, parseFloatInput, parseIntegerInput }
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { generateEarningsNotificationEmail } from "@/lib/mail-templates";
+import { BRANDING } from "@/lib/branding";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 import { settleSideEffects } from "@/lib/async-effects";
 
@@ -293,7 +294,7 @@ export async function POST(req: Request) {
                   { name: "Your Share", value: `$${Number(recipient.amount || 0).toFixed(2)} ${earning.currency}`, inline: true },
                   { name: "Streams", value: earning.streams ? earning.streams.toLocaleString() : "N/A", inline: true },
                 ],
-                footer: "LOST. Earnings",
+                footer: `${BRANDING.dotName} Earnings`,
               });
             },
           });

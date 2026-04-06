@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { HandwrittenLogo } from "@/components/ui/handwritten-logo";
+import { usePublicSettings } from "@/app/components/PublicSettingsContext";
 
 export function PageReveal() {
+  const publicSettings = usePublicSettings();
   const [visible, setVisible] = useState(true);
   const hasPlayed = useRef(false);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -104,7 +106,7 @@ export function PageReveal() {
         }}
       >
         <HandwrittenLogo
-          text="The Lost Company"
+          text={publicSettings.brandingFullName || "The Lost Company"}
           animate
           duration={2}
           delay={0.3}

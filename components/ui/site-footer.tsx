@@ -83,7 +83,7 @@ export function SiteFooter() {
                 backgroundClip: "text",
               }}
             >
-              LOST.
+              {publicSettings.brandingDotName || "LOST."}
             </Link>
             <p className="text-white/50 text-sm leading-relaxed max-w-[220px]">
               Independent music label. Artist-first, always.
@@ -147,7 +147,7 @@ export function SiteFooter() {
 
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-white/[0.10] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span className="text-white/40 text-xs">© {year} LOST. All rights reserved.</span>
+          <span className="text-white/40 text-xs">© {year} {publicSettings.brandingDotName || "LOST."} All rights reserved.</span>
           <span className="text-white/30 text-xs">Independent Music Label</span>
         </div>
       </div>

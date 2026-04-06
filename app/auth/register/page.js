@@ -86,7 +86,7 @@ export default function Register() {
                     className="ca-left-content"
                 >
                     <div className="ca-brand-logo">
-                        <HandwrittenLogo text="The Lost Company" animate={false} color="#ffffff" font="bofly" />
+                        <HandwrittenLogo text={publicSettings.brandingFullName || "The Lost Company"} animate={false} color="#ffffff" font="bofly" />
                     </div>
                     <h1 className="ca-headline">
                         Define<br />your<br />sound.

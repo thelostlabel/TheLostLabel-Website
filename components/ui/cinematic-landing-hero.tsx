@@ -48,12 +48,14 @@ const INJECTED_STYLES = `
 
 export interface CinematicHeroProps extends React.HTMLAttributes<HTMLDivElement> {
   brandName?: string;
+  companyName?: string;
   tagline1?: string;
   tagline2?: string;
 }
 
 export function CinematicHero({
   brandName = "LOST.",
+  companyName = "The Lost Company",
   tagline1 = "Submit your demo,",
   tagline2 = "start your journey.",
   className,
@@ -156,7 +158,7 @@ export function CinematicHero({
         <div className="relative z-20 flex flex-col items-center gap-3 md:gap-4">
           <div className="w-[80vw] max-w-[700px]">
             <HandwrittenLogo
-              text="The Lost Company"
+              text={companyName}
               animate={false}
               color="var(--color-foreground, #ffffff)"
               font="bofly"

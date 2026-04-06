@@ -104,7 +104,8 @@ export default async function HomePage() {
             <ScrollAtmosphere />
             <SiteNavbar />
             <CinematicHero
-                brandName="LOST."
+                brandName={publicSettings?.brandingDotName || "LOST."}
+                companyName={publicSettings?.brandingFullName || "The Lost Company"}
                 tagline1="Submit your demo,"
                 tagline2="start your journey."
             />

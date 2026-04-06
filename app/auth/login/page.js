@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { HandwrittenLogo } from '@/components/ui/handwritten-logo';
+import { usePublicSettings } from '../../components/PublicSettingsContext';
 import { cinematicAuthStyles } from '../cinematic-auth-styles';
 
 function LoginContent() {
@@ -16,6 +17,7 @@ function LoginContent() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
     const { status } = useSession();
+    const publicSettings = usePublicSettings();
 
     useEffect(() => {
         if (status === 'authenticated') {
@@ -88,7 +90,7 @@ function LoginContent() {
                     className="ca-left-content"
                 >
                     <div className="ca-brand-logo">
-                        <HandwrittenLogo text="The Lost Company" animate={false} color="#ffffff" font="bofly" />
+                        <HandwrittenLogo text={publicSettings.brandingFullName || "The Lost Company"} animate={false} color="#ffffff" font="bofly" />
                     </div>
                     <h1 className="ca-headline">
                         Welcome<br />back.

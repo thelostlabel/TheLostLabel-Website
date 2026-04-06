@@ -17,6 +17,7 @@ import {
 import { randomUUID } from "crypto";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
+import { BRANDING } from "@/lib/branding";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
 import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
 import { demoDetailSelect, demoMutationResultSelect, demoOwnerSelect } from "@/lib/demo-queries";
@@ -315,7 +316,7 @@ export async function PATCH(req, { params }) {
                         { name: "Demo", value: updatedDemo.title, inline: true },
                         { name: "Artist", value: artistName, inline: true }
                     ],
-                    footer: "LOST. Demo Review"
+                    footer: `${BRANDING.dotName} Demo Review`
                 });
             } catch (dmError) {
                 console.error("[Demo PATCH] Failed to queue Discord DM notification:", dmError);

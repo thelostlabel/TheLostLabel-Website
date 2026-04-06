@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Check, Loader2, Send, Users, Mail, Eye } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
+import { usePublicSettings } from '@/app/components/PublicSettingsContext';
 import { Button, Card, Chip, Input, SearchField, TextArea, TextField } from '@heroui/react';
 
 const FIELD_CLASS = 'dash-input';
@@ -30,6 +31,7 @@ interface CommunicationsViewProps {
 
 export default function CommunicationsView({ artists: initialArtists }: CommunicationsViewProps) {
     const { showToast } = useToast();
+    const publicSettings = usePublicSettings();
     const [subject, setSubject] = useState<string>('');
     const [message, setMessage] = useState<string>('');
     const [sending, setSending] = useState<boolean>(false);
@@ -323,7 +325,7 @@ export default function CommunicationsView({ artists: initialArtists }: Communic
                                 </div>
 
                                 <p className="mt-5 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-white/28">
-                                    Copyright {new Date().getFullYear()} The Lost Label
+                                    Copyright {new Date().getFullYear()} {publicSettings.brandingFullName || "The Lost Label"}
                                 </p>
                             </div>
                         </div>

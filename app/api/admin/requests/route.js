@@ -9,6 +9,7 @@ import { settleSideEffects } from "@/lib/async-effects";
 import { createNotification } from "@/lib/notification-service";
 import { buildDiscordWebhookPayload, sendDiscordWebhook } from "@/lib/discord-webhooks";
 import { logAuditEvent, getClientIp } from "@/lib/audit-log";
+import { BRANDING } from "@/lib/branding";
 
 export async function GET(req) {
     const session = await getServerSession(authOptions);
@@ -125,7 +126,7 @@ export async function PATCH(req) {
                     title: `CHANGE REQUEST ${status.toUpperCase()}`,
                     color: colors[status] || 0xcccccc,
                     fields,
-                    footer: { text: "LOST. Admin Portal" },
+                    footer: { text: `${BRANDING.dotName} Admin Portal` },
                     timestamp: new Date().toISOString()
                 };
 
@@ -195,7 +196,7 @@ export async function PATCH(req) {
                         { name: "Status", value: status.toUpperCase(), inline: true },
                         { name: "Release", value: releaseName, inline: true }
                     ],
-                    footer: "LOST. Support"
+                    footer: `${BRANDING.dotName} Support`
                 }).catch((dmError) => {
                     console.error("[Admin Requests PATCH] Failed to queue Discord DM notification:", dmError);
                 })

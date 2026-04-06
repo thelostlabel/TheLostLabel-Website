@@ -68,7 +68,7 @@ export function SiteNavbar() {
           onClick={() => setOpen(false)}
           style={{ textShadow: "0 0 30px rgba(255,255,255,0.15)" }}
         >
-          LOST.
+          {publicSettings.brandingDotName || "LOST."}
         </Link>
 
         {/* Hamburger */}
@@ -169,7 +169,7 @@ export function SiteNavbar() {
         >
           <div style={{ width: "clamp(120px, 20vw, 200px)", opacity: 0.18, filter: "drop-shadow(0 0 12px rgba(255,255,255,0.08))" }}>
             <HandwrittenLogo
-              text="The Lost Company"
+              text={publicSettings.brandingFullName || "The Lost Company"}
               animate={false}
               color="#ffffff"
               font="bofly"

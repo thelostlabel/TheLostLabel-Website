@@ -7,6 +7,7 @@ import { extname, join } from "path";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { extractContractMetaAndNotes } from "@/lib/contract-template";
 import { createFileWebStream } from "@/lib/file-stream-response";
+import { BRANDING } from "@/lib/branding";
 
 const MIME_BY_EXT = {
   ".pdf": "application/pdf",
@@ -62,13 +63,13 @@ async function buildLegacyGeneratedContractPdf(contract, { includeContacts = tru
   const songs = details.songTitles || contract.release?.name || contract.title || "-";
   const releaseTitle = contract.release?.name || contract.title || "Untitled Release";
 
-  drawLine("THE LOST LABEL", { bold: true, size: 10, gap: 14 });
+  drawLine(BRANDING.fullName, { bold: true, size: 10, gap: 14 });
   drawLine("EXCLUSIVE MASTER LICENSE AGREEMENT", { bold: true, size: 20, gap: 26 });
   drawLine(`Agreement Ref: ${details.agreementReferenceNo || contract.id}`, { size: 10, gap: 14 });
   drawLine(`Effective Date: ${formatDate(details.effectiveDate || contract.createdAt)}`, { size: 10, gap: 24 });
 
   drawLine("PARTIES", { bold: true, size: 12, gap: 16 });
-  drawLine("Label: The Lost Label", { size: 10, gap: 14 });
+  drawLine(`Label: ${BRANDING.fullName}`, { size: 10, gap: 14 });
   drawLine(`Artist: ${mainArtistName}`, { size: 10, gap: 14 });
   if (includeContacts) {
     drawLine(`Artist Legal Name: ${details.artistLegalName || contract.user?.legalName || "-"}`, { size: 10, gap: 14 });

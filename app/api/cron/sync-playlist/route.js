@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
 import { fetchWithRetry, fetchWithTimeout, isTransientStatus } from "@/lib/fetch-utils";
 import { enqueueArtistRoleSyncForRelease, insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
+import { BRANDING } from "@/lib/branding";
 import { hasValidCronAuthorization } from "@/lib/cron-auth";
 import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
 import { enqueueSyncJob, scheduleSyncJobRunner, SYNC_JOB_TYPES } from "@/lib/sync-jobs";
@@ -358,7 +359,7 @@ export async function POST(req) {
                             ],
                             thumbnail: { url: release.image },
                             url: release.spotifyUrl,
-                            footer: { text: "LOST. Monitor System" },
+                            footer: { text: `${BRANDING.dotName} Monitor System` },
                             timestamp: new Date().toISOString()
                         };
 

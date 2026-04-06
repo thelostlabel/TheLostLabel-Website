@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:lost": "dotenv -e .env.lost -- next dev",
+    "dev:elysian": "dotenv -e .env.elysian -- next dev",
     "dev:all": "bash scripts/dev-all.sh",
     "build": "next build",
     "build:discord": "npm --prefix \"Discord Bot/frontend\" run build",
@@ -19,49 +21,59 @@
     "test": "tsx --test test/**/*.test.ts app/**/*.test.ts"
   },
   "dependencies": {
-    "@heroui/react": "^3.0.1",
-    "@heroui/styles": "^3.0.1",
-    "@heroui/theme": "^2.4.26",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+
     "@prisma/client": "^6.19.2",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.94.0",
-    "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-query": "^5.90.21",
+    "next-auth": "^4.24.13",
+    "zod": "^4.3.6",
+
+    "@heroui/react": "^3.0.1",
+    "@heroui/styles": "^3.0.1",
+    "@heroui/theme": "^2.4.26",
+    "lucide-react": "^0.563.0",
+    "recharts": "^3.7.0",
+
+    "tailwindcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.1.18",
+    "postcss": "^8.5.6",
     "autoprefixer": "^10.4.24",
-    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "tailwind-merge": "^3.5.0",
+
     "framer-motion": "^12.31.0",
     "gsap": "^3.14.2",
     "lenis": "^1.3.17",
+
+    "bcryptjs": "^3.0.3",
     "lru-cache": "^11.2.6",
-    "lucide-react": "^0.563.0",
-    "next": "16.1.6",
-    "next-auth": "^4.24.13",
     "nodemailer": "^7.0.13",
+    "uuid": "^13.0.0",
+
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "playwright": "^1.58.1",
-    "postcss": "^8.5.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "recharts": "^3.7.0",
+
     "simplex-noise": "^4.0.3",
-    "tailwind-merge": "^3.5.0",
-    "tailwindcss": "^4.1.18",
-    "uuid": "^13.0.0",
-    "wavesurfer.js": "^7.12.4",
-    "zod": "^4.3.6"
+    "wavesurfer.js": "^7.12.4"
   },
   "devDependencies": {
+    "typescript": "^5.9.3",
     "@types/node": "^25.4.0",
-    "@types/nodemailer": "^7.0.11",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "dotenv": "^17.3.1",
+    "@types/nodemailer": "^7.0.11",
+
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+
     "prisma": "^6.19.2",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "dotenv": "^17.3.1",
+    "dotenv-cli": "^11.0.0",
+    "tsx": "^4.20.6"
   }
 }

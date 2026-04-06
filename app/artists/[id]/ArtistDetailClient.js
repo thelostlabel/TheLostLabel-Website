@@ -8,6 +8,7 @@ import { SiteNavbar } from '@/components/ui/site-navbar';
 import { PageReveal } from '@/components/ui/page-reveal';
 import { toReleaseSlug } from '@/lib/release-slug';
 import { usePlayer } from '@/app/components/PlayerContext';
+import { usePublicSettings } from '@/app/components/PublicSettingsContext';
 
 function useDominantColor(src) {
     const [color, setColor] = useState('80,80,100');
@@ -42,6 +43,7 @@ export default function ArtistDetailClient({ artist, releases }) {
     const [scrolledPastHero, setScrolledPastHero] = useState(false);
     const bgY = useTransform(scrollY, [0, 600], [0, 120]);
     const { playTrack, currentTrack, isPlaying } = usePlayer();
+    const publicSettings = usePublicSettings();
 
     useEffect(() => {
         return scrollY.on('change', v => setScrolledPastHero(v > (heroRef.current?.offsetHeight || 500)));
@@ -185,7 +187,7 @@ export default function ArtistDetailClient({ artist, releases }) {
                         style={{ flex: 1, minWidth: 'min(100%, 280px)' }}
                     >
                         <p style={{ margin: '0 0 12px', fontSize: '10px', fontWeight: 700, letterSpacing: '3px', color: `rgba(${accentColor},0.7)`, textTransform: 'uppercase' }}>
-                            ARTIST · THE LOST LABEL
+                            ARTIST · {publicSettings.brandingFullName || "THE LOST LABEL"}
                         </p>
                         <h1 style={{ margin: '0 0 28px', fontSize: 'clamp(36px,5.5vw,76px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, color: '#fff', textTransform: 'uppercase' }}>
                             {artist.name}
