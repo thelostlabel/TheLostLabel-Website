@@ -17,6 +17,7 @@ import {
 } from "@/lib/security";
 import { normalizeSystemSettingsConfig, parseSystemSettingsConfig } from "@/lib/system-settings";
 import { linkUserToArtist } from "@/lib/userArtistLink";
+import { logAuditEvent } from "@/lib/audit-log";
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("lost-invalid-password", 10);
 const TOKEN_SECURITY_VERSION = 1;
@@ -169,6 +170,19 @@ export const authOptions = {
           if (user.status !== "approved" && user.role !== "admin") {
             throw new Error("ACCOUNT PENDING APPROVAL");
           }
+
+          // Fire-and-forget login/register audit
+          logAuditEvent({
+            userId: user.id,
+            action: isRegister ? "register" : "login",
+            entity: "session",
+            entityId: user.id,
+            details: JSON.stringify({ email: user.email }),
+            ipAddress: req?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim()
+              || req?.headers?.get?.("x-real-ip")
+              || undefined,
+            userAgent: req?.headers?.get?.("user-agent") || undefined,
+          });
 
           if (user.role === "artist" && user.status === "approved") {
             await linkUserToArtist(user.id);

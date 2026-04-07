@@ -23,6 +23,7 @@ import prisma from "@/lib/prisma";
 import { generateOpaqueToken, hashOpaqueToken } from "@/lib/security";
 import { linkUserToArtist } from "@/lib/userArtistLink";
 import type { ApiErrorResponse } from "@/types/api";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import type { AdminUserUpdateInput } from "@/types/admin";
 
 const ADMIN_USER_ROLE_VALUES = ["artist", "a&r", "admin"] as const;
@@ -263,6 +264,20 @@ export async function PATCH(req: Request) {
       }
     }
 
+    logAuditEvent({
+      userId: session.user.id,
+      action: "update",
+      entity: "user",
+      entityId: userId,
+      details: JSON.stringify({
+        changes: Object.keys(updateData),
+        ...(role !== undefined ? { newRole: role } : {}),
+        ...(status !== undefined ? { newStatus: status } : {}),
+      }),
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
+    });
+
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("Update User Error:", error);
@@ -364,6 +379,16 @@ export async function DELETE(req: Request) {
       await tx.user.delete({
         where: { id: userId },
       });
+    });
+
+    logAuditEvent({
+      userId: session.user.id,
+      action: "delete",
+      entity: "user",
+      entityId: userId,
+      details: JSON.stringify({ email: existingUser.email }),
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
     });
 
     return new Response(null, { status: 204 });

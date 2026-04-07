@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -20,6 +21,15 @@ export async function POST(req) {
                 status: 'active',
                 signedAt: new Date()
             }
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "sign",
+            entity: "contract",
+            entityId: contractId,
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         return new Response(JSON.stringify(updatedContract), { status: 200 });

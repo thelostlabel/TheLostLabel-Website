@@ -1,4 +1,5 @@
 import type { ApiErrorDetails, ApiErrorResponse } from "@/types/api";
+import prisma from "@/lib/prisma";
 
 type ErrorWithCode = Error & {
   code?: string;
@@ -28,9 +29,27 @@ export function getSafeErrorMessage(error: unknown, context = ""): ApiErrorDetai
 }
 
 // Handle API errors with safe response
-export function handleApiError(error: unknown, context = ""): Response {
+export function handleApiError(error: unknown, context = "", req?: Request): Response {
   const safeError = getSafeErrorMessage(error, context);
   const payload: ApiErrorResponse = { error: safeError };
+
+  // Fire-and-forget error logging to DB
+  if (req) {
+    const resolvedError = toErrorWithCode(error);
+    prisma.clientError.create({
+      data: {
+        message: resolvedError?.message || "Unknown API error",
+        stack: resolvedError?.stack?.slice(0, 10000) || null,
+        source: "api",
+        url: req.url,
+        ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+          || req.headers.get("x-real-ip")
+          || null,
+        userAgent: req.headers.get("user-agent") || null,
+        metadata: context ? JSON.stringify({ context }) : null,
+      },
+    }).catch(() => {});
+  }
 
   return new Response(JSON.stringify(payload), {
     status: 500,

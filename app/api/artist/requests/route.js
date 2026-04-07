@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { settleSideEffects } from "@/lib/async-effects";
 import { getReleaseArtistWhereById } from "@/lib/release-artists";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { normalizeSystemSettingsConfig, parseSystemSettingsConfig } from "@/lib/system-settings";
 
 function escapeHtml(value) {
@@ -67,6 +68,16 @@ export async function POST(req) {
                 releaseId: releaseId || null,
                 userId: session.user.id
             }
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "create",
+            entity: "request",
+            entityId: request.id,
+            details: JSON.stringify({ type: normalizedType }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         const supportEmail = process.env.SUPPORT_EMAIL || 'support@thelostlabel.com';

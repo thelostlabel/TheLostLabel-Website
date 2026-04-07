@@ -30,6 +30,7 @@ interface AuditLogEntry {
   entityId: string | null;
   details: string | null;
   ipAddress: string | null;
+  userAgent: string | null;
   createdAt: string;
   user: AuditLogUser;
 }
@@ -51,6 +52,9 @@ const ACTION_OPTIONS = [
   { value: "approve", label: "Approve" },
   { value: "reject", label: "Reject" },
   { value: "login", label: "Login" },
+  { value: "register", label: "Register" },
+  { value: "sign", label: "Sign" },
+  { value: "finalize", label: "Finalize" },
 ];
 
 const ENTITY_OPTIONS = [
@@ -66,6 +70,11 @@ const ENTITY_OPTIONS = [
   { value: "announcement", label: "Announcement" },
   { value: "webhook", label: "Webhook" },
   { value: "settings", label: "Settings" },
+  { value: "session", label: "Session" },
+  { value: "password", label: "Password" },
+  { value: "email", label: "Email" },
+  { value: "upload", label: "Upload" },
+  { value: "invoice", label: "Invoice" },
 ];
 
 const ACTION_COLOR_MAP: Record<string, "success" | "accent" | "danger" | "warning" | "default"> = {
@@ -75,6 +84,9 @@ const ACTION_COLOR_MAP: Record<string, "success" | "accent" | "danger" | "warnin
   approve: "success",
   reject: "danger",
   login: "default",
+  register: "accent",
+  sign: "success",
+  finalize: "success",
 };
 
 function formatTimestamp(iso: string): string {
@@ -309,19 +321,33 @@ export default function AuditLogsView() {
                         </span>
                       </Table.Cell>
                       <Table.Cell>
-                        {log.details ? (
+                        {log.details || log.userAgent ? (
                           <button
                             type="button"
                             onClick={() => setExpandedId((prev) => (prev === log.id ? null : log.id))}
-                            className="flex items-center gap-1 text-[11px] text-muted transition-colors hover:text-foreground text-left"
+                            className="flex flex-col gap-1 text-[11px] text-muted transition-colors hover:text-foreground text-left"
                           >
-                            <span className={expandedId === log.id ? "" : "truncate max-w-[280px] block"}>
-                              {expandedId === log.id ? log.details : truncate(log.details, 60)}
+                            <span className="flex items-center gap-1">
+                              <span className={expandedId === log.id ? "" : "truncate max-w-[280px] block"}>
+                                {log.details
+                                  ? (expandedId === log.id ? log.details : truncate(log.details, 60))
+                                  : "\u2014"}
+                              </span>
+                              {((log.details?.length ?? 0) > 60 || log.userAgent) && (
+                                expandedId === log.id
+                                  ? <ChevronUp size={11} className="shrink-0" />
+                                  : <ChevronDown size={11} className="shrink-0" />
+                              )}
                             </span>
-                            {log.details.length > 60 && (
-                              expandedId === log.id
-                                ? <ChevronUp size={11} className="shrink-0" />
-                                : <ChevronDown size={11} className="shrink-0" />
+                            {expandedId === log.id && log.userAgent && (
+                              <span className="text-[9px] text-muted/50 font-mono break-all max-w-[400px]">
+                                {log.userAgent}
+                              </span>
+                            )}
+                            {expandedId === log.id && log.ipAddress && (
+                              <span className="text-[9px] text-muted/50 font-mono">
+                                IP: {log.ipAddress}
+                              </span>
                             )}
                           </button>
                         ) : (

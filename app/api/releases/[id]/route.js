@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { mapReleaseArtistsToSummary, parseReleaseArtistsJson } from "@/lib/release-artists";
 
 function normalizeReleaseDate(value) {
@@ -110,6 +111,16 @@ export async function PATCH(req, { params }) {
             }
         });
 
+        logAuditEvent({
+            userId: session.user.id,
+            action: "update",
+            entity: "release",
+            entityId: id,
+            details: JSON.stringify({ name: release.name }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
+        });
+
         return new Response(JSON.stringify(release), { status: 200 });
     } catch (e) {
         console.error("Release Update Error:", e);
@@ -129,6 +140,15 @@ export async function DELETE(req, { params }) {
         // Optional: clean up contracts or requests if needed, but let's try direct delete first
         await prisma.release.delete({
             where: { id }
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "delete",
+            entity: "release",
+            entityId: id,
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });

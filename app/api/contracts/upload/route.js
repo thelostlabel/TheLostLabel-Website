@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { createRequire } from 'module';
 import { randomUUID } from 'crypto';
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse/lib/pdf-parse.js');
@@ -88,6 +89,15 @@ export async function POST(req) {
         } catch (parseError) {
             console.warn("Failed to parse PDF text:", parseError);
         }
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "create",
+            entity: "upload",
+            details: JSON.stringify({ filename: file.name, type: "contract_pdf" }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
+        });
 
         return new Response(JSON.stringify({
             success: true,

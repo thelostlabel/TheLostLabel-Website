@@ -15,6 +15,7 @@ import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-notifications";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 import { settleSideEffects } from "@/lib/async-effects";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
 
 const typedLogger = logger as {
@@ -200,6 +201,16 @@ export async function POST(req: Request) {
       typedLogger.error("Failed to enqueue payment outbox event", outboxError);
     }
 
+    logAuditEvent({
+      userId: session.user.id,
+      action: "create",
+      entity: "payment",
+      entityId: payment.id,
+      details: JSON.stringify({ amount: parsedAmount, currency: currency || "USD", recipientUserId: recipient.userId }),
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
+    });
+
     return NextResponse.json(payment, { status: 201 });
   } catch (error) {
     typedLogger.error("Failed to create payment", error);
@@ -309,6 +320,16 @@ export async function PATCH(req: Request) {
       }
     }
 
+    logAuditEvent({
+      userId: session.user.id,
+      action: status ? (status === "completed" ? "approve" : status === "failed" ? "reject" : "update") : "update",
+      entity: "payment",
+      entityId: id,
+      details: JSON.stringify({ status: payment.status, amount: Number(payment.amount || 0) }),
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
+    });
+
     if (status && ["completed", "failed"].includes(status) && existing.status !== status) {
       await settleSideEffects([
         {
@@ -367,6 +388,15 @@ export async function DELETE(req: Request) {
 
     await prisma.payment.delete({
       where: { id },
+    });
+
+    logAuditEvent({
+      userId: session.user.id,
+      action: "delete",
+      entity: "payment",
+      entityId: id,
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
     });
 
     return NextResponse.json({ success: true }, { status: 200 });

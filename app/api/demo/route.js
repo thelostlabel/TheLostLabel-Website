@@ -9,6 +9,7 @@ import { z } from "zod";
 import rateLimit from "@/lib/rate-limit";
 import { insertDiscordOutboxEvent } from "@/lib/discord-bridge-service";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { settleSideEffects } from "@/lib/async-effects";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
 import { demoListSelect, demoMutationResultSelect } from "@/lib/demo-queries";
@@ -105,6 +106,16 @@ export async function POST(req) {
                 } : undefined
             },
             select: demoMutationResultSelect
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "create",
+            entity: "demo",
+            entityId: demo.id,
+            details: JSON.stringify({ title, genre: genre || null }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         // Internal Discord bridge outbox (bot-driven delivery)

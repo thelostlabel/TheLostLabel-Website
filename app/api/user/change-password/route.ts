@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { changePasswordBodySchema } from "@/lib/auth-schemas";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { hasMinimumPasswordLength, MIN_PASSWORD_LENGTH } from "@/lib/security";
 
 export async function POST(req: Request) {
@@ -48,6 +49,15 @@ export async function POST(req: Request) {
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
+    });
+
+    logAuditEvent({
+      userId: session.user.id,
+      action: "update",
+      entity: "password",
+      entityId: session.user.id,
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
     });
 
     return NextResponse.json({ success: true, message: "Password updated successfully" });

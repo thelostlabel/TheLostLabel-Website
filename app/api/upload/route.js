@@ -9,6 +9,7 @@ import rateLimit from "@/lib/rate-limit";
 import { randomUUID } from 'crypto';
 import { logger } from "@/lib/logger";
 import { handleApiError } from "@/lib/api-errors";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 
 const limiter = rateLimit({
     interval: 60 * 60 * 1000,
@@ -214,6 +215,15 @@ export async function POST(req) {
         if (uploadedFiles.length === 0) {
             return new Response(JSON.stringify({ error: 'No supported files were uploaded. Please use .wav for demos or .jpg/.png for artwork.' }), { status: 400 });
         }
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "create",
+            entity: "upload",
+            details: JSON.stringify({ files: uploadedFiles.map(f => f.filename) }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
+        });
 
         return new Response(JSON.stringify({
             success: true,

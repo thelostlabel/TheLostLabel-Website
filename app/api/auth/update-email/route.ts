@@ -12,6 +12,7 @@ import {
   normalizeEmail,
   passesRateLimit,
 } from "@/lib/security";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { sendMail } from "@/lib/mail";
 import { generateVerificationEmail } from "@/lib/mail-templates";
 
@@ -87,6 +88,16 @@ export async function POST(req: Request) {
       to: normalizedNewEmail,
       subject: "Confirm your collective identity (Updated) | LOST.",
       html: generateVerificationEmail(verificationLink),
+    });
+
+    logAuditEvent({
+      userId: session.user.id,
+      action: "update",
+      entity: "email",
+      entityId: session.user.id,
+      details: JSON.stringify({ oldEmail: user.email, newEmail: normalizedNewEmail }),
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
     });
 
     return NextResponse.json({ success: true, message: "Email updated and new verification link sent" });

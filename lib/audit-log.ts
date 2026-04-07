@@ -7,6 +7,7 @@ interface AuditEntry {
   entityId?: string;
   details?: string;
   ipAddress?: string;
+  userAgent?: string;
 }
 
 export async function logAuditEvent(entry: AuditEntry): Promise<void> {
@@ -15,6 +16,10 @@ export async function logAuditEvent(entry: AuditEntry): Promise<void> {
   } catch (e) {
     console.error("[AuditLog] Failed to log event:", e);
   }
+}
+
+export function getClientUserAgent(req: Request): string | null {
+  return req.headers.get("user-agent") || null;
 }
 
 export function getClientIp(req: Request): string | null {

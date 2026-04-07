@@ -13,6 +13,7 @@ import {
   normalizeEmail,
   passesRateLimit,
 } from "@/lib/security";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { sendMail } from "@/lib/mail";
 import { generateVerificationEmail } from "@/lib/mail-templates";
 import { extractSpotifyArtistId, findBestSpotifyArtistMatch } from "@/lib/spotify";
@@ -170,6 +171,16 @@ export async function POST(req: Request) {
       }
 
       return createdUser;
+    });
+
+    logAuditEvent({
+      userId: user.id,
+      action: "register",
+      entity: "user",
+      entityId: user.id,
+      details: JSON.stringify({ email, stageName }),
+      ipAddress: getClientIp(req) || undefined,
+      userAgent: getClientUserAgent(req) || undefined,
     });
 
     const verificationLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/auth/verify-email?token=${verificationToken}`;

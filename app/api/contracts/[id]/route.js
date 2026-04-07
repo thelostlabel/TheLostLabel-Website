@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { sanitizeContractForViewer } from "@/lib/contract-visibility";
 import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 import prisma from "@/lib/prisma";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 
 function normalizeShare(value, defaultValue) {
     if (value === undefined || value === null || value === "") return defaultValue;
@@ -124,6 +125,16 @@ export async function PUT(req, { params }) {
             }
         });
 
+        logAuditEvent({
+            userId: session.user.id,
+            action: "update",
+            entity: "contract",
+            entityId: id,
+            details: JSON.stringify({ status: updated.status }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
+        });
+
         return new Response(JSON.stringify(updated), { status: 200 });
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
@@ -148,6 +159,15 @@ export async function DELETE(req, { params }) {
 
         await prisma.contract.delete({
             where: { id }
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "delete",
+            entity: "contract",
+            entityId: id,
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });

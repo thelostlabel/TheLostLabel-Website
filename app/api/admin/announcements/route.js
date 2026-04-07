@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 
 function isAdminSession(session) {
     return Boolean(session?.user?.role === "admin");
@@ -49,6 +50,16 @@ export async function POST(req) {
             });
         }
 
+        logAuditEvent({
+            userId: session.user.id,
+            action: id ? "update" : "create",
+            entity: "announcement",
+            entityId: result.id,
+            details: JSON.stringify({ title }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
+        });
+
         return new Response(JSON.stringify(result), { status: 200 });
     } catch (error) {
         console.error("Announcement Save Error:", error);
@@ -73,6 +84,15 @@ export async function DELETE(req) {
 
         await prisma.announcement.delete({
             where: { id }
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "delete",
+            entity: "announcement",
+            entityId: id,
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
