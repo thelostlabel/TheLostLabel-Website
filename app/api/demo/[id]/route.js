@@ -243,12 +243,23 @@ export async function PATCH(req, { params }) {
             }
             return d;
         });
+        const auditAction = finalizeData ? "finalize"
+            : nextStatus === "approved" ? "approve"
+            : nextStatus === "rejected" ? "reject"
+            : nextStatus === "reviewing" || nextStatus === "pending" ? "review"
+            : "update";
+        const auditDetails = {
+            status: updatedDemo.status,
+            title: updatedDemo.title,
+            ...(nextStatus === "rejected" && rejectionReason ? { rejectionReason } : {}),
+            ...(auditAction === "review" ? { stage: nextStatus } : {}),
+        };
         logAuditEvent({
             userId: session.user.id,
-            action: finalizeData ? "finalize" : nextStatus === "approved" ? "approve" : nextStatus === "rejected" ? "reject" : "update",
+            action: auditAction,
             entity: "demo",
             entityId: id,
-            details: JSON.stringify({ status: updatedDemo.status, title: updatedDemo.title }),
+            details: JSON.stringify(auditDetails),
             ipAddress: getClientIp(req) || undefined,
             userAgent: getClientUserAgent(req) || undefined,
         });

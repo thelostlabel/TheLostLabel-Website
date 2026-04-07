@@ -9,6 +9,7 @@ import DashboardLoader from '@/app/components/dashboard/DashboardLoader';
 import WaveformPlayer from '@/app/components/dashboard/WaveformPlayer';
 import SoundCloudPlayer, { isSoundCloudUrl } from '@/app/components/dashboard/SoundCloudPlayer';
 import DemoVersionHistory from '@/app/components/dashboard/primitives/DemoVersionHistory';
+import DemoActivityHistory from '@/app/components/dashboard/primitives/DemoActivityHistory';
 import {
     canApproveDemos,
     canDeleteDemos,
@@ -478,6 +479,19 @@ export default function DemoReviewPage({ params }: { params: Promise<{ id: strin
                             </Card.Header>
                             <Card.Content>
                                 <DemoVersionHistory demoId={id} canRestore={true} onRestore={fetchDemo} />
+                            </Card.Content>
+                        </Card>
+
+                        {/* Activity History - Admin */}
+                        <Card className="demo-card mt-4">
+                            <Card.Header className="demo-sidebar-header">
+                                <div className="demo-sidebar-heading-row">
+                                    <p className="demo-sidebar-heading">ACTIVITY HISTORY</p>
+                                </div>
+                                <p className="demo-sidebar-subheading">All staff actions on this demo.</p>
+                            </Card.Header>
+                            <Card.Content>
+                                <DemoActivityHistory demoId={id} />
                             </Card.Content>
                         </Card>
                       </>
