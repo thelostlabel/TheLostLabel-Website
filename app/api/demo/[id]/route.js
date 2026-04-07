@@ -20,6 +20,7 @@ import { queueDiscordNotification, DISCORD_NOTIFY_TYPES } from "@/lib/discord-no
 import { BRANDING } from "@/lib/branding";
 import { resolveArtistContextForUser } from "@/lib/artist-identity";
 import { buildReleaseArtistNestedWrite } from "@/lib/release-artists";
+import { logAuditEvent, getClientIp, getClientUserAgent } from "@/lib/audit-log";
 import { demoDetailSelect, demoMutationResultSelect, demoOwnerSelect } from "@/lib/demo-queries";
 
 const REVIEWABLE_STATUSES = new Set(["pending", "reviewing"]);
@@ -242,7 +243,18 @@ export async function PATCH(req, { params }) {
             }
             return d;
         });
-        const shouldNotifyStatusChange = Boolean(nextStatus || finalizeData);
+        logAuditEvent({
+            userId: session.user.id,
+            action: finalizeData ? "finalize" : nextStatus === "approved" ? "approve" : nextStatus === "rejected" ? "reject" : "update",
+            entity: "demo",
+            entityId: id,
+            details: JSON.stringify({ status: updatedDemo.status, title: updatedDemo.title }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
+        });
+
+        const statusActuallyChanged = nextStatus && nextStatus !== existingDemo.status;
+        const shouldNotifyStatusChange = Boolean(statusActuallyChanged || finalizeData);
         const notifiedStatus = shouldNotifyStatusChange && ["approved", "rejected", "contract_sent"].includes(updatedDemo.status)
             ? updatedDemo.status
             : shouldNotifyStatusChange
@@ -383,6 +395,16 @@ export async function DELETE(req, { params }) {
 
         await prisma.demo.delete({
             where: { id }
+        });
+
+        logAuditEvent({
+            userId: session.user.id,
+            action: "delete",
+            entity: "demo",
+            entityId: id,
+            details: JSON.stringify({ title: demo.title }),
+            ipAddress: getClientIp(req) || undefined,
+            userAgent: getClientUserAgent(req) || undefined,
         });
 
         return new Response(null, { status: 204 });

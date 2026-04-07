@@ -106,7 +106,7 @@ export default function DemoReviewPage({ params }: { params: Promise<{ id: strin
         fetchDemo();
     }, [fetchDemo]);
 
-    const handleStatusUpdate = async (status: string, reason: string | null = null) => {
+    const handleStatusUpdate = async (status: string, reason: string | null = null): Promise<boolean> => {
         setProcessing(true);
         try {
             const res = await fetch(`/api/demo/${id}`, {
@@ -118,12 +118,15 @@ export default function DemoReviewPage({ params }: { params: Promise<{ id: strin
             if (res.ok) {
                 const updated = await res.json();
                 setDemo(updated);
+                return true;
             } else {
                 const data = await res.json().catch(() => null);
                 showToast(data?.error || "Failed to update status", "error");
+                return false;
             }
         } catch (e) {
             showToast("Error updating status", "error");
+            return false;
         } finally {
             setProcessing(false);
         }
@@ -393,7 +396,7 @@ export default function DemoReviewPage({ params }: { params: Promise<{ id: strin
                                         {canApproveDemo && (
                                             <Button
                                                 onPress={() => handleStatusUpdate('approved')}
-                                                isDisabled={processing}
+                                                isDisabled={processing || demo.status === 'approved'}
                                                 variant="primary"
                                                 fullWidth
                                                 size="md"
@@ -420,7 +423,7 @@ export default function DemoReviewPage({ params }: { params: Promise<{ id: strin
                                     </div>
                                 )}
 
-                                {demo.rejectionReason && (
+                                {demo.status === 'rejected' && demo.rejectionReason && (
                                     <Alert status="danger" className="mt-2">
                                         <Alert.Indicator />
                                         <Alert.Content>
@@ -615,12 +618,15 @@ export default function DemoReviewPage({ params }: { params: Promise<{ id: strin
                                     onPress={async () => {
                                         const reason = rejectionReason.trim();
                                         if (!reason) return;
-                                        await handleStatusUpdate('rejected', reason);
-                                        setShowRejectModal(false);
+                                        const success = await handleStatusUpdate('rejected', reason);
+                                        if (success) {
+                                            setShowRejectModal(false);
+                                            showToast("Demo rejected successfully", "success");
+                                        }
                                     }}
                                     className="font-semibold"
                                 >
-                                    {processing ? "Saving..." : "Reject Demo"}
+                                    {processing ? "Saving..." : demo.status === 'rejected' ? "Update Reason" : "Reject Demo"}
                                 </Button>
                             </Modal.Footer>
                         </Modal.Dialog>
