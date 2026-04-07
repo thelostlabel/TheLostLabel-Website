@@ -264,8 +264,7 @@ export default function ArtistOverviewView({
           </div>
           <div className="flex flex-col items-center gap-3 px-4">
             <div
-              className="overflow-hidden rounded-2xl shadow-2xl"
-              style={{ width: 180, height: 180, border: "1px solid var(--ds-glass-border)" }}
+              className="overflow-hidden rounded-2xl shadow-2xl w-[180px] h-[180px] border border-[var(--ds-glass-border)]"
             >
               <NextImage
                 src={artworkSrc}
@@ -274,7 +273,7 @@ export default function ArtistOverviewView({
                 alt="Latest release"
                 unoptimized
                 onError={handleImageError}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                className="w-full h-full object-cover"
               />
             </div>
             <div className="text-center">
@@ -401,7 +400,7 @@ export default function ArtistOverviewView({
                   onClick={() => onNavigate("releases")}
                   className="group ds-item flex items-center gap-3 p-3 text-left"
                 >
-                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl" style={{ background: "var(--ds-item-bg)" }}>
+                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-[var(--ds-item-bg)]">
                     <NextImage
                       src={resolveImageSrc(release.image || stats.artistImage, String(release.id || ""))}
                       width={44}
@@ -409,7 +408,7 @@ export default function ArtistOverviewView({
                       alt={String(release.name || "Release")}
                       unoptimized
                       onError={handleImageError}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1">

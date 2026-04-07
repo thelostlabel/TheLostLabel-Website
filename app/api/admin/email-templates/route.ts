@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json();
-        const { slug, name, subject, body: templateBody, variables, active } = body;
+        const { slug, name, subject, body: templateBody, blocks, variables, active } = body;
 
         if (!slug || !name || !subject || !templateBody) {
             return new Response(
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
                 name,
                 subject,
                 body: templateBody,
+                blocks: blocks ?? null,
                 variables: variables ?? null,
                 active: active ?? true,
             },
@@ -68,7 +69,7 @@ export async function PATCH(req: Request) {
 
     try {
         const body = await req.json();
-        const { id, slug, name, subject, body: templateBody, variables, active } = body;
+        const { id, slug, name, subject, body: templateBody, blocks, variables, active } = body;
 
         if (!id) {
             return new Response(JSON.stringify({ error: "id is required" }), { status: 400 });
@@ -79,6 +80,7 @@ export async function PATCH(req: Request) {
         if (name !== undefined) data.name = name;
         if (subject !== undefined) data.subject = subject;
         if (templateBody !== undefined) data.body = templateBody;
+        if (blocks !== undefined) data.blocks = blocks;
         if (variables !== undefined) data.variables = variables;
         if (active !== undefined) data.active = active;
 

@@ -374,7 +374,7 @@ export default function UsersView({ users, onRefresh }: UsersViewProps) {
         );
     };
 
-    const statusColor = (status: string | null | undefined): string => {
+    const statusColor = (status: string | null | undefined): 'success' | 'danger' | 'default' => {
         if (status === 'approved') return 'success';
         if (status === 'rejected') return 'danger';
         return 'default';

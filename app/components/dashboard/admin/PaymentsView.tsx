@@ -1,12 +1,9 @@
 "use client";
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useDebouncedSearch } from "@/app/components/dashboard/hooks/useDebouncedSearch";
-import { Search, Plus, Edit, Trash2, Check, X, CheckCircle, XCircle, Download } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Check, X } from 'lucide-react';
 import { useToast } from '@/app/components/ToastContext';
-import { Button, Card, Input, Table, Chip, Modal, TextArea, TextField, Label, Select, ListBox, Tooltip, Checkbox, SearchField } from '@heroui/react';
-import BulkActionsBar from '@/app/components/dashboard/primitives/BulkActionsBar';
-import type { BulkAction } from '@/app/components/dashboard/primitives/BulkActionsBar';
-import { dashboardRequestJson, getDashboardErrorMessage } from '@/app/components/dashboard/lib/dashboard-request';
+import { Button, Card, Input, Table, Chip, Modal, TextArea, TextField, Label, Select, ListBox, Tooltip, SearchField } from '@heroui/react';
 import ExportButtons from '@/app/components/dashboard/primitives/ExportButtons';
 import type { ExportColumn } from '@/app/components/dashboard/lib/export-utils';
 import { ACTION_BUTTON } from '@/app/components/dashboard/lib/action-styles';
@@ -50,9 +47,9 @@ interface Payment {
 /** Artist shape as provided by the admin data hook – only the fields used here. */
 interface ArtistOption {
     id: string;
+    name: string;
     userId?: string;
     user?: { id?: string };
-    // TODO: type – remaining artist fields are not consumed in this component
     [key: string]: unknown;
 }
 
@@ -93,7 +90,7 @@ interface PaymentStatusOption {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STATUS_COLOR_MAP: Record<PaymentStatus, string> = {
+const STATUS_COLOR_MAP: Record<PaymentStatus, 'success' | 'warning' | 'danger' | 'default'> = {
     completed: 'success',
     pending: 'warning',
     failed: 'danger',
@@ -132,9 +129,6 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
         open: false, payment: null, status: 'completed', note: ''
     });
     const [decisionSaving, setDecisionSaving] = useState<boolean>(false);
-    const [selectionMode, setSelectionMode] = useState<boolean>(false);
-    const [selectedPaymentIds, setSelectedPaymentIds] = useState<Set<string>>(() => new Set());
-    const [bulkProcessing, setBulkProcessing] = useState<boolean>(false);
 
     const getPaymentRecipientLabel = (payment: Payment): string => {
         if (payment.artist?.name) return payment.artist.name;
@@ -162,135 +156,6 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
         );
         return filterByDateRange(searched, 'createdAt', dateRange);
     }, [payments, debouncedSearch, dateRange]);
-
-    // -----------------------------------------------------------------------
-    // Selection helpers
-    // -----------------------------------------------------------------------
-
-    const normalizeSelectionKeys = (keys: 'all' | Iterable<string>, availableIds: string[] = []): Set<string> => {
-        if (keys === 'all') return new Set(availableIds);
-        return new Set(Array.from(keys || []));
-    };
-
-    const exitSelectionMode = useCallback(() => {
-        setSelectionMode(false);
-        setSelectedPaymentIds(new Set());
-    }, []);
-
-    const handleSelectionChange = useCallback((keys: 'all' | Set<string>) => {
-        setSelectedPaymentIds(normalizeSelectionKeys(keys, filteredPayments.map((p) => p.id)));
-    }, [filteredPayments]);
-
-    // Clean up stale selections when filter changes
-    useEffect(() => {
-        setSelectedPaymentIds((prev) => {
-            const availableIds = new Set(filteredPayments.map((p) => p.id));
-            const next = new Set(Array.from(prev).filter((id) => availableIds.has(id)));
-            return next.size === prev.size ? prev : next;
-        });
-    }, [filteredPayments]);
-
-    useEffect(() => {
-        if (selectionMode && selectedPaymentIds.size === 0) {
-            setSelectionMode(false);
-        }
-    }, [selectedPaymentIds, selectionMode]);
-
-    // -----------------------------------------------------------------------
-    // Bulk actions
-    // -----------------------------------------------------------------------
-
-    const handleBulkApprove = useCallback(async () => {
-        if (selectedPaymentIds.size === 0) return;
-        setBulkProcessing(true);
-        try {
-            const result = await dashboardRequestJson<{ success: string[]; failed: Array<{ id: string; error: string }> }>(
-                '/api/admin/bulk',
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'approve-payments', ids: Array.from(selectedPaymentIds) }),
-                    context: 'bulk approve payments',
-                    retry: false,
-                },
-            );
-            const successCount = result.success?.length ?? 0;
-            const failCount = result.failed?.length ?? 0;
-            if (failCount === 0) {
-                showToast(`${successCount} payment${successCount === 1 ? '' : 's'} approved`, 'success');
-            } else {
-                showToast(`Approved ${successCount}, failed ${failCount}`, 'warning');
-            }
-            exitSelectionMode();
-            onRefresh();
-        } catch (e) {
-            showToast(getDashboardErrorMessage(e, 'Bulk approve failed'), 'error');
-        } finally {
-            setBulkProcessing(false);
-        }
-    }, [selectedPaymentIds, showToast, exitSelectionMode, onRefresh]);
-
-    const handleBulkReject = useCallback(async () => {
-        if (selectedPaymentIds.size === 0) return;
-        setBulkProcessing(true);
-        try {
-            const result = await dashboardRequestJson<{ success: string[]; failed: Array<{ id: string; error: string }> }>(
-                '/api/admin/bulk',
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'reject-payments', ids: Array.from(selectedPaymentIds) }),
-                    context: 'bulk reject payments',
-                    retry: false,
-                },
-            );
-            const successCount = result.success?.length ?? 0;
-            const failCount = result.failed?.length ?? 0;
-            if (failCount === 0) {
-                showToast(`${successCount} payment${successCount === 1 ? '' : 's'} rejected`, 'success');
-            } else {
-                showToast(`Rejected ${successCount}, failed ${failCount}`, 'warning');
-            }
-            exitSelectionMode();
-            onRefresh();
-        } catch (e) {
-            showToast(getDashboardErrorMessage(e, 'Bulk reject failed'), 'error');
-        } finally {
-            setBulkProcessing(false);
-        }
-    }, [selectedPaymentIds, showToast, exitSelectionMode, onRefresh]);
-
-    const handleBulkExport = useCallback(() => {
-        if (selectedPaymentIds.size === 0) return;
-        const selectedList = filteredPayments.filter((p) => selectedPaymentIds.has(p.id));
-        const csvRows = [
-            ['Date', 'Recipient', 'Amount', 'Method', 'Reference', 'Status'].join(','),
-            ...selectedList.map((p) =>
-                [
-                    new Date(p.createdAt).toLocaleDateString(),
-                    `"${getPaymentRecipientLabel(p)}"`,
-                    Number(p.amount).toFixed(2),
-                    p.method?.replace('_', ' ') ?? '',
-                    p.reference ?? '',
-                    p.status,
-                ].join(','),
-            ),
-        ].join('\n');
-        const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `payments-export-${Date.now()}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        showToast(`Exported ${selectedList.length} payment${selectedList.length === 1 ? '' : 's'}`, 'success');
-    }, [selectedPaymentIds, filteredPayments, showToast]);
-
-    const bulkActions: BulkAction[] = useMemo(() => [
-        { label: 'APPROVE', icon: <CheckCircle size={14} />, onClick: handleBulkApprove, variant: 'primary' as const, isDisabled: bulkProcessing },
-        { label: 'REJECT', icon: <XCircle size={14} />, onClick: handleBulkReject, variant: 'danger' as const, isDisabled: bulkProcessing },
-        { label: 'EXPORT', icon: <Download size={14} />, onClick: handleBulkExport, variant: 'secondary' as const, isDisabled: bulkProcessing },
-    ], [handleBulkApprove, handleBulkReject, handleBulkExport, bulkProcessing]);
 
     const statusLabel = (status: string): string => {
         if (status === 'failed') return 'REJECTED';
@@ -442,7 +307,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                 <Button
                                     type="submit"
                                     {...(decisionModal.status === 'completed' ? ACTION_BUTTON.approve : ACTION_BUTTON.rejectSolid)}
-                                    className={`flex-2 ${decisionModal.status === 'completed' ? ACTION_BUTTON.approve.className ?? '' : ''}`}
+                                    className={`flex-2 ${decisionModal.status === 'completed' ? (ACTION_BUTTON.approve as any).className ?? '' : ''}`}
                                     isDisabled={decisionSaving}
                                 >
                                     {decisionSaving ? 'SENDING...' : decisionModal.status === 'completed' ? 'APPROVE & NOTIFY' : 'REJECT & NOTIFY'}
@@ -490,16 +355,6 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                         >
                             <Plus size={14} /> {showAdd ? 'CLOSE' : 'RECORD PAYOUT'}
                         </Button>
-                        <Button
-                            variant={selectionMode ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onPress={() => {
-                                if (selectionMode) exitSelectionMode();
-                                else setSelectionMode(true);
-                            }}
-                        >
-                            {selectionMode ? 'EXIT' : 'SELECT'}
-                        </Button>
                         <ExportButtons
                             data={paymentsExportData}
                             columns={paymentsExportColumns}
@@ -535,7 +390,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                     Artist Recipient *
                                 </Label>
                                 <ArtistPicker
-                                    artists={artists}
+                                    artists={artists as any}
                                     value={form.artistId}
                                     placeholder="Select recipient..."
                                     onChange={(artist: ArtistOption) => {
@@ -581,7 +436,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                     aria-label="Payment method"
                                     className="w-full"
                                     selectedKey={form.method}
-                                    onSelectionChange={(key: React.Key) => {
+                                    onSelectionChange={(key: React.Key | null) => {
                                         if (key) setForm((prev) => ({ ...prev, method: String(key) }));
                                     }}
                                 >
@@ -622,7 +477,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                     aria-label="Payment status"
                                     className="w-full"
                                     selectedKey={form.status}
-                                    onSelectionChange={(key: React.Key) => {
+                                    onSelectionChange={(key: React.Key | null) => {
                                         if (key) setForm((prev) => ({ ...prev, status: String(key) }));
                                     }}
                                 >
@@ -657,7 +512,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                                     placeholder="Optional settlement details, routing info, or bookkeeping notes..."
                                     fullWidth
-                                    minRows={4}
+                                    rows={4}
                                 />
                             </div>
 
@@ -689,30 +544,16 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                 <Table.ScrollContainer>
                     <Table.Content
                         className="min-w-[900px]"
-                        selectedKeys={selectedPaymentIds}
-                        selectionMode={selectionMode ? 'multiple' : 'none'}
-                        onSelectionChange={handleSelectionChange}
+                        selectionMode="none"
                     >
                         <Table.Header>
-                            <Table.Column
-                                className={`w-12 pr-0 ${selectionMode ? '' : 'hidden'}`}
-                                id="select"
-                            >
-                                {selectionMode ? (
-                                    <Checkbox aria-label="Select all payments" slot="selection" variant="secondary">
-                                        <Checkbox.Control>
-                                            <Checkbox.Indicator />
-                                        </Checkbox.Control>
-                                    </Checkbox>
-                                ) : ' '}
-                            </Table.Column>
-                            <Table.Column isRowHeader id="date">DATE</Table.Column>
+                            <Table.Column isRowHeader id="date" className="w-[110px]">DATE</Table.Column>
                             <Table.Column id="recipient">RECIPIENT</Table.Column>
-                            <Table.Column id="amount">AMOUNT</Table.Column>
-                            <Table.Column id="method">METHOD</Table.Column>
-                            <Table.Column id="reference">REFERENCE</Table.Column>
-                            <Table.Column id="status">STATUS</Table.Column>
-                            <Table.Column className="text-end" id="actions">ACTIONS</Table.Column>
+                            <Table.Column id="amount" className="w-[140px]">AMOUNT</Table.Column>
+                            <Table.Column id="method" className="w-[130px]">METHOD</Table.Column>
+                            <Table.Column id="reference" className="w-[140px]">REFERENCE</Table.Column>
+                            <Table.Column id="status" className="w-[120px]">STATUS</Table.Column>
+                            <Table.Column className="w-[100px] text-end" id="actions">ACTIONS</Table.Column>
                         </Table.Header>
                         <Table.Body
                             items={filteredPayments}
@@ -723,20 +564,7 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                             )}
                         >
                             {(p: Payment) => (
-                                <Table.Row key={p.id} id={p.id} className={selectionMode && selectedPaymentIds.has(p.id) ? 'bg-default/10' : ''}>
-                                    <Table.Cell className={`pr-0 ${selectionMode ? '' : 'hidden'}`}>
-                                        {selectionMode && (
-                                            <Checkbox
-                                                aria-label={`Select payment ${p.id}`}
-                                                slot="selection"
-                                                variant="secondary"
-                                            >
-                                                <Checkbox.Control>
-                                                    <Checkbox.Indicator />
-                                                </Checkbox.Control>
-                                            </Checkbox>
-                                        )}
-                                    </Table.Cell>
+                                <Table.Row key={p.id} id={p.id}>
                                     <Table.Cell>
                                         <span className="text-xs text-muted font-black">{new Date(p.createdAt).toLocaleDateString()}</span>
                                     </Table.Cell>
@@ -768,15 +596,18 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                         <div className="flex items-center justify-end gap-1">
                                             {p.status === 'pending' && (
                                                 <>
+                                                    {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                                     <Tooltip content="Approve">
                                                         <Button {...ACTION_BUTTON.approve} isIconOnly onPress={() => openDecisionModal(p, 'completed')}><Check size={14} /></Button>
                                                     </Tooltip>
+                                                    {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                                     <Tooltip content="Reject">
                                                         <Button {...ACTION_BUTTON.reject} isIconOnly onPress={() => openDecisionModal(p, 'failed')}><X size={14} /></Button>
                                                     </Tooltip>
                                                 </>
                                             )}
-                                            <Tooltip content="Edit">
+                                            {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
+                                                    <Tooltip content="Edit">
                                                 <Button size="sm" variant="ghost" isIconOnly onPress={() => {
                                                     setEditingPayment(p);
                                                     setForm({
@@ -787,7 +618,8 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                                                     setShowAdd(true);
                                                 }}><Edit size={14} /></Button>
                                             </Tooltip>
-                                            <Tooltip content="Delete">
+                                            {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
+                                                    <Tooltip content="Delete">
                                                 <Button size="sm" variant="ghost" isIconOnly className="text-danger hover:bg-danger/10" onPress={() => handleDeletePayment(p.id)}><Trash2 size={14} /></Button>
                                             </Tooltip>
                                         </div>
@@ -799,11 +631,6 @@ export default function PaymentsView({ payments, onRefresh, artists = [] }: Paym
                 </Table.ScrollContainer>
             </Table>
 
-            <BulkActionsBar
-                selectedCount={selectedPaymentIds.size}
-                actions={bulkActions}
-                onClear={exitSelectionMode}
-            />
         </div>
     );
 }

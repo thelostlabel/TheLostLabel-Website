@@ -9,6 +9,7 @@ import {
   getDashboardErrorMessage,
 } from "@/app/components/dashboard/lib/dashboard-request";
 import DashboardLoader from "@/app/components/dashboard/DashboardLoader";
+import DashboardEmptyState from "@/app/components/dashboard/primitives/DashboardEmptyState";
 import type { OffsetPaginationMeta } from "@/lib/api-pagination";
 
 // ---------------------------------------------------------------------------
@@ -245,17 +246,11 @@ export default function AuditLogsView() {
       {loading && logs.length === 0 ? (
         <DashboardLoader label="AUDIT LOGS" subLabel="Loading audit trail..." />
       ) : logs.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <div className="w-12 h-12 rounded-full border border-dashed border-border bg-surface flex items-center justify-center">
-            <Shield size={20} className="text-muted" />
-          </div>
-          <p className="text-xs font-bold text-muted tracking-widest uppercase">
-            No audit log entries found
-          </p>
-          <p className="text-[10px] text-muted">
-            Actions will appear here as admins interact with the platform.
-          </p>
-        </div>
+        <DashboardEmptyState
+          icon={<Shield size={28} />}
+          title="No audit log entries found"
+          description="Actions will appear here as admins interact with the platform."
+        />
       ) : (
         <div className="relative">
           {loading && logs.length > 0 && <DashboardLoader overlay label="LOADING" />}

@@ -18,23 +18,53 @@ import {
 } from '@/lib/permissions';
 import { useMinimumLoader } from '@/lib/use-minimum-loader';
 
-const STATUS_COLOR_MAP = {
+const STATUS_COLOR_MAP: Record<string, 'success' | 'danger' | 'warning' | 'default' | 'accent'> = {
     approved: 'success',
     rejected: 'danger',
     reviewing: 'warning',
     pending: 'default',
 };
 
-export default function DemoReviewPage({ params }) {
+interface DemoFile {
+    id: string;
+    filename: string;
+    filesize: number;
+}
+
+interface DemoArtist {
+    id: string;
+    stageName?: string;
+    fullName?: string;
+    email?: string;
+    spotifyUrl?: string;
+    artist?: { id: string; name: string; email?: string };
+}
+
+interface Demo {
+    id: string;
+    title: string;
+    status: string;
+    genre?: string;
+    message?: string;
+    trackLink?: string;
+    createdAt: string;
+    rejectionReason?: string;
+    reviewedBy?: string;
+    artistNote?: string;
+    files?: DemoFile[];
+    artist?: DemoArtist;
+}
+
+export default function DemoReviewPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { data: session } = useSession();
     const router = useRouter();
     const { showToast, showConfirm } = useToast();
-    const [demo, setDemo] = useState(null);
+    const [demo, setDemo] = useState<Demo | null>(null);
     const [loading, setLoading] = useState(true);
     const showLoading = useMinimumLoader(loading, 900);
-    const [error, setError] = useState(null);
-    const [activeFile, setActiveFile] = useState(null);
+    const [error, setError] = useState<string | null>(null);
+    const [activeFile, setActiveFile] = useState<DemoFile | null>(null);
     const [processing, setProcessing] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -66,7 +96,7 @@ export default function DemoReviewPage({ params }) {
                 setError("Demo not found");
             }
         } catch (e) {
-            setError(e.message);
+            setError((e as Error).message);
         } finally {
             setLoading(false);
         }
@@ -76,7 +106,7 @@ export default function DemoReviewPage({ params }) {
         fetchDemo();
     }, [fetchDemo]);
 
-    const handleStatusUpdate = async (status, reason = null) => {
+    const handleStatusUpdate = async (status: string, reason: string | null = null) => {
         setProcessing(true);
         try {
             const res = await fetch(`/api/demo/${id}`, {
@@ -234,8 +264,8 @@ export default function DemoReviewPage({ params }) {
                             {activeFile ? (
                                 <div>
                                     <WaveformPlayer
-                                        src={activeFileAudioUrl}
-                                        waveformUrl={activeFileWaveformUrl}
+                                        src={activeFileAudioUrl!}
+                                        waveformUrl={activeFileWaveformUrl!}
                                         filename={activeFile.filename}
                                     />
                                     <div className="demo-link-row">
@@ -334,7 +364,7 @@ export default function DemoReviewPage({ params }) {
                                             selectedKeys={reviewStageSelection}
                                             className="demo-review-stage-toggle"
                                             onSelectionChange={(keys) => {
-                                                const nextStage = Array.from(keys || [])[0];
+                                                const nextStage = Array.from(keys || [])[0] as string;
                                                 if (!nextStage || nextStage === demo.status) return;
                                                 handleStatusUpdate(nextStage);
                                             }}
@@ -487,9 +517,9 @@ export default function DemoReviewPage({ params }) {
                                 <Card.Content className="flex flex-col gap-3">
                                     <TextArea
                                         value={artistNote}
-                                        onChange={(e) => setArtistNote(e.target.value)}
+                                        onChange={(e: any) => setArtistNote(e.target.value)}
                                         placeholder="Add a note about this demo..."
-                                        isDisabled={savingNote}
+                                        disabled={savingNote}
                                         className="min-h-30"
                                         aria-label="Your note"
                                     />
@@ -561,9 +591,9 @@ export default function DemoReviewPage({ params }) {
                                 <p className="text-sm text-default-400 mb-3">This reason will be visible to the artist.</p>
                                 <TextArea
                                     value={rejectionReason}
-                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                    onChange={(e: any) => setRejectionReason(e.target.value)}
                                     placeholder="Write a clear rejection reason..."
-                                    isDisabled={processing}
+                                    disabled={processing}
                                     className="min-h-40 w-full"
                                     aria-label="Rejection reason"
                                 />

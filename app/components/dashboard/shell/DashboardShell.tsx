@@ -389,6 +389,7 @@ function DashboardShellContent({ children }: PropsWithChildren) {
               {/* Search trigger — opens Cmd+K palette */}
               <button
                 type="button"
+                aria-label="Search (⌘K)"
                 onClick={() => {
                   // Simulate Cmd+K to open the palette
                   window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));

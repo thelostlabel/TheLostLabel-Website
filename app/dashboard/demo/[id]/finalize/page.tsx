@@ -8,15 +8,60 @@ import { ChevronRight, ChevronLeft, Plus, X, Upload, Info, CheckCircle, Music, F
 import { useToast } from '@/app/components/ToastContext';
 import { canFinalizeDemos, canViewAllDemos } from '@/lib/permissions';
 
-const glassStyle = {
+interface Artist {
+    id: string;
+    name: string;
+    email?: string;
+    userId?: string;
+    isNew?: boolean;
+}
+
+interface FeaturedArtist {
+    name: string;
+    role: string;
+    id: string | null;
+}
+
+interface Split {
+    name: string;
+    percentage: number | string;
+}
+
+interface FinalizeData {
+    releaseName: string;
+    releaseDate: string;
+    artistShare: string;
+    labelShare: string;
+    notes: string;
+    splits: Split[];
+    contractPdf: File | null;
+    artistId: string | null;
+    featuredArtists: FeaturedArtist[];
+}
+
+interface DemoData {
+    id: string;
+    title: string;
+    status: string;
+    artist?: {
+        id: string;
+        stageName?: string;
+        fullName?: string;
+        email?: string;
+        userId?: string;
+        artist?: Artist;
+    };
+}
+
+const glassStyle: React.CSSProperties = {
     background: 'rgba(255, 255, 255, 0.03)',
     backdropFilter: 'blur(40px) saturate(150%)',
     border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: '24px',
-    overflow: 'hidden'
+    overflow: 'hidden',
 };
 
-const inputStyle = {
+const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '15px 20px',
     background: 'rgba(255,255,255,0.02)',
@@ -28,7 +73,7 @@ const inputStyle = {
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
-const btnStyle = {
+const btnStyle: React.CSSProperties = {
     padding: '15px 30px',
     fontSize: '11px',
     fontWeight: '900',
@@ -40,13 +85,13 @@ const btnStyle = {
     textTransform: 'uppercase',
 };
 
-export default function FinalizeReleasePage({ params }) {
+export default function FinalizeReleasePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { data: session } = useSession();
     const router = useRouter();
     const { showToast } = useToast();
     const contractFlowEnabled = false;
-    const [demo, setDemo] = useState(null);
+    const [demo, setDemo] = useState<DemoData | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [step, setStep] = useState(1);
@@ -69,12 +114,12 @@ export default function FinalizeReleasePage({ params }) {
     );
 
     // Artist Selection State
-    const [artists, setArtists] = useState([]);
+    const [artists, setArtists] = useState<Artist[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [showArtistDropdown, setShowArtistDropdown] = useState(false);
-    const [selectedArtist, setSelectedArtist] = useState(null);
+    const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
-    const [finalizeData, setFinalizeData] = useState({
+    const [finalizeData, setFinalizeData] = useState<FinalizeData>({
         releaseName: '',
         releaseDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         artistShare: '0.70',
@@ -83,7 +128,7 @@ export default function FinalizeReleasePage({ params }) {
         splits: [],
         contractPdf: null,
         artistId: null,
-        featuredArtists: [] // Added for multiple artists support
+        featuredArtists: [],
     });
 
     const fetchDemo = useCallback(async () => {
@@ -205,7 +250,7 @@ export default function FinalizeReleasePage({ params }) {
                 const formData = new FormData();
                 formData.append('files', finalizeData.contractPdf);
                 const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (uploadRes.ok) pdfPath = (await uploadRes.json()).filepath;
+                if (uploadRes.ok) pdfPath = (await uploadRes.json()).files?.[0]?.filepath ?? null;
             }
 
             const res = await fetch(`/api/demo/${id}`, {
@@ -230,7 +275,7 @@ export default function FinalizeReleasePage({ params }) {
                 showToast(err.error || "Failed to finalize", "error");
             }
         } catch (e) {
-            showToast(e.message, "error");
+            showToast((e as Error).message, "error");
         } finally {
             setProcessing(false);
         }
@@ -557,7 +602,7 @@ export default function FinalizeReleasePage({ params }) {
                                                 <input
                                                     type="number" step="0.01" min="0" max="1"
                                                     value={finalizeData.artistShare}
-                                                    onChange={(e) => setFinalizeData({ ...finalizeData, artistShare: e.target.value, labelShare: (1 - parseFloat(e.target.value || 0)).toFixed(2) })}
+                                                    onChange={(e) => setFinalizeData({ ...finalizeData, artistShare: e.target.value, labelShare: (1 - parseFloat(e.target.value || '0')).toFixed(2) })}
                                                     style={{ ...inputStyle, paddingRight: '45px' }}
                                                 />
                                                 <span style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: '900', color: 'var(--accent)' }}>%</span>
@@ -569,7 +614,7 @@ export default function FinalizeReleasePage({ params }) {
                                                 <input
                                                     type="number" step="0.01" min="0" max="1"
                                                     value={finalizeData.labelShare}
-                                                    onChange={(e) => setFinalizeData({ ...finalizeData, labelShare: e.target.value, artistShare: (1 - parseFloat(e.target.value || 0)).toFixed(2) })}
+                                                    onChange={(e) => setFinalizeData({ ...finalizeData, labelShare: e.target.value, artistShare: (1 - parseFloat(e.target.value || '0')).toFixed(2) })}
                                                     style={{ ...inputStyle, paddingRight: '45px' }}
                                                 />
                                                 <span style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: '900', color: '#444' }}>%</span>
@@ -657,7 +702,7 @@ export default function FinalizeReleasePage({ params }) {
                                         <div>
                                             <label style={{ fontSize: '9px', color: '#222', fontWeight: '900', letterSpacing: '3px', marginBottom: '12px', display: 'block' }}>SIGNED_CONTRACT_BUNDLE (PDF)</label>
                                             <div style={{ position: 'relative' }}>
-                                                <input type="file" accept=".pdf" onChange={(e) => setFinalizeData({ ...finalizeData, contractPdf: e.target.files[0] })}
+                                                <input type="file" accept=".pdf" onChange={(e) => setFinalizeData({ ...finalizeData, contractPdf: e.target.files?.[0] ?? null })}
                                                     style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer', zIndex: 1 }} />
                                                 <div style={{
                                                     ...inputStyle,

@@ -439,9 +439,9 @@ export default function ArtistEarningsView({
                         borderRadius: 8,
                         fontSize: 12,
                       }}
-                      formatter={(value: number, name: string) =>
-                        [`$${value.toFixed(2)}`, name === "projected" ? "Projected" : "Earnings"] as [string, string]
-                      }
+                      formatter={((value: number | undefined, name: string) =>
+                        [`$${(value ?? 0).toFixed(2)}`, name === "projected" ? "Projected" : "Earnings"] as [string, string]
+                      ) as any}
                     />
                     <Area
                       type="monotone"

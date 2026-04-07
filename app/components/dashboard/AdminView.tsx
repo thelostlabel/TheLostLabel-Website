@@ -7,6 +7,7 @@ import DashboardErrorState from "@/app/components/dashboard/DashboardErrorState"
 import DashboardInlineAlert from "@/app/components/dashboard/DashboardInlineAlert";
 import DashboardLoader from "@/app/components/dashboard/DashboardLoader";
 import DashboardModal from "@/app/components/dashboard/primitives/DashboardModal";
+import { TextField, Label, Input, Button } from "@heroui/react";
 import { useToast } from "@/app/components/ToastContext";
 import { useDashboardAuth } from "@/app/components/dashboard/context/DashboardAuthProvider";
 import { useAdminDashboardData } from "@/app/components/dashboard/hooks/useAdminDashboardData";
@@ -181,11 +182,11 @@ export default function AdminView({ view: propView }: { view?: string }) {
 
   if (!canViewCurrentSection) {
     return (
-      <div className="dashboard-view" style={{ padding: "32px", textAlign: "center" }}>
-        <h2 style={{ fontSize: "20px", fontWeight: 900, letterSpacing: "0.16em", color: "#f87171" }}>
+      <div className="dashboard-view p-8 text-center">
+        <h2 className="text-xl font-black tracking-[0.16em] text-danger">
           ACCESS_DENIED
         </h2>
-        <p style={{ marginTop: "8px", fontSize: "13px", color: "#94a3b8" }}>
+        <p className="mt-2 text-[13px] ds-text-muted">
           You do not have permission to view this section.
         </p>
       </div>
@@ -230,7 +231,7 @@ export default function AdminView({ view: propView }: { view?: string }) {
   };
 
   return (
-    <div className="dashboard-view" style={{ padding: 0 }}>
+    <div className="dashboard-view p-0">
       {viewError && hasViewData ? <DashboardInlineAlert message={viewError} /> : null}
 
       {view === "overview" && <HomeView onNavigate={(nextView: string) => setView(nextView)} />}
@@ -332,22 +333,11 @@ export default function AdminView({ view: propView }: { view?: string }) {
                 syncDialog.artistId,
               );
             }}
-            style={{ display: "grid", gap: "16px" }}
+            className="grid gap-4"
           >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                  color: "rgba(255,255,255,0.68)",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                Spotify Artist URL
-              </label>
-              <input
+            <TextField>
+              <Label>Spotify Artist URL</Label>
+              <Input
                 value={syncDialog.spotifyUrl}
                 onChange={(event) =>
                   setSyncDialog((current) =>
@@ -355,57 +345,26 @@ export default function AdminView({ view: propView }: { view?: string }) {
                   )
                 }
                 placeholder="https://open.spotify.com/artist/..."
-                style={{
-                  width: "100%",
-                  height: "46px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#fff",
-                  padding: "0 14px",
-                  fontSize: "13px",
-                }}
               />
-            </div>
+            </TextField>
 
-            <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
-              <button
+            <div className="flex gap-3 mt-1">
+              <Button
                 type="submit"
-                disabled={syncDialog.submitting}
-                style={{
-                  flex: 1,
-                  height: "42px",
-                  borderRadius: "10px",
-                  border: "none",
-                  background: "#e5e7eb",
-                  color: "#0b0b0b",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  cursor: syncDialog.submitting ? "wait" : "pointer",
-                }}
+                isDisabled={syncDialog.submitting}
+                className="flex-1"
               >
                 {syncDialog.submitting ? "SYNCING..." : "START SYNC"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                onClick={() => setSyncDialog(null)}
-                disabled={syncDialog.submitting}
-                style={{
-                  flex: 1,
-                  height: "42px",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "transparent",
-                  color: "#fff",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  cursor: syncDialog.submitting ? "not-allowed" : "pointer",
-                }}
+                variant="secondary"
+                onPress={() => setSyncDialog(null)}
+                isDisabled={syncDialog.submitting}
+                className="flex-1"
               >
                 CANCEL
-              </button>
+              </Button>
             </div>
           </form>
         </DashboardModal>

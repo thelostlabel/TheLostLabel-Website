@@ -289,9 +289,11 @@ export default function WebhooksView({ webhooks, onRefresh }: WebhooksViewProps)
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div className="flex items-center justify-end gap-1">
+                                            {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                             <Tooltip content="Test">
                                                 <Button size="sm" variant="ghost" isIconOnly onPress={() => testWebhook(webhook.id)}><Zap size={14} /></Button>
                                             </Tooltip>
+                                            {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                             <Tooltip content="Edit">
                                                 <Button size="sm" variant="ghost" isIconOnly onPress={() => {
                                                     setEditingWebhook(webhook);
@@ -304,6 +306,7 @@ export default function WebhooksView({ webhooks, onRefresh }: WebhooksViewProps)
                                                     });
                                                 }}><Edit size={14} /></Button>
                                             </Tooltip>
+                                            {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                             <Tooltip content="Delete">
                                                 <Button size="sm" variant="ghost" isIconOnly className="text-danger hover:bg-danger/10" onPress={() => handleDelete(webhook.id)}><Trash2 size={14} /></Button>
                                             </Tooltip>

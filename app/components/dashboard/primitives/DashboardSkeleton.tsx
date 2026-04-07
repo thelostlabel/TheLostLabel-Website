@@ -8,7 +8,7 @@
 function Bone({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-white/[0.04] ${className}`}
+      className={`animate-pulse rounded-lg bg-default/10 ${className}`}
       style={style}
     />
   );
@@ -16,7 +16,7 @@ function Bone({ className = "", style }: { className?: string; style?: React.CSS
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-border/30 bg-default/5 p-4">
       <Bone className="mb-3 h-3 w-20" />
       <Bone className="mb-2 h-7 w-28" />
       <Bone className="h-2 w-36" />
@@ -26,7 +26,7 @@ function StatCardSkeleton() {
 
 function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
   return (
-    <tr className="border-b border-white/[0.04]">
+    <tr className="border-b border-border/20">
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <Bone className={`h-4 ${i === 0 ? "w-32" : i === cols - 1 ? "w-16" : "w-24"}`} />
@@ -38,7 +38,7 @@ function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
 
 function CardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div className="rounded-2xl border border-border/30 bg-default/5 p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
           <Bone className="h-4 w-32 mb-2" />
@@ -57,7 +57,7 @@ function CardSkeleton() {
 
 function ChartSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div className="rounded-2xl border border-border/30 bg-default/5 p-5">
       <Bone className="h-3 w-32 mb-2" />
       <Bone className="h-3 w-48 mb-4" />
       <div className="flex items-end gap-1 h-[180px]">
@@ -119,8 +119,8 @@ export default function DashboardSkeleton({
           ))}
         </div>
         <ChartSkeleton />
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-0">
-          <div className="px-4 py-3 border-b border-white/[0.04]">
+        <div className="rounded-2xl border border-border/30 bg-default/5 p-0">
+          <div className="px-4 py-3 border-b border-border/20">
             <Bone className="h-4 w-40" />
           </div>
           <table className="w-full">
@@ -137,14 +137,14 @@ export default function DashboardSkeleton({
 
   // table variant
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-0">
-      <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between">
+    <div className="rounded-2xl border border-border/30 bg-default/5 p-0">
+      <div className="px-4 py-3 border-b border-border/20 flex items-center justify-between">
         <Bone className="h-4 w-40" />
         <Bone className="h-8 w-32 rounded-lg" />
       </div>
       <table className="w-full">
         <thead>
-          <tr className="border-b border-white/[0.06]">
+          <tr className="border-b border-border/30">
             {Array.from({ length: cols }).map((_, i) => (
               <th key={i} className="px-4 py-2.5">
                 <Bone className="h-3 w-20" />

@@ -453,9 +453,9 @@ export default function EmailTemplatesView() {
                                     <EmailBuilder
                                         initialBlocks={builderBlocks}
                                         initialSubject={form.subject}
-                                        onChange={(blocks, subject) => {
+                                        onChange={(blocks, subject, html) => {
                                             setBuilderBlocks(blocks);
-                                            setForm((f) => ({ ...f, subject }));
+                                            setForm((f) => ({ ...f, subject, body: html }));
                                         }}
                                         onSave={(blocks, subject, html) => {
                                             setBuilderBlocks(blocks);

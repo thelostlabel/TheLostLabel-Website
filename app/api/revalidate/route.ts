@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     : [PUBLIC_SETTINGS_CACHE_TAG];
 
   for (const tag of tagsToRevalidate) {
-    revalidateTag(tag);
+    revalidateTag(tag, "default");
   }
 
   return NextResponse.json({ ok: true, revalidated: tagsToRevalidate });

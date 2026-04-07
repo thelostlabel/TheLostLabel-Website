@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, DollarSign, TrendingUp, Users, BarChart3 } from 'lu
 import { useToast } from '@/app/components/ToastContext';
 import { Button, Input, Table, Chip, Card, Meter, Label, Separator, SearchField } from '@heroui/react';
 import ExportButtons from '@/app/components/dashboard/primitives/ExportButtons';
+import DashboardEmptyState from '@/app/components/dashboard/primitives/DashboardEmptyState';
 import type { ExportColumn } from '@/app/components/dashboard/lib/export-utils';
 import AdvancedFilter, { type FilterField } from '@/app/components/dashboard/primitives/AdvancedFilter';
 import { applyFilters, countActiveFilters, type FilterFieldConfig } from '@/app/components/dashboard/lib/filter-utils';
@@ -507,9 +508,11 @@ export default function EarningsView({ earnings, contracts, onRefresh }: Earning
                         <Table.Body
                             items={filteredEarnings}
                             renderEmptyState={() => (
-                                <div className="py-16 flex flex-col items-center gap-3">
-                                    <p className="text-muted text-xs font-bold tracking-widest uppercase">NO RECORD FOUND</p>
-                                </div>
+                                <DashboardEmptyState
+                                    icon={<DollarSign size={28} />}
+                                    title="No earnings found"
+                                    description="Earnings records will appear here once data is imported."
+                                />
                             )}
                         >
                             {(e: Earning) => (

@@ -25,7 +25,6 @@ import {
 } from "@/app/components/dashboard/lib/dashboard-request";
 import { usePublicSettings } from "@/app/components/PublicSettingsContext";
 
-// TODO: type — replace with real shape from API
 interface ReleaseRequest {
   id: string;
   status: string;
@@ -61,7 +60,6 @@ interface Demo {
   files?: DemoFile[];
 }
 
-// TODO: type — replace with real shared context shape
 interface SharedContext {
   DASHBOARD_THEME: Record<string, string>;
   glassStyle?: React.CSSProperties;
@@ -77,8 +75,8 @@ interface RequestModal {
 }
 
 interface ReleasesViewProps {
-  stats: any; // TODO: type
-  showToast?: (message: string, type: string) => void;
+  stats: { artistImage?: string; artistName?: string; [key: string]: unknown };
+  showToast: (message: string, type: string) => void;
   onOpenSupport: (id?: string) => void;
   onOpenProfile: () => void;
   shared: SharedContext;
@@ -128,8 +126,7 @@ export function ReleasesView({
 
   const handleRequestSubmit = async (): Promise<void> => {
     if (!requestDetails.trim()) {
-      if (showToast) showToast("Please provide details for your request.", "warning");
-      else alert("Please provide details for your request.");
+      showToast("Please provide details for your request.", "warning");
       return;
     }
 
@@ -146,15 +143,13 @@ export function ReleasesView({
         context: "create release request",
         retry: false,
       });
-      if (showToast) showToast("Request submitted successfully!", "success");
-      else alert("Request submitted successfully!");
+      showToast("Request submitted successfully!", "success");
       setRequestModal(null);
       setRequestDetails("");
       await fetchReleases();
     } catch (e) {
       const message = getDashboardErrorMessage(e, "Request failed");
-      if (showToast) showToast(message, "error");
-      else alert(message);
+      showToast(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -370,7 +365,7 @@ export function ReleasesView({
   );
 }
 
-const REQUEST_CHIP_MAP: Record<string, string> = {
+const REQUEST_CHIP_MAP: Record<string, 'success' | 'accent' | 'warning' | 'danger' | 'default'> = {
   approved: "success",
   completed: "success",
   processing: "accent",
@@ -381,7 +376,7 @@ const REQUEST_CHIP_MAP: Record<string, string> = {
 interface ReleaseCardProps {
   release: Release;
   versions?: Release[];
-  stats: any; // TODO: type
+  stats: { artistImage?: string; artistName?: string; [key: string]: unknown };
   getRequestStatus: (release: Release) => ReleaseRequest | null;
   setRequestModal: (modal: RequestModal | null) => void;
   onNavigate: (id?: string) => void;
@@ -867,27 +862,17 @@ export function DemosView({ demos, onNavigate, onDelete, shared }: DemosViewProp
 
                     <Card.Footer className="flex flex-wrap items-center gap-2 px-0 pt-0 pb-0 sm:flex-nowrap sm:justify-end">
                       {demo.trackLink && (
-                        <Button
-                          as="a"
-                          href={demo.trackLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 sm:flex-none"
-                        >
-                          LINK
-                        </Button>
+                        <a href={demo.trackLink} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+                          <Button variant="outline" size="sm" className="w-full">
+                            LINK
+                          </Button>
+                        </a>
                       )}
-                      <Button
-                        as={Link}
-                        href={`/dashboard/demo/${demo.id}`}
-                        variant="secondary"
-                        size="sm"
-                        className="flex-1 sm:flex-none"
-                      >
-                        VIEW
-                      </Button>
+                      <Link href={`/dashboard/demo/${demo.id}`} className="flex-1 sm:flex-none">
+                        <Button variant="secondary" size="sm" className="w-full">
+                          VIEW
+                        </Button>
+                      </Link>
                       {onDelete && (
                         <Button
                           isIconOnly
@@ -926,7 +911,7 @@ interface SubmitViewProps {
   handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   removeFile: (index: number) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   uploading: boolean;
   uploadProgress: number;
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;

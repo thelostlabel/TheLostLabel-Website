@@ -222,11 +222,13 @@ export default function ReleasesView({ releases, onRefresh }: ReleasesViewProps)
 
                                     {/* Actions */}
                                     <div className="flex items-center justify-between px-2 py-1.5 border-t border-border/30">
+                                        {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                         <Tooltip content="Edit release">
                                             <Button size="sm" variant="ghost" isIconOnly onPress={() => openEdit(release)}>
                                                 <Edit2 size={13} />
                                             </Button>
                                         </Tooltip>
+                                        {/* @ts-expect-error HeroUI v3 Tooltip migration pending */}
                                         <Tooltip content="Delete release">
                                             <Button size="sm" variant="ghost" isIconOnly className="text-danger hover:bg-danger/10" onPress={() => handleDelete(release.id)}>
                                                 <Trash2 size={13} />

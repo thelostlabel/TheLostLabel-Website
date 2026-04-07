@@ -192,7 +192,7 @@ export default function DemosViewProfessional({
         ref={audioRef}
         playsInline
         onEnded={() => setPlayingId(null)}
-        style={{ display: "none" }}
+        className="hidden"
       />
 
       <div className="space-y-6">
@@ -270,8 +270,7 @@ export default function DemosViewProfessional({
                               key={idx}
                               animate={{ scaleY: [0.3, 1, 0.3] }}
                               transition={{ repeat: Infinity, duration: d, delay: idx * 0.15 }}
-                              className="origin-bottom rounded-full bg-white/60"
-                              style={{ height: "100%" }}
+                              className="origin-bottom rounded-full bg-white/60 h-full"
                             />
                           ))}
                         </div>

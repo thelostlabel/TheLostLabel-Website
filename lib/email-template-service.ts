@@ -12,6 +12,7 @@ import {
     generateSupportUpdateEmail,
     generateSupportStatusEmail,
     generatePayoutStatusEmail,
+    generateInvoiceFormEmail,
 } from "@/lib/mail-templates";
 
 // ---------------------------------------------------------------------------
@@ -104,6 +105,12 @@ function getHardcodedTemplates(): Record<string, HardcodedTemplate> {
             subject: "Payout Request Update",
             body: generatePayoutStatusEmail("{{artistName}}", "{{amount}}", "{{status}}", "{{adminNote}}"),
             variables: ["artistName", "amount", "status", "adminNote"],
+        },
+        "invoice-form": {
+            name: "Invoice Form Request",
+            subject: "Invoice {{invoiceNumber}} - Please Complete Your Information",
+            body: generateInvoiceFormEmail("{{recipientName}}", "{{formLink}}"),
+            variables: ["recipientName", "formLink", "invoiceNumber"],
         },
     };
 }

@@ -3,13 +3,21 @@
 import { motion } from 'framer-motion';
 import { BRANDING } from '@/lib/branding';
 
+const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const shimmer = {
     initial: { x: '-100%' },
-    animate: { x: '200%' },
-    transition: { duration: 1.5, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.3 }
+    animate: prefersReducedMotion ? { x: '-100%' } : { x: '200%' },
+    transition: { duration: 2.2, ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.8 }
 };
 
-const SkeletonCard = ({ delay = 0, wide = false }) => (
+interface SkeletonCardProps {
+    delay?: number;
+    wide?: boolean;
+}
+
+const SkeletonCard = ({ delay = 0, wide = false }: SkeletonCardProps) => (
     <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -31,7 +39,7 @@ const SkeletonCard = ({ delay = 0, wide = false }) => (
         <motion.div
             initial={shimmer.initial}
             animate={shimmer.animate}
-            transition={{ ...shimmer.transition, delay: delay * 0.15 }}
+            transition={{ ...shimmer.transition, delay: delay * 0.15 } as any}
             style={{
                 position: 'absolute',
                 inset: 0,
@@ -52,7 +60,11 @@ const SkeletonCard = ({ delay = 0, wide = false }) => (
     </motion.div>
 );
 
-const SkeletonRow = ({ delay = 0 }) => (
+interface SkeletonRowProps {
+    delay?: number;
+}
+
+const SkeletonRow = ({ delay = 0 }: SkeletonRowProps) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -70,7 +82,7 @@ const SkeletonRow = ({ delay = 0 }) => (
         <motion.div
             initial={shimmer.initial}
             animate={shimmer.animate}
-            transition={{ ...shimmer.transition, delay: delay * 0.1 }}
+            transition={{ ...shimmer.transition, delay: delay * 0.1 } as any}
             style={{
                 position: 'absolute',
                 inset: 0,
@@ -84,12 +96,19 @@ const SkeletonRow = ({ delay = 0 }) => (
     </motion.div>
 );
 
+interface DashboardLoaderProps {
+    label?: string;
+    subLabel?: string;
+    fullScreen?: boolean;
+    overlay?: boolean;
+}
+
 export default function DashboardLoader({
     label = 'LOADING',
     subLabel = 'Syncing modules...',
     fullScreen = false,
     overlay = false,
-}) {
+}: DashboardLoaderProps) {
     if (fullScreen) {
         return (
             <motion.div
@@ -240,7 +259,7 @@ export default function DashboardLoader({
     }
 
     // Inline / overlay loader
-    const wrapperStyle = overlay
+    const wrapperStyle: React.CSSProperties = overlay
         ? {
             position: 'absolute',
             inset: 0,

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Table, Chip, Button, SearchField, Tabs, Pagination, Tooltip, Modal } from "@heroui/react";
 import { PlayCircle, Clock, CheckCircle, XCircle, Search, Trash2, Eye, History, StickyNote } from "lucide-react";
 import DemoVersionHistory from "@/app/components/dashboard/primitives/DemoVersionHistory";
+import DashboardEmptyState from "@/app/components/dashboard/primitives/DashboardEmptyState";
 import { dashboardRequestJson } from "@/app/components/dashboard/lib/dashboard-request";
 
 // ---------------------------------------------------------------------------
@@ -215,14 +216,11 @@ export default function SubmissionsView({ demos, onDelete, canDelete = false }: 
             <Table.Body
               items={pagedDemos}
               renderEmptyState={() => (
-                <div className="py-16 flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center border border-dashed border-border">
-                    <Search size={20} className="text-muted" />
-                  </div>
-                  <p className="text-muted text-xs font-bold tracking-widest uppercase">
-                    No {selectedTab} submissions found
-                  </p>
-                </div>
+                <DashboardEmptyState
+                  icon={<Search size={28} />}
+                  title={`No ${selectedTab} submissions found`}
+                  description="Submissions will appear here once artists submit demos."
+                />
               )}
             >
               {(demo: Demo) => {

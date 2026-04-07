@@ -601,22 +601,22 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
 
     /* ── Loading skeleton ── */
     if (loading) return (
-        <div style={{ padding: '0 0 40px 0' }}>
+        <div className="pb-10">
             <div className="flex items-center justify-between mb-5">
                 <div>
                     <div className="w-20 h-2 bg-default/10 rounded mb-2" />
                     <div className="w-40 h-4 bg-default/6 rounded" />
                 </div>
             </div>
-            <div className="home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
                 {[1, 2, 3, 4].map((i) => (
                     <motion.div key={i} initial={{ opacity: 0.3 }} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.08 }}>
                         <Skeleton className="h-24 rounded-[14px]" animationType="shimmer" />
                     </motion.div>
                 ))}
             </div>
-            <div className="home-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 10, alignItems: 'start' }}>
-                <div style={{ display: 'grid', gap: 10 }}>
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-2.5 items-start">
+                <div className="grid gap-2.5">
                     <Skeleton className="h-64 rounded-[14px]" animationType="shimmer" />
                     <Skeleton className="h-64 rounded-[14px]" animationType="shimmer" />
                 </div>
@@ -634,7 +634,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
     const totalPending     = pendingDemos + pendingRequests + pendingContracts;
 
     return (
-        <div style={{ padding: '0 0 48px 0' }}>
+        <div className="pb-12">
 
             {/* ── Compact Header ── */}
             <motion.div
@@ -666,7 +666,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             </motion.div>
 
             {/* ── KPI Row ── */}
-            <div className="home-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mb-4">
                 {[
                     { label: 'Monthly Listeners', value: stats.counts?.listenersTotal || 0, sub: 'All artists combined', icon: <BarChart3 size={14} />, badge: `${Number(stats.counts?.artists || 0)} artists` },
                     { label: 'Gross Revenue', value: stats.counts?.gross || 0, sub: `$${compactNumber(stats.counts?.revenue || 0)} label · $${compactNumber(stats.counts?.payouts || 0)} payouts`, icon: <TrendingUp size={14} /> },
@@ -680,10 +680,10 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
             </div>
 
             {/* ── Main Grid: Charts + Action Queue ── */}
-            <div className="home-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 10, alignItems: 'start' }}>
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-2.5 items-start">
 
                 {/* Left: charts + leaderboards */}
-                <div style={{ display: 'grid', gap: 10 }}>
+                <div className="grid gap-2.5">
 
                     {/* Revenue Flow */}
                     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
@@ -759,7 +759,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
 
                     {/* Leaderboard Row */}
                     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
-                        <div className="home-leaderboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
 
                             {/* Top Artists */}
                             <Card className="p-0">
@@ -847,7 +847,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                     initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.4, delay: 0.2 }}
-                    style={{ position: 'sticky', top: 16 }}
+                    className="sticky top-4"
                 >
                     <Card className="p-0">
                         <Card.Content className="p-[18px] gap-0">
@@ -915,19 +915,6 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                 </motion.div>
             </div>
 
-            <style jsx>{`
-                @media (max-width: 1180px) {
-                    .home-main-grid { grid-template-columns: 1fr !important; }
-                    .home-leaderboard-grid { grid-template-columns: 1fr 1fr !important; }
-                }
-                @media (max-width: 820px) {
-                    .home-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-                    .home-leaderboard-grid { grid-template-columns: 1fr !important; }
-                }
-                @media (max-width: 540px) {
-                    .home-kpi-grid { grid-template-columns: 1fr !important; }
-                }
-            `}</style>
         </div>
     );
 }

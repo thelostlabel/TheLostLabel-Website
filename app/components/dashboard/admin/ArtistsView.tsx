@@ -718,7 +718,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                         (c.splits?.some(s =>
                                             s.artistId === selectedArtist.id ||
                                             (selectedArtist.userId && s.userId === selectedArtist.userId) ||
-                                            (selectedArtist.email && (s as any).email?.toLowerCase() === selectedArtist.email?.toLowerCase()) // TODO: type split.email
+                                            (selectedArtist.email && String(s.email || '').toLowerCase() === selectedArtist.email?.toLowerCase())
                                         ))
                                     );
                                     if (artistContracts.length === 0) {
@@ -729,7 +729,7 @@ export default function ArtistsView({ artists, users, releases = [], contracts =
                                             {artistContracts.map(contract => (
                                                 <div key={contract.id} className="p-3 bg-surface rounded-lg border border-border">
                                                     <div className="text-xs font-black mb-0.5">{contract.title || contract.release?.name || 'Untitled Contract'}</div>
-                                                    <div className="text-[10px] text-muted font-black">REF: {(contract as any).contractDetails?.agreementReferenceNo || 'N/A'}</div>{/* TODO: type contractDetails */}
+                                                    <div className="text-[10px] text-muted font-black">REF: {String((contract.contractDetails as Record<string, unknown>)?.agreementReferenceNo || 'N/A')}</div>
                                                     <div className="flex justify-between mt-2 items-center">
                                                         <Chip size="sm" variant="soft" color="success">
                                                             <Chip.Label>{contract.status?.toUpperCase()}</Chip.Label>

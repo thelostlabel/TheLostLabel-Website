@@ -30,7 +30,13 @@ type ArtistProfileViewProps = {
     onConfirm: () => void | Promise<void>,
     onCancel?: () => void,
   ) => void;
-  discordLink: Record<string, unknown> | null;
+  discordLink: {
+    linked: boolean;
+    discordUserId: string | null;
+    discordUsername: string | null;
+    linkedAt: string | null;
+    loading: boolean;
+  } | null;
   linkStatusCode: string | null;
   onClearLinkStatus: () => void;
   onDiscordLinkChange: () => Promise<unknown>;
@@ -84,20 +90,20 @@ export default function ArtistProfileView({
 
   const oauthStatus = useMemo(() => {
     if (!linkStatusCode) return null;
-    const statusMap: Record<string, { type: string; text: string }> = {
+    const statusMap: Record<string, { type: 'success' | 'warning' | 'danger'; text: string }> = {
       linked: { type: "success", text: "Discord account linked successfully." },
       "already-linked": { type: "warning", text: "This Discord account is already linked to another user." },
-      "invalid-state": { type: "error", text: "Discord link session expired. Please try linking again." },
-      "expired-state": { type: "error", text: "Discord link session expired. Please try linking again." },
-      "missing-state": { type: "error", text: "Invalid Discord link state." },
-      "session-required": { type: "error", text: "Please sign in again and retry linking." },
-      "oauth-missing": { type: "error", text: "Discord OAuth callback is missing required values." },
-      "oauth-not-configured": { type: "error", text: "Discord OAuth is not configured yet." },
-      "bridge-disabled": { type: "error", text: "Discord bridge is currently disabled." },
-      "token-exchange-failed": { type: "error", text: "Discord token exchange failed." },
-      "identify-failed": { type: "error", text: "Discord identity fetch failed." },
-      "identify-empty": { type: "error", text: "Discord identity payload is empty." },
-      "link-failed": { type: "error", text: "Failed to link the Discord account." },
+      "invalid-state": { type: "danger", text: "Discord link session expired. Please try linking again." },
+      "expired-state": { type: "danger", text: "Discord link session expired. Please try linking again." },
+      "missing-state": { type: "danger", text: "Invalid Discord link state." },
+      "session-required": { type: "danger", text: "Please sign in again and retry linking." },
+      "oauth-missing": { type: "danger", text: "Discord OAuth callback is missing required values." },
+      "oauth-not-configured": { type: "danger", text: "Discord OAuth is not configured yet." },
+      "bridge-disabled": { type: "danger", text: "Discord bridge is currently disabled." },
+      "token-exchange-failed": { type: "danger", text: "Discord token exchange failed." },
+      "identify-failed": { type: "danger", text: "Discord identity fetch failed." },
+      "identify-empty": { type: "danger", text: "Discord identity payload is empty." },
+      "link-failed": { type: "danger", text: "Failed to link the Discord account." },
     };
     return statusMap[linkStatusCode] || { type: "warning", text: `Discord status: ${linkStatusCode}` };
   }, [linkStatusCode]);

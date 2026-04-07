@@ -276,7 +276,7 @@ export default function DiscordBridgeView({ data, onRefresh }: DiscordBridgeView
             </Card>
 
             {/* Stats */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard title="LINKED ACCOUNTS" value={snapshot?.counters?.linkedAccounts || 0} />
                 <StatCard title="PENDING EVENTS" value={snapshot?.counters?.pendingOutbox || 0} sub="Outbox queue" />
                 <StatCard title="ROLE SYNC QUEUE" value={snapshot?.counters?.pendingRoleSync || 0} />
@@ -284,7 +284,7 @@ export default function DiscordBridgeView({ data, onRefresh }: DiscordBridgeView
             </div>
 
             {/* Config Panels */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))" }}>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
 
                 {/* Core */}
                 <SectionCard title="Core">
@@ -368,9 +368,9 @@ export default function DiscordBridgeView({ data, onRefresh }: DiscordBridgeView
                 </SectionCard>
 
                 {/* Bot AI Runtime — full width */}
-                <div style={{ gridColumn: "1 / -1" }}>
+                <div className="col-span-full">
                     <SectionCard title="Bot AI Runtime">
-                        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                             <Toggle label="Agent Mode" isSelected={config.botRuntime?.agentMode} onChange={(v) => setBot("agentMode", v)} />
                             <Toggle label="Vision AI" isSelected={config.botRuntime?.visionAi} onChange={(v) => setBot("visionAi", v)} />
                             <Toggle label="Smart Helper" isSelected={config.botRuntime?.smartHelper} onChange={(v) => setBot("smartHelper", v)} />

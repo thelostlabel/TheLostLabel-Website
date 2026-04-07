@@ -268,8 +268,7 @@ export default function AnnouncementsView({ announcements = [], onRefresh }: Ann
                                 <Card
                                     key={item.id}
                                     variant="default"
-                                    className={`border-default/10 transition-opacity ${!item.active ? 'opacity-50' : ''}`}
-                                    style={{ borderLeft: `2px solid ${item.active ? 'var(--color-accent)' : 'transparent'}` }}
+                                    className={`border-default/10 transition-opacity ${!item.active ? 'opacity-50' : 'border-l-2 border-l-[var(--color-accent)]'}`}
                                 >
                                     <Card.Content className="flex items-center justify-between gap-4 p-5">
                                         <div className="flex items-center gap-4">

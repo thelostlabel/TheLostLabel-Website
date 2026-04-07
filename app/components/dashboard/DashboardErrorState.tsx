@@ -1,5 +1,7 @@
 "use client";
 
+import { Card, Button } from "@heroui/react";
+
 type DashboardErrorStateProps = {
   title: string;
   message: string;
@@ -16,43 +18,29 @@ export default function DashboardErrorState({
   compact = false,
 }: DashboardErrorStateProps) {
   return (
-    <div
-      className="dashboard-error-state grid place-items-center"
-      style={{
-        minHeight: compact ? "auto" : "50vh",
-        padding: compact ? "20px" : "40px",
-      }}
-    >
-      <div
-        className="w-full rounded-[18px] border border-white/[0.08] bg-white/[0.03]"
-        style={{
-          maxWidth: compact ? "100%" : "520px",
-          padding: compact ? "20px" : "28px",
-          textAlign: compact ? "left" : "center",
-        }}
-      >
-        <p className="m-0 text-[11px] font-[900] tracking-[0.16em] text-white/[0.55] uppercase">
-          Dashboard Error
-        </p>
-        <h2
-          className="mt-2.5 font-[900] text-white"
-          style={{ fontSize: compact ? "18px" : "24px" }}
-        >
-          {title}
-        </h2>
-        <p className="mt-2.5 text-[13px] leading-relaxed text-white/[0.68]">
-          {message}
-        </p>
-        {onAction ? (
-          <button
-            type="button"
-            onClick={() => { void onAction(); }}
-            className="dash-btn mt-[18px] min-w-[140px] h-[42px]"
-          >
-            {actionLabel}
-          </button>
-        ) : null}
-      </div>
+    <div className={`grid place-items-center ${compact ? 'p-5' : 'min-h-[50vh] p-10'}`}>
+      <Card className={`w-full ${compact ? '' : 'max-w-[520px] text-center'}`}>
+        <Card.Content className={compact ? 'p-5' : 'p-7'}>
+          <p className="m-0 text-[11px] font-black tracking-[0.16em] ds-text-muted uppercase">
+            Dashboard Error
+          </p>
+          <h2 className={`mt-2.5 font-black ${compact ? 'text-lg' : 'text-2xl'}`}>
+            {title}
+          </h2>
+          <p className="mt-2.5 text-[13px] leading-relaxed ds-text-muted">
+            {message}
+          </p>
+          {onAction ? (
+            <Button
+              variant="primary"
+              onPress={() => { void onAction(); }}
+              className="mt-[18px] min-w-[140px]"
+            >
+              {actionLabel}
+            </Button>
+          ) : null}
+        </Card.Content>
+      </Card>
     </div>
   );
 }

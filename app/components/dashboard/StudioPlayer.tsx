@@ -1,34 +1,39 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, SyntheticEvent } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat } from 'lucide-react';
 import styles from './StudioPlayer.module.css';
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
 }
 
-function getAppliedVolume(sliderValue) {
+function getAppliedVolume(sliderValue: number): number {
     const safeValue = clamp(sliderValue, 0, 1);
     return safeValue ** 2;
 }
 
-function formatTime(seconds) {
+function formatTime(seconds: number): string {
     if (!seconds || isNaN(seconds) || !Number.isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export default function StudioPlayer(props) {
+interface StudioPlayerProps {
+    src?: string;
+    filename?: string;
+}
+
+export default function StudioPlayer(props: StudioPlayerProps) {
     // Key ensures component resets when src changes
     return <StudioPlayerInner key={props.src || 'empty-track'} {...props} />;
 }
 
-function StudioPlayerInner({ src, filename }) {
-    const audioRef = useRef(null);
-    const progressRef = useRef(null);
-    const volumeSliderRef = useRef(null);
-    const animationRef = useRef(null);
+function StudioPlayerInner({ src, filename }: StudioPlayerProps) {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const progressRef = useRef<HTMLDivElement>(null);
+    const volumeSliderRef = useRef<HTMLInputElement>(null);
+    const animationRef = useRef<number | null>(null);
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -38,7 +43,7 @@ function StudioPlayerInner({ src, filename }) {
     const [isDragging, setIsDragging] = useState(false);
     const [isLoop, setIsLoop] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     // Calculate progress percentage for CSS
     const progressPercent = useMemo(() => {
@@ -109,26 +114,24 @@ function StudioPlayerInner({ src, filename }) {
     const handleWaiting = () => setIsBuffering(true);
     const handleCanPlay = () => setIsBuffering(false);
 
-    const handleError = (e) => {
+    const handleError = () => {
         const audio = audioRef.current;
         let errorMessage = "Unable to load audio file.";
-        
+
         if (audio && audio.error) {
             console.error("Detailed audio error:", {
                 code: audio.error.code,
                 message: audio.error.message
             });
-            
+
             switch (audio.error.code) {
                 case 1: errorMessage = "Playback aborted."; break;
                 case 2: errorMessage = "Network error. Please check your connection."; break;
                 case 3: errorMessage = "Audio decoding failed."; break;
                 case 4: errorMessage = "Audio format not supported or file not found."; break;
             }
-        } else {
-            console.error("Audio error event:", e);
         }
-        
+
         setError(errorMessage);
         setIsPlaying(false);
         setIsBuffering(false);
@@ -155,7 +158,7 @@ function StudioPlayerInner({ src, filename }) {
         } catch (err) {
             console.error("Play/pause error:", err);
             // Some browsers block play() without user interaction
-            if (err.name === 'NotAllowedError') {
+            if ((err as DOMException).name === 'NotAllowedError') {
                 setError("Playback blocked. Please click play again.");
             } else {
                 setError("Unable to play audio. Please try again.");
@@ -183,7 +186,7 @@ function StudioPlayerInner({ src, filename }) {
 
     const toggleLoop = () => setIsLoop(prev => !prev);
 
-    const handleVolumeChange = (e) => {
+    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newVol = parseFloat(e.target.value);
         setVolume(newVol);
         if (newVol === 0) {
@@ -194,7 +197,7 @@ function StudioPlayerInner({ src, filename }) {
     };
 
     // Progress bar seeking
-    const calculateSeekPosition = (clientX) => {
+    const calculateSeekPosition = (clientX: number): number => {
         const bar = progressRef.current;
         if (!bar || duration <= 0) return 0;
         const rect = bar.getBoundingClientRect();
@@ -202,17 +205,17 @@ function StudioPlayerInner({ src, filename }) {
         return (x / rect.width) * duration;
     };
 
-    const handleProgressMouseDown = (e) => {
+    const handleProgressMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         const seekTime = calculateSeekPosition(e.clientX);
         setCurrentTime(seekTime);
 
-        const handleMouseMove = (ev) => {
+        const handleMouseMove = (ev: MouseEvent) => {
             const t = calculateSeekPosition(ev.clientX);
             setCurrentTime(t);
         };
 
-        const handleMouseUp = (ev) => {
+        const handleMouseUp = (ev: MouseEvent) => {
             const finalTime = calculateSeekPosition(ev.clientX);
             if (audioRef.current) {
                 audioRef.current.currentTime = finalTime;
@@ -228,18 +231,18 @@ function StudioPlayerInner({ src, filename }) {
     };
 
     // Touch support
-    const handleProgressTouchStart = (e) => {
+    const handleProgressTouchStart = (e: React.TouchEvent) => {
         setIsDragging(true);
         const touch = e.touches[0];
         const seekTime = calculateSeekPosition(touch.clientX);
         setCurrentTime(seekTime);
 
-        const handleTouchMove = (ev) => {
+        const handleTouchMove = (ev: TouchEvent) => {
             const t = calculateSeekPosition(ev.touches[0].clientX);
             setCurrentTime(t);
         };
 
-        const handleTouchEnd = (ev) => {
+        const handleTouchEnd = (ev: TouchEvent) => {
             const t = calculateSeekPosition(ev.changedTouches[0].clientX);
             if (audioRef.current) {
                 audioRef.current.currentTime = t;

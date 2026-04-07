@@ -270,9 +270,6 @@ export default function ContractsView({
 
         if (matchedRelease) guessedTitle = matchedRelease.name;
 
-        console.log(
-          `[PDF_PARSE] Title: "${guessedTitle}", DocID: "${agreementRef}", Release: ${matchedRelease?.name || 'None'}, Artists: [${artistInfoBlocks.map((a: any) => a.stageName).join(', ')}], Partner: ${partnerLabel?.name || 'None'}, Splits: ${schedule1?.sharesRaw || 'N/A'}`
-        );
 
         // STEP 6: RESOLVE / CREATE ARTISTS
         const resolutionResults: any[] = [];

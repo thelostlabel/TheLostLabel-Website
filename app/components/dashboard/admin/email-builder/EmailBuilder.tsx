@@ -39,9 +39,8 @@ interface EmailBuilderProps {
   saving?: boolean;
 }
 
-let blockIdCounter = 0;
 function genId() {
-  return `block_${Date.now()}_${++blockIdCounter}`;
+  return `block_${crypto.randomUUID()}`;
 }
 
 const BLOCK_ICON_MAP: Record<BlockType, React.ReactNode> = {

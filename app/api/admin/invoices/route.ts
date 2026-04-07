@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma";
 import { createInvoiceSchema, updateInvoiceSchema, generateInvoiceNumber } from "@/lib/invoice-schemas";
 import { generateOpaqueToken, hashOpaqueToken } from "@/lib/security";
 import { sendMail } from "@/lib/mail";
-import { generateInvoiceFormEmail } from "@/lib/mail-templates";
+import { renderEmailTemplate } from "@/lib/email-template-service";
 import { buildOffsetPaginationMeta, parseOffsetPagination } from "@/lib/api-pagination";
 
 const SITE_URL = process.env.NEXTAUTH_URL || "https://thelostlabel.com";
@@ -177,11 +177,18 @@ export async function POST(req: Request) {
     if (sendEmail) {
       const formLink = `${SITE_URL}/invoice/${token}`;
       try {
-        await sendMail({
-          to: recipientEmail,
-          subject: `Invoice ${invoiceNumber} - Please Complete Your Information`,
-          html: generateInvoiceFormEmail(recipientName || recipientEmail, formLink),
+        const rendered = await renderEmailTemplate("invoice-form", {
+          recipientName: recipientName || recipientEmail,
+          formLink,
+          invoiceNumber,
         });
+        if (rendered) {
+          await sendMail({
+            to: recipientEmail,
+            subject: rendered.subject,
+            html: rendered.body,
+          });
+        }
       } catch (mailError) {
         console.error("[admin/invoices POST] Email send failed:", mailError);
       }

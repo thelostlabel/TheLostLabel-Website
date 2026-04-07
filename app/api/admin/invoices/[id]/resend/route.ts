@@ -6,7 +6,7 @@ import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/
 import prisma from "@/lib/prisma";
 import { generateOpaqueToken, hashOpaqueToken } from "@/lib/security";
 import { sendMail } from "@/lib/mail";
-import { generateInvoiceFormEmail } from "@/lib/mail-templates";
+import { renderEmailTemplate } from "@/lib/email-template-service";
 
 const SITE_URL = process.env.NEXTAUTH_URL || "https://thelostlabel.com";
 
@@ -49,11 +49,18 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     });
 
     const formLink = `${SITE_URL}/invoice/${token}`;
-    await sendMail({
-      to: invoice.recipientEmail,
-      subject: `${invoice.invoiceNumber ? `Invoice ${invoice.invoiceNumber}` : "Invoice Form"} - Please Complete Your Information`,
-      html: generateInvoiceFormEmail(invoice.recipientName || invoice.recipientEmail, formLink),
+    const rendered = await renderEmailTemplate("invoice-form", {
+      recipientName: invoice.recipientName || invoice.recipientEmail,
+      formLink,
+      invoiceNumber: invoice.invoiceNumber || "Invoice Form",
     });
+    if (rendered) {
+      await sendMail({
+        to: invoice.recipientEmail,
+        subject: rendered.subject,
+        html: rendered.body,
+      });
+    }
 
     // Audit log
     try {

@@ -54,7 +54,7 @@ export default function DiscordAccountPanel({
 
             {/* OAuth status alert */}
             {oauthStatus && (
-                <Alert color={alertColor} variant="soft">
+                <Alert color={alertColor}>
                     <Alert.Description>{oauthStatus.text}</Alert.Description>
                 </Alert>
             )}

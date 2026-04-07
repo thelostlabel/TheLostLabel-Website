@@ -37,7 +37,7 @@ const listVariants = {
 
 const itemVariants = {
   closed: { y: 50, opacity: 0, filter: "blur(8px)" },
-  open:   { y: 0,  opacity: 1, filter: "blur(0px)", transition: { ease: [0.33, 1, 0.68, 1], duration: 0.65 } },
+  open:   { y: 0,  opacity: 1, filter: "blur(0px)", transition: { ease: [0.33, 1, 0.68, 1] as [number, number, number, number], duration: 0.65 } },
 };
 
 export function SiteNavbar() {
