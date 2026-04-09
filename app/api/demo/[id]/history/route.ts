@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { canViewAllDemos } from "@/lib/permissions";
-import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/auth-utils";
+import { getAuthoritativeDashboardAccessUser, getDashboardAccessError } from "@/lib/dashboard-access";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
     const session = await getServerSession(authOptions);
