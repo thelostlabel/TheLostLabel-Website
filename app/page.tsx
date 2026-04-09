@@ -115,8 +115,13 @@ export default async function HomePage() {
             <SiteNavbar />
             <CinematicHero
                 companyName={publicSettings?.brandingFullName || "The Lost Company"}
-                tagline1="Submit your demo,"
-                tagline2="start your journey."
+                tagline1="From a demo"
+                tagline2="to a journey"
+                subtitleLines={[
+                  "Upload your track! All genres are welcome, be it Phonk, Ambient, Trap or whatever you make",
+                  "Every submission gets listened to. We usually reach out within 2 weeks",
+                  "We work on Artist-first terms. The rights are yours, the distribution is ours",
+                ]}
             />
             <LostReleasesSection
                 releases={featuredReleases}
