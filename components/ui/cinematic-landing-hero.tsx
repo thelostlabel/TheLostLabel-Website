@@ -51,15 +51,13 @@ export interface CinematicHeroProps extends React.HTMLAttributes<HTMLDivElement>
   companyName?: string;
   tagline1?: string;
   tagline2?: string;
-  subtitleLines?: string[];
 }
 
 export function CinematicHero({
   brandName = "LOST.",
   companyName = "The Lost Company",
-  tagline1 = "From a demo",
-  tagline2 = "to a journey",
-  subtitleLines,
+  tagline1 = "Submit your demo,",
+  tagline2 = "start your journey.",
   className,
   ...props
 }: CinematicHeroProps) {
@@ -172,13 +170,7 @@ export function CinematicHero({
           <h1 className="text-days gsap-reveal text-silver-matte text-3xl md:text-5xl lg:text-[3.5rem] font-extrabold tracking-tighter">
             {tagline2}
           </h1>
-          {subtitleLines && subtitleLines.length > 0 && (
-            <div className="mt-4 md:mt-6 flex flex-col items-center gap-1.5 text-foreground/60 text-sm md:text-base max-w-lg">
-              {subtitleLines.map((line, i) => (
-                <span key={i}>{line}</span>
-              ))}
-            </div>
-          )}
+
         </div>
       </div>
     </div>
