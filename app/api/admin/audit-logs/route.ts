@@ -56,6 +56,17 @@ export async function GET(req: Request) {
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
+        select: {
+          id: true,
+          userId: true,
+          action: true,
+          entity: true,
+          entityId: true,
+          details: true,
+          ipAddress: true,
+          userAgent: true,
+          createdAt: true,
+        },
       }),
       prisma.auditLog.count({ where }),
     ]);

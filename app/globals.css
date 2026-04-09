@@ -2,6 +2,22 @@
 @import "./themes/lost.css";
 @import "./themes/elysian.css";
 
+@font-face {
+  font-family: 'Bofly';
+  src: url('/fonts/Bofly.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Kalste';
+  src: url('/fonts/Kalste.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 
 :root,
 [data-theme="dark"] {

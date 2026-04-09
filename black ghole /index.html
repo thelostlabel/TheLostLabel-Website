@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Singularity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./public/styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero">
+        <header class="topbar">
+          <span class="brand">SINGULARITY</span>
+          <a class="nav-link" href="#signal">Field Notes</a>
+        </header>
+
+        <div class="hero-copy">
+          <p class="eyebrow">Event Horizon Interface</p>
+          <h1>
+            Işığı büken,
+            <span>maddeyi içine çeken</span>
+            bir kara delik sahnesi.
+          </h1>
+          <p class="hero-text">
+            Parçacıklar merkeze sürükleniyor, yörünge halkaları kırılıyor ve
+            tüm enerji tek bir çekim alanında toplanıyor.
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="#signal">Deneyimi İncele</a>
+            <a class="button button-secondary" href="#core">Merkeze İlerle</a>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="space-noise"></div>
+          <div class="nebula nebula-left"></div>
+          <div class="nebula nebula-right"></div>
+          <div class="gravitational-lens"></div>
+          <div class="accretion accretion-back"></div>
+          <div class="accretion accretion-front"></div>
+          <div class="photon-ring photon-ring-a"></div>
+          <div class="photon-ring photon-ring-b"></div>
+          <div class="singularity-core"></div>
+          <div class="inner-glow"></div>
+          <div class="jet jet-top"></div>
+          <div class="jet jet-bottom"></div>
+          <div class="particle-field" id="particle-field"></div>
+        </div>
+      </section>
+
+      <section class="signal" id="signal">
+        <div class="signal-heading">
+          <p class="eyebrow">Gravitational Flow</p>
+          <h2>Hero sahnesi, tek görsel fikir etrafında kuruldu.</h2>
+        </div>
+
+        <div class="signal-grid">
+          <article>
+            <span>01</span>
+            <h3>Merkeze akış</h3>
+            <p>
+              Parçacıklar sadece dönmüyor; açısal kayma ile içeri doğru kırılıp
+              çekiliyormuş gibi davranıyor.
+            </p>
+          </article>
+
+          <article>
+            <span>02</span>
+            <h3>Sıcak disk</h3>
+            <p>
+              Accretion disk turuncu-beyaz katmanlarla inşa edildi, böylece
+              referanstaki aşırı parlak enerji korunuyor.
+            </p>
+          </article>
+
+          <article id="core">
+            <span>03</span>
+            <h3>Derin kontrast</h3>
+            <p>
+              Siyah çekirdek, çevresindeki lens ve glow katmanlarıyla ayrılıyor;
+              bu da sahneyi düz bir gradient olmaktan çıkarıyor.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="./public/script.js"></script>
+  </body>
+</html>

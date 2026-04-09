@@ -28,7 +28,6 @@ import { useArtistSubmission } from "@/app/components/dashboard/artist/hooks/use
 import { useArtistWithdrawal } from "@/app/components/dashboard/artist/hooks/useArtistWithdrawal";
 import {
   artistSharedViewProps,
-  DASHBOARD_THEME,
 } from "@/app/components/dashboard/artist/lib/shared";
 import { dashboardRequestJson } from "@/app/components/dashboard/lib/dashboard-request";
 import DashboardSectionHeader from "@/app/components/dashboard/primitives/DashboardSectionHeader";
@@ -165,38 +164,27 @@ export default function ArtistView({ view: propView }: { view?: string }) {
 
   return (
     <div
-      className="artist-dashboard-view dashboard-view px-3 py-4 sm:px-5 sm:py-6 lg:px-7.5 lg:py-7.5"
-      style={{
-        flex: 1,
-        overflowY: "auto",
-        background: DASHBOARD_THEME.bg,
-      }}
+      className="artist-dashboard-view dashboard-view flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-6 lg:px-7.5 lg:py-7.5"
     >
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-4 overflow-hidden rounded-2xl border border-default/10 px-4 py-4 sm:mb-4.5 sm:px-5 sm:py-5"
-        style={{
-          background: "linear-gradient(180deg, var(--ds-glass-bg-hover), var(--ds-glass-bg))",
-          boxShadow: "0 14px 32px var(--ds-glass-shadow)",
-          position: "relative",
-          display: view === "overview" ? "none" : undefined,
-        }}
-      >
-        <div
+      {view !== "overview" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="relative mb-4 overflow-hidden rounded-2xl border border-default/10 px-4 py-4 shadow-[0_14px_32px_var(--ds-glass-shadow)] sm:mb-4.5 sm:px-5 sm:py-5"
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "1px",
-            background:
-              "linear-gradient(90deg, transparent, var(--ds-glass-border), transparent)",
+            background: "linear-gradient(180deg, var(--ds-glass-bg-hover), var(--ds-glass-bg))",
           }}
-        />
-        <DashboardSectionHeader eyebrow="ARTIST DASHBOARD" title={viewTitle || "Dashboard"} />
-      </motion.div>
+        >
+          <div
+            className="absolute inset-x-0 top-0 h-px"
+            style={{
+              background: "linear-gradient(90deg, transparent, var(--ds-glass-border), transparent)",
+            }}
+          />
+          <DashboardSectionHeader eyebrow="ARTIST DASHBOARD" title={viewTitle || "Dashboard"} />
+        </motion.div>
+      )}
 
       {currentViewError && currentViewHasData ? (
         <DashboardInlineAlert message={currentViewError} />

@@ -13,8 +13,14 @@ import {
     PieChart, Pie, Cell, BarChart,
 } from 'recharts';
 import NextImage from 'next/image';
+import { BarChart3 } from 'lucide-react';
 import { Button, Card, Separator, Skeleton, Table } from '@heroui/react';
-import { useTheme } from '@/app/components/ThemeProvider';
+import DashboardEmptyState from '@/app/components/dashboard/primitives/DashboardEmptyState';
+import {
+    type ChartPalette, compactNumber, formatMonth, formatMonthShort,
+    getPlatformColor, PLATFORM_COLORS,
+} from '@/app/components/dashboard/lib/chart-utils';
+import { useChartPalette, useChartGradientId, ChartTooltip } from '@/app/components/dashboard/lib/ChartPrimitives';
 
 /* ── Types ── */
 
@@ -101,112 +107,7 @@ interface AnalyticsData {
 
 /* ── Helpers ── */
 
-const compactNumber = (val: number): string => {
-    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
-    if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
-    return val.toLocaleString();
-};
-
-const formatMonth = (label: string): string => {
-    if (!label) return '';
-    const [year, month] = label.split('-');
-    if (!year || !month) return label;
-    const d = new Date(Number(year), Number(month) - 1, 1);
-    return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-};
-
-const formatMonthShort = (label: string): string => {
-    if (!label) return '';
-    const [year, month] = label.split('-');
-    if (!year || !month) return label;
-    const d = new Date(Number(year), Number(month) - 1, 1);
-    return d.toLocaleDateString('en-US', { month: 'short' });
-};
-
 const FALLBACK_IMAGE = '/default-album.jpg';
-
-const PLATFORM_COLORS: Record<string, string> = {
-    SPOTIFY: '#1DB954',
-    APPLE: '#FA243C',
-    YOUTUBE: '#FF0000',
-    AMAZON: '#FF9900',
-    TIDAL: '#00A0FF',
-    DEEZER: '#A238FF',
-    TIKTOK: '#FE2C55',
-};
-
-const getPlatformColor = (source: string): string => {
-    const upper = source.toUpperCase();
-    for (const [key, color] of Object.entries(PLATFORM_COLORS)) {
-        if (upper.includes(key)) return color;
-    }
-    return '#666';
-};
-
-/* ── Chart palette ── */
-interface ChartPalette {
-    accent: string;
-    accentSoft: string;
-    accentFill1: string;
-    accentFill2: string;
-    stroke: string;
-    strokeSoft: string;
-    grid: string;
-    tick: string;
-    tooltipBg: string;
-    tooltipBorder: string;
-    tooltipLabel: string;
-    tooltipValue: string;
-    dotStroke: string;
-    bar1: string;
-    bar2: string;
-    forecast: string;
-    success: string;
-    danger: string;
-}
-
-const PALETTES: Record<'dark' | 'light', ChartPalette> = {
-    dark: {
-        accent: '#a78bfa',
-        accentSoft: 'rgba(167,139,250,0.35)',
-        accentFill1: 'rgba(167,139,250,0.15)',
-        accentFill2: 'rgba(167,139,250,0)',
-        stroke: 'rgba(255,255,255,0.8)',
-        strokeSoft: 'rgba(255,255,255,0.25)',
-        grid: 'rgba(255,255,255,0.04)',
-        tick: '#555',
-        tooltipBg: 'rgba(8,8,12,0.95)',
-        tooltipBorder: 'rgba(255,255,255,0.08)',
-        tooltipLabel: '#777',
-        tooltipValue: '#fff',
-        dotStroke: '#0a0a0a',
-        bar1: 'rgba(167,139,250,0.5)',
-        bar2: 'rgba(255,255,255,0.12)',
-        forecast: 'rgba(167,139,250,0.4)',
-        success: 'rgba(34,197,94,0.65)',
-        danger: 'rgba(239,68,68,0.65)',
-    },
-    light: {
-        accent: '#7c3aed',
-        accentSoft: 'rgba(124,58,237,0.3)',
-        accentFill1: 'rgba(124,58,237,0.1)',
-        accentFill2: 'rgba(124,58,237,0)',
-        stroke: 'rgba(0,0,0,0.65)',
-        strokeSoft: 'rgba(0,0,0,0.2)',
-        grid: 'rgba(0,0,0,0.05)',
-        tick: '#999',
-        tooltipBg: 'rgba(255,255,255,0.97)',
-        tooltipBorder: 'rgba(0,0,0,0.08)',
-        tooltipLabel: '#999',
-        tooltipValue: '#0a0a0a',
-        dotStroke: '#fff',
-        bar1: 'rgba(124,58,237,0.5)',
-        bar2: 'rgba(0,0,0,0.1)',
-        forecast: 'rgba(124,58,237,0.35)',
-        success: 'rgba(22,163,74,0.7)',
-        danger: 'rgba(220,38,38,0.7)',
-    },
-};
 
 /* ── Shared components ── */
 
@@ -221,30 +122,6 @@ const GrowthBadge = ({ value }: { value: number | null }) => {
     );
 };
 
-interface ChartTooltipProps {
-    active?: boolean;
-    payload?: Array<{ value: number; name: string; color?: string }>;
-    label?: string;
-    c: ChartPalette;
-    formatValue?: (v: number, name: string) => string;
-}
-
-const ChartTooltipContent = ({ active, payload, label, c, formatValue }: ChartTooltipProps) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div className="rounded-xl px-3.5 py-2.5 shadow-xl" style={{ background: c.tooltipBg, border: `1px solid ${c.tooltipBorder}`, backdropFilter: 'blur(16px)' }}>
-            <p className="text-[10px] font-bold mb-1.5 tracking-wide" style={{ color: c.tooltipLabel }}>
-                {formatMonth(label ?? '')}
-            </p>
-            {payload.map((entry, i) => (
-                <p key={i} className="text-xs font-bold my-0.5" style={{ color: c.tooltipValue }}>
-                    {formatValue ? formatValue(entry.value, entry.name) : `$${Number(entry.value || 0).toLocaleString()}`}
-                    <span className="ml-1.5 text-[10px] font-semibold" style={{ color: c.tooltipLabel }}>{entry.name}</span>
-                </p>
-            ))}
-        </div>
-    );
-};
 
 const CHART_HEIGHT = 240;
 const CHART_MARGIN = { top: 8, right: 8, left: 0, bottom: 4 };
@@ -255,8 +132,10 @@ export default function AnalyticsView() {
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { theme } = useTheme();
-    const c = PALETTES[theme as 'dark' | 'light'] || PALETTES.dark;
+    const c = useChartPalette();
+    const revGradId = useChartGradientId('rev');
+    const actualGradId = useChartGradientId('actual');
+    const listenerGradId = useChartGradientId('listener');
 
     const fetchData = async () => {
         setLoading(true);
@@ -311,6 +190,30 @@ export default function AnalyticsView() {
     );
 
     const { summary } = data;
+    const hasRevenue = data.revenueTrend.length > 0;
+    const hasListeners = data.listenerTrend.length > 0;
+    const hasStreams = data.streamTrend.length > 0;
+    const hasArtists = data.perArtistRevenue.length > 0;
+    const hasAnyData = hasRevenue || hasListeners || hasStreams || hasArtists;
+
+    if (!hasAnyData) return (
+        <div className="flex flex-col gap-4 pb-8">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-sm font-black tracking-widest uppercase text-foreground">Analytics</h2>
+                    <p className="mt-1 text-[11px] text-muted">Revenue, growth & forecasting</p>
+                </div>
+                <Button variant="secondary" size="sm" onPress={fetchData}>
+                    <RefreshCw size={13} /> REFRESH
+                </Button>
+            </div>
+            <DashboardEmptyState
+                icon={<BarChart3 size={36} className="mx-auto" />}
+                title="No Analytics Data Yet"
+                description="Analytics will populate once earnings data is imported. Upload your first distributor report in the Earnings section to see revenue trends, platform breakdowns, listener stats, and forecasting."
+            />
+        </div>
+    );
 
     const kpis = [
         { label: 'Total Gross', value: `$${compactNumber(summary.totalGross)}`, sub: `$${compactNumber(summary.avgMonthlyGross)} avg/mo`, icon: <DollarSign size={15} />, growth: summary.monthOverMonthGrowth },
@@ -358,6 +261,7 @@ export default function AnalyticsView() {
             </div>
 
             {/* Row 1: Revenue vs Payouts + Forecast */}
+            {hasRevenue && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Card>
                     <Card.Header className="flex-row items-center justify-between">
@@ -368,7 +272,7 @@ export default function AnalyticsView() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={data.revenueVsPayout.slice(-8)} margin={CHART_MARGIN}>
                                     <defs>
-                                        <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id={revGradId} x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="0%" stopColor={c.accentFill1} />
                                             <stop offset="100%" stopColor={c.accentFill2} />
                                         </linearGradient>
@@ -376,8 +280,8 @@ export default function AnalyticsView() {
                                     <CartesianGrid {...gridProps} />
                                     <XAxis dataKey="month" {...xAxisProps} />
                                     <YAxis tickFormatter={(v: number) => `$${compactNumber(v)}`} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={50} />
-                                    <Tooltip content={<ChartTooltipContent c={c} formatValue={(v) => `$${v.toLocaleString()}`} />} cursor={{ stroke: c.grid, strokeWidth: 1 }} />
-                                    <Area type="monotone" dataKey="gross" name="Gross" stroke={c.accent} strokeWidth={2} fill="url(#revGrad)" dot={false} />
+                                    <Tooltip content={<ChartTooltip c={c} formatLabel={formatMonth} formatValue={(v) => `$${v.toLocaleString()}`} />} cursor={{ stroke: c.grid, strokeWidth: 1 }} />
+                                    <Area type="monotone" dataKey="gross" name="Gross" stroke={c.accent} strokeWidth={2} fill={`url(#${revGradId})`} dot={false} />
                                     <Bar dataKey="payouts" name="Payouts" fill={c.bar2} radius={[4, 4, 0, 0]} barSize={14} />
                                     <Line type="monotone" dataKey="netRetained" name="Net Retained" stroke={c.strokeSoft} strokeWidth={1} strokeDasharray="4 4" dot={false} />
                                 </ComposedChart>
@@ -400,7 +304,7 @@ export default function AnalyticsView() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={forecastChartData} margin={CHART_MARGIN}>
                                     <defs>
-                                        <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id={actualGradId} x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="0%" stopColor={c.accentFill1} />
                                             <stop offset="100%" stopColor={c.accentFill2} />
                                         </linearGradient>
@@ -408,8 +312,8 @@ export default function AnalyticsView() {
                                     <CartesianGrid {...gridProps} />
                                     <XAxis dataKey="month" {...xAxisProps} />
                                     <YAxis tickFormatter={(v: number) => `$${compactNumber(v)}`} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={50} />
-                                    <Tooltip content={<ChartTooltipContent c={c} formatValue={(v, name) => `$${v.toLocaleString()} ${name === 'Projected' ? '(forecast)' : ''}`} />} cursor={{ stroke: c.grid, strokeWidth: 1 }} />
-                                    <Area type="monotone" dataKey="actual" name="Actual" stroke={c.accent} strokeWidth={2} fill="url(#actualGrad)" dot={false} connectNulls={false} />
+                                    <Tooltip content={<ChartTooltip c={c} formatLabel={formatMonth} formatValue={(v, name) => `$${v.toLocaleString()} ${name === 'Projected' ? '(forecast)' : ''}`} />} cursor={{ stroke: c.grid, strokeWidth: 1 }} />
+                                    <Area type="monotone" dataKey="actual" name="Actual" stroke={c.accent} strokeWidth={2} fill={`url(#${actualGradId})`} dot={false} connectNulls={false} />
                                     <Area type="monotone" dataKey="projected" name="Projected" stroke={c.forecast} strokeWidth={2} strokeDasharray="6 4" fill="none" dot={{ r: 3, fill: c.forecast, stroke: c.dotStroke, strokeWidth: 2 }} connectNulls={false} />
                                 </AreaChart>
                             </ResponsiveContainer>
@@ -417,14 +321,17 @@ export default function AnalyticsView() {
                     </Card.Content>
                 </Card>
             </div>
+            )}
 
             {/* Row 2: Platform + Growth */}
+            {(data.platforms.length > 0 || hasRevenue) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Platform Breakdown */}
                 <Card>
                     <Card.Header>
                         <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Platform Revenue</Card.Title>
                     </Card.Header>
+                    {data.platforms.length > 0 ? (
                     <Card.Content className="flex items-start gap-6 flex-wrap px-4 pb-4">
                         <div className="relative" style={{ width: 170, height: 170 }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -472,6 +379,11 @@ export default function AnalyticsView() {
                             ))}
                         </div>
                     </Card.Content>
+                    ) : (
+                    <Card.Content className="flex items-center justify-center py-12">
+                        <p className="text-[11px] font-bold text-muted tracking-widest">NO PLATFORM DATA</p>
+                    </Card.Content>
+                    )}
                 </Card>
 
                 {/* Growth Rate */}
@@ -480,13 +392,14 @@ export default function AnalyticsView() {
                         <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Monthly Growth Rate</Card.Title>
                     </Card.Header>
                     <Card.Content className="px-2 pb-3">
+                        {data.revenueTrend.filter((r) => r.growthPct !== null).length > 0 ? (
                         <div style={{ width: '100%', height: CHART_HEIGHT }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={data.revenueTrend.slice(-8).filter((r) => r.growthPct !== null)} margin={CHART_MARGIN}>
                                     <CartesianGrid {...gridProps} />
                                     <XAxis dataKey="month" {...xAxisProps} />
                                     <YAxis tickFormatter={(v: number) => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={50} />
-                                    <Tooltip content={<ChartTooltipContent c={c} formatValue={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} />} cursor={{ fill: c.grid }} />
+                                    <Tooltip content={<ChartTooltip c={c} formatLabel={formatMonth} formatValue={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} />} cursor={{ fill: c.grid }} />
                                     <Bar dataKey="growthPct" name="Growth" radius={[6, 6, 0, 0]} barSize={22}>
                                         {data.revenueTrend.slice(-8).filter((r) => r.growthPct !== null).map((entry, i) => (
                                             <Cell key={i} fill={(entry.growthPct ?? 0) >= 0 ? c.success : c.danger} />
@@ -495,12 +408,20 @@ export default function AnalyticsView() {
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
+                        ) : (
+                        <div className="flex items-center justify-center" style={{ height: CHART_HEIGHT }}>
+                            <p className="text-[11px] font-bold text-muted tracking-widest">NEED 2+ MONTHS FOR GROWTH</p>
+                        </div>
+                        )}
                     </Card.Content>
                 </Card>
             </div>
+            )}
 
             {/* Row 3: Listener + Stream */}
+            {(hasListeners || hasStreams) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {hasListeners ? (
                 <Card>
                     <Card.Header>
                         <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Listener Trend</Card.Title>
@@ -510,7 +431,7 @@ export default function AnalyticsView() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={data.listenerTrend.slice(-12)} margin={CHART_MARGIN}>
                                     <defs>
-                                        <linearGradient id="listenerGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id={listenerGradId} x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="0%" stopColor={c.accentFill1} />
                                             <stop offset="100%" stopColor={c.accentFill2} />
                                         </linearGradient>
@@ -518,15 +439,26 @@ export default function AnalyticsView() {
                                     <CartesianGrid {...gridProps} />
                                     <XAxis dataKey="month" {...xAxisProps} />
                                     <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={45} />
-                                    <Tooltip content={<ChartTooltipContent c={c} formatValue={(v) => v.toLocaleString()} />} cursor={{ stroke: c.grid, strokeWidth: 1 }} />
-                                    <Area type="monotone" dataKey="avg" name="Avg Listeners" stroke={c.accent} strokeWidth={2} fill="url(#listenerGrad)" dot={false} />
+                                    <Tooltip content={<ChartTooltip c={c} formatLabel={formatMonth} formatValue={(v) => v.toLocaleString()} />} cursor={{ stroke: c.grid, strokeWidth: 1 }} />
+                                    <Area type="monotone" dataKey="avg" name="Avg Listeners" stroke={c.accent} strokeWidth={2} fill={`url(#${listenerGradId})`} dot={false} />
                                     <Line type="monotone" dataKey="peak" name="Peak" stroke={c.strokeSoft} strokeWidth={1} strokeDasharray="4 4" dot={false} />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
                     </Card.Content>
                 </Card>
+                ) : (
+                <Card>
+                    <Card.Header>
+                        <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Listener Trend</Card.Title>
+                    </Card.Header>
+                    <Card.Content className="flex items-center justify-center py-12">
+                        <p className="text-[11px] font-bold text-muted tracking-widest">NO LISTENER DATA</p>
+                    </Card.Content>
+                </Card>
+                )}
 
+                {hasStreams ? (
                 <Card>
                     <Card.Header>
                         <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Stream Volume</Card.Title>
@@ -538,17 +470,28 @@ export default function AnalyticsView() {
                                     <CartesianGrid {...gridProps} />
                                     <XAxis dataKey="month" {...xAxisProps} />
                                     <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={45} />
-                                    <Tooltip content={<ChartTooltipContent c={c} formatValue={(v) => `${v.toLocaleString()} streams`} />} cursor={{ fill: c.grid }} />
+                                    <Tooltip content={<ChartTooltip c={c} formatLabel={formatMonth} formatValue={(v) => `${v.toLocaleString()} streams`} />} cursor={{ fill: c.grid }} />
                                     <Bar dataKey="streams" name="Streams" fill={c.bar1} radius={[6, 6, 0, 0]} barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </Card.Content>
                 </Card>
+                ) : (
+                <Card>
+                    <Card.Header>
+                        <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Stream Volume</Card.Title>
+                    </Card.Header>
+                    <Card.Content className="flex items-center justify-center py-12">
+                        <p className="text-[11px] font-bold text-muted tracking-widest">NO STREAM DATA</p>
+                    </Card.Content>
+                </Card>
+                )}
             </div>
+            )}
 
             {/* Top Artists by Revenue */}
-            <Card>
+            {hasArtists && <Card>
                 <Card.Header className="flex-row items-center justify-between">
                     <Card.Title className="text-[10px] font-black tracking-[0.16em] uppercase text-muted">Top Artists by Revenue</Card.Title>
                     <span className="text-[10px] text-muted font-semibold">{data.perArtistRevenue.length} artists</span>
@@ -594,7 +537,7 @@ export default function AnalyticsView() {
                         </Table.Content>
                     </Table.ScrollContainer>
                 </Table>
-            </Card>
+            </Card>}
         </div>
     );
 }

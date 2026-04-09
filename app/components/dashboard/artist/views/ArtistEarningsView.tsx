@@ -8,6 +8,7 @@ import {
   ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, Area, BarChart, Bar,
 } from "recharts";
+import { useChartPalette, useChartGradientId, ChartTooltip } from "@/app/components/dashboard/lib/ChartPrimitives";
 
 import type { AppSessionUser } from "@/lib/auth-types";
 import type {
@@ -70,6 +71,10 @@ export default function ArtistEarningsView({
   stats,
   withdrawal,
 }: ArtistEarningsViewProps) {
+  const c = useChartPalette();
+  const earningsGradId = useChartGradientId('earnings');
+  const projectedGradId = useChartGradientId('projected');
+
   const formatCurrency = (value: number) =>
     `$${Number(value || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -410,45 +415,44 @@ export default function ArtistEarningsView({
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="earningsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id={earningsGradId} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="rgb(16, 185, 129)" stopOpacity={0.25} />
                         <stop offset="95%" stopColor="rgb(16, 185, 129)" stopOpacity={0} />
                       </linearGradient>
-                      <linearGradient id="projectedGrad" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id={projectedGradId} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity={0.15} />
                         <stop offset="95%" stopColor="rgb(59, 130, 246)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.35)" }}
+                      tick={{ fontSize: 10, fill: c.tick }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)" }}
+                      tick={{ fontSize: 10, fill: c.tick }}
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={(v: number) => `$${v}`}
                     />
                     <RechartsTooltip
-                      contentStyle={{
-                        background: "rgba(10,10,10,0.9)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                      formatter={((value: number | undefined, name: string) =>
-                        [`$${(value ?? 0).toFixed(2)}`, name === "projected" ? "Projected" : "Earnings"] as [string, string]
-                      ) as any}
+                      content={
+                        <ChartTooltip
+                          c={c}
+                          formatValue={(v, name) =>
+                            `$${v.toFixed(2)} ${name === "projected" ? "Projected" : "Earnings"}`
+                          }
+                        />
+                      }
                     />
                     <Area
                       type="monotone"
                       dataKey="earnings"
                       stroke="rgb(16, 185, 129)"
                       strokeWidth={2}
-                      fill="url(#earningsGrad)"
+                      fill={`url(#${earningsGradId})`}
                       dot={{ r: 3, fill: "rgb(16, 185, 129)", strokeWidth: 0 }}
                     />
                     {projectedEarnings && (
@@ -458,7 +462,7 @@ export default function ArtistEarningsView({
                         stroke="rgb(59, 130, 246)"
                         strokeWidth={2}
                         strokeDasharray="6 4"
-                        fill="url(#projectedGrad)"
+                        fill={`url(#${projectedGradId})`}
                         dot={{ r: 3, fill: "rgb(59, 130, 246)", strokeWidth: 0 }}
                         connectNulls={false}
                       />

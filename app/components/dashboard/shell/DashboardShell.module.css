@@ -23,18 +23,6 @@
   background: var(--rail-bg);
 }
 
-.mobileToggle {
-  display: none;
-  position: fixed;
-  left: 14px;
-  top: 14px;
-  z-index: 140;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-}
 
 .main {
   min-height: 100vh;
@@ -64,10 +52,6 @@
 }
 
 @media (max-width: 880px) {
-  .mobileToggle {
-    display: none;
-  }
-
   .rail {
     width: min(260px, calc(100vw - 24px)) !important;
     transform: translateX(-118%);

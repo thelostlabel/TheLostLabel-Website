@@ -37,7 +37,6 @@ import {
   Upload,
   User,
   Users,
-  X,
 } from "lucide-react";
 import { Button, Tabs, cn } from "@heroui/react";
 import { Moon, Sun } from "lucide-react";
@@ -227,19 +226,6 @@ function DashboardShellContent({ children }: PropsWithChildren) {
         setIsMobileNavOpen(false);
       }} />
       <div className={styles.ambient} aria-hidden />
-
-      {/* Mobile hamburger */}
-      <button
-        type="button"
-        className={cn(
-          styles.mobileToggle,
-          "ds-glass rounded-xl text-foreground",
-        )}
-        onClick={() => setIsMobileNavOpen((p) => !p)}
-        aria-label="Toggle navigation"
-      >
-        {isMobileNavOpen ? <X size={18} /> : <Menu size={18} />}
-      </button>
 
       {/* Sidebar */}
       <aside

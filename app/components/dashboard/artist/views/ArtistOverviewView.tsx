@@ -11,13 +11,10 @@ import {
   Flame,
   Music2,
   Sparkles,
-  TrendingDown,
-  TrendingUp,
   Upload,
   Waves,
   Zap,
   Headphones,
-  BarChart3,
 } from "lucide-react";
 import { Avatar, Badge, Chip } from "@heroui/react";
 
@@ -175,8 +172,8 @@ export default function ArtistOverviewView({
   const totalTracks = Number(stats.songs || 0);
   const listeners = Number(stats.listeners || 0);
   const balance = Number(stats.balance || 0);
-  const spotifyStreams = Number(stats.spotifyStreams || stats.streams || 0);
-  const appleStreams = Number(stats.appleStreams || Math.floor((Number(stats.streams) || 0) * 0.45));
+  const spotifyStreams = Number(stats.spotifyStreams || 0);
+  const appleStreams = Number(stats.appleStreams || 0);
 
   const latestRelease = recentReleases[0] as Record<string, unknown> | undefined;
   const artworkSrc = resolveImageSrc(
@@ -186,12 +183,12 @@ export default function ArtistOverviewView({
   const avatarSrc = resolveImageSrc(sessionUser?.image || stats.artistImage, "");
 
   const streamingStats = [
-    { label: "Monthly Listeners", value: formatCompact(listeners), icon: <Headphones size={14} />, delta: listeners > 0 ? "-22.3%" : undefined, neg: true },
-    { label: "Total Streams", value: formatCompact(totalStreams), icon: <Waves size={14} />, delta: totalStreams > 0 ? "-24.2%" : undefined, neg: true },
-    { label: "Active Listeners", value: formatCompact(Math.round(listeners * 0.32)), icon: <BarChart3 size={14} />, delta: listeners > 0 ? "-8.8%" : undefined, neg: true },
-    { label: "Spotify Streams", value: formatCompact(spotifyStreams), icon: <Music2 size={14} />, delta: spotifyStreams > 0 ? "-8.3%" : undefined, neg: true },
-    { label: "Apple Music", value: formatCompact(appleStreams), icon: <Music2 size={14} />, delta: appleStreams > 0 ? "-6.4%" : undefined, neg: true },
-    { label: "New Listeners", value: formatCompact(Math.round(listeners * 0.13)), icon: <Sparkles size={14} />, delta: listeners > 0 ? "-41.1%" : undefined, neg: true },
+    { label: "Monthly Listeners", value: formatCompact(listeners), icon: <Headphones size={14} /> },
+    { label: "Total Streams", value: formatCompact(totalStreams), icon: <Waves size={14} /> },
+    { label: "Releases", value: formatCompact(totalReleases), icon: <Disc3 size={14} /> },
+    { label: "Tracks", value: formatCompact(totalTracks), icon: <Music2 size={14} /> },
+    ...(spotifyStreams > 0 ? [{ label: "Spotify Streams", value: formatCompact(spotifyStreams), icon: <Music2 size={14} /> }] : []),
+    ...(appleStreams > 0 ? [{ label: "Apple Music", value: formatCompact(appleStreams), icon: <Music2 size={14} /> }] : []),
   ];
 
   return (
@@ -361,12 +358,6 @@ export default function ArtistOverviewView({
                     <span className="ds-text-faint transition-colors">{stat.icon}</span>
                   </div>
                   <p className="mt-2 text-[18px] font-black leading-none ds-text">{stat.value}</p>
-                  {stat.delta && (
-                    <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-black ${stat.neg ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                      {stat.neg ? <TrendingDown size={9} /> : <TrendingUp size={9} />}
-                      {stat.delta}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

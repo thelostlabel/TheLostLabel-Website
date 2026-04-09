@@ -1,43 +1,25 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     RefreshCw, FileAudio, GitPullRequest, FileText,
     Music2, Users, TrendingUp, BarChart3,
 } from 'lucide-react';
 import {
-    ResponsiveContainer, AreaChart, XAxis, YAxis, CartesianGrid,
+    AreaChart, XAxis, YAxis, CartesianGrid,
     Tooltip, Area, ComposedChart, Line,
 } from 'recharts';
 import NextImage from 'next/image';
 import { Card, Skeleton } from '@heroui/react';
 import ActivityFeed from '@/app/components/dashboard/primitives/ActivityFeed';
-import { useTheme } from '@/app/components/ThemeProvider';
+import {
+    type ChartPalette, compactNumber,
+    formatMonthShort as formatMonthLabel, formatAxisDate,
+} from '@/app/components/dashboard/lib/chart-utils';
+import { useChartPalette, useChartGradientId, ChartTooltip, ChartContainer } from '@/app/components/dashboard/lib/ChartPrimitives';
 
 /* ── Types & Interfaces ── */
-
-interface ChartColorPalette {
-    stroke:        string;
-    strokeSoft:    string;
-    strokeFaint:   string;
-    fillStop1:     string;
-    fillStop2:     string;
-    fillSoftStop1: string;
-    grid:          string;
-    tick:          string;
-    tickRight:     string;
-    cursor:        string;
-    dotStroke:     string;
-    legendMain:    string;
-    legendSoft:    string;
-    legendFaint:   string;
-    tooltipBg:     string;
-    tooltipBorder: string;
-    tooltipLabel:  string;
-    tooltipValue:  string;
-    tooltipSub:    string;
-}
 
 interface ListenerSeriesPoint {
     label:       string;
@@ -128,12 +110,6 @@ interface AdminStats {
 }
 
 /* ── Formatters ── */
-const compactNumber = (val: number | string): string => {
-    const num = Number(val) || 0;
-    if (num >= 1000000) return `${(num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
-    return num.toLocaleString();
-};
 
 const FALLBACK_IMAGE = '/default-album.jpg';
 const normalizeImageSrc = (src: unknown): string => {
@@ -149,24 +125,6 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
     if (img.dataset.fallbackApplied === '1') return;
     img.dataset.fallbackApplied = '1';
     img.src = FALLBACK_IMAGE;
-};
-
-const formatAxisDate = (label: string, granularity: string): string => {
-    if (!label) return '';
-    const d = new Date(label);
-    if (Number.isNaN(d.getTime())) return label;
-    if (granularity === 'monthly') return d.toLocaleDateString('en-US', { month: 'short' });
-    if (granularity === 'weekly') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
-const formatMonthLabel = (label: string): string => {
-    if (!label || typeof label !== 'string') return '';
-    const [year, month] = label.split('-');
-    if (!year || !month) return label;
-    const d = new Date(Number(year), Number(month) - 1, 1);
-    if (Number.isNaN(d.getTime())) return label;
-    return d.toLocaleDateString('en-US', { month: 'short' });
 };
 
 const startOfWeek = (date: Date): Date => {
@@ -226,133 +184,23 @@ const aggregateRevenueSeries = (data: RawRevenuePoint[], granularity: string): R
     return Array.from(quarterly.entries()).map(([label, v]) => ({ label, ...v }));
 };
 
-/* ── Theme-aware chart color palettes ── */
-const CHART_COLORS: Record<'dark' | 'light', ChartColorPalette> = {
-    dark: {
-        stroke:        'rgba(255,255,255,0.75)',
-        strokeSoft:    'rgba(255,255,255,0.28)',
-        strokeFaint:   'rgba(255,255,255,0.12)',
-        fillStop1:     'rgba(255,255,255,0.13)',
-        fillStop2:     'rgba(255,255,255,0)',
-        fillSoftStop1: 'rgba(255,255,255,0.06)',
-        grid:          'rgba(255,255,255,0.035)',
-        tick:          '#555',
-        tickRight:     '#2a2a2a',
-        cursor:        'rgba(255,255,255,0.06)',
-        dotStroke:     '#0a0a0a',
-        legendMain:    'rgba(255,255,255,0.7)',
-        legendSoft:    'rgba(255,255,255,0.28)',
-        legendFaint:   'rgba(255,255,255,0.16)',
-        tooltipBg:     'rgba(10,10,12,0.97)',
-        tooltipBorder: 'rgba(255,255,255,0.09)',
-        tooltipLabel:  '#666',
-        tooltipValue:  '#fff',
-        tooltipSub:    '#555',
-    },
-    light: {
-        stroke:        'rgba(0,0,0,0.65)',
-        strokeSoft:    'rgba(0,0,0,0.25)',
-        strokeFaint:   'rgba(0,0,0,0.1)',
-        fillStop1:     'rgba(0,0,0,0.08)',
-        fillStop2:     'rgba(0,0,0,0)',
-        fillSoftStop1: 'rgba(0,0,0,0.04)',
-        grid:          'rgba(0,0,0,0.05)',
-        tick:          '#999',
-        tickRight:     '#bbb',
-        cursor:        'rgba(0,0,0,0.06)',
-        dotStroke:     '#f2f2f4',
-        legendMain:    'rgba(0,0,0,0.65)',
-        legendSoft:    'rgba(0,0,0,0.3)',
-        legendFaint:   'rgba(0,0,0,0.15)',
-        tooltipBg:     'rgba(255,255,255,0.97)',
-        tooltipBorder: 'rgba(0,0,0,0.1)',
-        tooltipLabel:  '#999',
-        tooltipValue:  '#0a0a0a',
-        tooltipSub:    '#aaa',
-    },
-};
-
-/* ── Responsive chart wrapper ── */
-interface ChartContainerProps {
-    children: React.ReactElement;
-    height?: number;
-}
-
-const ChartContainer = ({ children, height = 200 }: ChartContainerProps) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [dims, setDims] = useState({ w: 0, h: 0 });
-    useEffect(() => {
-        const node = ref.current;
-        if (!node) return;
-        const measure = () => {
-            const rect = node.getBoundingClientRect();
-            if (rect.width > 10 && rect.height > 10) setDims({ w: Math.floor(rect.width), h: Math.floor(rect.height) });
-        };
-        const timer = setTimeout(measure, 50);
-        if (typeof ResizeObserver !== 'undefined') {
-            const observer = new ResizeObserver(measure);
-            observer.observe(node);
-            return () => { clearTimeout(timer); observer.disconnect(); };
-        }
-        return () => clearTimeout(timer);
-    }, []);
-    return (
-        <div ref={ref} style={{ width: '100%', height, minWidth: 100, minHeight: height }}>
-            {dims.w > 10 && dims.h > 10 && (
-                <ResponsiveContainer width={dims.w} height={dims.h} minWidth={0} minHeight={1}>
-                    {children}
-                </ResponsiveContainer>
-            )}
-        </div>
-    );
-};
-
-interface TooltipPayloadEntry {
-    value: number;
-    name:  string;
-}
-
-interface ChartTooltipProps {
-    active?:      boolean;
-    payload?:     TooltipPayloadEntry[];
-    label?:       string;
-    formatLabel?: (label: string) => string;
-    formatValue?: (value: number, name: string) => string;
-    c:            ChartColorPalette;
-}
-
-const ChartTooltip = ({ active, payload, label, formatLabel, formatValue, c }: ChartTooltipProps) => {
-    if (!active || !payload?.length) return null;
-    return (
-        <div style={{ background: c.tooltipBg, border: `1px solid ${c.tooltipBorder}`, borderRadius: 10, padding: '10px 14px', backdropFilter: 'blur(16px)', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
-            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: c.tooltipLabel, letterSpacing: '0.5px', marginBottom: 6 }}>
-                {formatLabel ? formatLabel(label ?? '') : label}
-            </p>
-            {payload.map((entry, i) => (
-                <p key={i} style={{ margin: '3px 0', fontSize: 12, fontWeight: 800, color: c.tooltipValue }}>
-                    {formatValue ? formatValue(entry.value, entry.name) : entry.value}
-                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: c.tooltipSub }}>{entry.name}</span>
-                </p>
-            ))}
-        </div>
-    );
-};
 
 /* ── Charts ── */
 interface ListenerScaleChartProps {
     data:         ListenerSeriesPoint[];
     height?:      number;
     granularity?: string;
-    c:            ChartColorPalette;
+    c:            ChartPalette;
+    gradientId:   string;
 }
 
-const ListenerScaleChart = ({ data, height = 180, granularity = 'daily', c }: ListenerScaleChartProps) => {
+const ListenerScaleChart = ({ data, height = 180, granularity = 'daily', c, gradientId }: ListenerScaleChartProps) => {
     const tickCount = granularity === 'daily' ? 6 : granularity === 'weekly' ? 6 : undefined;
     return (
         <ChartContainer height={height}>
             <ComposedChart data={data} margin={{ top: 4, right: 8, left: 4, bottom: 4 }}>
                 <defs>
-                    <linearGradient id="listenerFillMono" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={c.fillStop1} stopOpacity={1} />
                         <stop offset="100%" stopColor={c.fillStop2} stopOpacity={1} />
                     </linearGradient>
@@ -362,7 +210,7 @@ const ListenerScaleChart = ({ data, height = 180, granularity = 'daily', c }: Li
                 <YAxis yAxisId="listeners" tickFormatter={compactNumber} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={40} />
                 <YAxis yAxisId="counts" orientation="right" allowDecimals={false} tick={{ fill: c.tickRight, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={30} />
                 <Tooltip content={<ChartTooltip formatLabel={(v) => formatAxisDate(v, granularity)} formatValue={(v) => Number(v || 0).toLocaleString()} c={c} />} cursor={{ stroke: c.cursor, strokeWidth: 1 }} />
-                <Area yAxisId="listeners" type="monotone" dataKey="value" name="Monthly Listeners" stroke={c.stroke} strokeWidth={1.5} fill="url(#listenerFillMono)" dot={false} activeDot={{ r: 4, fill: c.stroke, stroke: c.dotStroke, strokeWidth: 2 }} />
+                <Area yAxisId="listeners" type="monotone" dataKey="value" name="Monthly Listeners" stroke={c.stroke} strokeWidth={1.5} fill={`url(#${gradientId})`} dot={false} activeDot={{ r: 4, fill: c.stroke, stroke: c.dotStroke, strokeWidth: 2 }} />
                 <Line yAxisId="listeners" type="monotone" dataKey="avgPerArtist" name="Per Artist" stroke={c.strokeSoft} strokeWidth={1} strokeDasharray="4 4" dot={false} />
                 <Line yAxisId="counts" type="monotone" dataKey="artistCount" name="Artists" stroke={c.strokeFaint} strokeWidth={1} dot={false} />
                 <Line yAxisId="counts" type="monotone" dataKey="releaseCount" name="Releases" stroke={c.strokeFaint} strokeWidth={1} dot={false} />
@@ -375,18 +223,20 @@ interface RevenueFlowChartProps {
     data:         RevenueSeriesPoint[];
     height?:      number;
     granularity?: string;
-    c:            ChartColorPalette;
+    c:            ChartPalette;
+    revGradientId: string;
+    artGradientId: string;
 }
 
-const RevenueFlowChart = ({ data, height = 180, granularity = 'monthly', c }: RevenueFlowChartProps) => (
+const RevenueFlowChart = ({ data, height = 180, granularity = 'monthly', c, revGradientId, artGradientId }: RevenueFlowChartProps) => (
     <ChartContainer height={height}>
         <AreaChart data={(data || []).slice(-8)} margin={{ top: 4, right: 8, left: 4, bottom: 4 }}>
             <defs>
-                <linearGradient id="revFillMono" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={revGradientId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={c.fillStop1} stopOpacity={1} />
                     <stop offset="100%" stopColor={c.fillStop2} stopOpacity={1} />
                 </linearGradient>
-                <linearGradient id="artFillMono" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={artGradientId} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={c.fillSoftStop1} stopOpacity={1} />
                     <stop offset="100%" stopColor={c.fillStop2} stopOpacity={1} />
                 </linearGradient>
@@ -395,8 +245,8 @@ const RevenueFlowChart = ({ data, height = 180, granularity = 'monthly', c }: Re
             <XAxis dataKey="label" tickFormatter={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} interval={0} />
             <YAxis tickFormatter={compactNumber} tick={{ fill: c.tick, fontSize: 10, fontWeight: 600 }} axisLine={false} tickLine={false} width={40} />
             <Tooltip content={<ChartTooltip formatLabel={(v) => (granularity === 'quarterly' ? String(v).replace('-', ' ') : formatMonthLabel(v))} formatValue={(v) => `$${Number(v || 0).toLocaleString()}`} c={c} />} cursor={{ stroke: c.cursor, strokeWidth: 1 }} />
-            <Area type="monotone" dataKey="artistShare" name="Artist Share" stroke={c.strokeSoft} strokeWidth={1} fill="url(#artFillMono)" dot={false} activeDot={{ r: 4, fill: c.strokeSoft, stroke: c.dotStroke, strokeWidth: 2 }} />
-            <Area type="monotone" dataKey="revenue" name="Label Revenue" stroke={c.stroke} strokeWidth={1.5} fill="url(#revFillMono)" dot={false} activeDot={{ r: 4, fill: c.stroke, stroke: c.dotStroke, strokeWidth: 2 }} />
+            <Area type="monotone" dataKey="artistShare" name="Artist Share" stroke={c.strokeSoft} strokeWidth={1} fill={`url(#${artGradientId})`} dot={false} activeDot={{ r: 4, fill: c.strokeSoft, stroke: c.dotStroke, strokeWidth: 2 }} />
+            <Area type="monotone" dataKey="revenue" name="Label Revenue" stroke={c.stroke} strokeWidth={1.5} fill={`url(#${revGradientId})`} dot={false} activeDot={{ r: 4, fill: c.stroke, stroke: c.dotStroke, strokeWidth: 2 }} />
         </AreaChart>
     </ChartContainer>
 );
@@ -566,19 +416,21 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
     const [loading, setLoading] = useState<boolean>(true);
     const [listenerGranularity, setListenerGranularity] = useState<string>('daily');
     const [revenueGranularity, setRevenueGranularity] = useState<string>('monthly');
-    const { theme } = useTheme();
-    const c: ChartColorPalette = CHART_COLORS[theme as 'dark' | 'light'] || CHART_COLORS.dark;
+    const c = useChartPalette();
+    const listenerFillId = useChartGradientId('listenerFill');
+    const revFillId = useChartGradientId('revFill');
+    const artFillId = useChartGradientId('artFill');
 
-    useEffect(() => { fetchStats(); }, []);
-
-    const fetchStats = async (): Promise<void> => {
+    const fetchStats = useCallback(async (): Promise<void> => {
         setLoading(true);
         try {
             const res = await fetch('/api/admin/stats');
             if (res.ok) setStats(await res.json());
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, []);
+
+    useEffect(() => { fetchStats(); }, [fetchStats]);
 
     const listenerSeriesData = useMemo(
         () => aggregateListenerSeries(stats?.listenerTrends || [], listenerGranularity),
@@ -709,7 +561,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                                         />
                                     </div>
                                 </div>
-                                <RevenueFlowChart data={revenueSeriesData} height={160} granularity={revenueGranularity} c={c} />
+                                <RevenueFlowChart data={revenueSeriesData} height={160} granularity={revenueGranularity} c={c} revGradientId={revFillId} artGradientId={artFillId} />
                                 <Legend items={[
                                     { color: c.legendMain, label: 'Label Revenue' },
                                     { color: c.legendSoft, label: 'Artist Share', dashed: true },
@@ -747,7 +599,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                                         />
                                     </div>
                                 </div>
-                                <ListenerScaleChart data={compareSeriesData} height={160} granularity={listenerGranularity} c={c} />
+                                <ListenerScaleChart data={compareSeriesData} height={160} granularity={listenerGranularity} c={c} gradientId={listenerFillId} />
                                 <Legend items={[
                                     { color: c.legendMain, label: 'Monthly Listeners' },
                                     { color: c.legendSoft, label: 'Per Artist', dashed: true },

@@ -1,7 +1,0 @@
-import { POST as canonicalPost } from "@/app/api/internal/discord/demo-status/route";
-import { logDeprecatedDiscordRoute } from "@/lib/discord-route-deprecation";
-
-export async function POST(req, context) {
-    logDeprecatedDiscordRoute("/api/internal/discord/demo_status", "/api/internal/discord/demo-status");
-    return canonicalPost(req, context);
-}
